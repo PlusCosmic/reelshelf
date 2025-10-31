@@ -1,0 +1,33 @@
+import { apiConfig } from "../config/apiConfig.ts";
+import {
+  Configuration,
+  type LinkRequest,
+  LinksEndpointsApi,
+  type UserFrequentLink,
+} from "@pluscosmic/nucleus-api-client";
+
+export interface NewLinkInput {
+  url: string;
+}
+
+export async function getLinks(): Promise<UserFrequentLink[]> {
+  const api = new LinksEndpointsApi(
+    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
+  );
+  return await api.getLinksForUser();
+}
+
+export async function addLink(input: NewLinkInput): Promise<void> {
+  const api = new LinksEndpointsApi(
+    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
+  );
+  const linkRequest: LinkRequest = { url: input.url };
+  await api.addLink({ linkRequest });
+}
+
+export async function deleteLink(id: string): Promise<void> {
+  const api = new LinksEndpointsApi(
+    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
+  );
+  await api.deleteLink({ id });
+}
