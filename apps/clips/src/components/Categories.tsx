@@ -8,9 +8,8 @@ import {
   Title,
   UnstyledButton,
 } from '@mantine/core'
-import { fetchCategories } from '../services/categories'
-import { apiConfig } from '../config/apiConfig'
-import { fetchMe } from '../services/user'
+import { apiConfig, fetchCategories , fetchMe  } from "@repo/shared"
+import { useNavigate } from "@tanstack/react-router";
 import classes from './Categories.module.scss'
 import type { ClipCategory, DiscordUser } from '@pluscosmic/nucleus-api-client'
 
@@ -19,6 +18,7 @@ export default function Categories() {
   const [loadingUser, setLoadingUser] = useState(true)
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [categories, setCategories] = useState<Array<ClipCategory>>([])
+  const navigate = useNavigate()
 
   useEffect(() => {
     setLoadingUser(true)
@@ -55,11 +55,24 @@ export default function Categories() {
 
   const isLoading = loadingUser || (user && loadingCategories)
 
+  function handleClick(categoryEnum: number) {
+    switch (categoryEnum) {
+      case 0:
+        navigate({ to: `/apex-legends` });
+        break;
+      case 1:
+        navigate({ to: `/warzone` });
+        break;
+      case 2:
+        navigate({ to: `/snowboarding` });
+        break;
+    }
+  }
   const items = categories.map((category) => (
     <Card className={classes.item} w="200" h="220">
       <UnstyledButton
         key={category.name}
-/*        onClick={() => handleClick(category.categoryEnum)}*/
+        onClick={() => handleClick(category.categoryEnum)}
       >
         <Center>
           <Image

@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { IconLogout } from "@tabler/icons-react";
-import { fetchMe } from "../services/user";
-import { logout } from "../services/auth";
-import LoginButton from "./LoginButton";
 import { Avatar, Menu, Skeleton } from "@mantine/core";
+import { IconLogout } from "@tabler/icons-react";
 import type { DiscordUser } from "@pluscosmic/nucleus-api-client";
+import LoginButton from "./LoginButton";
+import { fetchMe, logout } from "@repo/shared";
 
-export default function UserAvatar() {
+interface UserAvatarProps {
+  hideLogin: boolean;
+}
+
+export default function UserAvatar({ hideLogin } : UserAvatarProps) {
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,12 +40,11 @@ export default function UserAvatar() {
       console.error("Logout failed", e);
     } finally {
       setUser(null);
-
       window.location.reload();
     }
   }
 
-  if (!user) {
+  if (!user && !hideLogin) {
     return <LoginButton />;
   }
 
@@ -72,10 +74,7 @@ export default function UserAvatar() {
             </div>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<IconLogout size={14} />}
-              onClick={handleLogout}
-            >
+            <Menu.Item leftSection={<IconLogout size={14} />} onClick={handleLogout}>
               Log Out
             </Menu.Item>
           </Menu.Dropdown>

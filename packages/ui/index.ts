@@ -2,5 +2,7 @@
 export { setupCounter } from "./utils/counter";
 
 // components
-export { Header } from "./components/header";
-export { Counter } from "./components/counter";
+export { default as LoginButton } from "./components/LoginButton";
+export { default as UserAvatar } from "./components/UserAvatar";
+export { default as Footer } from "./components/Footer";
+

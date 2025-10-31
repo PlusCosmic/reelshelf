@@ -2,7 +2,7 @@ import { Button, type ButtonProps } from "@mantine/core";
 import { DiscordIcon } from "@mantinex/dev-icons";
 import * as React from "react";
 import classes from "./LoginButton.module.scss";
-import { apiConfig } from "../config/apiConfig.ts";
+import { apiConfig } from "@repo/shared/api-config";
 
 export default function LoginButton() {
   function handleLogin() {
@@ -10,16 +10,14 @@ export default function LoginButton() {
     window.location.href = `${apiConfig.baseUrl}/auth/discord/login?returnUrl=${encodeURIComponent(currentUrl)}`;
   }
 
-  return (
-    <DiscordButton onClick={handleLogin}>Log in with Discord</DiscordButton>
-  );
+  return <DiscordButton onClick={handleLogin}>Log in with Discord</DiscordButton>;
 }
 
 export function DiscordButton(
-  props: ButtonProps & React.ComponentPropsWithoutRef<"button">,
+  props: ButtonProps & React.ComponentPropsWithoutRef<"button">
 ) {
   return (
-    <Button maw="200"
+    <Button
       className={classes.discordButton}
       leftSection={<DiscordIcon size={16} />}
       {...props}

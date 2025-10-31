@@ -1,0 +1,27 @@
+{
+  "name": "@repo/shared",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api-config": "./src/config/apiConfig.ts",
+    "./services/auth": "./src/services/auth.ts",
+    "./services/user": "./src/services/user.ts",
+    "./services/categories": "./src/services/categories.ts",
+    "./hooks/useDebouncedValue": "./src/hooks/useDebouncedValue.ts",
+    "./index": "./src/index.ts"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@pluscosmic/nucleus-api-client": "^1.0.5",
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Group, Stack, Title } from '@mantine/core'
 import { useEffect, useState } from 'react'
-import LoginButton from '../components/LoginButton'
+import { LoginButton } from '@repo/ui'
+import { fetchMe } from "@repo/shared"
 import tempLogo from '../assets/transparent plus.png'
-import { fetchMe } from '../services/user'
 import Categories from '../components/Categories'
 import type { DiscordUser } from '@pluscosmic/nucleus-api-client'
 

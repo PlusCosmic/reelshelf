@@ -7,9 +7,11 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
-    "eslint": "^8.57.0",
-    "prettier": "^3.2.5",
-    "turbo": "^2.5.8"
+    "eslint": "^9.38.0",
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.8",
+    "vite": "7.1.12",
+    "@types/node": "24.9.1"
   },
   "packageManager": "pnpm@8.15.6",
   "name": "with-vite"

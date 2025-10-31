@@ -9,8 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WarzoneRouteImport } from './routes/warzone'
+import { Route as SnowboardingRouteImport } from './routes/snowboarding'
+import { Route as ApexLegendsRouteImport } from './routes/apex-legends'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WarzoneRoute = WarzoneRouteImport.update({
+  id: '/warzone',
+  path: '/warzone',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SnowboardingRoute = SnowboardingRouteImport.update({
+  id: '/snowboarding',
+  path: '/snowboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApexLegendsRoute = ApexLegendsRouteImport.update({
+  id: '/apex-legends',
+  path: '/apex-legends',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +37,61 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/apex-legends': typeof ApexLegendsRoute
+  '/snowboarding': typeof SnowboardingRoute
+  '/warzone': typeof WarzoneRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/apex-legends': typeof ApexLegendsRoute
+  '/snowboarding': typeof SnowboardingRoute
+  '/warzone': typeof WarzoneRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/apex-legends': typeof ApexLegendsRoute
+  '/snowboarding': typeof SnowboardingRoute
+  '/warzone': typeof WarzoneRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/apex-legends' | '/snowboarding' | '/warzone'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/apex-legends' | '/snowboarding' | '/warzone'
+  id: '__root__' | '/' | '/apex-legends' | '/snowboarding' | '/warzone'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApexLegendsRoute: typeof ApexLegendsRoute
+  SnowboardingRoute: typeof SnowboardingRoute
+  WarzoneRoute: typeof WarzoneRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/warzone': {
+      id: '/warzone'
+      path: '/warzone'
+      fullPath: '/warzone'
+      preLoaderRoute: typeof WarzoneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/snowboarding': {
+      id: '/snowboarding'
+      path: '/snowboarding'
+      fullPath: '/snowboarding'
+      preLoaderRoute: typeof SnowboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apex-legends': {
+      id: '/apex-legends'
+      path: '/apex-legends'
+      fullPath: '/apex-legends'
+      preLoaderRoute: typeof ApexLegendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +104,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApexLegendsRoute: ApexLegendsRoute,
+  SnowboardingRoute: SnowboardingRoute,
+  WarzoneRoute: WarzoneRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
