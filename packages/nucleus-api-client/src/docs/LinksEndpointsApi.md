@@ -143,7 +143,7 @@ No authorization required
 
 ## getLinksForUser
 
-> Array&lt;UserFrequentLink&gt; getLinksForUser()
+> Array&lt;UserFrequentLinkRow&gt; getLinksForUser()
 
 
 
@@ -178,7 +178,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**Array&lt;UserFrequentLink&gt;**](UserFrequentLink.md)
+[**Array&lt;UserFrequentLinkRow&gt;**](UserFrequentLinkRow.md)
 
 ### Authorization
 

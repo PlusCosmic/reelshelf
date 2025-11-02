@@ -1,4 +1,3 @@
-.openapi-generator-ignore
 apis/AuthEndpointsApi.ts
 apis/ClipsEndpointsApi.ts
 apis/DiscordUserEndpointsApi.ts
@@ -8,6 +7,8 @@ apis/index.ts
 docs/AddTagRequest.md
 docs/AuthEndpointsApi.md
 docs/BunnyVideo.md
+docs/BunnyVideoFramerate.md
+docs/BunnyVideoStorageSize.md
 docs/Clip.md
 docs/ClipCategory.md
 docs/ClipsEndpointsApi.md
@@ -15,6 +16,7 @@ docs/CreateClipResponse.md
 docs/CurrentMapRotation.md
 docs/DiscordUser.md
 docs/DiscordUserEndpointsApi.md
+docs/GetVideosByCategoryPageParameter.md
 docs/LinkRequest.md
 docs/LinksEndpointsApi.md
 docs/MapInfo.md
@@ -24,15 +26,18 @@ docs/NucleusApi.md
 docs/PagedClipsResponse.md
 docs/TopTag.md
 docs/UpdateTitleRequest.md
-docs/UserFrequentLink.md
+docs/UserFrequentLinkRow.md
 index.ts
 models/AddTagRequest.ts
 models/BunnyVideo.ts
+models/BunnyVideoFramerate.ts
+models/BunnyVideoStorageSize.ts
 models/Clip.ts
 models/ClipCategory.ts
 models/CreateClipResponse.ts
 models/CurrentMapRotation.ts
 models/DiscordUser.ts
+models/GetVideosByCategoryPageParameter.ts
 models/LinkRequest.ts
 models/MapInfo.ts
 models/MetaTag.ts
@@ -40,6 +45,6 @@ models/Moment.ts
 models/PagedClipsResponse.ts
 models/TopTag.ts
 models/UpdateTitleRequest.ts
-models/UserFrequentLink.ts
+models/UserFrequentLinkRow.ts
 models/index.ts
 runtime.ts

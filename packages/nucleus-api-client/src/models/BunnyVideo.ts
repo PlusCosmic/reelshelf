@@ -13,6 +13,20 @@
  */
 
 import { mapValues } from '../runtime';
+import type { BunnyVideoStorageSize } from './BunnyVideoStorageSize';
+import {
+    BunnyVideoStorageSizeFromJSON,
+    BunnyVideoStorageSizeFromJSONTyped,
+    BunnyVideoStorageSizeToJSON,
+    BunnyVideoStorageSizeToJSONTyped,
+} from './BunnyVideoStorageSize';
+import type { GetVideosByCategoryPageParameter } from './GetVideosByCategoryPageParameter';
+import {
+    GetVideosByCategoryPageParameterFromJSON,
+    GetVideosByCategoryPageParameterFromJSONTyped,
+    GetVideosByCategoryPageParameterToJSON,
+    GetVideosByCategoryPageParameterToJSONTyped,
+} from './GetVideosByCategoryPageParameter';
 import type { Moment } from './Moment';
 import {
     MomentFromJSON,
@@ -20,6 +34,13 @@ import {
     MomentToJSON,
     MomentToJSONTyped,
 } from './Moment';
+import type { BunnyVideoFramerate } from './BunnyVideoFramerate';
+import {
+    BunnyVideoFramerateFromJSON,
+    BunnyVideoFramerateFromJSONTyped,
+    BunnyVideoFramerateToJSON,
+    BunnyVideoFramerateToJSONTyped,
+} from './BunnyVideoFramerate';
 import type { MetaTag } from './MetaTag';
 import {
     MetaTagFromJSON,
@@ -36,10 +57,10 @@ import {
 export interface BunnyVideo {
     /**
      * 
-     * @type {number}
+     * @type {GetVideosByCategoryPageParameter}
      * @memberof BunnyVideo
      */
-    videoLibraryId: number;
+    videoLibraryId: GetVideosByCategoryPageParameter;
     /**
      * 
      * @type {string}
@@ -60,40 +81,40 @@ export interface BunnyVideo {
     dateUploaded: Date;
     /**
      * 
-     * @type {number}
+     * @type {GetVideosByCategoryPageParameter}
      * @memberof BunnyVideo
      */
-    length: number;
+    length: GetVideosByCategoryPageParameter;
     /**
      * 
-     * @type {number}
+     * @type {GetVideosByCategoryPageParameter}
      * @memberof BunnyVideo
      */
-    status: number;
+    status: GetVideosByCategoryPageParameter;
     /**
      * 
-     * @type {number}
+     * @type {BunnyVideoFramerate}
      * @memberof BunnyVideo
      */
-    framerate: number;
+    framerate: BunnyVideoFramerate;
     /**
      * 
-     * @type {number}
+     * @type {GetVideosByCategoryPageParameter}
      * @memberof BunnyVideo
      */
-    thumbnailCount: number;
+    thumbnailCount: GetVideosByCategoryPageParameter;
     /**
      * 
-     * @type {number}
+     * @type {GetVideosByCategoryPageParameter}
      * @memberof BunnyVideo
      */
-    encodeProgress: number;
+    encodeProgress: GetVideosByCategoryPageParameter;
     /**
      * 
-     * @type {number}
+     * @type {BunnyVideoStorageSize}
      * @memberof BunnyVideo
      */
-    storageSize: number;
+    storageSize: BunnyVideoStorageSize;
     /**
      * 
      * @type {string}
@@ -165,16 +186,16 @@ export function BunnyVideoFromJSONTyped(json: any, ignoreDiscriminator: boolean)
     }
     return {
         
-        'videoLibraryId': json['video_library_id'],
+        'videoLibraryId': GetVideosByCategoryPageParameterFromJSON(json['video_library_id']),
         'guid': json['guid'],
         'title': json['title'],
         'dateUploaded': (new Date(json['date_uploaded'])),
-        'length': json['length'],
-        'status': json['status'],
-        'framerate': json['framerate'],
-        'thumbnailCount': json['thumbnail_count'],
-        'encodeProgress': json['encode_progress'],
-        'storageSize': json['storage_size'],
+        'length': GetVideosByCategoryPageParameterFromJSON(json['length']),
+        'status': GetVideosByCategoryPageParameterFromJSON(json['status']),
+        'framerate': BunnyVideoFramerateFromJSON(json['framerate']),
+        'thumbnailCount': GetVideosByCategoryPageParameterFromJSON(json['thumbnail_count']),
+        'encodeProgress': GetVideosByCategoryPageParameterFromJSON(json['encode_progress']),
+        'storageSize': BunnyVideoStorageSizeFromJSON(json['storage_size']),
         'collectionId': json['collection_id'],
         'thumbnailFileName': json['thumbnail_file_name'],
         'thumbnailBlurhash': json['thumbnail_blurhash'],
@@ -195,16 +216,16 @@ export function BunnyVideoToJSONTyped(value?: BunnyVideo | null, ignoreDiscrimin
 
     return {
         
-        'video_library_id': value['videoLibraryId'],
+        'video_library_id': GetVideosByCategoryPageParameterToJSON(value['videoLibraryId']),
         'guid': value['guid'],
         'title': value['title'],
         'date_uploaded': value['dateUploaded'].toISOString(),
-        'length': value['length'],
-        'status': value['status'],
-        'framerate': value['framerate'],
-        'thumbnail_count': value['thumbnailCount'],
-        'encode_progress': value['encodeProgress'],
-        'storage_size': value['storageSize'],
+        'length': GetVideosByCategoryPageParameterToJSON(value['length']),
+        'status': GetVideosByCategoryPageParameterToJSON(value['status']),
+        'framerate': BunnyVideoFramerateToJSON(value['framerate']),
+        'thumbnail_count': GetVideosByCategoryPageParameterToJSON(value['thumbnailCount']),
+        'encode_progress': GetVideosByCategoryPageParameterToJSON(value['encodeProgress']),
+        'storage_size': BunnyVideoStorageSizeToJSON(value['storageSize']),
         'collection_id': value['collectionId'],
         'thumbnail_file_name': value['thumbnailFileName'],
         'thumbnail_blurhash': value['thumbnailBlurhash'],

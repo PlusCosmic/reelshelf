@@ -1,24 +1,30 @@
 
-# PagedClipsResponse
+# UserFrequentLinkRow
 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`clips` | [Array&lt;Clip&gt;](Clip.md)
-`totalPages` | [GetVideosByCategoryPageParameter](GetVideosByCategoryPageParameter.md)
+`id` | string
+`userId` | string
+`title` | string
+`url` | string
+`thumbnailUrl` | string
 
 ## Example
 
 ```typescript
-import type { PagedClipsResponse } from ''
+import type { UserFrequentLinkRow } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "clips": null,
-  "totalPages": null,
-} satisfies PagedClipsResponse
+  "id": null,
+  "userId": null,
+  "title": null,
+  "url": null,
+  "thumbnailUrl": null,
+} satisfies UserFrequentLinkRow
 
 console.log(example)
 
@@ -27,7 +33,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as PagedClipsResponse
+const exampleParsed = JSON.parse(exampleJSON) as UserFrequentLinkRow
 console.log(exampleParsed)
 ```
 

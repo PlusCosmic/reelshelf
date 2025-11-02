@@ -17,12 +17,13 @@ export async function fetchApexClips(page: number, pageSize: number): Promise<Pa
 
 export async function createVideoRequest(
   title: string,
+  md5Hash?: string,
 ): Promise<CreateClipResponse | null> {
   const api = new ClipsEndpointsApi(
     new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
   );
 
-  return api.createVideo({ category: 0, videoTitle: title });
+  return api.createVideo({ category: 0, videoTitle: title, md5Hash });
 }
 
 export async function getVideo(videoId: string): Promise<Clip | null> {
@@ -65,4 +66,18 @@ export async function updateVideoTitle(clipId: string, title: string): Promise<v
     new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
   );
   await api.updateClipTitle({ clipId: clipId, updateTitleRequest: { title: title } });
+}
+
+export async function deleteVideo(clipId: string): Promise<void> {
+  const api = new ClipsEndpointsApi(
+    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
+  );
+  await api.deleteClip({ clipId: clipId });
+}
+
+export async function markClipAsViewed(clipId: string): Promise<void> {
+  const api = new ClipsEndpointsApi(
+    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
+  );
+  await api.markVideoAsViewed({ clipId: clipId });
 }

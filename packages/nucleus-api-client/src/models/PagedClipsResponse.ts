@@ -20,6 +20,13 @@ import {
     ClipToJSON,
     ClipToJSONTyped,
 } from './Clip';
+import type { GetVideosByCategoryPageParameter } from './GetVideosByCategoryPageParameter';
+import {
+    GetVideosByCategoryPageParameterFromJSON,
+    GetVideosByCategoryPageParameterFromJSONTyped,
+    GetVideosByCategoryPageParameterToJSON,
+    GetVideosByCategoryPageParameterToJSONTyped,
+} from './GetVideosByCategoryPageParameter';
 
 /**
  * 
@@ -35,10 +42,10 @@ export interface PagedClipsResponse {
     clips: Array<Clip>;
     /**
      * 
-     * @type {number}
+     * @type {GetVideosByCategoryPageParameter}
      * @memberof PagedClipsResponse
      */
-    totalPages: number;
+    totalPages: GetVideosByCategoryPageParameter;
 }
 
 /**
@@ -61,7 +68,7 @@ export function PagedClipsResponseFromJSONTyped(json: any, ignoreDiscriminator: 
     return {
         
         'clips': ((json['clips'] as Array<any>).map(ClipFromJSON)),
-        'totalPages': json['total_pages'],
+        'totalPages': GetVideosByCategoryPageParameterFromJSON(json['total_pages']),
     };
 }
 
@@ -77,7 +84,7 @@ export function PagedClipsResponseToJSONTyped(value?: PagedClipsResponse | null,
     return {
         
         'clips': ((value['clips'] as Array<any>).map(ClipToJSON)),
-        'total_pages': value['totalPages'],
+        'total_pages': GetVideosByCategoryPageParameterToJSON(value['totalPages']),
     };
 }
 

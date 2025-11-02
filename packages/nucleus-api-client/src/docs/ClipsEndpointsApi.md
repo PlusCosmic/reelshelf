@@ -6,6 +6,7 @@ All URIs are relative to *http://localhost*
 |------------- | ------------- | -------------|
 | [**addTagToClip**](ClipsEndpointsApi.md#addtagtoclip) | **POST** /clips/videos/{clipId}/tags |  |
 | [**createVideo**](ClipsEndpointsApi.md#createvideo) | **POST** /clips/categories/{category}/videos |  |
+| [**deleteClip**](ClipsEndpointsApi.md#deleteclip) | **DELETE** /clips/videos/{clipId} |  |
 | [**getCategories**](ClipsEndpointsApi.md#getcategories) | **GET** /clips/categories |  |
 | [**getTopTags**](ClipsEndpointsApi.md#gettoptags) | **GET** /clips/tags/top |  |
 | [**getUnviewedVideosByCategory**](ClipsEndpointsApi.md#getunviewedvideosbycategory) | **GET** /clips/categories/{category}/videos/unviewed |  |
@@ -89,7 +90,7 @@ No authorization required
 
 ## createVideo
 
-> CreateClipResponse createVideo(category, videoTitle)
+> CreateClipResponse createVideo(category, videoTitle, md5Hash)
 
 
 
@@ -111,6 +112,8 @@ async function example() {
     category: 56,
     // string
     videoTitle: videoTitle_example,
+    // string (optional)
+    md5Hash: md5Hash_example,
   } satisfies CreateVideoRequest;
 
   try {
@@ -132,6 +135,7 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **category** | `number` |  | [Defaults to `undefined`] |
 | **videoTitle** | `string` |  | [Defaults to `undefined`] |
+| **md5Hash** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -151,6 +155,73 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | OK |  -  |
+| **409** | Conflict |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteClip
+
+> deleteClip(clipId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ClipsEndpointsApi,
+} from '';
+import type { DeleteClipRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ClipsEndpointsApi();
+
+  const body = {
+    // string
+    clipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteClipRequest;
+
+  try {
+    const data = await api.deleteClip(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **clipId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+| **404** | Not Found |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -291,9 +362,9 @@ async function example() {
   const body = {
     // number
     category: 56,
-    // number
+    // GetVideosByCategoryPageParameter
     page: 56,
-    // number
+    // GetVideosByCategoryPageParameter
     pageSize: 56,
   } satisfies GetUnviewedVideosByCategoryRequest;
 
@@ -315,8 +386,8 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **category** | `number` |  | [Defaults to `undefined`] |
-| **page** | `number` |  | [Defaults to `undefined`] |
-| **pageSize** | `number` |  | [Defaults to `undefined`] |
+| **page** | [](.md) |  | [Defaults to `undefined`] |
+| **pageSize** | [](.md) |  | [Defaults to `undefined`] |
 
 ### Return type
 
@@ -428,9 +499,9 @@ async function example() {
   const body = {
     // number
     category: 56,
-    // number
+    // GetVideosByCategoryPageParameter
     page: 56,
-    // number
+    // GetVideosByCategoryPageParameter
     pageSize: 56,
   } satisfies GetVideosByCategoryRequest;
 
@@ -452,8 +523,8 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **category** | `number` |  | [Defaults to `undefined`] |
-| **page** | `number` |  | [Defaults to `undefined`] |
-| **pageSize** | `number` |  | [Defaults to `undefined`] |
+| **page** | [](.md) |  | [Defaults to `undefined`] |
+| **pageSize** | [](.md) |  | [Defaults to `undefined`] |
 
 ### Return type
 

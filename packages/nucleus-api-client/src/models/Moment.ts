@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { GetVideosByCategoryPageParameter } from './GetVideosByCategoryPageParameter';
+import {
+    GetVideosByCategoryPageParameterFromJSON,
+    GetVideosByCategoryPageParameterFromJSONTyped,
+    GetVideosByCategoryPageParameterToJSON,
+    GetVideosByCategoryPageParameterToJSONTyped,
+} from './GetVideosByCategoryPageParameter';
+
 /**
  * 
  * @export
@@ -27,10 +35,10 @@ export interface Moment {
     label: string;
     /**
      * 
-     * @type {number}
+     * @type {GetVideosByCategoryPageParameter}
      * @memberof Moment
      */
-    timestamp: number;
+    timestamp: GetVideosByCategoryPageParameter;
 }
 
 /**
@@ -53,7 +61,7 @@ export function MomentFromJSONTyped(json: any, ignoreDiscriminator: boolean): Mo
     return {
         
         'label': json['label'],
-        'timestamp': json['timestamp'],
+        'timestamp': GetVideosByCategoryPageParameterFromJSON(json['timestamp']),
     };
 }
 
@@ -69,7 +77,7 @@ export function MomentToJSONTyped(value?: Moment | null, ignoreDiscriminator: bo
     return {
         
         'label': value['label'],
-        'timestamp': value['timestamp'],
+        'timestamp': GetVideosByCategoryPageParameterToJSON(value['timestamp']),
     };
 }
 

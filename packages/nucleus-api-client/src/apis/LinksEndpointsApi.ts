@@ -16,13 +16,13 @@
 import * as runtime from '../runtime';
 import type {
   LinkRequest,
-  UserFrequentLink,
+  UserFrequentLinkRow,
 } from '../models/index';
 import {
     LinkRequestFromJSON,
     LinkRequestToJSON,
-    UserFrequentLinkFromJSON,
-    UserFrequentLinkToJSON,
+    UserFrequentLinkRowFromJSON,
+    UserFrequentLinkRowToJSON,
 } from '../models/index';
 
 export interface AddLinkRequest {
@@ -110,7 +110,7 @@ export class LinksEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
-    async getLinksForUserRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<UserFrequentLink>>> {
+    async getLinksForUserRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<UserFrequentLinkRow>>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -125,12 +125,12 @@ export class LinksEndpointsApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(UserFrequentLinkFromJSON));
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(UserFrequentLinkRowFromJSON));
     }
 
     /**
      */
-    async getLinksForUser(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<UserFrequentLink>> {
+    async getLinksForUser(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<UserFrequentLinkRow>> {
         const response = await this.getLinksForUserRaw(initOverrides);
         return await response.value();
     }

@@ -17,6 +17,7 @@ import { useRef, useState } from "react";
 import * as tus from 'tus-js-client'
 import { createVideoRequest } from "@repo/shared"
 import type { Upload } from "tus-js-client";
+import { calculateFileMD5 } from "../utils/fileHash";
 
 type QueueItem = {
   file: File;
@@ -36,12 +37,20 @@ export function VideoUpload() {
   }
 
   async function startTusUpload(entry: { file: File; id: string }) {
-    const response = await createVideoRequest(entry.file.name);
-    if(!response || !response.expiration || !response.signature) {
-      setItem(entry.id, { status: 'error', error: "Failed to create video object" });
-      return
+    try {
+      // Calculate MD5 hash of the video file
+      const md5Hash = await calculateFileMD5(entry.file);
+
+      const response = await createVideoRequest(entry.file.name, md5Hash);
+      if(!response || !response.expiration || !response.signature) {
+        setItem(entry.id, { status: 'error', error: "Failed to create video object" });
+        return
+      }
+      setItem(entry.id, { status: 'uploading', progress: 0, error: undefined });
+    } catch (error) {
+      setItem(entry.id, { status: 'error', error: `Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}` });
+      return;
     }
-    setItem(entry.id, { status: 'uploading', progress: 0, error: undefined });
 
     // Replace with your tus creation endpoint
     const endpoint = 'https://video.bunnycdn.com/tusupload';

@@ -7,7 +7,7 @@
 Name | Type
 ------------ | -------------
 `signature` | string
-`expiration` | number
+`expiration` | [BunnyVideoStorageSize](BunnyVideoStorageSize.md)
 `libraryId` | string
 `videoId` | string
 `collectionId` | string
