@@ -11,8 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WarzoneRouteImport } from './routes/warzone'
 import { Route as SnowboardingRouteImport } from './routes/snowboarding'
-import { Route as ApexLegendsRouteImport } from './routes/apex-legends'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApexLegendsIndexRouteImport } from './routes/apex-legends/index'
+import { Route as ApexLegendsClipIdRouteImport } from './routes/apex-legends/$clipId'
 
 const WarzoneRoute = WarzoneRouteImport.update({
   id: '/warzone',
@@ -24,49 +25,74 @@ const SnowboardingRoute = SnowboardingRouteImport.update({
   path: '/snowboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApexLegendsRoute = ApexLegendsRouteImport.update({
-  id: '/apex-legends',
-  path: '/apex-legends',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApexLegendsIndexRoute = ApexLegendsIndexRouteImport.update({
+  id: '/apex-legends/',
+  path: '/apex-legends/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApexLegendsClipIdRoute = ApexLegendsClipIdRouteImport.update({
+  id: '/apex-legends/$clipId',
+  path: '/apex-legends/$clipId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/apex-legends': typeof ApexLegendsRoute
   '/snowboarding': typeof SnowboardingRoute
   '/warzone': typeof WarzoneRoute
+  '/apex-legends/$clipId': typeof ApexLegendsClipIdRoute
+  '/apex-legends': typeof ApexLegendsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/apex-legends': typeof ApexLegendsRoute
   '/snowboarding': typeof SnowboardingRoute
   '/warzone': typeof WarzoneRoute
+  '/apex-legends/$clipId': typeof ApexLegendsClipIdRoute
+  '/apex-legends': typeof ApexLegendsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/apex-legends': typeof ApexLegendsRoute
   '/snowboarding': typeof SnowboardingRoute
   '/warzone': typeof WarzoneRoute
+  '/apex-legends/$clipId': typeof ApexLegendsClipIdRoute
+  '/apex-legends/': typeof ApexLegendsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/apex-legends' | '/snowboarding' | '/warzone'
+  fullPaths:
+    | '/'
+    | '/snowboarding'
+    | '/warzone'
+    | '/apex-legends/$clipId'
+    | '/apex-legends'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/apex-legends' | '/snowboarding' | '/warzone'
-  id: '__root__' | '/' | '/apex-legends' | '/snowboarding' | '/warzone'
+  to:
+    | '/'
+    | '/snowboarding'
+    | '/warzone'
+    | '/apex-legends/$clipId'
+    | '/apex-legends'
+  id:
+    | '__root__'
+    | '/'
+    | '/snowboarding'
+    | '/warzone'
+    | '/apex-legends/$clipId'
+    | '/apex-legends/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApexLegendsRoute: typeof ApexLegendsRoute
   SnowboardingRoute: typeof SnowboardingRoute
   WarzoneRoute: typeof WarzoneRoute
+  ApexLegendsClipIdRoute: typeof ApexLegendsClipIdRoute
+  ApexLegendsIndexRoute: typeof ApexLegendsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,13 +111,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SnowboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/apex-legends': {
-      id: '/apex-legends'
-      path: '/apex-legends'
-      fullPath: '/apex-legends'
-      preLoaderRoute: typeof ApexLegendsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -99,14 +118,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/apex-legends/': {
+      id: '/apex-legends/'
+      path: '/apex-legends'
+      fullPath: '/apex-legends'
+      preLoaderRoute: typeof ApexLegendsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apex-legends/$clipId': {
+      id: '/apex-legends/$clipId'
+      path: '/apex-legends/$clipId'
+      fullPath: '/apex-legends/$clipId'
+      preLoaderRoute: typeof ApexLegendsClipIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApexLegendsRoute: ApexLegendsRoute,
   SnowboardingRoute: SnowboardingRoute,
   WarzoneRoute: WarzoneRoute,
+  ApexLegendsClipIdRoute: ApexLegendsClipIdRoute,
+  ApexLegendsIndexRoute: ApexLegendsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

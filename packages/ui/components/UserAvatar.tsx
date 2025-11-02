@@ -66,6 +66,7 @@ export default function UserAvatar({ hideLogin } : UserAvatarProps) {
               {!user.avatar && (
                 <Avatar
                   style={{ cursor: "pointer" }}
+                  component="button"
                   variant="filled"
                   radius="xl"
                   color="green"

@@ -13,7 +13,6 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@pluscosmic/nucleus-api-client": "^1.0.5",
     "react": ">=18",
     "react-dom": ">=18"
   },

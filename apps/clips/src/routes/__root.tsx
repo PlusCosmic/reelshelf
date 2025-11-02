@@ -3,6 +3,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { AppShell, Group } from '@mantine/core'
 import { Footer, UserAvatar } from "@repo/ui";
+import { Notifications } from "@mantine/notifications";
 
 export const Route = createRootRoute({
   component: () => (
@@ -33,6 +34,7 @@ export const Route = createRootRoute({
             },
           ]}
         />
+        <Notifications/>
       </AppShell.Footer>
     </AppShell>
   ),
