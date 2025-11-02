@@ -19,7 +19,6 @@ import type {
   Clip,
   ClipCategory,
   CreateClipResponse,
-  GetVideosByCategoryPageParameter,
   PagedClipsResponse,
   TopTag,
   UpdateTitleRequest,
@@ -33,8 +32,6 @@ import {
     ClipCategoryToJSON,
     CreateClipResponseFromJSON,
     CreateClipResponseToJSON,
-    GetVideosByCategoryPageParameterFromJSON,
-    GetVideosByCategoryPageParameterToJSON,
     PagedClipsResponseFromJSON,
     PagedClipsResponseToJSON,
     TopTagFromJSON,
@@ -60,8 +57,8 @@ export interface DeleteClipRequest {
 
 export interface GetUnviewedVideosByCategoryRequest {
     category: number;
-    page: GetVideosByCategoryPageParameter;
-    pageSize: GetVideosByCategoryPageParameter;
+    page: number;
+    pageSize: number;
 }
 
 export interface GetVideoByIdRequest {
@@ -70,8 +67,8 @@ export interface GetVideoByIdRequest {
 
 export interface GetVideosByCategoryRequest {
     category: number;
-    page: GetVideosByCategoryPageParameter;
-    pageSize: GetVideosByCategoryPageParameter;
+    page: number;
+    pageSize: number;
 }
 
 export interface MarkVideoAsViewedRequest {

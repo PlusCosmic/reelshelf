@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   addTagToVideo,
   deleteVideo,
+  downloadVideo,
   fetchUser,
   getTopTags,
   getVideo,
@@ -130,6 +131,27 @@ export function ApexClip({ clipId }: ApexClipProps) {
       title: 'Title Changed ✅',
       message: `Title was updated to ${titleValue}`,
     })
+  }
+
+  async function handleDownload() {
+    if (!clip) {
+      return;
+    }
+
+    try {
+      await downloadVideo(clip.video.guid);
+      notifications.show({
+        title: 'Download Started',
+        message: 'Your video download has started',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Download Failed',
+        message: error instanceof Error ? error.message : 'Failed to download video',
+        color: 'red',
+      });
+    }
   }
 
   function handleDelete() {
@@ -268,7 +290,7 @@ export function ApexClip({ clipId }: ApexClipProps) {
                 >
                   Delete
                 </Button>
-                <Button leftSection={<IconDownload />}>Download</Button>
+                <Button leftSection={<IconDownload />} onClick={handleDownload}>Download</Button>
               </Stack>
             </Group>
           </Group>

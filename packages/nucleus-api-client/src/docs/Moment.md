@@ -7,7 +7,7 @@
 Name | Type
 ------------ | -------------
 `label` | string
-`timestamp` | [GetVideosByCategoryPageParameter](GetVideosByCategoryPageParameter.md)
+`timestamp` | number
 
 ## Example
 

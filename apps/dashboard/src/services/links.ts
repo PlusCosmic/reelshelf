@@ -3,14 +3,14 @@ import {
   Configuration,
   type LinkRequest,
   LinksEndpointsApi,
-  type UserFrequentLink,
+  type UserFrequentLinkRow,
 } from "@repo/nucleus-api-client";
 
 export interface NewLinkInput {
   url: string;
 }
 
-export async function getLinks(): Promise<UserFrequentLink[]> {
+export async function getLinks(): Promise<UserFrequentLinkRow[]> {
   const api = new LinksEndpointsApi(
     new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
   );

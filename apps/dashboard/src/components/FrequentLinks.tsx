@@ -18,13 +18,13 @@ import { IconLinkPlus } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import type {
   DiscordUser,
-  UserFrequentLink,
+  UserFrequentLinkRow,
 } from "@repo/nucleus-api-client";
 
 export default function FrequentLinks() {
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [links, setLinks] = useState<UserFrequentLink[]>([]);
+  const [links, setLinks] = useState<UserFrequentLinkRow[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(false);
   const [opened, { toggle, close }] = useDisclosure(false);
   const [value, setValue] = useState("");

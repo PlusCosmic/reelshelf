@@ -362,9 +362,9 @@ async function example() {
   const body = {
     // number
     category: 56,
-    // GetVideosByCategoryPageParameter
+    // number
     page: 56,
-    // GetVideosByCategoryPageParameter
+    // number
     pageSize: 56,
   } satisfies GetUnviewedVideosByCategoryRequest;
 
@@ -386,8 +386,8 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **category** | `number` |  | [Defaults to `undefined`] |
-| **page** | [](.md) |  | [Defaults to `undefined`] |
-| **pageSize** | [](.md) |  | [Defaults to `undefined`] |
+| **page** | `number` |  | [Defaults to `undefined`] |
+| **pageSize** | `number` |  | [Defaults to `undefined`] |
 
 ### Return type
 
@@ -499,9 +499,9 @@ async function example() {
   const body = {
     // number
     category: 56,
-    // GetVideosByCategoryPageParameter
+    // number
     page: 56,
-    // GetVideosByCategoryPageParameter
+    // number
     pageSize: 56,
   } satisfies GetVideosByCategoryRequest;
 
@@ -523,8 +523,8 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **category** | `number` |  | [Defaults to `undefined`] |
-| **page** | [](.md) |  | [Defaults to `undefined`] |
-| **pageSize** | [](.md) |  | [Defaults to `undefined`] |
+| **page** | `number` |  | [Defaults to `undefined`] |
+| **pageSize** | `number` |  | [Defaults to `undefined`] |
 
 ### Return type
 

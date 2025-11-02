@@ -7,7 +7,7 @@
 Name | Type
 ------------ | -------------
 `clips` | [Array&lt;Clip&gt;](Clip.md)
-`totalPages` | [GetVideosByCategoryPageParameter](GetVideosByCategoryPageParameter.md)
+`totalPages` | number
 
 ## Example
 

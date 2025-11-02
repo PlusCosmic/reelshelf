@@ -13,14 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { BunnyVideoStorageSize } from './BunnyVideoStorageSize';
-import {
-    BunnyVideoStorageSizeFromJSON,
-    BunnyVideoStorageSizeFromJSONTyped,
-    BunnyVideoStorageSizeToJSON,
-    BunnyVideoStorageSizeToJSONTyped,
-} from './BunnyVideoStorageSize';
-
 /**
  * 
  * @export
@@ -35,10 +27,10 @@ export interface CreateClipResponse {
     signature: string;
     /**
      * 
-     * @type {BunnyVideoStorageSize}
+     * @type {number}
      * @memberof CreateClipResponse
      */
-    expiration: BunnyVideoStorageSize;
+    expiration: number;
     /**
      * 
      * @type {string}
@@ -82,7 +74,7 @@ export function CreateClipResponseFromJSONTyped(json: any, ignoreDiscriminator: 
     return {
         
         'signature': json['signature'],
-        'expiration': BunnyVideoStorageSizeFromJSON(json['expiration']),
+        'expiration': json['expiration'],
         'libraryId': json['library_id'],
         'videoId': json['video_id'],
         'collectionId': json['collection_id'],
@@ -101,7 +93,7 @@ export function CreateClipResponseToJSONTyped(value?: CreateClipResponse | null,
     return {
         
         'signature': value['signature'],
-        'expiration': BunnyVideoStorageSizeToJSON(value['expiration']),
+        'expiration': value['expiration'],
         'library_id': value['libraryId'],
         'video_id': value['videoId'],
         'collection_id': value['collectionId'],

@@ -13,14 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { GetVideosByCategoryPageParameter } from './GetVideosByCategoryPageParameter';
-import {
-    GetVideosByCategoryPageParameterFromJSON,
-    GetVideosByCategoryPageParameterFromJSONTyped,
-    GetVideosByCategoryPageParameterToJSON,
-    GetVideosByCategoryPageParameterToJSONTyped,
-} from './GetVideosByCategoryPageParameter';
-
 /**
  * 
  * @export
@@ -35,10 +27,10 @@ export interface TopTag {
     name: string;
     /**
      * 
-     * @type {GetVideosByCategoryPageParameter}
+     * @type {number}
      * @memberof TopTag
      */
-    count: GetVideosByCategoryPageParameter;
+    count: number;
 }
 
 /**
@@ -61,7 +53,7 @@ export function TopTagFromJSONTyped(json: any, ignoreDiscriminator: boolean): To
     return {
         
         'name': json['name'],
-        'count': GetVideosByCategoryPageParameterFromJSON(json['count']),
+        'count': json['count'],
     };
 }
 
@@ -77,7 +69,7 @@ export function TopTagToJSONTyped(value?: TopTag | null, ignoreDiscriminator: bo
     return {
         
         'name': value['name'],
-        'count': GetVideosByCategoryPageParameterToJSON(value['count']),
+        'count': value['count'],
     };
 }
 

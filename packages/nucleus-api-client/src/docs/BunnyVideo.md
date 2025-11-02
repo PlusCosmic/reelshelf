@@ -6,16 +6,16 @@
 
 Name | Type
 ------------ | -------------
-`videoLibraryId` | [GetVideosByCategoryPageParameter](GetVideosByCategoryPageParameter.md)
+`videoLibraryId` | number
 `guid` | string
 `title` | string
 `dateUploaded` | Date
-`length` | [GetVideosByCategoryPageParameter](GetVideosByCategoryPageParameter.md)
-`status` | [GetVideosByCategoryPageParameter](GetVideosByCategoryPageParameter.md)
-`framerate` | [BunnyVideoFramerate](BunnyVideoFramerate.md)
-`thumbnailCount` | [GetVideosByCategoryPageParameter](GetVideosByCategoryPageParameter.md)
-`encodeProgress` | [GetVideosByCategoryPageParameter](GetVideosByCategoryPageParameter.md)
-`storageSize` | [BunnyVideoStorageSize](BunnyVideoStorageSize.md)
+`length` | number
+`status` | number
+`framerate` | number
+`thumbnailCount` | number
+`encodeProgress` | number
+`storageSize` | number
 `collectionId` | string
 `thumbnailFileName` | string
 `thumbnailBlurhash` | string

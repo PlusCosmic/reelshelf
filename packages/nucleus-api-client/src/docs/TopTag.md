@@ -7,7 +7,7 @@
 Name | Type
 ------------ | -------------
 `name` | string
-`count` | [GetVideosByCategoryPageParameter](GetVideosByCategoryPageParameter.md)
+`count` | number
 
 ## Example
 
