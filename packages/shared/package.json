@@ -12,6 +12,9 @@
     "./index": "./src/index.ts"
   },
   "license": "MIT",
+  "dependencies": {
+    "@repo/nucleus-api-client": "workspace:*"
+  },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"

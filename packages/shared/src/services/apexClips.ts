@@ -5,7 +5,7 @@ import {
   type CreateClipResponse,
   type PagedClipsResponse,
   type TopTag,
-} from "@pluscosmic/nucleus-api-client";
+} from "@repo/nucleus-api-client";
 import { apiConfig } from "../config/apiConfig";
 
 export async function fetchApexClips(page: number, pageSize: number): Promise<PagedClipsResponse | null> {

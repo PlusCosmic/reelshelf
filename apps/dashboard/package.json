@@ -22,7 +22,7 @@
     "@mantine/notifications": "^8.3.6",
     "@mantinex/dev-icons": "^2.0.0",
     "@openapitools/openapi-generator-cli": "^2.25.0",
-    "@pluscosmic/nucleus-api-client": "^1.0.10",
+    "@repo/nucleus-api-client": "workspace:*",
     "@repo/shared": "workspace:*",
     "@repo/ui": "workspace:*",
     "@tabler/icons-react": "^3.35.0",

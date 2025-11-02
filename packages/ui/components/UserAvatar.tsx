@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Avatar, Menu, Skeleton } from "@mantine/core";
 import { IconLogout } from "@tabler/icons-react";
-import type { DiscordUser } from "@pluscosmic/nucleus-api-client";
+import type { DiscordUser } from "@repo/nucleus-api-client";
 import LoginButton from "./LoginButton";
 import { fetchMe, logout } from "@repo/shared";
 

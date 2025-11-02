@@ -26,7 +26,7 @@ importers:
       '@mantinex/dev-icons':
         specifier: ^2.0.0
         version: 2.0.0(@mantine/core@8.3.6(@mantine/hooks@8.3.6(react@19.2.0))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@mantine/hooks@8.3.6(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@pluscosmic/nucleus-api-client':
+      '@repo/nucleus-api-client':
         specifier: ^1.0.5
         version: 1.0.5(@types/node@22.18.13)(ajv@6.12.6)(chokidar@3.6.0)
       '@tabler/icons-react':
@@ -788,7 +788,7 @@ packages:
     resolution: {integrity: sha512-dfUnCxiN9H4ap84DvD2ubjw+3vUNpstxa0TneY/Paat8a3R4uQZDLSvWjmznAY/DoahqTHl9V46HF/Zs3F29pg==}
     engines: {node: '>= 10.0.0'}
 
-  '@pluscosmic/nucleus-api-client@1.0.5':
+  '@repo/nucleus-api-client@1.0.5':
     resolution: {integrity: sha512-EQJQusea29fsQnEVEAgNNmZS2HYkW94HGqB6tjMa+EAAJ36TLiNH8nRpNIIBWkTnEMXbKsq1p6XP4XHBSQuuIg==}
 
   '@rolldown/pluginutils@1.0.0-beta.43':
@@ -4292,7 +4292,7 @@ snapshots:
       '@parcel/watcher-win32-x64': 2.5.1
     optional: true
 
-  '@pluscosmic/nucleus-api-client@1.0.5(@types/node@22.18.13)(ajv@6.12.6)(chokidar@3.6.0)':
+  '@repo/nucleus-api-client@1.0.5(@types/node@22.18.13)(ajv@6.12.6)(chokidar@3.6.0)':
     dependencies:
       '@openapitools/openapi-generator-cli': 2.25.0(@types/node@22.18.13)
       openapi-generator: 0.1.39(ajv@6.12.6)(chokidar@3.6.0)

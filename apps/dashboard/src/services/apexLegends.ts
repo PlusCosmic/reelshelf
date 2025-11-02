@@ -1,9 +1,9 @@
-import { apiConfig } from "../config/apiConfig.ts";
+import { apiConfig } from "@repo/shared";
 import {
   Configuration,
   type MapInfo,
   NucleusApi,
-} from "@pluscosmic/nucleus-api-client";
+} from "@repo/nucleus-api-client";
 
 // Define the types for our application's use of the API data
 export interface ApexMapInfo {

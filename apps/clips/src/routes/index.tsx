@@ -5,7 +5,7 @@ import { LoginButton } from '@repo/ui'
 import { fetchMe } from "@repo/shared"
 import tempLogo from '../assets/transparent plus.png'
 import Categories from '../components/Categories'
-import type { DiscordUser } from '@pluscosmic/nucleus-api-client'
+import type { DiscordUser } from '@repo/nucleus-api-client'
 
 export const Route = createFileRoute('/')({
   component: App,

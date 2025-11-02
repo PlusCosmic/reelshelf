@@ -11,7 +11,7 @@ import {
 import { apiConfig, fetchCategories , fetchMe  } from "@repo/shared"
 import { useNavigate } from "@tanstack/react-router";
 import classes from './Categories.module.scss'
-import type { ClipCategory, DiscordUser } from '@pluscosmic/nucleus-api-client'
+import type { ClipCategory, DiscordUser } from '@repo/nucleus-api-client'
 
 export default function Categories() {
   const [user, setUser] = useState<DiscordUser | null>(null)

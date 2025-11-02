@@ -32,7 +32,7 @@ importers:
       '@openapitools/openapi-generator-cli':
         specifier: ^2.25.0
         version: 2.25.0(@types/node@24.9.1)
-      '@pluscosmic/nucleus-api-client':
+      '@repo/nucleus-api-client':
         specifier: ^1.0.5
         version: 1.0.5(@types/node@24.9.1)(ajv@6.12.6)
       '@tabler/icons-react':
@@ -1131,7 +1131,7 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@pluscosmic/nucleus-api-client@1.0.5':
+  '@repo/nucleus-api-client@1.0.5':
     resolution: {integrity: sha512-EQJQusea29fsQnEVEAgNNmZS2HYkW94HGqB6tjMa+EAAJ36TLiNH8nRpNIIBWkTnEMXbKsq1p6XP4XHBSQuuIg==}
 
   '@poppinss/colors@4.1.5':
@@ -4635,7 +4635,7 @@ snapshots:
     dependencies:
       playwright: 1.56.1
 
-  '@pluscosmic/nucleus-api-client@1.0.5(@types/node@24.9.1)(ajv@6.12.6)':
+  '@repo/nucleus-api-client@1.0.5(@types/node@24.9.1)(ajv@6.12.6)':
     dependencies:
       '@openapitools/openapi-generator-cli': 2.25.0(@types/node@24.9.1)
       openapi-generator: 0.1.39(ajv@6.12.6)

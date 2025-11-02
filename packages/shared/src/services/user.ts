@@ -2,7 +2,7 @@ import {
   Configuration,
   type DiscordUser,
   DiscordUserEndpointsApi,
-} from "@pluscosmic/nucleus-api-client";
+} from "@repo/nucleus-api-client";
 import { apiConfig } from "../config/apiConfig";
 
 export async function fetchMe(): Promise<DiscordUser | null> {

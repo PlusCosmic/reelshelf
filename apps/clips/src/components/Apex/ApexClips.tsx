@@ -16,7 +16,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { VideoUpload } from "../VideoUpload.tsx";
 import classes from "./ApexClips.module.scss";
-import type { Clip, DiscordUser } from "@pluscosmic/nucleus-api-client";
+import type { Clip, DiscordUser } from "@repo/nucleus-api-client";
 
 export function ApexClips() {
   const [user, setUser] = useState<DiscordUser | null>(null);
