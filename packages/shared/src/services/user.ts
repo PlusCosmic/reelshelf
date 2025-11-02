@@ -11,3 +11,10 @@ export async function fetchMe(): Promise<DiscordUser | null> {
   );
   return api.meGet().catch(() => null);
 }
+
+export async function fetchUser(userId : string): Promise<DiscordUser | null> {
+  const api = new DiscordUserEndpointsApi(
+    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
+  );
+  return api.userUserIdGet({ userId: userId}).catch(() => null);
+}

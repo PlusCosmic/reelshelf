@@ -16,21 +16,22 @@
     "@mantine/hooks": "^8.3.6",
     "@mantine/notifications": "^8.3.6",
     "@mantinex/dev-icons": "^2.0.0",
-    "@pluscosmic/nucleus-api-client": "^1.0.5",
+    "@pluscosmic/nucleus-api-client": "^1.0.10",
     "@repo/shared": "workspace:*",
     "@repo/ui": "workspace:*",
     "@tabler/icons-react": "^3.35.0",
     "@tanstack/react-devtools": "^0.8.0",
-    "@tanstack/react-router": "^1.133.36",
-    "@tanstack/react-router-devtools": "^1.133.36",
-    "@tanstack/router-plugin": "^1.133.36",
+    "@tanstack/react-router": "^1.134.4",
+    "@tanstack/react-router-devtools": "^1.134.4",
+    "@tanstack/router-plugin": "^1.134.6",
     "blurhash": "^2.0.5",
     "dayjs": "^1.11.19",
-    "lucide-react": "^0.552.0",
     "react": "^19.2.0",
     "react-blurhash": "^0.3.0",
     "react-dom": "^19.2.0",
-    "sass": "^1.93.2"
+    "react-tag-input": "^6.10.6",
+    "sass": "^1.93.3",
+    "tus-js-client": "^4.3.1"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
@@ -49,7 +50,7 @@
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
-    "vitest": "^4.0.5",
+    "vitest": "^4.0.6",
     "web-vitals": "^5.1.0"
   }
 }

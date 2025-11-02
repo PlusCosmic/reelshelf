@@ -4,6 +4,8 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { MantineProvider, createTheme } from "@mantine/core";
 import { routeTree } from "./routeTree.gen";
 import "@mantine/core/styles.css";
+import '@mantine/dropzone/styles.css';
+import '@mantine/notifications/styles.css';
 import reportWebVitals from "./reportWebVitals.ts";
 import type { MantineColorsTuple } from "@mantine/core";
 
