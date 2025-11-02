@@ -48,6 +48,11 @@ export interface AddTagToClipRequest {
 export interface CreateVideoRequest {
     category: number;
     videoTitle: string;
+    md5Hash?: string;
+}
+
+export interface DeleteClipRequest {
+    clipId: string;
 }
 
 export interface GetUnviewedVideosByCategoryRequest {
@@ -153,6 +158,10 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
             queryParameters['videoTitle'] = requestParameters['videoTitle'];
         }
 
+        if (requestParameters['md5Hash'] != null) {
+            queryParameters['md5Hash'] = requestParameters['md5Hash'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -174,6 +183,40 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
     async createVideo(requestParameters: CreateVideoRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateClipResponse> {
         const response = await this.createVideoRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     */
+    async deleteClipRaw(requestParameters: DeleteClipRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['clipId'] == null) {
+            throw new runtime.RequiredError(
+                'clipId',
+                'Required parameter "clipId" was null or undefined when calling deleteClip().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/clips/videos/{clipId}`;
+        urlPath = urlPath.replace(`{${"clipId"}}`, encodeURIComponent(String(requestParameters['clipId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async deleteClip(requestParameters: DeleteClipRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteClipRaw(requestParameters, initOverrides);
     }
 
     /**

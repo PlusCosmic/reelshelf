@@ -2,6 +2,7 @@
 apis/AuthEndpointsApi.ts
 apis/ClipsEndpointsApi.ts
 apis/DiscordUserEndpointsApi.ts
+apis/FFmpegEndpointsApi.ts
 apis/LinksEndpointsApi.ts
 apis/NucleusApi.ts
 apis/index.ts
@@ -15,6 +16,7 @@ docs/CreateClipResponse.md
 docs/CurrentMapRotation.md
 docs/DiscordUser.md
 docs/DiscordUserEndpointsApi.md
+docs/FFmpegEndpointsApi.md
 docs/LinkRequest.md
 docs/LinksEndpointsApi.md
 docs/MapInfo.md
@@ -24,7 +26,7 @@ docs/NucleusApi.md
 docs/PagedClipsResponse.md
 docs/TopTag.md
 docs/UpdateTitleRequest.md
-docs/UserFrequentLink.md
+docs/UserFrequentLinkRow.md
 index.ts
 models/AddTagRequest.ts
 models/BunnyVideo.ts
@@ -40,6 +42,6 @@ models/Moment.ts
 models/PagedClipsResponse.ts
 models/TopTag.ts
 models/UpdateTitleRequest.ts
-models/UserFrequentLink.ts
+models/UserFrequentLinkRow.ts
 models/index.ts
 runtime.ts

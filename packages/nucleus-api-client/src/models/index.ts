@@ -14,4 +14,4 @@ export * from './Moment';
 export * from './PagedClipsResponse';
 export * from './TopTag';
 export * from './UpdateTitleRequest';
-export * from './UserFrequentLink';
+export * from './UserFrequentLinkRow';

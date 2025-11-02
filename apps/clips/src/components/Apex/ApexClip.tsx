@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   addTagToVideo,
+  deleteVideo,
+  downloadVideo,
   fetchUser,
   getTopTags,
   getVideo,
+  markClipAsViewed,
   removeTagFromVideo,
   updateVideoTitle
 } from "@repo/shared";
@@ -19,6 +22,8 @@ import {
 } from "@mantine/core";
 import { IconDownload, IconTrash } from "@tabler/icons-react";
 import { notifications } from '@mantine/notifications';
+import { modals } from '@mantine/modals';
+import { useNavigate } from '@tanstack/react-router';
 import type { Clip, DiscordUser } from "@repo/nucleus-api-client";
 
 interface ApexClipProps {
@@ -26,6 +31,7 @@ interface ApexClipProps {
 }
 
 export function ApexClip({ clipId }: ApexClipProps) {
+  const navigate = useNavigate();
   const [clipOwner, setClipOwner] = useState<DiscordUser | null>(null);
   const [loadingClipOwner, setLoadingClipOwner] = useState(true);
   const [clip, setClip] = useState<Clip | null>(null);
@@ -56,6 +62,9 @@ export function ApexClip({ clipId }: ApexClipProps) {
         if (!fetchedClip) return;
         setTagsValue(fetchedClip.tags)
         setTitleValue(fetchedClip.video.title)
+
+        // Mark clip as viewed
+        await markClipAsViewed(clipId);
       } catch (e) {
         console.error(e);
       } finally {
@@ -122,6 +131,61 @@ export function ApexClip({ clipId }: ApexClipProps) {
       title: 'Title Changed ✅',
       message: `Title was updated to ${titleValue}`,
     })
+  }
+
+  async function handleDownload() {
+    if (!clip) {
+      return;
+    }
+
+    try {
+      await downloadVideo(clip.video.guid);
+      notifications.show({
+        title: 'Download Started',
+        message: 'Your video download has started',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Download Failed',
+        message: error instanceof Error ? error.message : 'Failed to download video',
+        color: 'red',
+      });
+    }
+  }
+
+  function handleDelete() {
+    if (!clip) {
+      return;
+    }
+
+    modals.openConfirmModal({
+      title: 'Delete Video',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete "{titleValue}"? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await deleteVideo(clip.clipId);
+          notifications.show({
+            title: 'Video Deleted',
+            message: 'The video has been successfully deleted',
+            color: 'green',
+          });
+          navigate({ to: '/apex-legends' });
+        } catch (error) {
+          notifications.show({
+            title: 'Delete Failed',
+            message: error instanceof Error ? error.message : 'Failed to delete video',
+            color: 'red',
+          });
+        }
+      },
+    });
   }
 
   return (
@@ -222,10 +286,11 @@ export function ApexClip({ clipId }: ApexClipProps) {
                     color: "var(--mantine-color-white)",
                   }}
                   leftSection={<IconTrash />}
+                  onClick={handleDelete}
                 >
                   Delete
                 </Button>
-                <Button leftSection={<IconDownload />}>Download</Button>
+                <Button leftSection={<IconDownload />} onClick={handleDownload}>Download</Button>
               </Stack>
             </Group>
           </Group>

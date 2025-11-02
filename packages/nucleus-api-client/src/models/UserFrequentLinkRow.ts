@@ -16,53 +16,53 @@ import { mapValues } from '../runtime';
 /**
  * 
  * @export
- * @interface UserFrequentLink
+ * @interface UserFrequentLinkRow
  */
-export interface UserFrequentLink {
+export interface UserFrequentLinkRow {
     /**
      * 
      * @type {string}
-     * @memberof UserFrequentLink
+     * @memberof UserFrequentLinkRow
      */
     id?: string;
     /**
      * 
      * @type {string}
-     * @memberof UserFrequentLink
+     * @memberof UserFrequentLinkRow
      */
     userId?: string;
     /**
      * 
      * @type {string}
-     * @memberof UserFrequentLink
+     * @memberof UserFrequentLinkRow
      */
     title?: string;
     /**
      * 
      * @type {string}
-     * @memberof UserFrequentLink
+     * @memberof UserFrequentLinkRow
      */
     url?: string;
     /**
      * 
      * @type {string}
-     * @memberof UserFrequentLink
+     * @memberof UserFrequentLinkRow
      */
     thumbnailUrl?: string | null;
 }
 
 /**
- * Check if a given object implements the UserFrequentLink interface.
+ * Check if a given object implements the UserFrequentLinkRow interface.
  */
-export function instanceOfUserFrequentLink(value: object): value is UserFrequentLink {
+export function instanceOfUserFrequentLinkRow(value: object): value is UserFrequentLinkRow {
     return true;
 }
 
-export function UserFrequentLinkFromJSON(json: any): UserFrequentLink {
-    return UserFrequentLinkFromJSONTyped(json, false);
+export function UserFrequentLinkRowFromJSON(json: any): UserFrequentLinkRow {
+    return UserFrequentLinkRowFromJSONTyped(json, false);
 }
 
-export function UserFrequentLinkFromJSONTyped(json: any, ignoreDiscriminator: boolean): UserFrequentLink {
+export function UserFrequentLinkRowFromJSONTyped(json: any, ignoreDiscriminator: boolean): UserFrequentLinkRow {
     if (json == null) {
         return json;
     }
@@ -76,11 +76,11 @@ export function UserFrequentLinkFromJSONTyped(json: any, ignoreDiscriminator: bo
     };
 }
 
-export function UserFrequentLinkToJSON(json: any): UserFrequentLink {
-    return UserFrequentLinkToJSONTyped(json, false);
+export function UserFrequentLinkRowToJSON(json: any): UserFrequentLinkRow {
+    return UserFrequentLinkRowToJSONTyped(json, false);
 }
 
-export function UserFrequentLinkToJSONTyped(value?: UserFrequentLink | null, ignoreDiscriminator: boolean = false): any {
+export function UserFrequentLinkRowToJSONTyped(value?: UserFrequentLinkRow | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }

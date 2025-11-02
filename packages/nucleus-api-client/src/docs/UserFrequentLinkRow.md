@@ -1,5 +1,5 @@
 
-# UserFrequentLink
+# UserFrequentLinkRow
 
 
 ## Properties
@@ -15,7 +15,7 @@ Name | Type
 ## Example
 
 ```typescript
-import type { UserFrequentLink } from ''
+import type { UserFrequentLinkRow } from ''
 
 // TODO: Update the object below with actual values
 const example = {
@@ -24,7 +24,7 @@ const example = {
   "title": null,
   "url": null,
   "thumbnailUrl": null,
-} satisfies UserFrequentLink
+} satisfies UserFrequentLinkRow
 
 console.log(example)
 
@@ -33,7 +33,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as UserFrequentLink
+const exampleParsed = JSON.parse(exampleJSON) as UserFrequentLinkRow
 console.log(exampleParsed)
 ```
 

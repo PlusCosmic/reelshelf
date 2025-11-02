@@ -16,7 +16,9 @@ import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
 import { useRef, useState } from "react";
 import * as tus from 'tus-js-client'
 import { createVideoRequest } from "@repo/shared"
+import { calculateFileMD5 } from "../utils/fileHash";
 import type { Upload } from "tus-js-client";
+import type { CreateClipResponse } from '@repo/nucleus-api-client';
 
 type QueueItem = {
   file: File;
@@ -36,12 +38,22 @@ export function VideoUpload() {
   }
 
   async function startTusUpload(entry: { file: File; id: string }) {
-    const response = await createVideoRequest(entry.file.name);
-    if(!response || !response.expiration || !response.signature) {
-      setItem(entry.id, { status: 'error', error: "Failed to create video object" });
-      return
+    let response: CreateClipResponse;
+    try {
+      // Calculate MD5 hash of the video file
+      const md5Hash = await calculateFileMD5(entry.file);
+
+      const apiResponse = await createVideoRequest(entry.file.name, md5Hash);
+      if(!apiResponse  || !apiResponse.signature) {
+        setItem(entry.id, { status: 'error', error: "Failed to create video object" });
+        return
+      }
+      setItem(entry.id, { status: 'uploading', progress: 0, error: undefined });
+      response = apiResponse;
+    } catch (error) {
+      setItem(entry.id, { status: 'error', error: `Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}` });
+      return;
     }
-    setItem(entry.id, { status: 'uploading', progress: 0, error: undefined });
 
     // Replace with your tus creation endpoint
     const endpoint = 'https://video.bunnycdn.com/tusupload';

@@ -3,5 +3,6 @@
 export * from './AuthEndpointsApi';
 export * from './ClipsEndpointsApi';
 export * from './DiscordUserEndpointsApi';
+export * from './FFmpegEndpointsApi';
 export * from './LinksEndpointsApi';
 export * from './NucleusApi';

@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.1",
+  "openapi": "3.1.1",
   "info": {
     "title": "Nucleus | v1",
     "version": "1.0.0"
@@ -135,7 +135,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/UserFrequentLink"
+                    "$ref": "#/components/schemas/UserFrequentLinkRow"
                   }
                 }
               }
@@ -283,6 +283,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "md5Hash",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -292,6 +299,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateClipResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -374,6 +391,31 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "DeleteClip",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "404": {
             "description": "Not Found"
@@ -570,6 +612,37 @@
           },
           "400": {
             "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ffmpeg/download/{videoId}": {
+      "get": {
+        "tags": [
+          "FFmpegEndpoints"
+        ],
+        "operationId": "DownloadVideo",
+        "parameters": [
+          {
+            "name": "videoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/json": {
                 "schema": {
@@ -819,8 +892,10 @@
             "type": "string"
           },
           "avatar": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -907,7 +982,7 @@
           },
           "total_pages": {
             "type": "integer",
-            "format": "int32"
+            "format": "int64"
           }
         }
       },
@@ -938,7 +1013,7 @@
           }
         }
       },
-      "UserFrequentLink": {
+      "UserFrequentLinkRow": {
         "type": "object",
         "properties": {
           "id": {
@@ -956,8 +1031,10 @@
             "type": "string"
           },
           "thumbnail_url": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       }
@@ -978,6 +1055,9 @@
     },
     {
       "name": "ClipsEndpoints"
+    },
+    {
+      "name": "FFmpegEndpoints"
     }
   ]
 }
