@@ -7,7 +7,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "dependencies": {
-    "@pluscosmic/nucleus-api-client": "^1.0.13"
+    "@repo/nucleus-api-client": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24.9.1",

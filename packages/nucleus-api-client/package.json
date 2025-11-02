@@ -1,0 +1,21 @@
+{
+  "name": "@repo/nucleus-api-client",
+  "version": "0.0.0",
+  "description": "",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@openapitools/openapi-generator-cli": "^2.25.0",
+    "openapi-generator": "^0.1.39"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*"
+  }
+}

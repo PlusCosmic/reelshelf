@@ -2,7 +2,7 @@ import {
   type ClipCategory,
   Configuration,
   ClipsEndpointsApi,
-} from "@pluscosmic/nucleus-api-client";
+} from "@repo/nucleus-api-client";
 import { apiConfig } from "../config/apiConfig";
 
 export async function fetchCategories(): Promise<ClipCategory[] | null> {

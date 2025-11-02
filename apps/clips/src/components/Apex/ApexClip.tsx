@@ -19,7 +19,7 @@ import {
 } from "@mantine/core";
 import { IconDownload, IconTrash } from "@tabler/icons-react";
 import { notifications } from '@mantine/notifications';
-import type { Clip, DiscordUser } from "@pluscosmic/nucleus-api-client";
+import type { Clip, DiscordUser } from "@repo/nucleus-api-client";
 
 interface ApexClipProps {
   clipId: string;

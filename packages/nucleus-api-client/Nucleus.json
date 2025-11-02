@@ -1,0 +1,983 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Nucleus | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/me": {
+      "get": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordUser"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/{userId}": {
+      "get": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordUser"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/apex-legends/map-rotation": {
+      "get": {
+        "tags": [
+          "Nucleus"
+        ],
+        "operationId": "GetApexMapRotation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentMapRotation"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/discord/login": {
+      "get": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "Login",
+        "parameters": [
+          {
+            "name": "returnUrl",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/post-login-redirect": {
+      "get": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "PostLoginRedirect",
+        "parameters": [
+          {
+            "name": "returnUrl",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/links": {
+      "get": {
+        "tags": [
+          "LinksEndpoints"
+        ],
+        "operationId": "GetLinksForUser",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserFrequentLink"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "LinksEndpoints"
+        ],
+        "operationId": "AddLink",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/links/{id}": {
+      "delete": {
+        "tags": [
+          "LinksEndpoints"
+        ],
+        "operationId": "DeleteLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/clips/categories": {
+      "get": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "GetCategories",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClipCategory"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clips/categories/{category}/videos": {
+      "get": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "GetVideosByCategory",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ClipCategoryEnum"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedClipsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "CreateVideo",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ClipCategoryEnum"
+            }
+          },
+          {
+            "name": "videoTitle",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateClipResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clips/categories/{category}/videos/unviewed": {
+      "get": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "GetUnviewedVideosByCategory",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ClipCategoryEnum"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedClipsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clips/videos/{clipId}": {
+      "get": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "GetVideoById",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Clip"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/clips/videos/{clipId}/view": {
+      "post": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "MarkVideoAsViewed",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/clips/videos/{clipId}/tags": {
+      "post": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "AddTagToClip",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Clip"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clips/videos/{clipId}/tags/{tag}": {
+      "delete": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "RemoveTagFromClip",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Clip"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/clips/tags/top": {
+      "get": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "GetTopTags",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TopTag"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clips/videos/{clipId}/title": {
+      "patch": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "UpdateClipTitle",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTitleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Clip"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddTagRequest": {
+        "required": [
+          "tag"
+        ],
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string"
+          }
+        }
+      },
+      "BunnyVideo": {
+        "required": [
+          "video_library_id",
+          "guid",
+          "title",
+          "date_uploaded",
+          "length",
+          "status",
+          "framerate",
+          "thumbnail_count",
+          "encode_progress",
+          "storage_size",
+          "collection_id",
+          "thumbnail_file_name",
+          "thumbnail_blurhash",
+          "category",
+          "moments",
+          "meta_tags"
+        ],
+        "type": "object",
+        "properties": {
+          "video_library_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "guid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "date_uploaded": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "length": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "framerate": {
+            "type": "number",
+            "format": "double"
+          },
+          "thumbnail_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "encode_progress": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "storage_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "collection_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "thumbnail_file_name": {
+            "type": "string"
+          },
+          "thumbnail_blurhash": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "moments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Moment"
+            }
+          },
+          "meta_tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetaTag"
+            }
+          }
+        }
+      },
+      "Clip": {
+        "required": [
+          "clip_id",
+          "owner_id",
+          "video_id",
+          "category_enum",
+          "video",
+          "tags",
+          "is_viewed"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "video_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category_enum": {
+            "$ref": "#/components/schemas/ClipCategoryEnum"
+          },
+          "video": {
+            "$ref": "#/components/schemas/BunnyVideo"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_viewed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ClipCategory": {
+        "required": [
+          "name",
+          "category_enum",
+          "art_url"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "category_enum": {
+            "$ref": "#/components/schemas/ClipCategoryEnum"
+          },
+          "art_url": {
+            "type": "string"
+          }
+        }
+      },
+      "ClipCategoryEnum": {
+        "type": "integer"
+      },
+      "CreateClipResponse": {
+        "required": [
+          "signature",
+          "expiration",
+          "library_id",
+          "video_id",
+          "collection_id"
+        ],
+        "type": "object",
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "expiration": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "library_id": {
+            "type": "string"
+          },
+          "video_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "collection_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CurrentMapRotation": {
+        "required": [
+          "standard_map",
+          "standard_map_next",
+          "ranked_map",
+          "ranked_map_next",
+          "correct_as_of"
+        ],
+        "type": "object",
+        "properties": {
+          "standard_map": {
+            "$ref": "#/components/schemas/MapInfo"
+          },
+          "standard_map_next": {
+            "$ref": "#/components/schemas/MapInfo"
+          },
+          "ranked_map": {
+            "$ref": "#/components/schemas/MapInfo"
+          },
+          "ranked_map_next": {
+            "$ref": "#/components/schemas/MapInfo"
+          },
+          "correct_as_of": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DiscordUser": {
+        "required": [
+          "id",
+          "username",
+          "avatar"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "LinkRequest": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "MapInfo": {
+        "required": [
+          "name",
+          "map_start",
+          "map_end",
+          "asset_uri"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "map_start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "map_end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "asset_uri": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "MetaTag": {
+        "required": [
+          "property",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "property": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "Moment": {
+        "required": [
+          "label",
+          "timestamp"
+        ],
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedClipsResponse": {
+        "required": [
+          "clips",
+          "total_pages"
+        ],
+        "type": "object",
+        "properties": {
+          "clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Clip"
+            }
+          },
+          "total_pages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "TopTag": {
+        "required": [
+          "name",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateTitleRequest": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "UserFrequentLink": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "DiscordUserEndpoints"
+    },
+    {
+      "name": "Nucleus"
+    },
+    {
+      "name": "AuthEndpoints"
+    },
+    {
+      "name": "LinksEndpoints"
+    },
+    {
+      "name": "ClipsEndpoints"
+    }
+  ]
+}

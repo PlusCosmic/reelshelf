@@ -19,7 +19,7 @@ import { useDisclosure } from "@mantine/hooks";
 import type {
   DiscordUser,
   UserFrequentLink,
-} from "@pluscosmic/nucleus-api-client";
+} from "@repo/nucleus-api-client";
 
 export default function FrequentLinks() {
   const [user, setUser] = useState<DiscordUser | null>(null);

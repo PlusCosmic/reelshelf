@@ -4,7 +4,7 @@ import {
   type LinkRequest,
   LinksEndpointsApi,
   type UserFrequentLink,
-} from "@pluscosmic/nucleus-api-client";
+} from "@repo/nucleus-api-client";
 
 export interface NewLinkInput {
   url: string;
