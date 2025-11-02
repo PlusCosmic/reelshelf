@@ -6,6 +6,9 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
+  "dependencies": {
+    "@pluscosmic/nucleus-api-client": "^1.0.13"
+  },
   "devDependencies": {
     "@types/node": "24.9.1",
     "eslint": "^9.39.0",

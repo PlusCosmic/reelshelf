@@ -16,7 +16,6 @@
     "@mantine/hooks": "^8.3.6",
     "@mantine/notifications": "^8.3.6",
     "@mantinex/dev-icons": "^2.0.0",
-    "@pluscosmic/nucleus-api-client": "^1.0.10",
     "@repo/shared": "workspace:*",
     "@repo/ui": "workspace:*",
     "@tabler/icons-react": "^3.35.0",

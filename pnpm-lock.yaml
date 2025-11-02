@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@pluscosmic/nucleus-api-client':
+        specifier: ^1.0.13
+        version: 1.0.13(@types/node@24.9.1)(ajv@6.12.6)
     devDependencies:
       '@types/node':
         specifier: 24.9.1
@@ -44,9 +48,6 @@ importers:
       '@mantinex/dev-icons':
         specifier: ^2.0.0
         version: 2.0.0(@mantine/core@8.3.6)(@mantine/hooks@8.3.6)(react-dom@19.2.0)(react@19.2.0)
-      '@pluscosmic/nucleus-api-client':
-        specifier: ^1.0.10
-        version: 1.0.10(@types/node@24.9.2)(ajv@6.12.6)
       '@repo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -176,7 +177,7 @@ importers:
         version: 2.25.0(@types/node@24.9.2)
       '@pluscosmic/nucleus-api-client':
         specifier: ^1.0.10
-        version: 1.0.10(@types/node@24.9.2)(ajv@6.12.6)
+        version: 1.0.13(@types/node@24.9.2)(ajv@6.12.6)
       '@repo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -319,9 +320,6 @@ importers:
 
   packages/shared:
     dependencies:
-      '@pluscosmic/nucleus-api-client':
-        specifier: ^1.0.13
-        version: 1.0.13(@types/node@24.9.1)(ajv@6.12.6)
       react:
         specifier: '>=18'
         version: 19.2.0
@@ -364,7 +362,7 @@ importers:
     devDependencies:
       '@pluscosmic/nucleus-api-client':
         specifier: ^1.0.11
-        version: 1.0.11(@types/node@24.9.1)(ajv@6.12.6)
+        version: 1.0.13(@types/node@24.9.1)(ajv@6.12.6)
       '@repo/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -2216,48 +2214,28 @@ packages:
       playwright: 1.56.1
     dev: true
 
-  /@pluscosmic/nucleus-api-client@1.0.10(@types/node@24.9.2)(ajv@6.12.6):
-    resolution: {integrity: sha512-2TRIAOu007avmz0QzWbxc2j1rqun/ZoGlEmrtZDkBpmjBS+bRvWb6jhN+UfOu5ZpqwBS+zGumNyKQmivGX+g+Q==}
-    dependencies:
-      '@openapitools/openapi-generator-cli': 2.25.0(@types/node@24.9.2)
-      openapi-generator: 0.1.39(ajv@6.12.6)
-    transitivePeerDependencies:
-      - '@nestjs/microservices'
-      - '@nestjs/platform-express'
-      - '@nestjs/websockets'
-      - '@types/node'
-      - ajv
-      - chokidar
-      - class-transformer
-      - class-validator
-      - debug
-      - encoding
-      - supports-color
-    dev: false
-
-  /@pluscosmic/nucleus-api-client@1.0.11(@types/node@24.9.1)(ajv@6.12.6):
-    resolution: {integrity: sha512-YLqfqutAhbYra/+EtQHhCFxox0KVEhNii0tdKcBsMZSZNYg6FonajlYe5Ks0vJKCNMAMm/NyTuLspcLwrty5mw==}
-    dependencies:
-      '@openapitools/openapi-generator-cli': 2.25.0(@types/node@24.9.1)
-      openapi-generator: 0.1.39(ajv@6.12.6)
-    transitivePeerDependencies:
-      - '@nestjs/microservices'
-      - '@nestjs/platform-express'
-      - '@nestjs/websockets'
-      - '@types/node'
-      - ajv
-      - chokidar
-      - class-transformer
-      - class-validator
-      - debug
-      - encoding
-      - supports-color
-    dev: true
-
   /@pluscosmic/nucleus-api-client@1.0.13(@types/node@24.9.1)(ajv@6.12.6):
     resolution: {integrity: sha512-KI95MvYBPwQJh0ub1B22x9CbR26LQ8QOeN3VUdjJN9yAHaA6l48WiokpKWjDrrrBe+1AhVGf1io58hotxa5QpQ==}
     dependencies:
       '@openapitools/openapi-generator-cli': 2.25.0(@types/node@24.9.1)
+      openapi-generator: 0.1.39(ajv@6.12.6)
+    transitivePeerDependencies:
+      - '@nestjs/microservices'
+      - '@nestjs/platform-express'
+      - '@nestjs/websockets'
+      - '@types/node'
+      - ajv
+      - chokidar
+      - class-transformer
+      - class-validator
+      - debug
+      - encoding
+      - supports-color
+
+  /@pluscosmic/nucleus-api-client@1.0.13(@types/node@24.9.2)(ajv@6.12.6):
+    resolution: {integrity: sha512-KI95MvYBPwQJh0ub1B22x9CbR26LQ8QOeN3VUdjJN9yAHaA6l48WiokpKWjDrrrBe+1AhVGf1io58hotxa5QpQ==}
+    dependencies:
+      '@openapitools/openapi-generator-cli': 2.25.0(@types/node@24.9.2)
       openapi-generator: 0.1.39(ajv@6.12.6)
     transitivePeerDependencies:
       - '@nestjs/microservices'
