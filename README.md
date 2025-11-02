@@ -1,33 +1,40 @@
-# `Turborepo` Vite starter
+# Plus Cosmic Development
 
-This is a community-maintained example. If you experience a problem, please submit a pull request with a fix. GitHub Issues will be closed.
+A monorepo containing Plus Cosmic applications and shared packages, built with Turborepo and Vite.
 
-## Using this example
+## Applications
 
-Run the following command:
+- **clips** - Video/media clip management application with TanStack Router
+- **dashboard** - Administrative dashboard with React Query and routing
+
+## Packages
+
+- `@repo/nucleus-api-client` - Auto-generated API client for Nucleus backend
+- `@repo/shared` - Shared utilities and components
+- `@repo/ui` - UI component library
+- `@repo/eslint-config` - Shared ESLint configurations
+- `@repo/typescript-config` - Shared TypeScript configurations
+
+## Development
+
+This monorepo uses:
+- [pnpm](https://pnpm.io/) for package management
+- [Turborepo](https://turbo.build/) for build orchestration
+- [Vite](https://vitejs.dev) for fast development and builds
+- [TypeScript](https://www.typescriptlang.org/) for type safety
+
+### Commands
 
 ```sh
-npx create-turbo@latest -e with-vite
+# Run all apps in development mode
+pnpm dev
+
+# Build all apps and packages
+pnpm build
+
+# Lint all packages
+pnpm lint
+
+# Format code
+pnpm format
 ```
-
-## What's inside?
-
-This Turborepo includes the following packages and apps:
-
-### Apps and Packages
-
-- `docs`: a vanilla [vite](https://vitejs.dev) ts app
-- `web`: another vanilla [vite](https://vitejs.dev) ts app
-- `@repo/ui`: a stub component & utility library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: shared `eslint` configurations
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package and app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
