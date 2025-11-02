@@ -339,6 +339,9 @@ importers:
 
   packages/shared:
     dependencies:
+      '@repo/nucleus-api-client':
+        specifier: workspace:*
+        version: link:../nucleus-api-client
       react:
         specifier: '>=18'
         version: 19.2.0
