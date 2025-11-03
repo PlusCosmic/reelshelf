@@ -10,6 +10,7 @@ import {
 } from '@mantine/core'
 import { apiConfig, fetchCategories , fetchMe  } from "@repo/shared"
 import { useNavigate } from "@tanstack/react-router";
+import { LoadingIndicator } from "./LoadingIndicator.tsx";
 import classes from './Categories.module.scss'
 import type { ClipCategory, DiscordUser } from '@repo/nucleus-api-client'
 
@@ -94,7 +95,7 @@ export default function Categories() {
 
   return (
     <div>
-      {isLoading && <Text>Loading categories..</Text>}
+      {isLoading && <LoadingIndicator message="Loading categories..." />}
       {!isLoading && categories.length > 0 && (
         <div>
           <Group mt="md">

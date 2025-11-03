@@ -15,6 +15,7 @@ import {
 } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 import { VideoUpload } from "../VideoUpload.tsx";
+import { LoadingIndicator } from "../LoadingIndicator.tsx";
 import classes from "./ApexClips.module.scss";
 import type { Clip, DiscordUser } from "@repo/nucleus-api-client";
 
@@ -162,7 +163,7 @@ export function ApexClips() {
         <div style={{ width: "100%", height: "100%" }}>
           <Divider />
           <Space h="md" />
-          {isLoading && <Text>Loading categories..</Text>}
+          {isLoading && <LoadingIndicator message="Loading clips..." />}
           {!isLoading && clips.length > 0 && (
             <div style={{ width: "100%", height: "100%" }}>
               <Group ref={containerRef} h={"100%"} justify={"space-evenly"} align={"stretch"}>
