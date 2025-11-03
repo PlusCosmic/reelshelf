@@ -18,12 +18,13 @@ export async function fetchApexClips(page: number, pageSize: number): Promise<Pa
 export async function createVideoRequest(
   title: string,
   md5Hash?: string,
+  createdAt?: Date,
 ): Promise<CreateClipResponse | null> {
   const api = new ClipsEndpointsApi(
     new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
   );
 
-  return api.createVideo({ category: 0, videoTitle: title, md5Hash });
+  return api.createVideo({ category: 0, videoTitle: title, md5Hash, createdAt });
 }
 
 export async function getVideo(videoId: string): Promise<Clip | null> {

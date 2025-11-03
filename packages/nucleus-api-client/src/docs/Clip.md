@@ -10,6 +10,7 @@ Name | Type
 `ownerId` | string
 `videoId` | string
 `categoryEnum` | number
+`createdAt` | Date
 `video` | [BunnyVideo](BunnyVideo.md)
 `tags` | Array&lt;string&gt;
 `isViewed` | boolean
@@ -25,6 +26,7 @@ const example = {
   "ownerId": null,
   "videoId": null,
   "categoryEnum": null,
+  "createdAt": null,
   "video": null,
   "tags": null,
   "isViewed": null,

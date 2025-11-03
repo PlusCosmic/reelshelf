@@ -90,7 +90,7 @@ No authorization required
 
 ## createVideo
 
-> CreateClipResponse createVideo(category, videoTitle, md5Hash)
+> CreateClipResponse createVideo(category, videoTitle, createdAt, md5Hash)
 
 
 
@@ -112,6 +112,8 @@ async function example() {
     category: 56,
     // string
     videoTitle: videoTitle_example,
+    // Date (optional)
+    createdAt: 2013-10-20T19:20:30+01:00,
     // string (optional)
     md5Hash: md5Hash_example,
   } satisfies CreateVideoRequest;
@@ -135,6 +137,7 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **category** | `number` |  | [Defaults to `undefined`] |
 | **videoTitle** | `string` |  | [Defaults to `undefined`] |
+| **createdAt** | `Date` |  | [Optional] [Defaults to `undefined`] |
 | **md5Hash** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
