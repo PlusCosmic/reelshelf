@@ -53,6 +53,12 @@ export interface Clip {
     categoryEnum: number;
     /**
      * 
+     * @type {Date}
+     * @memberof Clip
+     */
+    createdAt: Date;
+    /**
+     * 
      * @type {BunnyVideo}
      * @memberof Clip
      */
@@ -79,6 +85,7 @@ export function instanceOfClip(value: object): value is Clip {
     if (!('ownerId' in value) || value['ownerId'] === undefined) return false;
     if (!('videoId' in value) || value['videoId'] === undefined) return false;
     if (!('categoryEnum' in value) || value['categoryEnum'] === undefined) return false;
+    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('video' in value) || value['video'] === undefined) return false;
     if (!('tags' in value) || value['tags'] === undefined) return false;
     if (!('isViewed' in value) || value['isViewed'] === undefined) return false;
@@ -99,6 +106,7 @@ export function ClipFromJSONTyped(json: any, ignoreDiscriminator: boolean): Clip
         'ownerId': json['owner_id'],
         'videoId': json['video_id'],
         'categoryEnum': json['category_enum'],
+        'createdAt': (new Date(json['created_at'])),
         'video': BunnyVideoFromJSON(json['video']),
         'tags': json['tags'],
         'isViewed': json['is_viewed'],
@@ -120,6 +128,7 @@ export function ClipToJSONTyped(value?: Clip | null, ignoreDiscriminator: boolea
         'owner_id': value['ownerId'],
         'video_id': value['videoId'],
         'category_enum': value['categoryEnum'],
+        'created_at': value['createdAt'].toISOString(),
         'video': BunnyVideoToJSON(value['video']),
         'tags': value['tags'],
         'is_viewed': value['isViewed'],

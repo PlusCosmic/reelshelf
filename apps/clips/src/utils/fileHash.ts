@@ -1,13 +1,29 @@
 import CryptoJS from 'crypto-js';
 
 /**
- * Calculate MD5 hash of a file
+ * Calculate MD5 hash of a file using chunked reading to avoid memory issues with large files
  * @param file - The File object to hash
+ * @param chunkSize - Size of each chunk to read (default 2MB)
  * @returns Promise that resolves to the MD5 hash as a hex string
  */
-export async function calculateFileMD5(file: File): Promise<string> {
+export async function calculateFileMD5(file: File, chunkSize = 2 * 1024 * 1024): Promise<string> {
   return new Promise((resolve, reject) => {
+    const md5 = CryptoJS.algo.MD5.create();
     const reader = new FileReader();
+    let offset = 0;
+
+    const readNextChunk = () => {
+      if (offset >= file.size) {
+        // All chunks processed, finalize the hash
+        const hash = md5.finalize();
+        const hashHex = hash.toString(CryptoJS.enc.Hex);
+        resolve(hashHex);
+        return;
+      }
+
+      const chunk = file.slice(offset, offset + chunkSize);
+      reader.readAsArrayBuffer(chunk);
+    };
 
     reader.onload = (event) => {
       try {
@@ -16,13 +32,12 @@ export async function calculateFileMD5(file: File): Promise<string> {
         // Convert ArrayBuffer to WordArray for CryptoJS
         const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer);
 
-        // Calculate MD5 hash
-        const hash = CryptoJS.MD5(wordArray);
+        // Update the hash with this chunk
+        md5.update(wordArray);
 
-        // Convert to hex string
-        const hashHex = hash.toString(CryptoJS.enc.Hex);
-
-        resolve(hashHex);
+        // Move to next chunk
+        offset += chunkSize;
+        readNextChunk();
       } catch (error) {
         reject(error);
       }
@@ -32,7 +47,7 @@ export async function calculateFileMD5(file: File): Promise<string> {
       reject(new Error('Failed to read file'));
     };
 
-    // Read the file as ArrayBuffer
-    reader.readAsArrayBuffer(file);
+    // Start reading the first chunk
+    readNextChunk();
   });
 }

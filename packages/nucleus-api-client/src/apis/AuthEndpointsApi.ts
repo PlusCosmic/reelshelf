@@ -88,4 +88,30 @@ export class AuthEndpointsApi extends runtime.BaseAPI {
         await this.postLoginRedirectRaw(requestParameters, initOverrides);
     }
 
+    /**
+     */
+    async refreshTokenRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/auth/refresh`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async refreshToken(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.refreshTokenRaw(initOverrides);
+    }
+
 }

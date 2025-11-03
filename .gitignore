@@ -10,3 +10,14 @@ dist-ssr
 server/dist
 public/dist
 .idea
+
+# Compiled TypeScript files in src
+apps/*/src/**/*.js
+packages/*/src/**/*.js
+
+# Auto-generated route tree files
+**/routeTree.gen.ts
+**/routeTree.gen.js
+
+# Compiled config files
+**/vite.config.js

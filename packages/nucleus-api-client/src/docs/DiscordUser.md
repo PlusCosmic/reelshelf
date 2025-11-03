@@ -8,6 +8,7 @@ Name | Type
 ------------ | -------------
 `id` | string
 `username` | string
+`globalName` | string
 `avatar` | string
 
 ## Example
@@ -19,6 +20,7 @@ import type { DiscordUser } from ''
 const example = {
   "id": null,
   "username": null,
+  "globalName": null,
   "avatar": null,
 } satisfies DiscordUser
 

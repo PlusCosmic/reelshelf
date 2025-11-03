@@ -4,6 +4,7 @@ import {
   Alert,
   Badge,
   Button,
+  Card,
   Group,
   List,
   Modal,
@@ -11,11 +12,12 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { IconMovie, IconUpload, IconX } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconClock, IconMovie, IconUpload, IconX } from "@tabler/icons-react";
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as tus from 'tus-js-client'
 import { createVideoRequest } from "@repo/shared"
+import { ResponseError } from '@repo/nucleus-api-client';
 import { calculateFileMD5 } from "../utils/fileHash";
 import type { Upload } from "tus-js-client";
 import type { CreateClipResponse } from '@repo/nucleus-api-client';
@@ -24,34 +26,103 @@ type QueueItem = {
   file: File;
   id: string;
   progress: number; // 0..100
-  status: 'queued' | 'uploading' | 'paused' | 'done' | 'error';
+  status: 'queued' | 'processing' | 'uploading' | 'paused' | 'done' | 'error';
   error?: string;
+  bytesUploaded?: number;
+  startTime?: number;
+  uploadSpeed?: number; // bytes per second
 };
+
+const MAX_CONCURRENT_UPLOADS = 3;
 
 export function VideoUpload() {
   const [opened, { open, close }] = useDisclosure(false);
   const [queue, setQueue] = useState<Array<QueueItem>>([]);
   const uploadsRef = useRef<Record<string, Upload>>({});
+  const processingRef = useRef(false);
 
   function setItem(id: string, patch: Partial<QueueItem>) {
     setQueue((q) => q.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   }
 
+  // Process the upload queue with concurrency limiting
+  useEffect(() => {
+    if (processingRef.current) return;
+
+    const processQueue = async () => {
+      processingRef.current = true;
+
+      // Track which items we've started in this execution to avoid duplicates
+      const startedInThisRun = new Set<string>();
+
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        // Count both 'processing' and 'uploading' towards the concurrent limit
+        const activeUploads = queue.filter(item =>
+          item.status === 'processing' || item.status === 'uploading'
+        ).length;
+        const nextQueued = queue.find(item =>
+          item.status === 'queued' && !startedInThisRun.has(item.id)
+        );
+
+        if (!nextQueued || activeUploads >= MAX_CONCURRENT_UPLOADS) {
+          break;
+        }
+
+        // Mark as started before calling startTusUpload
+        startedInThisRun.add(nextQueued.id);
+
+        // Don't await - let uploads run concurrently
+        void startTusUpload({ file: nextQueued.file, id: nextQueued.id });
+      }
+
+      processingRef.current = false;
+    };
+
+    void processQueue();
+  }, [queue]);
+
   async function startTusUpload(entry: { file: File; id: string }) {
+    // Mark as processing immediately to prevent duplicate processing
+    setItem(entry.id, { status: 'processing', progress: 0 });
+
     let response: CreateClipResponse;
     try {
       // Calculate MD5 hash of the video file
       const md5Hash = await calculateFileMD5(entry.file);
 
-      const apiResponse = await createVideoRequest(entry.file.name, md5Hash);
+      // Get the file creation date from the lastModified timestamp
+      const fileCreatedAt = new Date(entry.file.lastModified);
+
+      const apiResponse = await createVideoRequest(entry.file.name, md5Hash, fileCreatedAt);
       if(!apiResponse  || !apiResponse.signature) {
         setItem(entry.id, { status: 'error', error: "Failed to create video object" });
         return
       }
-      setItem(entry.id, { status: 'uploading', progress: 0, error: undefined });
+      setItem(entry.id, {
+        status: 'uploading',
+        progress: 0,
+        error: undefined,
+        startTime: Date.now(),
+        bytesUploaded: 0,
+        uploadSpeed: 0
+      });
       response = apiResponse;
     } catch (error) {
-      setItem(entry.id, { status: 'error', error: `Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}` });
+      // Handle duplicate file error (409 Conflict)
+      if (error instanceof ResponseError && error.response.status === 409) {
+        setItem(entry.id, {
+          status: 'error',
+          error: 'Duplicate file: This video has already been uploaded'
+        });
+        return;
+      }
+
+      // Handle other errors
+      setItem(entry.id, {
+        status: 'error',
+        error: `Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
       return;
     }
 
@@ -74,7 +145,21 @@ export function VideoUpload() {
       },
       onProgress: (bytesUploaded, bytesTotal) => {
         const pct = Math.round((bytesUploaded / bytesTotal) * 100);
-        setItem(entry.id, { progress: pct });
+
+        // Calculate upload speed
+        setQueue((q) => {
+          const item = q.find((it) => it.id === entry.id);
+          if (!item || !item.startTime) return q;
+
+          const elapsedSeconds = (Date.now() - item.startTime) / 1000;
+          const uploadSpeed = elapsedSeconds > 0 ? bytesUploaded / elapsedSeconds : 0;
+
+          return q.map((it) =>
+            it.id === entry.id
+              ? { ...it, progress: pct, bytesUploaded, uploadSpeed }
+              : it
+          );
+        });
       },
       onSuccess: () => {
         setItem(entry.id, { status: 'done', progress: 100 });
@@ -102,11 +187,8 @@ export function VideoUpload() {
       status: 'queued' as const,
     }));
 
+    // Add to queue - the useEffect will handle starting uploads with concurrency limiting
     setQueue((q) => [...newEntries, ...q]);
-
-    newEntries.forEach((entry) => {
-      void startTusUpload(entry);
-    });
   }
 
   function pause(id: string) {
@@ -125,8 +207,11 @@ export function VideoUpload() {
 
   function cancel(id: string) {
     const up = uploadsRef.current[id];
-    up.abort(true);
-    delete uploadsRef.current[id];
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (up) {
+      up.abort(true);
+      delete uploadsRef.current[id];
+    }
     setQueue((q) => q.filter((it) => it.id !== id));
   }
 
@@ -134,9 +219,63 @@ export function VideoUpload() {
     setQueue((q) => q.filter((it) => it.status !== 'done' && it.status !== 'error'));
   }
 
+  // Calculate upload statistics
+  function getUploadStats() {
+    const total = queue.length;
+    const completed = queue.filter(item => item.status === 'done').length;
+    const failed = queue.filter(item => item.status === 'error').length;
+    const inProgress = queue.filter(item => item.status === 'uploading' || item.status === 'processing').length;
+    const queued = queue.filter(item => item.status === 'queued').length;
+
+    // Calculate overall progress
+    const totalBytes = queue.reduce((sum, item) => sum + item.file.size, 0);
+    const uploadedBytes = queue.reduce((sum, item) => {
+      if (item.status === 'done') return sum + item.file.size;
+      if (item.bytesUploaded) return sum + item.bytesUploaded;
+      return sum;
+    }, 0);
+    const overallProgress = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
+
+    // Calculate average upload speed and ETA
+    const activeUploads = queue.filter(item => item.status === 'uploading' && item.uploadSpeed);
+    const avgSpeed = activeUploads.length > 0
+      ? activeUploads.reduce((sum, item) => sum + (item.uploadSpeed || 0), 0) / activeUploads.length
+      : 0;
+
+    const remainingBytes = totalBytes - uploadedBytes;
+    const etaSeconds = avgSpeed > 0 ? remainingBytes / avgSpeed : 0;
+
+    return {
+      total,
+      completed,
+      failed,
+      inProgress,
+      queued,
+      overallProgress,
+      avgSpeed,
+      etaSeconds,
+      totalBytes,
+      uploadedBytes,
+    };
+  }
+
+  function formatSpeed(bytesPerSecond: number): string {
+    if (bytesPerSecond < 1024) return `${bytesPerSecond.toFixed(0)} B/s`;
+    if (bytesPerSecond < 1024 * 1024) return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
+    return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
+  }
+
+  function formatTime(seconds: number): string {
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+  }
+
+  const stats = getUploadStats();
+
   return (
     <>
-      <Modal opened={opened} onClose={close} title="Upload Clips" centered radius="lg">
+      <Modal opened={opened} onClose={close} title="Upload Clips" centered radius="lg" size="xl">
         <Dropzone
           onDrop={onDrop}
           onReject={(files) => console.log('rejected files', files)}
@@ -162,6 +301,55 @@ export function VideoUpload() {
           </Group>
         </Dropzone>
 
+        {queue.length > 0 && (
+          <Card mt="md" withBorder padding="md" radius="md">
+            <Stack gap="xs">
+              <Group justify="space-between">
+                <Text size="sm" fw={600}>Upload Overview</Text>
+                <Badge size="lg" variant="light">
+                  {stats.overallProgress}%
+                </Badge>
+              </Group>
+
+              <Progress value={stats.overallProgress} size="lg" radius="md" />
+
+              <Group justify="space-between" mt="xs">
+                <Group gap="lg">
+                  <Group gap="xs">
+                    <IconCheck size={16} color="var(--mantine-color-green-6)" />
+                    <Text size="sm">{stats.completed} completed</Text>
+                  </Group>
+                  <Group gap="xs">
+                    <IconUpload size={16} color="var(--mantine-color-blue-6)" />
+                    <Text size="sm">{stats.inProgress} uploading</Text>
+                  </Group>
+                  <Group gap="xs">
+                    <IconClock size={16} color="var(--mantine-color-gray-6)" />
+                    <Text size="sm">{stats.queued} queued</Text>
+                  </Group>
+                  {stats.failed > 0 && (
+                    <Group gap="xs">
+                      <IconAlertCircle size={16} color="var(--mantine-color-red-6)" />
+                      <Text size="sm">{stats.failed} failed</Text>
+                    </Group>
+                  )}
+                </Group>
+              </Group>
+
+              {stats.inProgress > 0 && stats.avgSpeed > 0 && (
+                <Group justify="space-between" mt="xs">
+                  <Text size="xs" c="dimmed">
+                    Speed: {formatSpeed(stats.avgSpeed)}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    ETA: {formatTime(stats.etaSeconds)}
+                  </Text>
+                </Group>
+              )}
+            </Stack>
+          </Card>
+        )}
+
         <Stack mt="md" gap="sm">
           {queue.length === 0 && (
             <Text size="sm" c="dimmed">
@@ -171,8 +359,9 @@ export function VideoUpload() {
 
           {queue.length > 0 && (
             <>
-              <List spacing="xs">
-                {queue.map((item) => (
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <List spacing="xs">
+                  {queue.map((item) => (
                   <List.Item key={item.id}>
                     <Stack gap={4}>
                       <Group justify="space-between" wrap="nowrap">
@@ -184,8 +373,9 @@ export function VideoUpload() {
                             item.status === 'done' ? 'green'
                               : item.status === 'error' ? 'red'
                                 : item.status === 'uploading' ? 'blue'
-                                  : item.status === 'paused' ? 'yellow'
-                                    : 'gray'
+                                  : item.status === 'processing' ? 'cyan'
+                                    : item.status === 'paused' ? 'yellow'
+                                      : 'gray'
                           }>
                             {item.status}
                           </Badge>
@@ -196,7 +386,7 @@ export function VideoUpload() {
                       </Group>
 
                       {item.status !== 'error' && (
-                        <Progress value={item.progress} size="sm" striped animated={item.status === 'uploading'} />
+                        <Progress value={item.progress} size="sm" striped animated={item.status === 'uploading' || item.status === 'processing'} />
                       )}
                       {item.status === 'error' && (
                         <Alert color="red" variant="light" title="Upload failed">
@@ -215,7 +405,7 @@ export function VideoUpload() {
                             Resume
                           </Button>
                         )}
-                        {(item.status === 'uploading' || item.status === 'paused' || item.status === 'queued') && (
+                        {(item.status === 'uploading' || item.status === 'processing' || item.status === 'paused' || item.status === 'queued') && (
                           <Button variant="subtle" size="xs" color="red" onClick={() => cancel(item.id)}>
                             Cancel
                           </Button>
@@ -223,10 +413,11 @@ export function VideoUpload() {
                       </Group>
                     </Stack>
                   </List.Item>
-                ))}
-              </List>
+                  ))}
+                </List>
+              </div>
 
-              <Group justify="end">
+              <Group justify="end" mt="sm">
                 <Button variant="light" onClick={clearFinished}>
                   Clear finished
                 </Button>

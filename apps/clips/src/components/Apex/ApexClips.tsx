@@ -13,19 +13,24 @@ import {
   Title,
   UnstyledButton,
 } from "@mantine/core";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { VideoUpload } from "../VideoUpload.tsx";
 import { LoadingIndicator } from "../LoadingIndicator.tsx";
 import classes from "./ApexClips.module.scss";
 import type { Clip, DiscordUser } from "@repo/nucleus-api-client";
 
-export function ApexClips() {
+type ApexClipsProps = {
+  initialPage?: number;
+};
+
+export function ApexClips({ initialPage }: ApexClipsProps) {
+  const navigate = useNavigate();
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [clips, setClips] = useState<Array<Clip>>([]);
   const [loadingClips, setLoadingClips] = useState(true);
   const [hoveredGuid, setHoveredGuid] = useState<string | null>(null);
-  const [page, setPage] = useState<number>(1);
+  const [page, setPage] = useState<number>(initialPage || 1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalPages, setTotalPages] = useState<number>(1);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -118,6 +123,14 @@ export function ApexClips() {
     })();
   }, [user, page, pageSize]);
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    navigate({
+      to: '/apex-legends',
+      search: { page: newPage },
+    });
+  };
+
   const items = clips.map((clip) => (
     <Card className={classes.item} key={clip.video.title}>
       <Link to={`/apex-legends/$clipId`} params={{
@@ -179,7 +192,7 @@ export function ApexClips() {
           <Divider />
           <Space h="md" />
           <Center>
-            <Pagination total={totalPages} value={page} onChange={setPage} />
+            <Pagination total={totalPages} value={page} onChange={handlePageChange} />
           </Center>
         </div>
       </Stack>

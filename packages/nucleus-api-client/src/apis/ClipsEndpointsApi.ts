@@ -48,6 +48,7 @@ export interface AddTagToClipRequest {
 export interface CreateVideoRequest {
     category: number;
     videoTitle: string;
+    createdAt?: Date;
     md5Hash?: string;
 }
 
@@ -156,6 +157,10 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
 
         if (requestParameters['videoTitle'] != null) {
             queryParameters['videoTitle'] = requestParameters['videoTitle'];
+        }
+
+        if (requestParameters['createdAt'] != null) {
+            queryParameters['createdAt'] = requestParameters['createdAt'];
         }
 
         if (requestParameters['md5Hash'] != null) {
