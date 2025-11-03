@@ -36,6 +36,12 @@ export interface DiscordUser {
      * @type {string}
      * @memberof DiscordUser
      */
+    globalName: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof DiscordUser
+     */
     avatar: string | null;
 }
 
@@ -45,6 +51,7 @@ export interface DiscordUser {
 export function instanceOfDiscordUser(value: object): value is DiscordUser {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('username' in value) || value['username'] === undefined) return false;
+    if (!('globalName' in value) || value['globalName'] === undefined) return false;
     if (!('avatar' in value) || value['avatar'] === undefined) return false;
     return true;
 }
@@ -61,6 +68,7 @@ export function DiscordUserFromJSONTyped(json: any, ignoreDiscriminator: boolean
         
         'id': json['id'],
         'username': json['username'],
+        'globalName': json['global_name'],
         'avatar': json['avatar'],
     };
 }
@@ -78,6 +86,7 @@ export function DiscordUserToJSONTyped(value?: DiscordUser | null, ignoreDiscrim
         
         'id': value['id'],
         'username': value['username'],
+        'global_name': value['globalName'],
         'avatar': value['avatar'],
     };
 }

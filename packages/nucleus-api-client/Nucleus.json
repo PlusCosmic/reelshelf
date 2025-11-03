@@ -121,6 +121,19 @@
         }
       }
     },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "RefreshToken",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/links": {
       "get": {
         "tags": [
@@ -282,6 +295,14 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "createdAt",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           {
@@ -761,6 +782,7 @@
           "owner_id",
           "video_id",
           "category_enum",
+          "created_at",
           "video",
           "tags",
           "is_viewed"
@@ -781,6 +803,10 @@
           },
           "category_enum": {
             "$ref": "#/components/schemas/ClipCategoryEnum"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
           },
           "video": {
             "$ref": "#/components/schemas/BunnyVideo"
@@ -880,6 +906,7 @@
         "required": [
           "id",
           "username",
+          "global_name",
           "avatar"
         ],
         "type": "object",
@@ -890,6 +917,12 @@
           },
           "username": {
             "type": "string"
+          },
+          "global_name": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "avatar": {
             "type": [
