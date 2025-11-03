@@ -4,7 +4,6 @@ import {
   Center,
   Group,
   Image,
-  Text,
   Title,
   UnstyledButton,
 } from '@mantine/core'
