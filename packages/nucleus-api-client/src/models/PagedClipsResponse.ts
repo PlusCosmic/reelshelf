@@ -38,6 +38,12 @@ export interface PagedClipsResponse {
      * @type {number}
      * @memberof PagedClipsResponse
      */
+    totalClips: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof PagedClipsResponse
+     */
     totalPages: number;
 }
 
@@ -46,6 +52,7 @@ export interface PagedClipsResponse {
  */
 export function instanceOfPagedClipsResponse(value: object): value is PagedClipsResponse {
     if (!('clips' in value) || value['clips'] === undefined) return false;
+    if (!('totalClips' in value) || value['totalClips'] === undefined) return false;
     if (!('totalPages' in value) || value['totalPages'] === undefined) return false;
     return true;
 }
@@ -61,6 +68,7 @@ export function PagedClipsResponseFromJSONTyped(json: any, ignoreDiscriminator: 
     return {
         
         'clips': ((json['clips'] as Array<any>).map(ClipFromJSON)),
+        'totalClips': json['total_clips'],
         'totalPages': json['total_pages'],
     };
 }
@@ -77,6 +85,7 @@ export function PagedClipsResponseToJSONTyped(value?: PagedClipsResponse | null,
     return {
         
         'clips': ((value['clips'] as Array<any>).map(ClipToJSON)),
+        'total_clips': value['totalClips'],
         'total_pages': value['totalPages'],
     };
 }

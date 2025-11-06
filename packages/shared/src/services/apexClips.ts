@@ -8,11 +8,40 @@ import {
 } from "@repo/nucleus-api-client";
 import { apiConfig } from "../config/apiConfig";
 
-export async function fetchApexClips(page: number, pageSize: number): Promise<PagedClipsResponse | null> {
+export async function fetchApexClips(
+  page: number,
+  pageSize: number,
+  tags?: string,
+  titleSearch?: string,
+): Promise<PagedClipsResponse | null> {
   const api = new ClipsEndpointsApi(
     new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
   );
-  return api.getVideosByCategory({ category: 0, page: page, pageSize: pageSize }).catch(() => null);
+  return api.getVideosByCategory({
+    category: 0,
+    page: page,
+    pageSize: pageSize,
+    tags: tags,
+    titleSearch: titleSearch,
+  }).catch(() => null);
+}
+
+export async function fetchUnviewedApexClips(
+  page: number,
+  pageSize: number,
+  tags?: string,
+  titleSearch?: string,
+): Promise<PagedClipsResponse | null> {
+  const api = new ClipsEndpointsApi(
+    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
+  );
+  return api.getUnviewedVideosByCategory({
+    category: 0,
+    page: page,
+    pageSize: pageSize,
+    tags: tags,
+    titleSearch: titleSearch,
+  }).catch(() => null);
 }
 
 export async function createVideoRequest(

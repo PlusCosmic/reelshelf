@@ -60,6 +60,8 @@ export interface GetUnviewedVideosByCategoryRequest {
     category: number;
     page: number;
     pageSize: number;
+    tags?: string;
+    titleSearch?: string;
 }
 
 export interface GetVideoByIdRequest {
@@ -70,6 +72,8 @@ export interface GetVideosByCategoryRequest {
     category: number;
     page: number;
     pageSize: number;
+    tags?: string;
+    titleSearch?: string;
 }
 
 export interface MarkVideoAsViewedRequest {
@@ -312,6 +316,14 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
             queryParameters['pageSize'] = requestParameters['pageSize'];
         }
 
+        if (requestParameters['tags'] != null) {
+            queryParameters['tags'] = requestParameters['tags'];
+        }
+
+        if (requestParameters['titleSearch'] != null) {
+            queryParameters['titleSearch'] = requestParameters['titleSearch'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -402,6 +414,14 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
 
         if (requestParameters['pageSize'] != null) {
             queryParameters['pageSize'] = requestParameters['pageSize'];
+        }
+
+        if (requestParameters['tags'] != null) {
+            queryParameters['tags'] = requestParameters['tags'];
+        }
+
+        if (requestParameters['titleSearch'] != null) {
+            queryParameters['titleSearch'] = requestParameters['titleSearch'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

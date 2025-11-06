@@ -7,6 +7,7 @@
 Name | Type
 ------------ | -------------
 `clips` | [Array&lt;Clip&gt;](Clip.md)
+`totalClips` | number
 `totalPages` | number
 
 ## Example
@@ -17,6 +18,7 @@ import type { PagedClipsResponse } from ''
 // TODO: Update the object below with actual values
 const example = {
   "clips": null,
+  "totalClips": null,
   "totalPages": null,
 } satisfies PagedClipsResponse
 
