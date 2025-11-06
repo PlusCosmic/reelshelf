@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchApexClips, fetchMe } from "@repo/shared";
+import { fetchApexClips, fetchMe, fetchUnviewedApexClips, getTopTags } from "@repo/shared";
 import {
   Badge,
   Box,
@@ -7,7 +7,9 @@ import {
   Card,
   Collapse,
   Group,
+  Pagination,
   ScrollArea,
+  Select,
   Skeleton,
   Stack,
   Switch,
@@ -96,19 +98,93 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
   );
 }
 
+interface PaginationControlsProps {
+  page: number;
+  totalPages: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: string | null) => void;
+}
+
+function PaginationControls({ page, totalPages, pageSize, onPageChange, onPageSizeChange }: PaginationControlsProps) {
+  return (
+    <Card
+      radius="lg"
+      p="md"
+      style={{
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+        background: 'rgba(255, 255, 255, 0.02)',
+      }}
+    >
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Group gap="xs" align="center">
+          <Text size="sm" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+            Items per page:
+          </Text>
+          <Select
+            value={pageSize.toString()}
+            onChange={onPageSizeChange}
+            data={[
+              { value: '10', label: '10' },
+              { value: '20', label: '20' },
+              { value: '30', label: '30' },
+              { value: '50', label: '50' },
+            ]}
+            w={80}
+            size="sm"
+            styles={{
+              input: {
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+              }
+            }}
+          />
+        </Group>
+
+        {totalPages > 1 && (
+          <Pagination
+            value={page}
+            onChange={onPageChange}
+            total={totalPages}
+            size="sm"
+            radius="md"
+            styles={{
+              control: {
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                '&[data-active]': {
+                  backgroundColor: 'var(--mantine-color-blue-6)',
+                  border: '1px solid var(--mantine-color-blue-6)',
+                },
+                '&:hover:not([data-active])': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                }
+              }
+            }}
+          />
+        )}
+
+        <Text size="sm" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+          Page {page} of {totalPages}
+        </Text>
+      </Group>
+    </Card>
+  );
+}
+
 export function ApexClips() {
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [clips, setClips] = useState<Array<Clip>>([]);
   const [loadingClips, setLoadingClips] = useState(true);
-  const [page] = useState<number>(1);
-  const [pageSize] = useState<number>(50);
-  const [_, setTotalPages] = useState<number>(1);
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [totalPages, setTotalPages] = useState<number>(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showUnviewed, setShowUnviewed] = useState(false);
   const [selectedTags, setSelectedTags] = useState<Array<string>>([]);
-  // Calculate page size based on available screen space
+  const [allTags, setAllTags] = useState<Array<string>>([]);
 
   useEffect(() => {
     setLoadingUser(true);
@@ -126,47 +202,46 @@ export function ApexClips() {
 
   useEffect(() => {
     (async () => {
+      try {
+        const topTags = await getTopTags();
+        setAllTags(topTags.map(t => t.name));
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
       if (!user) {
         setClips([]);
+        setTotalPages(1);
         return;
       }
       setLoadingClips(true);
       try {
-        const xs = await fetchApexClips(page, pageSize);
+        // Format tags as comma-separated string
+        const tagsParam = selectedTags.length > 0 ? selectedTags.join(',') : undefined;
+        const titleSearchParam = searchQuery.trim() || undefined;
+
+        // Use appropriate endpoint based on unviewed toggle
+        const xs = showUnviewed
+          ? await fetchUnviewedApexClips(page, pageSize, tagsParam, titleSearchParam)
+          : await fetchApexClips(page, pageSize, tagsParam, titleSearchParam);
+
         if (!xs) return;
-        setTotalPages(xs.totalPages);
         setClips(xs.clips);
+        setTotalPages(xs.totalPages);
       } catch (e) {
         console.error(e);
       } finally {
         setLoadingClips(false);
       }
     })();
-  }, [user, page, pageSize]);
+  }, [user, page, pageSize, searchQuery, selectedTags, showUnviewed]);
 
-  // Extract unique tags from all clips
-  const allTags = Array.from(new Set(clips.flatMap(clip => clip.tags))).sort();
-
-  // Filter clips based on search query, selected tags, and unviewed status
-  const filteredClips = clips.filter(clip => {
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesTitle = clip.video.title.toLowerCase().includes(query);
-      const matchesTags = clip.tags.some(tag => tag.toLowerCase().includes(query));
-      if (!matchesTitle && !matchesTags) return false;
-    }
-
-    // Tag filter
-    if (selectedTags.length > 0) {
-      const hasSelectedTag = selectedTags.some(tag => clip.tags.includes(tag));
-      if (!hasSelectedTag) return false;
-    }
-
-    return true;
-  });
-
-  const items = filteredClips.map((clip) => <ClipCard clip={clip} />);
+  // Clips are already filtered and paginated by the server
+  const items = clips.map((clip) => <ClipCard clip={clip} />);
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
@@ -175,6 +250,22 @@ export function ApexClips() {
         : [...prev, tag]
     );
   };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handlePageSizeChange = (size: string | null) => {
+    if (size) {
+      setPageSize(parseInt(size, 10));
+      setPage(1); // Reset to first page when page size changes
+    }
+  };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedTags, showUnviewed]);
 
   const activeFilterCount = selectedTags.length + (showUnviewed ? 1 : 0);
   const hasActiveFilters = searchQuery.length > 0 || selectedTags.length > 0 || showUnviewed;
@@ -203,9 +294,7 @@ export function ApexClips() {
                   </Text>
                   {clips.length > 0 && (
                     <Badge size="lg" radius="md" variant="light" color="blue">
-                      {filteredClips.length === clips.length
-                        ? `${clips.length} clips`
-                        : `${filteredClips.length} of ${clips.length} clips`}
+                      {clips.length} {clips.length === 1 ? 'clip' : 'clips'}
                     </Badge>
                   )}
                 </Group>
@@ -344,7 +433,7 @@ export function ApexClips() {
               ))}
             </Stack>
           </ScrollArea>
-        ) : filteredClips.length > 0 ? (
+        ) : clips.length > 0 ? (
           <ScrollArea
             h="100%"
             type="scroll"
@@ -380,6 +469,16 @@ export function ApexClips() {
           </ScrollArea>
         ) : (
           <EmptyState hasFilters={hasActiveFilters} />
+        )}
+
+        {!isLoading && clips.length > 0 && (
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         )}
       </Stack>
       <style>{`

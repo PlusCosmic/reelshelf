@@ -345,7 +345,7 @@ No authorization required
 
 ## getUnviewedVideosByCategory
 
-> PagedClipsResponse getUnviewedVideosByCategory(category, page, pageSize)
+> PagedClipsResponse getUnviewedVideosByCategory(category, page, pageSize, tags, titleSearch)
 
 
 
@@ -369,6 +369,10 @@ async function example() {
     page: 56,
     // number
     pageSize: 56,
+    // string (optional)
+    tags: tags_example,
+    // string (optional)
+    titleSearch: titleSearch_example,
   } satisfies GetUnviewedVideosByCategoryRequest;
 
   try {
@@ -391,6 +395,8 @@ example().catch(console.error);
 | **category** | `number` |  | [Defaults to `undefined`] |
 | **page** | `number` |  | [Defaults to `undefined`] |
 | **pageSize** | `number` |  | [Defaults to `undefined`] |
+| **tags** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **titleSearch** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -482,7 +488,7 @@ No authorization required
 
 ## getVideosByCategory
 
-> PagedClipsResponse getVideosByCategory(category, page, pageSize)
+> PagedClipsResponse getVideosByCategory(category, page, pageSize, tags, titleSearch)
 
 
 
@@ -506,6 +512,10 @@ async function example() {
     page: 56,
     // number
     pageSize: 56,
+    // string (optional)
+    tags: tags_example,
+    // string (optional)
+    titleSearch: titleSearch_example,
   } satisfies GetVideosByCategoryRequest;
 
   try {
@@ -528,6 +538,8 @@ example().catch(console.error);
 | **category** | `number` |  | [Defaults to `undefined`] |
 | **page** | `number` |  | [Defaults to `undefined`] |
 | **pageSize** | `number` |  | [Defaults to `undefined`] |
+| **tags** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **titleSearch** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
