@@ -27,6 +27,7 @@
     "blurhash": "^2.0.5",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.19",
+    "jotai": "^2.15.1",
     "react": "^19.2.0",
     "react-blurhash": "^0.3.0",
     "react-dom": "^19.2.0",

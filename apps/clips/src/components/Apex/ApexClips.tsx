@@ -17,6 +17,8 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconAdjustments, IconChevronDown, IconChevronUp, IconMovie, IconSearch } from "@tabler/icons-react";
+import { atomWithStorage } from 'jotai/utils'
+import { useAtom } from "jotai";
 import { VideoUpload } from "../VideoUpload.tsx";
 import { ClipCard } from "./ClipCard.tsx";
 import { ApexIcon } from "./ApexIcon.tsx";
@@ -172,20 +174,32 @@ function PaginationControls({ page, totalPages, pageSize, onPageChange, onPageSi
   );
 }
 
+const pageSizeAtom= atomWithStorage<number>('page-size', 20);
+const pageAtom = atomWithStorage<number>('page', 1);
+const totalPagesAtom = atomWithStorage<number>('total-pages', 1);
+const searchQueryAtom = atomWithStorage<string>('search-query', '');
+const selectedTagsAtom = atomWithStorage<Array<string>>('selected-tags', []);
+const showUnviewedAtom = atomWithStorage<boolean>('show-unviewed', false);
+
 export function ApexClips() {
-  const [user, setUser] = useState<DiscordUser | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [clips, setClips] = useState<Array<Clip>>([]);
-  const [loadingClips, setLoadingClips] = useState(true);
-  const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(20);
-  const [totalPages, setTotalPages] = useState<number>(1);
+  // Basic state variables
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showUnviewed, setShowUnviewed] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<Array<string>>([]);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [loadingClips, setLoadingClips] = useState(true);
+
+  // These will need to be TanStack Query when we move to that
+  const [user, setUser] = useState<DiscordUser | null>(null);
+  const [clips, setClips] = useState<Array<Clip>>([]);
   const [allTags, setAllTags] = useState<Array<string>>([]);
   const [totalClips, setTotalClips] = useState<number>(0);
+
+  // Jotai atoms
+  const [pageSize, setPageSize] = useAtom(pageSizeAtom);
+  const [page, setPage] = useAtom(pageAtom);
+  const [totalPages, setTotalPages] = useAtom(totalPagesAtom);
+  const [searchQuery, setSearchQuery] = useAtom(searchQueryAtom);
+  const [selectedTags, setSelectedTags] = useAtom(selectedTagsAtom);
+  const [showUnviewed, setShowUnviewed] = useAtom(showUnviewedAtom);
 
   useEffect(() => {
     setLoadingUser(true);
@@ -260,11 +274,6 @@ export function ApexClips() {
       setPage(1); // Reset to first page when page size changes
     }
   };
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, selectedTags, showUnviewed]);
 
   const activeFilterCount = selectedTags.length + (showUnviewed ? 1 : 0);
   const hasActiveFilters = searchQuery.length > 0 || selectedTags.length > 0 || showUnviewed;
