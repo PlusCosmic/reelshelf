@@ -427,8 +427,8 @@ export function VideoUpload() {
         </Stack>
       </Modal>
 
-      <ActionIcon variant="filled" size="lg" onClick={open}>
-        <IconUpload style={{ width: '70%', height: '70%' }} stroke={1.5} />
+      <ActionIcon variant="transparent" onClick={open}>
+        <IconUpload size={24} />
       </ActionIcon>
     </>
   );
