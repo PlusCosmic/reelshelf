@@ -185,6 +185,7 @@ export function ApexClips() {
   const [showUnviewed, setShowUnviewed] = useState(false);
   const [selectedTags, setSelectedTags] = useState<Array<string>>([]);
   const [allTags, setAllTags] = useState<Array<string>>([]);
+  const [totalClips, setTotalClips] = useState<number>(0);
 
   useEffect(() => {
     setLoadingUser(true);
@@ -224,7 +225,7 @@ export function ApexClips() {
         const tagsParam = selectedTags.length > 0 ? selectedTags.join(',') : undefined;
         const titleSearchParam = searchQuery.trim() || undefined;
 
-        // Use appropriate endpoint based on unviewed toggle
+        // Use the appropriate endpoint based on unviewed toggle
         const xs = showUnviewed
           ? await fetchUnviewedApexClips(page, pageSize, tagsParam, titleSearchParam)
           : await fetchApexClips(page, pageSize, tagsParam, titleSearchParam);
@@ -232,6 +233,7 @@ export function ApexClips() {
         if (!xs) return;
         setClips(xs.clips);
         setTotalPages(xs.totalPages);
+        setTotalClips(xs.totalClips);
       } catch (e) {
         console.error(e);
       } finally {
@@ -239,9 +241,6 @@ export function ApexClips() {
       }
     })();
   }, [user, page, pageSize, searchQuery, selectedTags, showUnviewed]);
-
-  // Clips are already filtered and paginated by the server
-  const items = clips.map((clip) => <ClipCard clip={clip} />);
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
@@ -292,9 +291,9 @@ export function ApexClips() {
                   <Text size="xl" fw={600} style={{ letterSpacing: '-0.5px' }}>
                     Apex Legends Clips
                   </Text>
-                  {clips.length > 0 && (
+                  {totalClips > 0 && (
                     <Badge size="lg" radius="md" variant="light" color="blue">
-                      {clips.length} {clips.length === 1 ? 'clip' : 'clips'}
+                      {totalClips} {totalClips === 1 ? 'clip' : 'clips'}
                     </Badge>
                   )}
                 </Group>
@@ -453,16 +452,16 @@ export function ApexClips() {
             }}
           >
             <Stack gap="xs">
-              {items.map((item, index) => (
+              {clips.map((clip, index) => (
                 <div
-                  key={item.key}
+                  key={clip.clipId}
                   style={{
                     animation: 'fadeIn 0.3s ease-in-out',
                     animationDelay: `${index * 0.05}s`,
                     animationFillMode: 'both',
                   }}
                 >
-                  {item}
+                  <ClipCard clip={clip} />
                 </div>
               ))}
             </Stack>

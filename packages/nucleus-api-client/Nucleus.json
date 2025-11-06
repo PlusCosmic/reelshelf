@@ -1031,6 +1031,7 @@
       "PagedClipsResponse": {
         "required": [
           "clips",
+          "total_clips",
           "total_pages"
         ],
         "type": "object",
@@ -1040,6 +1041,10 @@
             "items": {
               "$ref": "#/components/schemas/Clip"
             }
+          },
+          "total_clips": {
+            "type": "integer",
+            "format": "int64"
           },
           "total_pages": {
             "type": "integer",
