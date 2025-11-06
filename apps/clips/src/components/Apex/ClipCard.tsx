@@ -166,6 +166,26 @@ export function ClipCard({ clip }: ClipCardProps) {
                 }}
                 radius="md"
               />
+              {!clip.isViewed && (
+                <Badge
+                  pos="absolute"
+                  top={8}
+                  left={8}
+                  size="md"
+                  radius="sm"
+                  variant="filled"
+                  color="blue"
+                  style={{
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                    backdropFilter: 'blur(4px)',
+                    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
+                    fontWeight: 700,
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  NEW
+                </Badge>
+              )}
               {clip.video.length && (
                 <Badge
                   pos="absolute"
