@@ -1,13 +1,17 @@
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
-import { MantineProvider, createTheme } from "@mantine/core";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MantineProvider,
+  createTheme
+} from "@mantine/core";
 import { routeTree } from "./routeTree.gen";
 import "@mantine/core/styles.css";
-import '@mantine/dropzone/styles.css';
-import '@mantine/notifications/styles.css';
+import "@mantine/dropzone/styles.css";
+import "@mantine/notifications/styles.css";
 import reportWebVitals from "./reportWebVitals.ts";
-import type { MantineColorsTuple } from "@mantine/core";
+import type {MantineColorsTuple} from "@mantine/core";
 
 // Create a new router instance
 const router = createRouter({
@@ -50,6 +54,16 @@ const nucleusTheme = createTheme({
   },
 });
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 0,
+    },
+  },
+});
+
 // Render the app
 const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
@@ -57,7 +71,9 @@ if (rootElement && !rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <MantineProvider theme={nucleusTheme} defaultColorScheme="dark">
-        <RouterProvider router={router} />
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
       </MantineProvider>
     </StrictMode>,
   );

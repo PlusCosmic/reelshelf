@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { fetchApexClips, fetchMe, fetchUnviewedApexClips, getTopTags } from "@repo/shared";
+import { useState } from "react";
 import {
   Badge,
   Box,
@@ -17,10 +16,12 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconAdjustments, IconChevronDown, IconChevronUp, IconMovie, IconSearch } from "@tabler/icons-react";
+import { atomWithStorage } from 'jotai/utils'
+import { useAtom } from "jotai";
 import { VideoUpload } from "../VideoUpload.tsx";
+import { useApexClips, useCurrentUser, useTopTags } from '../../hooks/queries';
 import { ClipCard } from "./ClipCard.tsx";
 import { ApexIcon } from "./ApexIcon.tsx";
-import type { Clip, DiscordUser } from "@repo/nucleus-api-client";
 
 function ClipCardSkeleton() {
   return (
@@ -172,75 +173,49 @@ function PaginationControls({ page, totalPages, pageSize, onPageChange, onPageSi
   );
 }
 
+const pageSizeAtom= atomWithStorage<number>('page-size', 20);
+const pageAtom = atomWithStorage<number>('page', 1);
+const totalPagesAtom = atomWithStorage<number>('total-pages', 1);
+const searchQueryAtom = atomWithStorage<string>('search-query', '');
+const selectedTagsAtom = atomWithStorage<Array<string>>('selected-tags', []);
+const showUnviewedAtom = atomWithStorage<boolean>('show-unviewed', false);
+
 export function ApexClips() {
-  const [user, setUser] = useState<DiscordUser | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [clips, setClips] = useState<Array<Clip>>([]);
-  const [loadingClips, setLoadingClips] = useState(true);
-  const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(20);
-  const [totalPages, setTotalPages] = useState<number>(1);
+  // UI state
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showUnviewed, setShowUnviewed] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<Array<string>>([]);
-  const [allTags, setAllTags] = useState<Array<string>>([]);
-  const [totalClips, setTotalClips] = useState<number>(0);
 
-  useEffect(() => {
-    setLoadingUser(true);
-    (async () => {
-      try {
-        const me = await fetchMe();
-        setUser(me);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoadingUser(false);
-      }
-    })();
-  }, []);
+  // Jotai atoms for filter/pagination state
+  const [pageSize, setPageSize] = useAtom(pageSizeAtom);
+  const [page, setPage] = useAtom(pageAtom);
+  const [totalPages, setTotalPages] = useAtom(totalPagesAtom);
+  const [searchQuery, setSearchQuery] = useAtom(searchQueryAtom);
+  const [selectedTags, setSelectedTags] = useAtom(selectedTagsAtom);
+  const [showUnviewed, setShowUnviewed] = useAtom(showUnviewedAtom);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const topTags = await getTopTags();
-        setAllTags(topTags.map(t => t.name));
-      } catch (e) {
-        console.error(e);
-      }
-    })();
-  }, []);
+  // React Query hooks
+  const { isLoading: isLoadingUser } = useCurrentUser();
+  const { data: topTagsData } = useTopTags();
+  const allTags = topTagsData?.map(t => t.name) || [];
 
-  useEffect(() => {
-    (async () => {
-      if (!user) {
-        setClips([]);
-        setTotalPages(1);
-        return;
-      }
-      setLoadingClips(true);
-      try {
-        // Format tags as comma-separated string
-        const tagsParam = selectedTags.length > 0 ? selectedTags.join(',') : undefined;
-        const titleSearchParam = searchQuery.trim() || undefined;
+  // Format query params
+  const tagsParam = selectedTags.length > 0 ? selectedTags.join(',') : undefined;
+  const titleSearchParam = searchQuery.trim() || undefined;
 
-        // Use the appropriate endpoint based on unviewed toggle
-        const xs = showUnviewed
-          ? await fetchUnviewedApexClips(page, pageSize, tagsParam, titleSearchParam)
-          : await fetchApexClips(page, pageSize, tagsParam, titleSearchParam);
+  const { data: clipsData, isLoading: isLoadingClips } = useApexClips({
+    page,
+    pageSize,
+    tags: tagsParam,
+    titleSearch: titleSearchParam,
+    unviewedOnly: showUnviewed
+  });
 
-        if (!xs) return;
-        setClips(xs.clips);
-        setTotalPages(xs.totalPages);
-        setTotalClips(xs.totalClips);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoadingClips(false);
-      }
-    })();
-  }, [user, page, pageSize, searchQuery, selectedTags, showUnviewed]);
+  const clips = clipsData?.clips || [];
+  const totalClips = clipsData?.totalClips || 0;
+
+  // Update totalPages atom when data changes
+  if (clipsData && clipsData.totalPages !== totalPages) {
+    setTotalPages(clipsData.totalPages);
+  }
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
@@ -261,15 +236,11 @@ export function ApexClips() {
     }
   };
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, selectedTags, showUnviewed]);
-
   const activeFilterCount = selectedTags.length + (showUnviewed ? 1 : 0);
   const hasActiveFilters = searchQuery.length > 0 || selectedTags.length > 0 || showUnviewed;
 
-  const isLoading = loadingUser || loadingClips;
+  const isLoading = isLoadingUser || isLoadingClips;
+
   return (
     <div style={{ height: "calc(100vh - 122px)" }}>
       <Stack align="stretch" justify="space-between" h="100%" gap="md">

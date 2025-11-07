@@ -6,9 +6,10 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { AppShell, Group, Title } from '@mantine/core'
-import { Footer, UserAvatar } from "@repo/ui";
+import { Footer } from "@repo/ui";
 import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from '@mantine/modals';
+import UserAvatar from "../components/UserAvatar.tsx";
 import tempLogo from "../assets/transparent plus.png";
 
 function RootComponent() {

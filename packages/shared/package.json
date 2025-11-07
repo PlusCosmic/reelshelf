@@ -8,6 +8,8 @@
     "./services/auth": "./src/services/auth.ts",
     "./services/user": "./src/services/user.ts",
     "./services/categories": "./src/services/categories.ts",
+    "./services/apexClips": "./src/services/apexClips.ts",
+    "./services/ffmpeg": "./src/services/ffmpeg.ts",
     "./hooks/useDebouncedValue": "./src/hooks/useDebouncedValue.ts",
     "./index": "./src/index.ts"
   },

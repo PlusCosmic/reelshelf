@@ -16,9 +16,9 @@ import { IconAlertCircle, IconCheck, IconClock, IconMovie, IconUpload, IconX } f
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
 import { useEffect, useRef, useState } from "react";
 import * as tus from 'tus-js-client'
-import { createVideoRequest } from "@repo/shared"
 import { ResponseError } from '@repo/nucleus-api-client';
 import { calculateFileMD5 } from "../utils/fileHash";
+import { useCreateVideo } from '../hooks/queries';
 import type { Upload } from "tus-js-client";
 import type { CreateClipResponse } from '@repo/nucleus-api-client';
 
@@ -40,6 +40,7 @@ export function VideoUpload() {
   const [queue, setQueue] = useState<Array<QueueItem>>([]);
   const uploadsRef = useRef<Record<string, Upload>>({});
   const processingRef = useRef(false);
+  const createVideo = useCreateVideo();
 
   function setItem(id: string, patch: Partial<QueueItem>) {
     setQueue((q) => q.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -94,7 +95,11 @@ export function VideoUpload() {
       // Get the file creation date from the lastModified timestamp
       const fileCreatedAt = new Date(entry.file.lastModified);
 
-      const apiResponse = await createVideoRequest(entry.file.name, md5Hash, fileCreatedAt);
+      const apiResponse = await createVideo.mutateAsync({
+        title: entry.file.name,
+        md5Hash,
+        createdAt: fileCreatedAt
+      });
       if(!apiResponse  || !apiResponse.signature) {
         setItem(entry.id, { status: 'error', error: "Failed to create video object" });
         return
