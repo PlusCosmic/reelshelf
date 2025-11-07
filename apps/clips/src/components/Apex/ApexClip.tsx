@@ -1,15 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  addTagToVideo,
   apiConfig,
-  deleteVideo,
   downloadVideo,
-  fetchApexClips,
-  fetchUser,
-  getTopTags,
-  getVideo,
-  markClipAsViewed,
-  removeTagFromVideo, updateVideoTitle
 } from "@repo/shared";
 import {
   ActionIcon,
@@ -30,7 +22,18 @@ import { IconClock, IconDownload, IconTrash } from "@tabler/icons-react";
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import { Link, useNavigate } from '@tanstack/react-router';
-import type { Clip, DiscordUser } from "@repo/nucleus-api-client";
+import {
+  useAddTag,
+  useApexClips,
+  useClip,
+  useDeleteClip,
+  useMarkAsViewed,
+  useRemoveTag,
+  useTopTags,
+  useUpdateClipTitle,
+  useUserById
+} from '../../hooks/queries';
+import type { Clip } from "@repo/nucleus-api-client";
 
 interface ApexClipProps {
   clipId: string;
@@ -135,124 +138,86 @@ function SidebarClipCard({ clip }: { clip: Clip }) {
 
 export function ApexClip({ clipId }: ApexClipProps) {
   const navigate = useNavigate();
-  const [clipOwner, setClipOwner] = useState<DiscordUser | null>(null);
-  const [loadingClipOwner, setLoadingClipOwner] = useState(true);
-  const [clip, setClip] = useState<Clip | null>(null);
-  const [loadingClip, setLoadingClip] = useState(true);
-  const [tagsValue, setTagsValue] = useState<Array<string>>([]);
-  const [titleValue, setTitleValue] = useState<string>("");
-  const [topTags, setTopTags] = useState<Array<string>>([]);
-  const [relatedClips, setRelatedClips] = useState<Array<Clip>>([]);
-  const [loadingRelatedClips, setLoadingRelatedClips] = useState(true);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const tags = await getTopTags();
-        setTopTags(tags.map((t) => t.name.toLowerCase()));
-      } catch (e) {
-        console.error(e);
-      } finally {
-      }
-    })();
-  }, []);
+  // Local state for form inputs
+  const [tagsValue, setTagsValue] = useState<Array<string>>([]);
+  const [titleValue, setTitleValue] = useState<string>("");
 
-  useEffect(() => {
-    setLoadingClip(true);
-    (async () => {
-      try {
-        const fetchedClip = await getVideo(clipId);
-        setClip(fetchedClip);
-        if (!fetchedClip) return;
-        setTagsValue(fetchedClip.tags)
-        setTitleValue(fetchedClip.video.title)
+  // Query hooks
+  const { data: clip, isLoading: loadingClip } = useClip(clipId);
+  const { data: clipOwner, isLoading: loadingClipOwner } = useUserById(clip?.ownerId);
+  const { data: topTagsData } = useTopTags();
+  const topTags = topTagsData?.map((t) => t.name.toLowerCase()) || [];
 
-        // Mark clip as viewed
-        await markClipAsViewed(clipId);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoadingClip(false);
-      }
-    })();
-  }, [clipId]);
+  // Related clips - fetch first 50 and filter
+  const { data: relatedClipsData, isLoading: loadingRelatedClips } = useApexClips({
+    page: 1,
+    pageSize: 50,
+  });
+  const relatedClips = relatedClipsData?.clips.filter(c => c.clipId !== clipId).slice(0, 5) || [];
 
+  // Mutation hooks
+  const addTag = useAddTag();
+  const removeTag = useRemoveTag();
+  const updateTitle = useUpdateClipTitle();
+  const deleteClip = useDeleteClip();
+  const markAsViewed = useMarkAsViewed();
+
+  // Initialize form values when clip loads
   useEffect(() => {
-    setLoadingClipOwner(true);
-    (async () => {
-      if (!clip) {
-        return;
-      }
-      try {
-        const user = await fetchUser(clip.ownerId);
-        setClipOwner(user);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoadingClipOwner(false);
-      }
-    })();
+    if (clip) {
+      setTagsValue(clip.tags);
+      setTitleValue(clip.video.title);
+    }
   }, [clip]);
 
+  // Mark clip as viewed when it loads
   useEffect(() => {
-    (async () => {
-      if (!clip) return;
-
-      const current = new Set(clip.tags);
-      const nextLower = (tagsValue).map((t) => t.toLowerCase());
-      const next = new Set(nextLower);
-
-      const toAdd = [...next].filter((t) => !current.has(t));
-      const toRemove = [...current].filter((t) => !next.has(t));
-
-      try {
-        await Promise.all([
-          ...toAdd.map((t) => addTagToVideo(clip.clipId, t)),
-          ...toRemove.map((t) => removeTagFromVideo(clip.clipId, t)),
-        ]);
-
-        setClip((prev) => {
-          if (!prev) return prev;
-          const updated = new Set(prev.tags);
-          toAdd.forEach((t) => updated.add(t));
-          toRemove.forEach((t) => updated.delete(t));
-          return { ...prev, tags: Array.from(updated) };
-        });
-
-      } catch (e) {
-        console.error(e);
-      }
-    })();
-  }, [tagsValue]);
-
-  useEffect(() => {
-    setLoadingRelatedClips(true);
-    (async () => {
-      try {
-        const xs = await fetchApexClips(1, 50);
-        if (!xs) return;
-        // Filter out the current clip and take the next 5
-        const filtered = xs.clips.filter(c => c.clipId !== clipId).slice(0, 5);
-        setRelatedClips(filtered);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoadingRelatedClips(false);
-      }
-    })();
+    if (clipId) {
+      markAsViewed.mutate(clipId);
+    }
   }, [clipId]);
 
-  async function handleSave() {
+  // Sync tags when they change
+  useEffect(() => {
+    if (!clip) return;
+
+    const current = new Set(clip.tags);
+    const nextLower = tagsValue.map((t) => t.toLowerCase());
+    const next = new Set(nextLower);
+
+    const toAdd = [...next].filter((t) => !current.has(t));
+    const toRemove = [...current].filter((t) => !next.has(t));
+
+    // Call mutations for each tag change
+    toAdd.forEach((tag) => addTag.mutate({ clipId: clip.clipId, tag }));
+    toRemove.forEach((tag) => removeTag.mutate({ clipId: clip.clipId, tag }));
+  }, [tagsValue, clip?.clipId]);
+
+  function handleSave() {
     if(!clip) {
       return;
     }
-    await updateVideoTitle(clip.clipId, titleValue);
-    titleInputRef.current?.blur();
-    notifications.show({
-      title: 'Title Changed ✅',
-      message: `Title was updated to ${titleValue}`,
-    })
+    updateTitle.mutate(
+      { clipId: clip.clipId, title: titleValue },
+      {
+        onSuccess: () => {
+          titleInputRef.current?.blur();
+          notifications.show({
+            title: 'Title Changed ✅',
+            message: `Title was updated to ${titleValue}`,
+          });
+        },
+        onError: () => {
+          notifications.show({
+            title: 'Update Failed',
+            message: 'Failed to update title',
+            color: 'red',
+          });
+        }
+      }
+    );
   }
 
   async function handleDownload() {
@@ -290,22 +255,24 @@ export function ApexClip({ clipId }: ApexClipProps) {
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        try {
-          await deleteVideo(clip.clipId);
-          notifications.show({
-            title: 'Video Deleted',
-            message: 'The video has been successfully deleted',
-            color: 'green',
-          });
-          navigate({ to: '/apex-legends' });
-        } catch (error) {
-          notifications.show({
-            title: 'Delete Failed',
-            message: error instanceof Error ? error.message : 'Failed to delete video',
-            color: 'red',
-          });
-        }
+      onConfirm: () => {
+        deleteClip.mutate(clip.clipId, {
+          onSuccess: () => {
+            notifications.show({
+              title: 'Video Deleted',
+              message: 'The video has been successfully deleted',
+              color: 'green',
+            });
+            navigate({ to: '/apex-legends' });
+          },
+          onError: () => {
+            notifications.show({
+              title: 'Delete Failed',
+              message: 'Failed to delete video',
+              color: 'red',
+            });
+          }
+        });
       },
     });
   }
