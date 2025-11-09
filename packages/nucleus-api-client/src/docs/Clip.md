@@ -14,6 +14,8 @@ Name | Type
 `video` | [BunnyVideo](BunnyVideo.md)
 `tags` | Array&lt;string&gt;
 `isViewed` | boolean
+`detectedLegend` | number
+`detectedLegendCard` | string
 
 ## Example
 
@@ -30,6 +32,8 @@ const example = {
   "video": null,
   "tags": null,
   "isViewed": null,
+  "detectedLegend": null,
+  "detectedLegendCard": null,
 } satisfies Clip
 
 console.log(example)
