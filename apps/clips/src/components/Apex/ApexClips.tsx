@@ -242,7 +242,7 @@ export function ApexClips() {
   const isLoading = isLoadingUser || isLoadingClips;
 
   return (
-    <div style={{ height: "calc(100vh - 122px)" }}>
+    <div style={{ height: "calc(100vh - 138px)" }}>
       <Stack align="stretch" justify="space-between" h="100%" gap="md">
         <Box>
           <Card

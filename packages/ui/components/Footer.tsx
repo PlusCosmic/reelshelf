@@ -11,6 +11,15 @@ export default function Footer() {
         rel="noopener noreferrer"
         variant="subtle"
         color="gray"
+        styles={{
+          root: {
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            }
+          }
+        }}
       >
         <IconDashboard size={20} color={"var(--mantine-color-nucleusColour-3)"} />
       </ActionIcon>
@@ -21,11 +30,20 @@ export default function Footer() {
         rel="noopener noreferrer"
         variant="subtle"
         color="gray"
+        styles={{
+          root: {
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            }
+          }
+        }}
       >
         <IconMovie size={20} color={"var(--mantine-color-nucleusColour-3)"} />
       </ActionIcon>
-      <Divider orientation="vertical" />
-      <Text size="xs" c="dimmed">
+      <Divider orientation="vertical" opacity={0.3} />
+      <Text size="xs" c="dimmed" fw={500}>
         Made by PlusCosmic
       </Text>
       <ActionIcon
@@ -35,6 +53,15 @@ export default function Footer() {
         rel="noopener noreferrer"
         variant="subtle"
         color="gray"
+        styles={{
+          root: {
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            }
+          }
+        }}
       >
         <IconBrandGithub size={20} />
       </ActionIcon>
@@ -45,6 +72,15 @@ export default function Footer() {
         rel="noopener noreferrer"
         variant="subtle"
         color="gray"
+        styles={{
+          root: {
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            }
+          }
+        }}
       >
         <IconBrandLinkedin size={20} color="#0072b1" />
       </ActionIcon>

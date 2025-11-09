@@ -23,21 +23,36 @@ function RootComponent() {
       <AppShell
         withBorder={false}
         padding="md"
-        header={{ height: 60 }}
+        header={{ height: 76 }}
         footer={{ height: 30 }}
+        styles={{
+          header: {
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+            backdropFilter: 'blur(10px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          },
+          footer: {
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+            backdropFilter: 'blur(10px)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          }
+        }}
       >
         <AppShell.Header>
           <Group m="md" gap={"sm"} justify={"space-between"}>
             <div>
               {!isIndexRoute && (
                 <Link to={"/"} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <Group gap={"xs"}>
+                  <Group gap={"xs"} style={{ transition: 'all 0.2s ease' }}>
                     <img
                       src={tempLogo}
                       width={40}
                       height={40}
                       referrerPolicy="no-referrer"
-                      alt=""
+                      alt="Clips Logo"
+                      style={{
+                        filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
+                      }}
                     />
                     <Title>Clips</Title>
                   </Group>
