@@ -278,7 +278,7 @@ export function ApexClip({ clipId }: ApexClipProps) {
   }
 
   return (
-    <div style={{ height: "calc(100vh - 122px)", display: "flex", gap: "1rem" }}>
+    <div style={{ height: "calc(100vh - 138px)", display: "flex", gap: "1rem" }}>
       {/* Main Content - Left Side */}
       <Stack style={{ flex: 1, minWidth: 0 }} gap="md">
         {/* Video Player Card */}

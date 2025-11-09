@@ -40,8 +40,8 @@ export default function GoogleSearchBar() {
   return (
     <Autocomplete
       ref={focusTrapRef}
-      size="lg"
-      radius="lg"
+      size="xl"
+      radius="xl"
       data={suggestions}
       leftSectionPointerEvents="none"
       leftSection={<GoogleIcon />}
@@ -52,7 +52,40 @@ export default function GoogleSearchBar() {
       onKeyDown={handleKeyDown}
       onOptionSubmit={handleSubmit}
       onClear={() => setQuery("")}
-      placeholder="Search Google..."
+      placeholder="Search Google or type a URL..."
+      styles={{
+        input: {
+          paddingLeft: '3rem',
+          fontSize: '1rem',
+          fontWeight: 500,
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          transition: 'all 0.2s ease',
+          '&:focus': {
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            transform: 'translateY(-2px)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          },
+          '&::placeholder': {
+            color: 'rgba(255, 255, 255, 0.5)',
+          }
+        },
+        dropdown: {
+          backgroundColor: 'rgba(30, 30, 30, 0.95)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+        },
+        option: {
+          '&[data-combobox-selected]': {
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          },
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          }
+        }
+      }}
     />
   );
 }

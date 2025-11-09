@@ -24,7 +24,17 @@ export default function ApexLegendsMapsVertical() {
 
   return (
     <Affix position={{ bottom: 20, left: 20 }}>
-      <Card withBorder shadow="sm" radius="md" padding="md" miw="280">
+      <Card
+        shadow="lg"
+        radius="xl"
+        padding="lg"
+        miw="280"
+        style={{
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+        }}
+      >
         {isLoading && <Text>Loading…</Text>}
         {!isLoading && error && <Text c="red">Failed to load Apex Legends map data</Text>}
         <Center mb="sm">
@@ -214,7 +224,12 @@ export default function ApexLegendsMapsVertical() {
             </Stack>
           )}
         </Group>
-        <Card.Section withBorder>
+        <Card.Section
+          withBorder
+          style={{
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          }}
+        >
           <Center>
             <Anchor
               size="xs"
@@ -222,6 +237,13 @@ export default function ApexLegendsMapsVertical() {
               target="_blank"
               mt={4}
               mb={4}
+              c="dimmed"
+              style={{
+                transition: 'color 0.2s ease',
+                '&:hover': {
+                  color: 'var(--mantine-color-white)',
+                }
+              }}
             >
               Data provided by Apex Legends Status
               <ThemeIcon color="transparent">

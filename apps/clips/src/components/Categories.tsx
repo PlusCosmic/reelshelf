@@ -53,7 +53,7 @@ export default function Categories() {
                       />
                     </Center>
                     <Center>
-                      <Title h={24} order={5} maw={180} mt={7}>
+                      <Title h={24} order={6} maw={180} mt={7}>
                         {category.name}
                       </Title>
                     </Center>

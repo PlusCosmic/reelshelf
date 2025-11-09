@@ -4,26 +4,19 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-lg);
   height: 90px;
-  background-color: var(--mantine-color-body);
-  transition:
-    box-shadow 150ms ease,
-    transform 100ms ease,
-    background-color 150ms ease;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
   position: relative;
 
   &:hover {
-    box-shadow: var(--mantine-shadow-md);
-    transform: scale(1.05);
-    background-color: var(--mantine-color-dark-4);
-    @mixin light {
-      background-color: var(--mantine-color-gray-1);
-    }
-
-    @mixin dark {
-      background-color: var(--mantine-color-dark-4);
-    }
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   }
 }
 

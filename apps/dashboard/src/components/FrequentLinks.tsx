@@ -99,7 +99,14 @@ export default function FrequentLinks() {
             withCloseButton
             onClose={close}
             size="lg"
-            radius="md"
+            radius="lg"
+            styles={{
+              root: {
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+              }
+            }}
           >
             <Text size="sm" mb="xs" fw={500}>
               Add a link to frequent list
@@ -111,8 +118,31 @@ export default function FrequentLinks() {
                 onChange={(event) => setValue(event.currentTarget.value)}
                 placeholder="https://pluscosmic.dev"
                 style={{ flex: 1 }}
+                styles={{
+                  input: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    '&:focus': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                    }
+                  }
+                }}
               />
-              <Button onClick={handleSubmit}>Add</Button>
+              <Button
+                onClick={handleSubmit}
+                styles={{
+                  root: {
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.8) 0%, rgba(139, 92, 246, 0.8) 100%)',
+                    border: 'none',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 1) 0%, rgba(139, 92, 246, 1) 100%)',
+                    }
+                  }
+                }}
+              >
+                Add
+              </Button>
             </Group>
           </Dialog>
         </div>
