@@ -24,7 +24,7 @@ export default function ApexLegendsMapsHorizontal() {
   };
 
   return (
-    <Affix position={{ bottom: 20, left: 20 }}>
+    <Affix position={{ bottom: 60, left: 20 }}>
       <Card
         shadow="lg"
         radius="xl"
