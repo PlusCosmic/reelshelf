@@ -11,6 +11,7 @@
     "./services/apexClips": "./src/services/apexClips.ts",
     "./services/ffmpeg": "./src/services/ffmpeg.ts",
     "./hooks/useDebouncedValue": "./src/hooks/useDebouncedValue.ts",
+    "./theme": "./src/theme/index.ts",
     "./index": "./src/index.ts"
   },
   "license": "MIT",
@@ -18,10 +19,12 @@
     "@repo/nucleus-api-client": "workspace:*"
   },
   "peerDependencies": {
+    "@mantine/core": ">=7",
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
+    "@mantine/core": "^8.3.6",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/react": "^19.2.2",

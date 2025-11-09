@@ -1,42 +1,19 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { getGoogleSuggestions } from "../services/googleSearch";
 import { Autocomplete } from "@mantine/core";
 import "./GoogleSearchBar.module.scss";
 import { GoogleIcon } from "./GoogleIcon";
 import { IconSearch } from "@tabler/icons-react";
 import { useFocusTrap } from "@mantine/hooks";
+import { useDebouncedValue } from "@repo/shared/hooks/useDebouncedValue";
+import { useGoogleSuggestions } from "../hooks/queries";
 
 export default function GoogleSearchBar() {
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [debouncedQuery] = useDebouncedValue(query, 300);
+  const { data: suggestions = [] } = useGoogleSuggestions(debouncedQuery);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchIcon = <IconSearch size={16} />;
   const focusTrapRef = useFocusTrap();
-  // Function to fetch suggestions from Google's API
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (query.trim() === "") {
-        setSuggestions([]);
-        return;
-      }
-
-      try {
-        // Using Google's suggestion API with JSONP to avoid CORS issues
-        const suggestions = await getGoogleSuggestions(query);
-        setSuggestions(suggestions);
-      } catch (error) {
-        console.error("Error fetching suggestions:", error);
-        setSuggestions([]);
-      }
-    };
-
-    // Debounce the API call
-    const timeoutId = setTimeout(() => {
-      fetchSuggestions();
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [query]);
 
   // Focus the input field when component mounts
   useEffect(() => {

@@ -1,45 +1,23 @@
-import { useEffect, useState } from "react";
 import { Avatar, Menu, Skeleton } from "@mantine/core";
 import { IconLogout } from "@tabler/icons-react";
 import type { DiscordUser } from "@repo/nucleus-api-client";
 import LoginButton from "./LoginButton";
-import { fetchMe, logout } from "@repo/shared";
 
 interface UserAvatarProps {
   hideLogin: boolean;
+  user: DiscordUser | null | undefined;
+  isLoading: boolean;
+  onLogout: () => void | Promise<void>;
 }
 
-export default function UserAvatar({ hideLogin } : UserAvatarProps) {
-  const [user, setUser] = useState<DiscordUser | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    (async () => {
-      try {
-        const me = await fetchMe();
-        if (!isMounted) return;
-        setUser(me);
-      } catch (e) {
-        if (!isMounted) return;
-        console.error(e);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
+export default function UserAvatar({ hideLogin, user, isLoading, onLogout } : UserAvatarProps) {
   async function handleLogout() {
     try {
-      await logout();
+      await onLogout();
+      window.location.reload();
     } catch (e) {
       console.error("Logout failed", e);
-    } finally {
-      setUser(null);
+      // Still reload to clear local state even if API call failed
       window.location.reload();
     }
   }
@@ -50,8 +28,8 @@ export default function UserAvatar({ hideLogin } : UserAvatarProps) {
 
   return (
     <div>
-      {loading && <Skeleton height={50} circle mb="xl" />}
-      {!loading && user && (
+      {isLoading && <Skeleton height={50} circle mb="xl" />}
+      {!isLoading && user && (
         <Menu>
           <Menu.Target>
             <div>
