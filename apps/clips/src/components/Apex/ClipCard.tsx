@@ -278,9 +278,11 @@ export function ClipCard({ clip }: ClipCardProps) {
               </Group>
             </Stack>
 
-            <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
-              <Image src={`${apiConfig.baseUrl}${clip.detectedLegendCard}`} h={150} w={134}/>
-            </Stack>
+            { clip.detectedLegend != 27 && (
+              <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
+                <Image src={`${apiConfig.baseUrl}${clip.detectedLegendCard}`} h={150} w={134}/>
+              </Stack>
+            )}
 
             {/* Action Buttons */}
             <Stack
