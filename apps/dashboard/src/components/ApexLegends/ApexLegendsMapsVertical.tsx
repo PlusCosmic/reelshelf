@@ -1,8 +1,3 @@
-import { useEffect, useState } from "react";
-import {
-  type ApexMapRotation,
-  fetchMapRotation,
-} from "../../services/apexLegends.ts";
 import {
   Affix,
   Anchor,
@@ -15,34 +10,10 @@ import {
   Text,
   ThemeIcon,
 } from "@mantine/core";
+import { useApexMapRotation } from "../../hooks/queries";
 
 export default function ApexLegendsMapsVertical() {
-  const [mapRotation, setMapRotation] = useState<ApexMapRotation | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const data = await fetchMapRotation();
-        setMapRotation(data);
-        setError(null);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load Apex Legends map data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-
-    // Refresh data every 5 minutes to keep the timer accurate
-    const intervalId = setInterval(fetchData, 30 * 1000);
-
-    return () => clearInterval(intervalId);
-  }, []);
+  const { data: mapRotation, isLoading, error } = useApexMapRotation();
 
   // Format remaining time in a more readable format
   const formatRemainingTime = (mins: number): string => {
@@ -55,7 +26,7 @@ export default function ApexLegendsMapsVertical() {
     <Affix position={{ bottom: 20, left: 20 }}>
       <Card withBorder shadow="sm" radius="md" padding="md" miw="280">
         {isLoading && <Text>Loading…</Text>}
-        {!isLoading && error && <Text c="red">{error}</Text>}
+        {!isLoading && error && <Text c="red">Failed to load Apex Legends map data</Text>}
         <Center mb="sm">
           <Group>
             <Image

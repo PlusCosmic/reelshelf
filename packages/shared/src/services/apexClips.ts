@@ -23,7 +23,10 @@ export async function fetchApexClips(
     pageSize: pageSize,
     tags: tags,
     titleSearch: titleSearch,
-  }).catch(() => null);
+  }).catch((error) => {
+    console.error('Failed to fetch apex clips:', { page, pageSize, tags, titleSearch, error });
+    return null;
+  });
 }
 
 export async function fetchUnviewedApexClips(
@@ -41,7 +44,10 @@ export async function fetchUnviewedApexClips(
     pageSize: pageSize,
     tags: tags,
     titleSearch: titleSearch,
-  }).catch(() => null);
+  }).catch((error) => {
+    console.error('Failed to fetch unviewed apex clips:', { page, pageSize, tags, titleSearch, error });
+    return null;
+  });
 }
 
 export async function createVideoRequest(

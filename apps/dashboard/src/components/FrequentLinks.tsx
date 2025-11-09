@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
-import { fetchMe } from "../services/user";
-import { addLink, deleteLink, getLinks } from "../services/links";
+import { useState } from "react";
 import {
   Button,
   Card,
@@ -16,88 +14,28 @@ import {
 import classes from "./FrequentLinks.module.scss";
 import { IconLinkPlus } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
-import type {
-  DiscordUser,
-  UserFrequentLinkRow,
-} from "@repo/nucleus-api-client";
+import { useCurrentUser, useLinks, useAddLink, useDeleteLink } from "../hooks/queries";
 
 export default function FrequentLinks() {
-  const [user, setUser] = useState<DiscordUser | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [links, setLinks] = useState<UserFrequentLinkRow[]>([]);
-  const [loadingLinks, setLoadingLinks] = useState(false);
+  const { data: user, isLoading: loadingUser } = useCurrentUser();
+  const { data: links = [], isLoading: loadingLinks } = useLinks();
+  const addLinkMutation = useAddLink();
+  const deleteLinkMutation = useDeleteLink();
   const [opened, { toggle, close }] = useDisclosure(false);
   const [value, setValue] = useState("");
 
-  // Load user to determine if authenticated
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const me = await fetchMe();
-        if (!mounted) return;
-        setUser(me);
-      } catch (e) {
-        if (!mounted) return;
-        console.error(e);
-      } finally {
-        if (mounted) setLoadingUser(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Load links when logged in
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (!user) {
-        setLinks([]);
-        return;
-      }
-      setLoadingLinks(true);
-      try {
-        const xs = await getLinks();
-        if (!mounted) return;
-        setLinks(xs);
-      } catch (e) {
-        if (!mounted) return;
-        console.error(e);
-      } finally {
-        if (mounted) setLoadingLinks(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [user]);
-
-  async function handleDelete(id: string | undefined) {
+  function handleDelete(id: string | undefined) {
     if (!id) return;
-    const prev = links;
-    setLinks((xs) => xs.filter((l) => l.id !== id));
-    try {
-      await deleteLink(id);
-    } catch (e) {
-      console.error(e);
-      setLinks(prev); // revert on failure
-    }
+    deleteLinkMutation.mutate(id);
   }
 
   async function handleSubmit() {
     try {
-      await addLink({
-        url: value,
-      });
-      const refreshed = await getLinks();
-      setLinks(refreshed);
-    } catch (e) {
-      console.error(e);
-    } finally {
+      await addLinkMutation.mutateAsync({ url: value });
       close();
       setValue("");
+    } catch (e) {
+      console.error("Failed to add link", e);
     }
   }
 

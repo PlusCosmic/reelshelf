@@ -1,8 +1,3 @@
-import { useEffect, useState } from "react";
-import {
-  type ApexMapRotation,
-  fetchMapRotation,
-} from "../../services/apexLegends.ts";
 import {
   Affix,
   Anchor,
@@ -16,31 +11,10 @@ import {
   Text,
   ThemeIcon,
 } from "@mantine/core";
+import { useApexMapRotation } from "../../hooks/queries";
 
 export default function ApexLegendsMapsHorizontal() {
-  const [mapRotation, setMapRotation] = useState<ApexMapRotation | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const data = await fetchMapRotation();
-        setMapRotation(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-
-    // Refresh data every 5 minutes to keep the timer accurate
-    const intervalId = setInterval(fetchData, 30 * 1000);
-
-    return () => clearInterval(intervalId);
-  }, []);
+  const { data: mapRotation, isLoading } = useApexMapRotation();
 
   // Format remaining time in a more readable format
   const formatRemainingTime = (mins: number): string => {

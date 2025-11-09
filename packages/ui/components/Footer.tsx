@@ -1,9 +1,33 @@
-import { ActionIcon, Group } from "@mantine/core";
-import { IconBrandGithub, IconBrandLinkedin } from "@tabler/icons-react";
+import { ActionIcon, Group, Text, Divider } from "@mantine/core";
+import { IconBrandGithub, IconBrandLinkedin, IconDashboard, IconMovie } from "@tabler/icons-react";
 
 export default function Footer() {
   return (
     <Group justify="center" align="center" h="100%">
+      <ActionIcon
+        component="a"
+        href="https://dashboard.pluscosmic.dev"
+        target="_blank"
+        rel="noopener noreferrer"
+        variant="subtle"
+        color="gray"
+      >
+        <IconDashboard size={20} color={"var(--mantine-color-nucleusColour-3)"} />
+      </ActionIcon>
+      <ActionIcon
+        component="a"
+        href="https://clips.pluscosmic.dev"
+        target="_blank"
+        rel="noopener noreferrer"
+        variant="subtle"
+        color="gray"
+      >
+        <IconMovie size={20} color={"var(--mantine-color-nucleusColour-3)"} />
+      </ActionIcon>
+      <Divider orientation="vertical" />
+      <Text size="xs" c="dimmed">
+        Made by PlusCosmic
+      </Text>
       <ActionIcon
         component="a"
         href="https://github.com/PlusCosmic"

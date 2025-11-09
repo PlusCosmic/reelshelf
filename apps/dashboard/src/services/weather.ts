@@ -1,4 +1,4 @@
-import { getJson, withQuery } from "./http";
+import { getJson, withQuery } from "@repo/shared";
 import type { WeatherConfig } from "../models/config";
 import type { OpenMeteoResponse, WeatherResponse } from "../models/weather";
 

@@ -12,6 +12,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconAlertCircle, IconCheck, IconClock, IconMovie, IconUpload, IconX } from "@tabler/icons-react";
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
 import { useEffect, useRef, useState } from "react";
@@ -50,7 +51,7 @@ export function VideoUpload() {
   useEffect(() => {
     if (processingRef.current) return;
 
-    const processQueue = async () => {
+    const processQueue = () => {
       processingRef.current = true;
 
       // Track which items we've started in this execution to avoid duplicates
@@ -283,7 +284,13 @@ export function VideoUpload() {
       <Modal opened={opened} onClose={close} title="Upload Clips" centered radius="lg" size="xl">
         <Dropzone
           onDrop={onDrop}
-          onReject={(files) => console.log('rejected files', files)}
+          onReject={(files) => {
+            notifications.show({
+              title: 'Upload rejected',
+              message: `Invalid files: ${files.map(f => f.file.name).join(', ')}`,
+              color: 'red'
+            });
+          }}
           maxSize={2 * 1024 ** 3}
           accept={[MIME_TYPES.mp4, "video/x-matroska"]}
         >

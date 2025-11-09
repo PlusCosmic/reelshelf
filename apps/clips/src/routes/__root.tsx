@@ -6,15 +6,17 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { AppShell, Group, Title } from '@mantine/core'
-import { Footer } from "@repo/ui";
+import { Footer, UserAvatar } from "@repo/ui";
 import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from '@mantine/modals';
-import UserAvatar from "../components/UserAvatar.tsx";
+import { useCurrentUser, useLogout } from "../hooks/queries";
 import tempLogo from "../assets/transparent plus.png";
 
 function RootComponent() {
   const router = useRouterState();
   const isIndexRoute = router.location.pathname === '/';
+  const { data: user, isLoading } = useCurrentUser();
+  const logoutMutation = useLogout();
 
   return (
     <ModalsProvider>
@@ -42,7 +44,12 @@ function RootComponent() {
                 </Link>
               )}
             </div>
-            <UserAvatar hideLogin={true} />
+            <UserAvatar
+              hideLogin={true}
+              user={user}
+              isLoading={isLoading}
+              onLogout={() => logoutMutation.mutateAsync()}
+            />
           </Group>
         </AppShell.Header>
         <AppShell.Main>

@@ -1,5 +1,5 @@
 import type { WeatherConfig } from "../models/config";
-import { tryGetJson } from "./http";
+import { tryGetJson } from "@repo/shared";
 
 export async function loadJson<T>(path: string): Promise<T | null> {
   return await tryGetJson<T>(path);

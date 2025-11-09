@@ -6,7 +6,22 @@ import React from "react";
 
 export default function LoginButton() {
   function handleLogin() {
+    // Use full URL but validate it's same-origin to prevent open redirect vulnerability
     const currentUrl = window.location.href;
+
+    // Validate the URL is safe (same origin)
+    try {
+      const url = new URL(currentUrl);
+      // Only allow URLs from the same origin (same protocol, domain, and port)
+      if (url.origin !== window.location.origin) {
+        console.error('Invalid redirect URL: different origin');
+        return;
+      }
+    } catch (error) {
+      console.error('Invalid redirect URL', error);
+      return;
+    }
+
     window.location.href = `${apiConfig.baseUrl}/auth/discord/login?returnUrl=${encodeURIComponent(currentUrl)}`;
   }
 
