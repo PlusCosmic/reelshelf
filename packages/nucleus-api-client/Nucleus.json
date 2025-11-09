@@ -717,6 +717,9 @@
           }
         }
       },
+      "ApexLegend": {
+        "type": "integer"
+      },
       "BunnyVideo": {
         "required": [
           "video_library_id",
@@ -813,7 +816,9 @@
           "created_at",
           "video",
           "tags",
-          "is_viewed"
+          "is_viewed",
+          "detected_legend",
+          "detected_legend_card"
         ],
         "type": "object",
         "properties": {
@@ -847,6 +852,12 @@
           },
           "is_viewed": {
             "type": "boolean"
+          },
+          "detected_legend": {
+            "$ref": "#/components/schemas/ApexLegend"
+          },
+          "detected_legend_card": {
+            "type": "string"
           }
         }
       },

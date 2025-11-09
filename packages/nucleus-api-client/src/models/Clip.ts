@@ -75,6 +75,18 @@ export interface Clip {
      * @memberof Clip
      */
     isViewed: boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof Clip
+     */
+    detectedLegend: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof Clip
+     */
+    detectedLegendCard: string;
 }
 
 /**
@@ -89,6 +101,8 @@ export function instanceOfClip(value: object): value is Clip {
     if (!('video' in value) || value['video'] === undefined) return false;
     if (!('tags' in value) || value['tags'] === undefined) return false;
     if (!('isViewed' in value) || value['isViewed'] === undefined) return false;
+    if (!('detectedLegend' in value) || value['detectedLegend'] === undefined) return false;
+    if (!('detectedLegendCard' in value) || value['detectedLegendCard'] === undefined) return false;
     return true;
 }
 
@@ -110,6 +124,8 @@ export function ClipFromJSONTyped(json: any, ignoreDiscriminator: boolean): Clip
         'video': BunnyVideoFromJSON(json['video']),
         'tags': json['tags'],
         'isViewed': json['is_viewed'],
+        'detectedLegend': json['detected_legend'],
+        'detectedLegendCard': json['detected_legend_card'],
     };
 }
 
@@ -132,6 +148,8 @@ export function ClipToJSONTyped(value?: Clip | null, ignoreDiscriminator: boolea
         'video': BunnyVideoToJSON(value['video']),
         'tags': value['tags'],
         'is_viewed': value['isViewed'],
+        'detected_legend': value['detectedLegend'],
+        'detected_legend_card': value['detectedLegendCard'],
     };
 }
 
