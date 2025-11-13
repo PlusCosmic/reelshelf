@@ -1,4 +1,4 @@
-import { apiConfig } from "../config/apiConfig.ts";
+import { apiConfig } from "@repo/shared";
 import {
   Configuration,
   type LinkRequest,
