@@ -5,7 +5,7 @@ A monorepo containing Plus Cosmic applications and shared packages, built with T
 ## Applications
 
 - **clips** - Video/media clip management application with TanStack Router
-- **dashboard** - Administrative dashboard with React Query and routing
+- **home** - Homepage application with React Query and routing
 
 ## Packages
 

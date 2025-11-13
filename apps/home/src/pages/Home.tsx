@@ -36,7 +36,7 @@ export default function Home() {
                   backgroundClip: 'text',
                 }}
               >
-                Dashboard
+                Home
               </Text>
             </Group>
           </Stack>

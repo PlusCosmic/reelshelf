@@ -2,8 +2,8 @@ import Home from "./pages/Home";
 import WeatherPane from "./components/WeatherPane";
 import { Footer, UserAvatar } from "@repo/ui";
 import { Affix, AppShell, Group } from "@mantine/core";
-import ApexLegendsMapsHorizontal from "./components/ApexLegends/ApexLegendsMapsHorizontal.tsx";
 import { useCurrentUser, useLogout } from "./hooks/queries";
+import ApexLegendsMaps from "./components/ApexLegends/ApexLegendsMaps.tsx";
 
 function App() {
   const { data: user, isLoading } = useCurrentUser();
@@ -47,7 +47,10 @@ function App() {
         <WeatherPane />
       </Affix>
 
-      <ApexLegendsMapsHorizontal />
+      <Affix position={{ bottom: 60, left: 20 }}>
+        <ApexLegendsMaps />
+      </Affix>
+
       <AppShell.Footer>
         <Footer />
       </AppShell.Footer>
