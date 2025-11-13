@@ -22,8 +22,8 @@ Video/media clip management application using TanStack Router for file-based rou
 
 **Route Structure**: Routes in `src/routes/` auto-generate `routeTree.gen.ts`. The `__root.tsx` provides the AppShell layout wrapper for all routes.
 
-### dashboard
-Administrative dashboard using React Router DOM (not TanStack Router like clips). Single-page application centered around the Home page.
+### home
+Homepage application using React Router DOM (not TanStack Router like clips). Single-page application centered around the Home page.
 
 **Key Features**:
 - React Query for data fetching and caching
@@ -87,15 +87,15 @@ pnpm format
 cd apps/clips
 pnpm dev
 
-cd apps/dashboard
+cd apps/home
 pnpm dev
 ```
 
 ## Testing
 
-### Dashboard App
+### Home App
 ```sh
-cd apps/dashboard
+cd apps/home
 
 # Unit tests (vitest)
 pnpm test
@@ -119,11 +119,11 @@ Uses vitest but configuration is in `package.json`, not a separate config file.
 
 ### Routing Differences
 - **clips**: TanStack Router with file-based routing, auto-code splitting enabled
-- **dashboard**: React Router DOM with traditional route configuration
+- **home**: React Router DOM with traditional route configuration
 
 ### State Management
 - **clips**: React state + TanStack Router state
-- **dashboard**: React Query for server state, React state for local state
+- **home**: React Query for server state, React state for local state
 
 ### API Client Usage
 Apps can use either:
@@ -140,7 +140,7 @@ Turborepo orchestrates builds with:
 
 ### Path Aliases
 - **clips**: `@/` maps to `src/` directory
-- **dashboard**: No path aliases configured
+- **home**: No path aliases configured
 
 ## UI Framework
 All apps use Mantine v8 with:

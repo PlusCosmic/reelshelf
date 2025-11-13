@@ -1,12 +1,12 @@
 import { ActionIcon, Group, Text, Divider } from "@mantine/core";
-import { IconBrandGithub, IconBrandLinkedin, IconDashboard, IconMovie } from "@tabler/icons-react";
+import { IconBrandGithub, IconBrandLinkedin, IconHome, IconMovie } from "@tabler/icons-react";
 
 export default function Footer() {
   return (
     <Group justify="center" align="center" h="100%">
       <ActionIcon
         component="a"
-        href="https://dashboard.pluscosmic.dev"
+        href="https://pluscosmic.dev"
         target="_blank"
         rel="noopener noreferrer"
         variant="subtle"
@@ -21,7 +21,7 @@ export default function Footer() {
           }
         }}
       >
-        <IconDashboard size={20} color={"var(--mantine-color-nucleusColour-3)"} />
+        <IconHome size={20} color={"var(--mantine-color-nucleusColour-3)"} />
       </ActionIcon>
       <ActionIcon
         component="a"

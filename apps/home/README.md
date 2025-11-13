@@ -1,6 +1,6 @@
-# Dashboard
+# Home
 
-Administrative dashboard application built with React, React Router, and React Query, featuring comprehensive testing with Vitest and Playwright.
+Homepage application built with React, React Router, and React Query, featuring comprehensive testing with Vitest and Playwright.
 
 ## Features
 
