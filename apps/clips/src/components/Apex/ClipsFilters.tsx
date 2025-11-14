@@ -62,7 +62,7 @@ export function ClipsFilters({
               <Select
                 placeholder="Sort order"
                 clearable
-                value={sortOrder?.toString()}
+                value={sortOrder !== undefined ? sortOrder.toString() : null}
                 onChange={onSortOrderChange}
                 data={[
                   { value: '0', label: 'Newest First' },
