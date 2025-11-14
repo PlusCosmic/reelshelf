@@ -1,8 +1,8 @@
 import { apiConfig } from "@repo/shared";
-import { Avatar, Badge, Box, Card, Group, Image, Stack, Text, Tooltip } from "@mantine/core";
+import { Avatar, Badge, Box, Card, Group, Image, Skeleton, Stack, Text, Tooltip } from "@mantine/core";
 import { IconClock } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { formatDate, formatDuration } from "../../utils/format";
+import { formatDate, formatDuration, getProcessingStatusMessage, isClipProcessing } from "../../utils/format";
 import { useUserById } from "../../hooks/queries";
 import type { Clip } from "@repo/nucleus-api-client";
 
@@ -12,6 +12,8 @@ interface SidebarClipCardProps {
 
 export function SidebarClipCard({ clip }: SidebarClipCardProps) {
   const { data: clipOwner } = useUserById(clip.ownerId);
+  const processing = isClipProcessing(clip.video.status);
+  const processingMessage = getProcessingStatusMessage(clip.video.status, clip.video.encodeProgress);
 
   return (
     <Link
@@ -40,15 +42,43 @@ export function SidebarClipCard({ clip }: SidebarClipCardProps) {
       >
         <Stack gap="xs">
           <Box pos="relative">
-            <Image
-              src={`${apiConfig.bunnyBaseUrl}/${clip.video.guid}/thumbnail.jpg`}
-              style={{
-                aspectRatio: "16/9",
-                width: "100%",
-              }}
-              radius="sm"
-            />
-            {clip.video.length && (
+            {processing ? (
+              <Skeleton
+                style={{
+                  aspectRatio: "16/9",
+                  width: "100%",
+                }}
+                radius="sm"
+              />
+            ) : (
+              <Image
+                src={`${apiConfig.bunnyBaseUrl}/${clip.video.guid}/thumbnail.jpg`}
+                style={{
+                  aspectRatio: "16/9",
+                  width: "100%",
+                }}
+                radius="sm"
+              />
+            )}
+            {processing && (
+              <Badge
+                pos="absolute"
+                top={4}
+                left={4}
+                size="xs"
+                radius="sm"
+                style={{
+                  background: "rgba(245, 158, 11, 0.9)",
+                  backdropFilter: "blur(4px)",
+                  color: "white",
+                  fontSize: "9px",
+                  fontWeight: 700,
+                }}
+              >
+                PROCESSING
+              </Badge>
+            )}
+            {clip.video.length && !processing && (
               <Badge
                 pos="absolute"
                 bottom={4}
@@ -63,6 +93,23 @@ export function SidebarClipCard({ clip }: SidebarClipCardProps) {
                 }}
               >
                 {formatDuration(clip.video.length)}
+              </Badge>
+            )}
+            {processing && (
+              <Badge
+                pos="absolute"
+                bottom={4}
+                right={4}
+                size="xs"
+                radius="sm"
+                style={{
+                  background: "rgba(245, 158, 11, 0.9)",
+                  backdropFilter: "blur(4px)",
+                  color: "white",
+                  fontSize: "9px",
+                }}
+              >
+                {processingMessage}
               </Badge>
             )}
             {/* Owner Avatar Badge */}

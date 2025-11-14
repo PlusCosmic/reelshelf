@@ -7,6 +7,7 @@ import {
   Card,
   Group,
   Image,
+  Skeleton,
   Stack,
   Text,
   Tooltip,
@@ -24,6 +25,7 @@ import { apiConfig, downloadVideo } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
 import { useDeleteClip, useUserById } from "../../hooks/queries.ts";
+import { getProcessingStatusMessage, isClipProcessing } from "../../utils/format";
 import type { Clip } from "@repo/nucleus-api-client";
 
 type ClipCardProps = {
@@ -145,6 +147,8 @@ export function ClipCard({ clip }: ClipCardProps) {
   };
 
   const date = formatDate(clip.createdAt.toString());
+  const processing = isClipProcessing(clip.video.status);
+  const processingMessage = getProcessingStatusMessage(clip.video.status, clip.video.encodeProgress);
 
   return (
     <Card
@@ -179,21 +183,52 @@ export function ClipCard({ clip }: ClipCardProps) {
           <Group wrap="nowrap" gap="lg" align="center">
             {/* Thumbnail with overlay */}
             <Box pos="relative" style={{ flexShrink: 0 }}>
-              <Image
-                src={
-                  isHovered
-                    ? `${apiConfig.bunnyBaseUrl}/${clip.video.guid}/preview.webp`
-                    : `${apiConfig.bunnyBaseUrl}/${clip.video.guid}/thumbnail.jpg`
-                }
-                style={{
-                  aspectRatio: "16/9",
-                  width: "240px",
-                  transition: "transform 0.2s ease",
-                  transform: isHovered ? "scale(1.02)" : "scale(1)",
-                }}
-                radius="md"
-              />
-              {!clip.isViewed && (
+              {processing ? (
+                <Skeleton
+                  style={{
+                    aspectRatio: "16/9",
+                    width: "240px",
+                  }}
+                  radius="md"
+                />
+              ) : (
+                <Image
+                  src={
+                    isHovered
+                      ? `${apiConfig.bunnyBaseUrl}/${clip.video.guid}/preview.webp`
+                      : `${apiConfig.bunnyBaseUrl}/${clip.video.guid}/thumbnail.jpg`
+                  }
+                  style={{
+                    aspectRatio: "16/9",
+                    width: "240px",
+                    transition: "transform 0.2s ease",
+                    transform: isHovered ? "scale(1.02)" : "scale(1)",
+                  }}
+                  radius="md"
+                />
+              )}
+              {processing && (
+                <Badge
+                  pos="absolute"
+                  top={8}
+                  left={8}
+                  size="md"
+                  radius="sm"
+                  variant="filled"
+                  color="orange"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                    backdropFilter: "blur(4px)",
+                    boxShadow: "0 2px 8px rgba(245, 158, 11, 0.4)",
+                    fontWeight: 700,
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  PROCESSING
+                </Badge>
+              )}
+              {!clip.isViewed && !processing && (
                 <Badge
                   pos="absolute"
                   top={8}
@@ -214,7 +249,7 @@ export function ClipCard({ clip }: ClipCardProps) {
                   NEW
                 </Badge>
               )}
-              {clip.video.length && (
+              {clip.video.length && !processing && (
                 <Badge
                   pos="absolute"
                   bottom={8}
@@ -229,6 +264,22 @@ export function ClipCard({ clip }: ClipCardProps) {
                   }}
                 >
                   {formatDuration(clip.video.length)}
+                </Badge>
+              )}
+              {processing && (
+                <Badge
+                  pos="absolute"
+                  bottom={8}
+                  right={8}
+                  size="sm"
+                  radius="sm"
+                  style={{
+                    background: "rgba(245, 158, 11, 0.9)",
+                    backdropFilter: "blur(4px)",
+                    color: "white",
+                  }}
+                >
+                  {processingMessage}
                 </Badge>
               )}
               {/* Owner Avatar Badge */}
