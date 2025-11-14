@@ -7,7 +7,6 @@ import {
   createVideoRequest,
   deleteVideo,
   fetchApexClips,
-  fetchUnviewedApexClips,
   getTopTags,
   getVideo,
   markClipAsViewed,
@@ -81,6 +80,9 @@ export interface ApexClipsParams {
   tags?: string;
   titleSearch?: string;
   unviewedOnly?: boolean;
+  sortOrder?: number;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 /**
@@ -88,7 +90,7 @@ export interface ApexClipsParams {
  * Query key includes all params to ensure proper cache segregation
  */
 export function useApexClips(params: ApexClipsParams) {
-  const { page, pageSize, tags, titleSearch, unviewedOnly } = params;
+  const { page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate } = params;
 
   return useQuery({
     queryKey: [
@@ -99,12 +101,21 @@ export function useApexClips(params: ApexClipsParams) {
       tags,
       titleSearch,
       unviewedOnly,
+      sortOrder,
+      startDate?.toISOString(),
+      endDate?.toISOString(),
     ],
     queryFn: async () => {
-      if (unviewedOnly) {
-        return fetchUnviewedApexClips(page, pageSize, tags, titleSearch);
-      }
-      return fetchApexClips(page, pageSize, tags, titleSearch);
+      return fetchApexClips({
+        page,
+        pageSize,
+        tags,
+        titleSearch,
+        unviewedOnly,
+        sortOrder,
+        startDate,
+        endDate,
+      });
     },
     staleTime: 30_000, // 30 seconds - balance freshness vs requests
   });

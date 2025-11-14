@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AddTagRequest';
+export * from './BackfillResult';
 export * from './BunnyVideo';
 export * from './Clip';
 export * from './ClipCategory';
@@ -15,3 +16,5 @@ export * from './PagedClipsResponse';
 export * from './TopTag';
 export * from './UpdateTitleRequest';
 export * from './UserFrequentLinkRow';
+export * from './VideoDetectionRequest';
+export * from './VideoProgressUpdate';

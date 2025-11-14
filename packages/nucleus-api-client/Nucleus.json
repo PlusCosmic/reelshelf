@@ -1,5 +1,5 @@
 {
-  "openapi": "3.1.1",
+  "openapi": "3.0.1",
   "info": {
     "title": "Nucleus | v1",
     "version": "1.0.0"
@@ -265,14 +265,53 @@
             "name": "tags",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": null
             }
           },
           {
             "name": "titleSearch",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "default": null
+            }
+          },
+          {
+            "name": "unviewedOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "default": null
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "default": null
             }
           }
         ],
@@ -316,14 +355,16 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "format": "date-time"
+              "format": "date-time",
+              "default": null
             }
           },
           {
             "name": "md5Hash",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "default": null
             }
           }
         ],
@@ -344,68 +385,6 @@
               "application/json": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/clips/categories/{category}/videos/unviewed": {
-      "get": {
-        "tags": [
-          "ClipsEndpoints"
-        ],
-        "operationId": "GetUnviewedVideosByCategory",
-        "parameters": [
-          {
-            "name": "category",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "$ref": "#/components/schemas/ClipCategoryEnum"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "tags",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "titleSearch",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PagedClipsResponse"
                 }
               }
             }
@@ -539,16 +518,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
           }
         }
       }
@@ -658,13 +627,23 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "400": {
-            "description": "Bad Request",
+          }
+        }
+      }
+    },
+    "/clips/backfill-metadata": {
+      "post": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "BackfillClipMetadata",
+        "responses": {
+          "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/BackfillResult"
                 }
               }
             }
@@ -702,6 +681,98 @@
           }
         }
       }
+    },
+    "/webhooks/bunny/video-progress": {
+      "post": {
+        "tags": [
+          "BunnyWebhookEndpoints"
+        ],
+        "operationId": "ReceiveVideoProgress",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoProgressUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/webhooks/bunny/test": {
+      "get": {
+        "tags": [
+          "BunnyWebhookEndpoints"
+        ],
+        "operationId": "TestWebhook",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/apexdetection/enqueue": {
+      "post": {
+        "tags": [
+          "ApexDetectionEndpoints"
+        ],
+        "operationId": "QueueDetection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoDetectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apexdetection/enqueue-all": {
+      "post": {
+        "tags": [
+          "ApexDetectionEndpoints"
+        ],
+        "operationId": "QueueAllUnprocessedItems",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -719,6 +790,28 @@
       },
       "ApexLegend": {
         "type": "integer"
+      },
+      "BackfillResult": {
+        "required": [
+          "total_processed",
+          "success_count",
+          "failure_count"
+        ],
+        "type": "object",
+        "properties": {
+          "total_processed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "success_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failure_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
       },
       "BunnyVideo": {
         "required": [
@@ -958,16 +1051,12 @@
             "type": "string"
           },
           "global_name": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "string",
+            "nullable": true
           },
           "avatar": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -1108,10 +1197,49 @@
             "type": "string"
           },
           "thumbnail_url": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "VideoDetectionRequest": {
+        "required": [
+          "clip_id",
+          "screenshot_urls"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "screenshot_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "VideoProgressUpdate": {
+        "required": [
+          "VideoLibraryId",
+          "VideoGuid",
+          "Status"
+        ],
+        "type": "object",
+        "properties": {
+          "VideoLibraryId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "VideoGuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "Status": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       }
@@ -1135,6 +1263,12 @@
     },
     {
       "name": "FFmpegEndpoints"
+    },
+    {
+      "name": "BunnyWebhookEndpoints"
+    },
+    {
+      "name": "ApexDetectionEndpoints"
     }
   ]
 }

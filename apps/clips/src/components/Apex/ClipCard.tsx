@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   ActionIcon,
+  Avatar,
   Badge,
   Box,
   Card,
@@ -22,7 +23,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { apiConfig, downloadVideo } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
-import { useDeleteClip } from "../../hooks/queries.ts";
+import { useDeleteClip, useUserById } from "../../hooks/queries.ts";
 import type { Clip } from "@repo/nucleus-api-client";
 
 type ClipCardProps = {
@@ -33,6 +34,7 @@ export function ClipCard({ clip }: ClipCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const deleteClip = useDeleteClip();
   const navigate = useNavigate();
+  const { data: clipOwner } = useUserById(clip.ownerId);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -229,6 +231,35 @@ export function ClipCard({ clip }: ClipCardProps) {
                   {formatDuration(clip.video.length)}
                 </Badge>
               )}
+              {/* Owner Avatar Badge */}
+              {clipOwner && (
+                <Tooltip
+                  label={clipOwner.globalName || clipOwner.username}
+                  position="right"
+                  withArrow
+                  offset={8}
+                  style={{
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <Avatar
+                    src={clipOwner.avatar}
+                    alt={clipOwner.username}
+                    size={40}
+                    radius="xl"
+                    pos="absolute"
+                    bottom={8}
+                    left={8}
+                    style={{
+                      border: "2px solid rgba(255, 255, 255, 0.9)",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                      transition: "all 0.2s ease",
+                      transform: isHovered ? "scale(1.1)" : "scale(1)",
+                      cursor: "pointer",
+                    }}
+                  />
+                </Tooltip>
+              )}
             </Box>
 
             {/* Content */}
@@ -269,6 +300,19 @@ export function ClipCard({ clip }: ClipCardProps) {
                 </Group>
               )}
               <Group gap="md">
+                {clipOwner && (
+                  <Group gap="xs">
+                    <Avatar
+                      src={clipOwner.avatar}
+                      alt={clipOwner.username}
+                      size={16}
+                      radius="xl"
+                    />
+                    <Text size="xs" c="dimmed" fw={500}>
+                      {clipOwner.globalName || clipOwner.username}
+                    </Text>
+                  </Group>
+                )}
                 <Group gap="xs">
                   <IconClock size={14} style={{ opacity: 0.6 }} />
                   <Text size="xs" c="dimmed">

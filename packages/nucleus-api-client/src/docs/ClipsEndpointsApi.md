@@ -5,11 +5,11 @@ All URIs are relative to *http://localhost*
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
 | [**addTagToClip**](ClipsEndpointsApi.md#addtagtoclip) | **POST** /clips/videos/{clipId}/tags |  |
+| [**backfillClipMetadata**](ClipsEndpointsApi.md#backfillclipmetadata) | **POST** /clips/backfill-metadata |  |
 | [**createVideo**](ClipsEndpointsApi.md#createvideo) | **POST** /clips/categories/{category}/videos |  |
 | [**deleteClip**](ClipsEndpointsApi.md#deleteclip) | **DELETE** /clips/videos/{clipId} |  |
 | [**getCategories**](ClipsEndpointsApi.md#getcategories) | **GET** /clips/categories |  |
 | [**getTopTags**](ClipsEndpointsApi.md#gettoptags) | **GET** /clips/tags/top |  |
-| [**getUnviewedVideosByCategory**](ClipsEndpointsApi.md#getunviewedvideosbycategory) | **GET** /clips/categories/{category}/videos/unviewed |  |
 | [**getVideoById**](ClipsEndpointsApi.md#getvideobyid) | **GET** /clips/videos/{clipId} |  |
 | [**getVideosByCategory**](ClipsEndpointsApi.md#getvideosbycategory) | **GET** /clips/categories/{category}/videos |  |
 | [**markVideoAsViewed**](ClipsEndpointsApi.md#markvideoasviewed) | **POST** /clips/videos/{clipId}/view |  |
@@ -83,7 +83,63 @@ No authorization required
 |-------------|-------------|------------------|
 | **200** | OK |  -  |
 | **404** | Not Found |  -  |
-| **400** | Bad Request |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## backfillClipMetadata
+
+> BackfillResult backfillClipMetadata()
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ClipsEndpointsApi,
+} from '';
+import type { BackfillClipMetadataRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ClipsEndpointsApi();
+
+  try {
+    const data = await api.backfillClipMetadata();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**BackfillResult**](BackfillResult.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -343,83 +399,6 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## getUnviewedVideosByCategory
-
-> PagedClipsResponse getUnviewedVideosByCategory(category, page, pageSize, tags, titleSearch)
-
-
-
-### Example
-
-```ts
-import {
-  Configuration,
-  ClipsEndpointsApi,
-} from '';
-import type { GetUnviewedVideosByCategoryRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new ClipsEndpointsApi();
-
-  const body = {
-    // number
-    category: 56,
-    // number
-    page: 56,
-    // number
-    pageSize: 56,
-    // string (optional)
-    tags: tags_example,
-    // string (optional)
-    titleSearch: titleSearch_example,
-  } satisfies GetUnviewedVideosByCategoryRequest;
-
-  try {
-    const data = await api.getUnviewedVideosByCategory(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **category** | `number` |  | [Defaults to `undefined`] |
-| **page** | `number` |  | [Defaults to `undefined`] |
-| **pageSize** | `number` |  | [Defaults to `undefined`] |
-| **tags** | `string` |  | [Optional] [Defaults to `undefined`] |
-| **titleSearch** | `string` |  | [Optional] [Defaults to `undefined`] |
-
-### Return type
-
-[**PagedClipsResponse**](PagedClipsResponse.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | OK |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
 ## getVideoById
 
 > Clip getVideoById(clipId)
@@ -488,7 +467,7 @@ No authorization required
 
 ## getVideosByCategory
 
-> PagedClipsResponse getVideosByCategory(category, page, pageSize, tags, titleSearch)
+> PagedClipsResponse getVideosByCategory(category, page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate)
 
 
 
@@ -512,10 +491,18 @@ async function example() {
     page: 56,
     // number
     pageSize: 56,
-    // string (optional)
-    tags: tags_example,
+    // Array<string> (optional)
+    tags: ...,
     // string (optional)
     titleSearch: titleSearch_example,
+    // boolean (optional)
+    unviewedOnly: true,
+    // number (optional)
+    sortOrder: 56,
+    // Date (optional)
+    startDate: 2013-10-20T19:20:30+01:00,
+    // Date (optional)
+    endDate: 2013-10-20T19:20:30+01:00,
   } satisfies GetVideosByCategoryRequest;
 
   try {
@@ -538,8 +525,12 @@ example().catch(console.error);
 | **category** | `number` |  | [Defaults to `undefined`] |
 | **page** | `number` |  | [Defaults to `undefined`] |
 | **pageSize** | `number` |  | [Defaults to `undefined`] |
-| **tags** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **tags** | `Array<string>` |  | [Optional] |
 | **titleSearch** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **unviewedOnly** | `boolean` |  | [Optional] [Defaults to `false`] |
+| **sortOrder** | `number` |  | [Optional] [Defaults to `0`] |
+| **startDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -763,7 +754,6 @@ No authorization required
 |-------------|-------------|------------------|
 | **200** | OK |  -  |
 | **404** | Not Found |  -  |
-| **400** | Bad Request |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
