@@ -1,5 +1,7 @@
 .openapi-generator-ignore
+apis/ApexDetectionEndpointsApi.ts
 apis/AuthEndpointsApi.ts
+apis/BunnyWebhookEndpointsApi.ts
 apis/ClipsEndpointsApi.ts
 apis/DiscordUserEndpointsApi.ts
 apis/FFmpegEndpointsApi.ts
@@ -7,8 +9,11 @@ apis/LinksEndpointsApi.ts
 apis/NucleusApi.ts
 apis/index.ts
 docs/AddTagRequest.md
+docs/ApexDetectionEndpointsApi.md
 docs/AuthEndpointsApi.md
+docs/BackfillResult.md
 docs/BunnyVideo.md
+docs/BunnyWebhookEndpointsApi.md
 docs/Clip.md
 docs/ClipCategory.md
 docs/ClipsEndpointsApi.md
@@ -27,8 +32,11 @@ docs/PagedClipsResponse.md
 docs/TopTag.md
 docs/UpdateTitleRequest.md
 docs/UserFrequentLinkRow.md
+docs/VideoDetectionRequest.md
+docs/VideoProgressUpdate.md
 index.ts
 models/AddTagRequest.ts
+models/BackfillResult.ts
 models/BunnyVideo.ts
 models/Clip.ts
 models/ClipCategory.ts
@@ -43,5 +51,7 @@ models/PagedClipsResponse.ts
 models/TopTag.ts
 models/UpdateTitleRequest.ts
 models/UserFrequentLinkRow.ts
+models/VideoDetectionRequest.ts
+models/VideoProgressUpdate.ts
 models/index.ts
 runtime.ts

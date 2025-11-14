@@ -12,6 +12,9 @@ importers:
         specifier: workspace:*
         version: link:packages/nucleus-api-client
     devDependencies:
+      '@playwright/test':
+        specifier: ^1.56.1
+        version: 1.56.1
       '@types/node':
         specifier: 24.9.1
         version: 24.9.1

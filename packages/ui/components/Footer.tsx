@@ -6,7 +6,7 @@ export default function Footer() {
     <Group justify="center" align="center" h="100%">
       <ActionIcon
         component="a"
-        href="https://pluscosmic.dev"
+        href="https://home.pluscosmic.dev"
         target="_blank"
         rel="noopener noreferrer"
         variant="subtle"

@@ -115,6 +115,9 @@ pnpm e2e:ui
 ### Clips App
 Uses vitest but configuration is in `package.json`, not a separate config file.
 
+### Testing Visual/Frontend Changes
+**IMPORTANT**: When making visual or frontend changes in TypeScript applications (clips or home apps), always test the changes using the Playwright MCP server to verify functionality before completing the task. This ensures UI changes work correctly in a real browser environment.
+
 ## Architecture Notes
 
 ### Routing Differences

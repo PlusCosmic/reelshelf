@@ -25,3 +25,10 @@ packages/*/src/**/*.js
 
 # Compiled config files
 **/vite.config.js
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

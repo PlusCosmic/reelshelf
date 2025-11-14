@@ -8,44 +8,40 @@ import {
 } from "@repo/nucleus-api-client";
 import { apiConfig } from "../config/apiConfig";
 
-export async function fetchApexClips(
-  page: number,
-  pageSize: number,
-  tags?: string,
-  titleSearch?: string,
-): Promise<PagedClipsResponse | null> {
-  const api = new ClipsEndpointsApi(
-    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
-  );
-  return api.getVideosByCategory({
-    category: 0,
-    page: page,
-    pageSize: pageSize,
-    tags: tags,
-    titleSearch: titleSearch,
-  }).catch((error) => {
-    console.error('Failed to fetch apex clips:', { page, pageSize, tags, titleSearch, error });
-    return null;
-  });
+export interface FetchApexClipsParams {
+  page: number;
+  pageSize: number;
+  tags?: string;
+  titleSearch?: string;
+  unviewedOnly?: boolean;
+  sortOrder?: number;
+  startDate?: Date;
+  endDate?: Date;
 }
 
-export async function fetchUnviewedApexClips(
-  page: number,
-  pageSize: number,
-  tags?: string,
-  titleSearch?: string,
+export async function fetchApexClips(
+  params: FetchApexClipsParams
 ): Promise<PagedClipsResponse | null> {
+  const { page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate } = params;
   const api = new ClipsEndpointsApi(
     new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
   );
-  return api.getUnviewedVideosByCategory({
+
+  // Convert comma-separated tags string to array if needed
+  const tagsArray = tags ? tags.split(',').map(t => t.trim()) : undefined;
+
+  return api.getVideosByCategory({
     category: 0,
-    page: page,
-    pageSize: pageSize,
-    tags: tags,
-    titleSearch: titleSearch,
+    page,
+    pageSize,
+    tags: tagsArray,
+    titleSearch,
+    unviewedOnly,
+    sortOrder,
+    startDate,
+    endDate,
   }).catch((error) => {
-    console.error('Failed to fetch unviewed apex clips:', { page, pageSize, tags, titleSearch, error });
+    console.error('Failed to fetch apex clips:', { ...params, error });
     return null;
   });
 }
