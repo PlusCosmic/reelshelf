@@ -8,6 +8,7 @@ import { routeTree } from "./routeTree.gen";
 import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
 import "@mantine/notifications/styles.css";
+import '@mantine/dates/styles.css';
 import reportWebVitals from "./reportWebVitals.ts";
 
 // Create a new router instance
