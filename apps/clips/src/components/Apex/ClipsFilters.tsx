@@ -1,5 +1,5 @@
 import { Badge, Button, Card, Collapse, Group, Select, Stack, Switch, Text } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
+import { DateTimePicker } from "@mantine/dates";
 
 interface ClipsFiltersProps {
   filtersOpen: boolean;
@@ -69,13 +69,13 @@ export function ClipsFilters({
                   { value: '1', label: 'Oldest First' },
                 ]}
               />
-              <DatePickerInput
+              <DateTimePicker
                 placeholder="Start date"
                 clearable
                 value={startDate || null}
                 onChange={onStartDateChange}
               />
-              <DatePickerInput
+              <DateTimePicker
                 placeholder="End date"
                 clearable
                 value={endDate || null}

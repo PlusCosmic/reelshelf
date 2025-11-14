@@ -1,7 +1,7 @@
 import { Badge, Button, Group, Text } from '@mantine/core';
 import { IconAdjustments, IconChevronDown, IconChevronUp, IconHours24 } from '@tabler/icons-react';
-import { ApexIcon } from './ApexIcon';
 import { VideoUpload } from '../VideoUpload';
+import { ApexIcon } from './ApexIcon';
 
 interface ClipsHeaderProps {
   totalClips: number;

@@ -1,15 +1,15 @@
 import { useAtom } from 'jotai';
 import {
-  pageSizeAtom,
+  endDateAtom,
   pageAtom,
-  totalPagesAtom,
+  pageSizeAtom,
   searchQueryAtom,
   selectedTagsAtom,
   showUnviewedAtom,
   sortOrderAtom,
   startDateAtom,
-  endDateAtom,
   todayFilterActiveAtom,
+  totalPagesAtom,
 } from '../../atoms/apexFilters';
 
 export function useApexClipsFilters() {
