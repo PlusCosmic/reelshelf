@@ -1,8 +1,8 @@
 import { ScrollArea, Stack } from '@mantine/core';
-import type { Clip } from '@repo/nucleus-api-client';
 import { ClipCard } from './ClipCard';
 import { ClipCardSkeleton } from './ClipCardSkeleton';
 import { ClipsEmptyState } from './ClipsEmptyState';
+import type { Clip } from '@repo/nucleus-api-client';
 
 interface ClipsContentAreaProps {
   isLoading: boolean;
