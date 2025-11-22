@@ -16,11 +16,21 @@
 import * as runtime from '../runtime';
 import type {
   DiscordUser,
+  UpdatePreferencesRequest,
+  UserPreferences,
 } from '../models/index';
 import {
     DiscordUserFromJSON,
     DiscordUserToJSON,
+    UpdatePreferencesRequestFromJSON,
+    UpdatePreferencesRequestToJSON,
+    UserPreferencesFromJSON,
+    UserPreferencesToJSON,
 } from '../models/index';
+
+export interface MePreferencesPatchRequest {
+    updatePreferencesRequest: UpdatePreferencesRequest;
+}
 
 export interface UserUserIdGetRequest {
     userId: string;
@@ -55,6 +65,70 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
      */
     async meGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DiscordUser> {
         const response = await this.meGetRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async mePreferencesGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserPreferences>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/preferences`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => UserPreferencesFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async mePreferencesGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserPreferences> {
+        const response = await this.mePreferencesGetRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async mePreferencesPatchRaw(requestParameters: MePreferencesPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserPreferences>> {
+        if (requestParameters['updatePreferencesRequest'] == null) {
+            throw new runtime.RequiredError(
+                'updatePreferencesRequest',
+                'Required parameter "updatePreferencesRequest" was null or undefined when calling mePreferencesPatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/me/preferences`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdatePreferencesRequestToJSON(requestParameters['updatePreferencesRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => UserPreferencesFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async mePreferencesPatch(requestParameters: MePreferencesPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserPreferences> {
+        const response = await this.mePreferencesPatchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
