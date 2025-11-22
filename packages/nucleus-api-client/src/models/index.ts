@@ -1,11 +1,15 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AddClipToPlaylistRequest';
+export * from './AddCollaboratorRequest';
 export * from './AddTagRequest';
 export * from './BackfillResult';
 export * from './BunnyVideo';
 export * from './Clip';
+export * from './Clip2';
 export * from './ClipCategory';
 export * from './CreateClipResponse';
+export * from './CreatePlaylistRequest';
 export * from './CurrentMapRotation';
 export * from './DiscordUser';
 export * from './LinkRequest';
@@ -13,8 +17,17 @@ export * from './MapInfo';
 export * from './MetaTag';
 export * from './Moment';
 export * from './PagedClipsResponse';
+export * from './Playlist';
+export * from './PlaylistClip';
+export * from './PlaylistCollaborator';
+export * from './PlaylistSummary';
+export * from './PlaylistWithDetails';
+export * from './ReorderPlaylistClipsRequest';
 export * from './TopTag';
+export * from './UpdatePlaylistRequest';
+export * from './UpdatePreferencesRequest';
 export * from './UpdateTitleRequest';
 export * from './UserFrequentLinkRow';
+export * from './UserPreferences';
 export * from './VideoDetectionRequest';
 export * from './VideoProgressUpdate';
