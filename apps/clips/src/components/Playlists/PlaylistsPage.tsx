@@ -42,12 +42,15 @@ import { deletePlaylist, fetchPlaylists } from "@repo/shared";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { CreatePlaylistModal } from "./CreatePlaylistModal";
+import { PlaylistCollaboratorsModal } from "./PlaylistCollaboratorsModal";
+import type { PlaylistSummary } from "@repo/nucleus-api-client";
 
 export function PlaylistsPage() {
   const [activeTab, setActiveTab] = useState<string | null>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredPlaylist, setHoveredPlaylist] = useState<string | null>(null);
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
+  const [collaboratorsPlaylist, setCollaboratorsPlaylist] = useState<PlaylistSummary | null>(null);
   const navigate = useNavigate();
 
   // Fetch playlists
@@ -290,6 +293,10 @@ export function PlaylistsPage() {
                   onClick={() => handlePlaylistClick(playlist.id)}
                   onDelete={(e) => handleDeletePlaylist(playlist.id, playlist.name, e)}
                   onShare={(e) => handleSharePlaylist(playlist.id, e)}
+                  onManageCollaborators={(e) => {
+                    e.stopPropagation();
+                    setCollaboratorsPlaylist(playlist);
+                  }}
                   formatDate={formatDate}
                 />
               ))}
@@ -304,18 +311,30 @@ export function PlaylistsPage() {
         onClose={closeCreateModal}
         onSuccess={refetch}
       />
+
+      {/* Collaborators Modal */}
+      {collaboratorsPlaylist && (
+        <PlaylistCollaboratorsModal
+          opened={!!collaboratorsPlaylist}
+          onClose={() => setCollaboratorsPlaylist(null)}
+          playlistId={collaboratorsPlaylist.id}
+          playlistName={collaboratorsPlaylist.name}
+          creatorUserId={collaboratorsPlaylist.creatorUserId}
+        />
+      )}
     </div>
   );
 }
 
 type PlaylistCardProps = {
-  playlist: any; // PlaylistSummary type from API
+  playlist: PlaylistSummary;
   isHovered: boolean;
   onHover: () => void;
   onLeave: () => void;
   onClick: () => void;
   onDelete: (e: React.MouseEvent) => void;
   onShare: (e: React.MouseEvent) => void;
+  onManageCollaborators: (e: React.MouseEvent) => void;
   formatDate: (date: Date) => string;
 };
 
@@ -327,6 +346,7 @@ function PlaylistCard({
   onClick,
   onDelete,
   onShare,
+  onManageCollaborators,
   formatDate,
 }: PlaylistCardProps) {
   return (
@@ -431,6 +451,18 @@ function PlaylistCard({
               pointerEvents: isHovered ? "auto" : "none",
             }}
           >
+            <Tooltip label="Manage collaborators" position="left">
+              <ActionIcon
+                variant="light"
+                color="blue"
+                size="lg"
+                radius="md"
+                onClick={onManageCollaborators}
+              >
+                <IconUsers size={18} />
+              </ActionIcon>
+            </Tooltip>
+
             <Tooltip label="Share playlist" position="left">
               <ActionIcon
                 variant="light"
