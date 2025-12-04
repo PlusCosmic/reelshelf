@@ -8,5 +8,6 @@ export * from './ClipsEndpointsApi';
 export * from './DiscordUserEndpointsApi';
 export * from './FFmpegEndpointsApi';
 export * from './LinksEndpointsApi';
+export * from './MinecraftEndpointsApi';
 export * from './NucleusApi';
 export * from './PlaylistEndpointsApi';
