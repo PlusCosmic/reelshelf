@@ -57,6 +57,65 @@
         }
       }
     },
+    "/me/preferences": {
+      "get": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePreferencesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/apex-legends/map-rotation": {
       "get": {
         "tags": [
@@ -73,6 +132,40 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/apex-legends/assign-account": {
+      "post": {
+        "tags": [
+          "ApexEndpoints"
+        ],
+        "operationId": "AssignAccount",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
           }
         }
       }
@@ -773,10 +866,835 @@
           }
         }
       }
+    },
+    "/api/playlists": {
+      "post": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "CreatePlaylist",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlaylistRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "GetPlaylists",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlaylistSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/playlists/{id}": {
+      "get": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "GetPlaylistById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistWithDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "UpdatePlaylist",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlaylistRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "DeletePlaylist",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/playlists/{id}/clips": {
+      "post": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "AddClipsToPlaylist",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddClipToPlaylistRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistWithDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/playlists/{id}/clips/{clipId}": {
+      "delete": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "RemoveClipFromPlaylist",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/playlists/{id}/clips/reorder": {
+      "put": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "ReorderPlaylistClips",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderPlaylistClipsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistWithDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/playlists/{id}/collaborators": {
+      "post": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "AddCollaborator",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCollaboratorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlaylistCollaborator"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "GetCollaborators",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlaylistCollaborator"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/playlists/{id}/collaborators/{userId}": {
+      "delete": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "RemoveCollaborator",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/status": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetMinecraftStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/players": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetMinecraftPlayers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnlinePlayer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/console/command": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "SendMinecraftCommand",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RconCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RconResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/console/history": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetCommandHistory",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CommandLogEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/console/live": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "ConsoleWebSocket",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/minecraft/files": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "ListMinecraftFiles",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryListing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "DeleteMinecraftFile",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/files/content": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetMinecraftFileContent",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "SaveMinecraftFileContent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveFileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/files/mkdir": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "CreateMinecraftDirectory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDirectoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AddClipToPlaylistRequest": {
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid",
+            "default": null,
+            "nullable": true
+          },
+          "clip_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "default": null,
+            "nullable": true
+          }
+        }
+      },
+      "AddCollaboratorRequest": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "default": null,
+            "nullable": true
+          },
+          "username": {
+            "type": "string",
+            "default": null,
+            "nullable": true
+          }
+        }
+      },
       "AddTagRequest": {
         "required": [
           "tag"
@@ -954,6 +1872,62 @@
           }
         }
       },
+      "Clip2": {
+        "required": [
+          "clip_id",
+          "owner_id",
+          "video_id",
+          "category_enum",
+          "created_at",
+          "video",
+          "tags",
+          "is_viewed",
+          "detected_legend",
+          "detected_legend_card"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "video_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category_enum": {
+            "$ref": "#/components/schemas/ClipCategoryEnum"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "video": {
+            "$ref": "#/components/schemas/BunnyVideo"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_viewed": {
+            "type": "boolean"
+          },
+          "detected_legend": {
+            "$ref": "#/components/schemas/ApexLegend"
+          },
+          "detected_legend_card": {
+            "type": "string"
+          }
+        },
+        "default": null,
+        "nullable": true
+      },
       "ClipCategory": {
         "required": [
           "name",
@@ -975,6 +1949,46 @@
       },
       "ClipCategoryEnum": {
         "type": "integer"
+      },
+      "CommandLogEntry": {
+        "required": [
+          "id",
+          "user_id",
+          "command",
+          "response",
+          "success",
+          "error",
+          "executed_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "command": {
+            "type": "string"
+          },
+          "response": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "executed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "CreateClipResponse": {
         "required": [
@@ -1006,6 +2020,33 @@
           }
         }
       },
+      "CreateDirectoryRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "CreatePlaylistRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "default": null,
+            "nullable": true
+          }
+        }
+      },
       "CurrentMapRotation": {
         "required": [
           "standard_map",
@@ -1034,6 +2075,24 @@
           }
         }
       },
+      "DirectoryListing": {
+        "required": [
+          "current_path",
+          "entries"
+        ],
+        "type": "object",
+        "properties": {
+          "current_path": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileEntry"
+            }
+          }
+        }
+      },
       "DiscordUser": {
         "required": [
           "id",
@@ -1057,6 +2116,35 @@
           "avatar": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "FileEntry": {
+        "required": [
+          "name",
+          "path",
+          "is_directory",
+          "size",
+          "last_modified"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "is_directory": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "last_modified": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -1128,6 +2216,22 @@
           }
         }
       },
+      "OnlinePlayer": {
+        "required": [
+          "name",
+          "uuid"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "PagedClipsResponse": {
         "required": [
           "clips",
@@ -1152,6 +2256,309 @@
           }
         }
       },
+      "Playlist": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "creator_user_id",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "creator_user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PlaylistClip": {
+        "required": [
+          "id",
+          "clip_id",
+          "position",
+          "added_by_user_id",
+          "added_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "added_by_user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clip_details": {
+            "$ref": "#/components/schemas/Clip2"
+          }
+        }
+      },
+      "PlaylistCollaborator": {
+        "required": [
+          "user_id",
+          "username",
+          "avatar_url",
+          "added_at",
+          "added_by_user_id"
+        ],
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "added_by_user_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "PlaylistSummary": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "creator_user_id",
+          "created_at",
+          "updated_at",
+          "clip_count",
+          "collaborator_count"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "creator_user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clip_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "collaborator_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PlaylistWithDetails": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "creator_user_id",
+          "created_at",
+          "updated_at",
+          "collaborators",
+          "clips"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "creator_user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "collaborators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaylistCollaborator"
+            }
+          },
+          "clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaylistClip"
+            }
+          }
+        }
+      },
+      "RconCommand": {
+        "required": [
+          "command"
+        ],
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string"
+          }
+        }
+      },
+      "RconResponse": {
+        "required": [
+          "success",
+          "response",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "response": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ReorderPlaylistClipsRequest": {
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid",
+            "default": null,
+            "nullable": true
+          },
+          "new_position": {
+            "type": "integer",
+            "format": "int32",
+            "default": null,
+            "nullable": true
+          },
+          "clip_ordering": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "default": null,
+            "nullable": true
+          }
+        }
+      },
+      "SaveFileRequest": {
+        "required": [
+          "path",
+          "content"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ServerStatus": {
+        "required": [
+          "is_online",
+          "online_players",
+          "max_players",
+          "motd",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "is_online": {
+            "type": "boolean"
+          },
+          "online_players": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "max_players": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "motd": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "TopTag": {
         "required": [
           "name",
@@ -1165,6 +2572,32 @@
           "count": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "UpdatePlaylistRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "default": null,
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "default": null,
+            "nullable": true
+          }
+        }
+      },
+      "UpdatePreferencesRequest": {
+        "required": [
+          "discord_notifications_enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "discord_notifications_enabled": {
+            "type": "boolean"
           }
         }
       },
@@ -1199,6 +2632,14 @@
           "thumbnail_url": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "UserPreferences": {
+        "type": "object",
+        "properties": {
+          "discord_notifications_enabled": {
+            "type": "boolean"
           }
         }
       },
@@ -1253,6 +2694,9 @@
       "name": "Nucleus"
     },
     {
+      "name": "ApexEndpoints"
+    },
+    {
       "name": "AuthEndpoints"
     },
     {
@@ -1269,6 +2713,12 @@
     },
     {
       "name": "ApexDetectionEndpoints"
+    },
+    {
+      "name": "PlaylistEndpoints"
+    },
+    {
+      "name": "MinecraftEndpoints"
     }
   ]
 }
