@@ -1,5 +1,6 @@
 import { Badge, Button, Group, Text } from '@mantine/core';
-import { IconAdjustments, IconChevronDown, IconChevronUp, IconHours24 } from '@tabler/icons-react';
+import { IconAdjustments, IconChevronDown, IconChevronUp, IconHours24, IconPlaylist } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 import { VideoUpload } from '../VideoUpload';
 import { ApexIcon } from './ApexIcon';
 
@@ -35,6 +36,15 @@ export function ClipsHeader({
       </Group>
 
       <Group gap="xs">
+        <Button
+          component={Link}
+          to="/playlists"
+          variant="subtle"
+          leftSection={<IconPlaylist size={18} />}
+          radius="md"
+        >
+          Playlists
+        </Button>
         <Button
           variant={todayFilterActive ? "filled" : "light"}
           color="blue"
