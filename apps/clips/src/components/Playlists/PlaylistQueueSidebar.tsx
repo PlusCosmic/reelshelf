@@ -13,13 +13,16 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core";
-import { IconArrowLeft, IconPlayerPlay } from "@tabler/icons-react";
+import { IconArrowLeft, IconPlayerPlay, IconUsers } from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
 import { useNavigate } from "@tanstack/react-router";
 import { fetchPlaylistById, removeClipFromPlaylist } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
-import { useClip } from "../../hooks/queries";
+import { PlaylistCollaboratorsModal } from "./PlaylistCollaboratorsModal";
 import { PlaylistQueueCard } from "./PlaylistQueueCard";
+import { useClip } from "@/hooks/queries.ts";
 
 interface PlaylistQueueSidebarProps {
   playlistId: string;
@@ -35,6 +38,7 @@ export function PlaylistQueueSidebar({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [hoveredClipIndex, setHoveredClipIndex] = useState<number | null>(null);
+  const [collaboratorsOpened, { open: openCollaborators, close: closeCollaborators }] = useDisclosure(false);
 
   // Fetch playlist details
   const { data: playlist, isLoading: loadingPlaylist } = useQuery({
@@ -118,9 +122,21 @@ export function PlaylistQueueSidebar({
         {!loadingPlaylist && playlist && (
           <>
             <Stack gap="xs">
-              <Title order={4} lineClamp={1}>
-                {playlist.name}
-              </Title>
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Title order={4} lineClamp={1} style={{ flex: 1 }}>
+                  {playlist.name}
+                </Title>
+                <Tooltip label="Manage collaborators">
+                  <ActionIcon
+                    variant="subtle"
+                    size="sm"
+                    onClick={openCollaborators}
+                    aria-label="Manage collaborators"
+                  >
+                    <IconUsers size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
               {playlist.description && (
                 <Text c="dimmed" size="sm" lineClamp={2}>
                   {playlist.description}
@@ -219,6 +235,17 @@ export function PlaylistQueueSidebar({
           </Center>
         )}
       </Stack>
+
+      {/* Collaborators Modal */}
+      {playlist && (
+        <PlaylistCollaboratorsModal
+          opened={collaboratorsOpened}
+          onClose={closeCollaborators}
+          playlistId={playlistId}
+          playlistName={playlist.name}
+          creatorUserId={playlist.creatorUserId}
+        />
+      )}
     </Card>
   );
 }
