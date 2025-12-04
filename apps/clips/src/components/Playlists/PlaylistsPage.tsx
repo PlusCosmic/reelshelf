@@ -3,6 +3,7 @@
  * Route: /playlists
  *
  * Shows all playlists the user has access to (created or collaborating on)
+ * Design pattern follows ApexClip.tsx layout with glass-morphic cards
  */
 
 import { useState } from "react";
@@ -15,10 +16,10 @@ import {
   Button,
   Card,
   Center,
-  Container,
   Group,
   Image,
   Loader,
+  ScrollArea,
   Stack,
   Tabs,
   Text,
@@ -28,6 +29,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import {
+  IconArrowLeft,
   IconClock,
   IconPlus,
   IconSearch,
@@ -121,118 +123,180 @@ export function PlaylistsPage() {
   };
 
   return (
-    <Container size="xl" py="xl">
-      {/* Header */}
-      <Group justify="space-between" mb="xl">
-        <Stack gap="xs">
-          <Title order={1}>Playlists</Title>
-          <Text c="dimmed" size="sm">
-            Collaborative clip collections from your gaming sessions
+    <div style={{ height: "calc(100vh - 138px)", display: "flex", gap: "1rem" }}>
+      {/* Sidebar - Left Side */}
+      <Card
+        radius="xl"
+        p="md"
+        style={{
+          width: '320px',
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Stack gap="md" h="100%">
+          {/* Header */}
+          <Group justify="center" align="center" style={{ position: 'relative' }}>
+            <ActionIcon
+              variant="subtle"
+              size="lg"
+              onClick={() => navigate({ to: '/apex-legends' })}
+              aria-label="Back to clips"
+              style={{ position: 'absolute', left: 0 }}
+            >
+              <IconArrowLeft size={20} />
+            </ActionIcon>
+            <Title order={3} style={{ letterSpacing: '-0.3px' }}>Playlists</Title>
+          </Group>
+          <Text c="dimmed" size="sm" ta="center">
+            Collaborative clip collections
           </Text>
+
+          {/* Create Button */}
+          <Button
+            leftSection={<IconPlus size={18} />}
+            size="md"
+            variant="filled"
+            color="green"
+            onClick={openCreateModal}
+            radius="md"
+            fullWidth
+          >
+            Create Playlist
+          </Button>
+
+          {/* Search */}
+          <TextInput
+            placeholder="Search playlists..."
+            leftSection={<IconSearch size={16} />}
+            size="sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            styles={{
+              input: {
+                borderRadius: "8px",
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+              },
+            }}
+          />
+
+          {/* Tabs */}
+          <Tabs value={activeTab} onChange={setActiveTab} variant="pills">
+            <Tabs.List grow>
+              <Tabs.Tab value="all" leftSection={<IconVideo size={14} />} size="xs">
+                All
+              </Tabs.Tab>
+              <Tabs.Tab value="created" leftSection={<IconPlus size={14} />} size="xs">
+                Mine
+              </Tabs.Tab>
+              <Tabs.Tab value="shared" leftSection={<IconUsers size={14} />} size="xs">
+                Shared
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
+
+          {/* Stats */}
+          <Group gap="xs">
+            <Badge variant="light" color="green">
+              {filteredPlaylists.length} playlists
+            </Badge>
+          </Group>
         </Stack>
-        <Button
-          leftSection={<IconPlus size={18} />}
-          size="md"
-          variant="gradient"
-          gradient={{ from: "blue", to: "cyan", deg: 45 }}
-          onClick={openCreateModal}
-        >
-          Create Playlist
-        </Button>
-      </Group>
+      </Card>
 
-      {/* Search and Tabs */}
-      <Stack gap="md" mb="xl">
-        <TextInput
-          placeholder="Search playlists..."
-          leftSection={<IconSearch size={18} />}
-          size="md"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          styles={{
-            input: {
-              borderRadius: "12px",
-            },
-          }}
-        />
+      {/* Main Content - Right Side */}
+      <Card
+        radius="xl"
+        p="lg"
+        style={{
+          flex: 1,
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Loading State */}
+        {isLoading && (
+          <Center style={{ flex: 1 }}>
+            <Loader size="lg" />
+          </Center>
+        )}
 
-        <Tabs value={activeTab} onChange={setActiveTab}>
-          <Tabs.List>
-            <Tabs.Tab value="all" leftSection={<IconVideo size={16} />}>
-              All Playlists
-            </Tabs.Tab>
-            <Tabs.Tab value="created" leftSection={<IconPlus size={16} />}>
-              Created by Me
-            </Tabs.Tab>
-            <Tabs.Tab value="shared" leftSection={<IconUsers size={16} />}>
-              Shared with Me
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
-      </Stack>
-
-      {/* Loading State */}
-      {isLoading && (
-        <Center py="xl">
-          <Loader size="lg" />
-        </Center>
-      )}
-
-      {/* Playlists Grid */}
-      {!isLoading && filteredPlaylists.length > 0 && (
-        <Stack gap="md">
-          {filteredPlaylists.map((playlist) => (
-            <PlaylistCard
-              key={playlist.id}
-              playlist={playlist}
-              isHovered={hoveredPlaylist === playlist.id}
-              onHover={() => setHoveredPlaylist(playlist.id)}
-              onLeave={() => setHoveredPlaylist(null)}
-              onClick={() => handlePlaylistClick(playlist.id)}
-              onDelete={(e) => handleDeletePlaylist(playlist.id, playlist.name, e)}
-              onShare={(e) => handleSharePlaylist(playlist.id, e)}
-              formatDate={formatDate}
-            />
-          ))}
-        </Stack>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && filteredPlaylists.length === 0 && (
-        <Card
-          p="xl"
-          radius="lg"
-          style={{
-            border: "2px dashed rgba(255, 255, 255, 0.1)",
-            background: "rgba(255, 255, 255, 0.02)",
-          }}
-        >
-          <Stack align="center" gap="md" py="xl">
-            <IconVideo size={64} stroke={1} style={{ opacity: 0.3 }} />
-            <Stack gap="xs" align="center">
-              <Text size="lg" fw={600}>
-                {searchQuery ? "No playlists found" : "No playlists yet"}
-              </Text>
-              <Text size="sm" c="dimmed" ta="center" maw={400}>
-                {searchQuery
-                  ? "Try adjusting your search"
-                  : "Create your first playlist to start organizing clips from your gaming sessions"
-                }
-              </Text>
+        {/* Empty State */}
+        {!isLoading && filteredPlaylists.length === 0 && (
+          <Center style={{ flex: 1 }}>
+            <Stack align="center" gap="md">
+              <IconVideo size={64} stroke={1} style={{ opacity: 0.3 }} />
+              <Stack gap="xs" align="center">
+                <Text size="lg" fw={600}>
+                  {searchQuery ? "No playlists found" : "No playlists yet"}
+                </Text>
+                <Text size="sm" c="dimmed" ta="center" maw={400}>
+                  {searchQuery
+                    ? "Try adjusting your search"
+                    : "Create your first playlist to start organizing clips"
+                  }
+                </Text>
+              </Stack>
+              {!searchQuery && (
+                <Button
+                  leftSection={<IconPlus size={18} />}
+                  variant="light"
+                  size="md"
+                  onClick={openCreateModal}
+                >
+                  Create Your First Playlist
+                </Button>
+              )}
             </Stack>
-            {!searchQuery && (
-              <Button
-                leftSection={<IconPlus size={18} />}
-                variant="light"
-                size="md"
-                onClick={openCreateModal}
-              >
-                Create Your First Playlist
-              </Button>
-            )}
-          </Stack>
-        </Card>
-      )}
+          </Center>
+        )}
+
+        {/* Playlists Grid */}
+        {!isLoading && filteredPlaylists.length > 0 && (
+          <ScrollArea
+            h="100%"
+            type="scroll"
+            scrollbarSize={8}
+            styles={{
+              scrollbar: {
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                }
+              },
+              thumb: {
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                }
+              }
+            }}
+          >
+            <Stack gap="md">
+              {filteredPlaylists.map((playlist) => (
+                <PlaylistCard
+                  key={playlist.id}
+                  playlist={playlist}
+                  isHovered={hoveredPlaylist === playlist.id}
+                  onHover={() => setHoveredPlaylist(playlist.id)}
+                  onLeave={() => setHoveredPlaylist(null)}
+                  onClick={() => handlePlaylistClick(playlist.id)}
+                  onDelete={(e) => handleDeletePlaylist(playlist.id, playlist.name, e)}
+                  onShare={(e) => handleSharePlaylist(playlist.id, e)}
+                  formatDate={formatDate}
+                />
+              ))}
+            </Stack>
+          </ScrollArea>
+        )}
+      </Card>
 
       {/* Create Playlist Modal */}
       <CreatePlaylistModal
@@ -240,7 +304,7 @@ export function PlaylistsPage() {
         onClose={closeCreateModal}
         onSuccess={refetch}
       />
-    </Container>
+    </div>
   );
 }
 
@@ -289,9 +353,9 @@ function PlaylistCard({
           {/* Placeholder Thumbnail - would be first clip thumbnail in real implementation */}
           <Box pos="relative" style={{ flexShrink: 0 }}>
             <Image
-              src="https://placehold.co/320x180/1a1b1e/white?text=Playlist"
-              w={320}
-              h={180}
+              src="https://placehold.co/280x157/1a1b1e/white?text=Playlist"
+              w={280}
+              h={157}
               radius="md"
               style={{
                 transition: "transform 0.2s ease",
@@ -370,7 +434,7 @@ function PlaylistCard({
             <Tooltip label="Share playlist" position="left">
               <ActionIcon
                 variant="light"
-                color="blue"
+                color="green"
                 size="lg"
                 radius="md"
                 onClick={onShare}

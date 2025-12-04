@@ -242,8 +242,8 @@ export function CreatePlaylistModal({
             onClick={handleCreate}
             disabled={!isValid}
             loading={createMutation.isPending}
-            variant="gradient"
-            gradient={{ from: "blue", to: "cyan", deg: 45 }}
+            variant="filled"
+            color="green"
           >
             Create Playlist
           </Button>
