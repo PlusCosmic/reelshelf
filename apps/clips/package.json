@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --clearScreen false",
-    "build": "tsc && vite build",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\"",
     "preview": "vite preview"
   },
