@@ -53,3 +53,66 @@ export function withQuery(
   });
   return url.toString();
 }
+
+export async function postJson<T>(url: string, body?: unknown, init?: JsonInit): Promise<T> {
+  const controller = new AbortController();
+  const timeout = init?.timeoutMs ?? 15000;
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const res = await fetch(url, {
+      ...init,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...init?.headers,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new HttpError(res.status, res.statusText, url);
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+export async function putJson<T>(url: string, body?: unknown, init?: JsonInit): Promise<T> {
+  const controller = new AbortController();
+  const timeout = init?.timeoutMs ?? 15000;
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const res = await fetch(url, {
+      ...init,
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...init?.headers,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new HttpError(res.status, res.statusText, url);
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+export async function deleteRequest<T = void>(url: string, init?: JsonInit): Promise<T> {
+  const controller = new AbortController();
+  const timeout = init?.timeoutMs ?? 15000;
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const res = await fetch(url, {
+      ...init,
+      method: 'DELETE',
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new HttpError(res.status, res.statusText, url);
+    // Return empty object for void responses
+    const text = await res.text();
+    return (text ? JSON.parse(text) : {}) as T;
+  } finally {
+    clearTimeout(id);
+  }
+}

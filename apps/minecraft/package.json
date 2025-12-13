@@ -1,0 +1,43 @@
+{
+  "name": "minecraft",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --clearScreen false",
+    "build": "tsc && vite build",
+    "lint": "eslint \"src/**/*.ts\"",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mantine/core": "^8.3.6",
+    "@mantine/hooks": "^8.3.6",
+    "@mantine/modals": "^8.3.6",
+    "@mantine/notifications": "^8.3.6",
+    "@monaco-editor/react": "^4.7.0",
+    "@repo/shared": "workspace:*",
+    "@repo/ui": "workspace:*",
+    "@tabler/icons-react": "^3.35.0",
+    "@tanstack/react-query": "^5.90.7",
+    "@tanstack/react-query-devtools": "^5.90.2",
+    "@tanstack/react-router": "^1.134.4",
+    "@tanstack/react-router-devtools": "^1.134.4",
+    "@tanstack/router-plugin": "^1.134.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^24.9.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.0",
+    "postcss": "^8.5.6",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12",
+    "web-vitals": "^5.1.0"
+  }
+}

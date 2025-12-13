@@ -10,7 +10,9 @@
     "./services/categories": "./src/services/categories.ts",
     "./services/apexClips": "./src/services/apexClips.ts",
     "./services/ffmpeg": "./src/services/ffmpeg.ts",
+    "./services/minecraft": "./src/services/minecraft.ts",
     "./hooks/useDebouncedValue": "./src/hooks/useDebouncedValue.ts",
+    "./utils/format": "./src/utils/format.ts",
     "./theme": "./src/theme/index.ts",
     "./index": "./src/index.ts"
   },
