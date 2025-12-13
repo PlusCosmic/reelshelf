@@ -6,7 +6,7 @@ cmds = ["pnpm install --frozen-lockfile"]
 cacheDirectories = ["node_modules", ".pnpm-store"]
 
 [phases.build]
-cmds = ["pnpm --filter home build"]
+cmds = ["pnpm --filter $NIXPACKS_APP build"]
 
 [staticAssets]
-directory = "dist"
+directory = "apps/$NIXPACKS_APP/dist"
