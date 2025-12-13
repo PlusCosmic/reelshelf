@@ -1,4 +1,3 @@
-.openapi-generator-ignore
 apis/ApexDetectionEndpointsApi.ts
 apis/ApexEndpointsApi.ts
 apis/AuthEndpointsApi.ts
