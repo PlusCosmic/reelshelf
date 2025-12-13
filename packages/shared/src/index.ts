@@ -5,6 +5,20 @@ export { fetchMe, fetchUser } from "./services/user";
 export { fetchCategories } from "./services/categories";
 export { fetchApexClips, createVideoRequest, getVideo, addTagToVideo, removeTagFromVideo, getTopTags, updateVideoTitle, deleteVideo, markClipAsViewed, type FetchApexClipsParams } from "./services/apexClips";
 export { downloadVideo } from "./services/ffmpeg";
+export {
+  fetchPlaylists,
+  fetchPlaylistById,
+  createPlaylist,
+  updatePlaylist,
+  deletePlaylist,
+  addClipsToPlaylist,
+  removeClipFromPlaylist,
+  reorderPlaylistClips,
+  addCollaborator,
+  removeCollaborator,
+  fetchPlaylistCollaborators
+} from "./services/playlists";
+export { fetchUserPreferences, updateUserPreferences } from "./services/preferences";
 
 export * from "./services/http";
 

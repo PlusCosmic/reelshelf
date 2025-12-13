@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Box, Card, Stack } from "@mantine/core";
-import { useApexClips, useCurrentUser, useTopTags } from '../../hooks/queries';
-import { useApexClipsFilters } from '../../hooks/apex/useApexClipsFilters';
 import { ClipsHeader } from './ClipsHeader';
 import { ClipsSearchBar } from './ClipsSearchBar';
 import { ClipsFilters } from './ClipsFilters';
 import { ClipsContentArea } from './ClipsContentArea';
 import { ClipsPaginationControls } from './ClipsPaginationControls';
+import { useApexClipsFilters } from "@/hooks/apex/useApexClipsFilters.ts";
+import { useApexClips, useCurrentUser, useTopTags } from "@/hooks/queries.ts";
 
 export function ApexClips() {
   // UI state

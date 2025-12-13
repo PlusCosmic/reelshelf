@@ -26,6 +26,7 @@ import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
 import { useDeleteClip, useUserById } from "../../hooks/queries.ts";
 import { getProcessingStatusMessage, isClipProcessing } from "../../utils/format";
+import { AddToPlaylistButton } from "../Playlists/AddToPlaylistButton";
 import type { Clip } from "@repo/nucleus-api-client";
 
 type ClipCardProps = {
@@ -404,6 +405,9 @@ export function ClipCard({ clip }: ClipCardProps) {
                   <IconShare size={18} />
                 </ActionIcon>
               </Tooltip>
+
+              {/* Add to Playlist Button */}
+              <AddToPlaylistButton clipId={clip.clipId} />
 
               <Tooltip label="Edit clip" position="left">
                 <ActionIcon

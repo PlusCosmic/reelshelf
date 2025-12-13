@@ -11,8 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WarzoneRouteImport } from './routes/warzone'
 import { Route as SnowboardingRouteImport } from './routes/snowboarding'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as MockupsRouteImport } from './routes/mockups'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PlaylistsIndexRouteImport } from './routes/playlists/index'
 import { Route as ApexLegendsIndexRouteImport } from './routes/apex-legends/index'
+import { Route as PlaylistsPlaylistIdRouteImport } from './routes/playlists/$playlistId'
 import { Route as ApexLegendsClipIdRouteImport } from './routes/apex-legends/$clipId'
 
 const WarzoneRoute = WarzoneRouteImport.update({
@@ -25,14 +29,34 @@ const SnowboardingRoute = SnowboardingRouteImport.update({
   path: '/snowboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MockupsRoute = MockupsRouteImport.update({
+  id: '/mockups',
+  path: '/mockups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlaylistsIndexRoute = PlaylistsIndexRouteImport.update({
+  id: '/playlists/',
+  path: '/playlists/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApexLegendsIndexRoute = ApexLegendsIndexRouteImport.update({
   id: '/apex-legends/',
   path: '/apex-legends/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlaylistsPlaylistIdRoute = PlaylistsPlaylistIdRouteImport.update({
+  id: '/playlists/$playlistId',
+  path: '/playlists/$playlistId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApexLegendsClipIdRoute = ApexLegendsClipIdRouteImport.update({
@@ -43,56 +67,84 @@ const ApexLegendsClipIdRoute = ApexLegendsClipIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/mockups': typeof MockupsRoute
+  '/settings': typeof SettingsRoute
   '/snowboarding': typeof SnowboardingRoute
   '/warzone': typeof WarzoneRoute
   '/apex-legends/$clipId': typeof ApexLegendsClipIdRoute
+  '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/apex-legends': typeof ApexLegendsIndexRoute
+  '/playlists': typeof PlaylistsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/mockups': typeof MockupsRoute
+  '/settings': typeof SettingsRoute
   '/snowboarding': typeof SnowboardingRoute
   '/warzone': typeof WarzoneRoute
   '/apex-legends/$clipId': typeof ApexLegendsClipIdRoute
+  '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/apex-legends': typeof ApexLegendsIndexRoute
+  '/playlists': typeof PlaylistsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/mockups': typeof MockupsRoute
+  '/settings': typeof SettingsRoute
   '/snowboarding': typeof SnowboardingRoute
   '/warzone': typeof WarzoneRoute
   '/apex-legends/$clipId': typeof ApexLegendsClipIdRoute
+  '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/apex-legends/': typeof ApexLegendsIndexRoute
+  '/playlists/': typeof PlaylistsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/mockups'
+    | '/settings'
     | '/snowboarding'
     | '/warzone'
     | '/apex-legends/$clipId'
+    | '/playlists/$playlistId'
     | '/apex-legends'
+    | '/playlists'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/mockups'
+    | '/settings'
     | '/snowboarding'
     | '/warzone'
     | '/apex-legends/$clipId'
+    | '/playlists/$playlistId'
     | '/apex-legends'
+    | '/playlists'
   id:
     | '__root__'
     | '/'
+    | '/mockups'
+    | '/settings'
     | '/snowboarding'
     | '/warzone'
     | '/apex-legends/$clipId'
+    | '/playlists/$playlistId'
     | '/apex-legends/'
+    | '/playlists/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MockupsRoute: typeof MockupsRoute
+  SettingsRoute: typeof SettingsRoute
   SnowboardingRoute: typeof SnowboardingRoute
   WarzoneRoute: typeof WarzoneRoute
   ApexLegendsClipIdRoute: typeof ApexLegendsClipIdRoute
+  PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
   ApexLegendsIndexRoute: typeof ApexLegendsIndexRoute
+  PlaylistsIndexRoute: typeof PlaylistsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -111,6 +163,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SnowboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mockups': {
+      id: '/mockups'
+      path: '/mockups'
+      fullPath: '/mockups'
+      preLoaderRoute: typeof MockupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -118,11 +184,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/playlists/': {
+      id: '/playlists/'
+      path: '/playlists'
+      fullPath: '/playlists'
+      preLoaderRoute: typeof PlaylistsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/apex-legends/': {
       id: '/apex-legends/'
       path: '/apex-legends'
       fullPath: '/apex-legends'
       preLoaderRoute: typeof ApexLegendsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/playlists/$playlistId': {
+      id: '/playlists/$playlistId'
+      path: '/playlists/$playlistId'
+      fullPath: '/playlists/$playlistId'
+      preLoaderRoute: typeof PlaylistsPlaylistIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/apex-legends/$clipId': {
@@ -137,10 +217,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MockupsRoute: MockupsRoute,
+  SettingsRoute: SettingsRoute,
   SnowboardingRoute: SnowboardingRoute,
   WarzoneRoute: WarzoneRoute,
   ApexLegendsClipIdRoute: ApexLegendsClipIdRoute,
+  PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,
   ApexLegendsIndexRoute: ApexLegendsIndexRoute,
+  PlaylistsIndexRoute: PlaylistsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
