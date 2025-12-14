@@ -6,7 +6,8 @@ cmds = ["pnpm install --frozen-lockfile"]
 
 [phases.build]
 dependsOn = ["install"]
-cmds = ["pnpm --filter ${NIXPACKS_APP} build"]
+# Use turbo to build with proper dependency ordering (builds @repo/* packages first)
+cmds = ["pnpm turbo run build --filter=${NIXPACKS_APP}"]
 
 [staticAssets]
 directory = "apps/${NIXPACKS_APP}/dist"
