@@ -100,7 +100,8 @@ export function MonacoFileEditor({ filePath, fileName }: MonacoFileEditorProps) 
         p="xl"
         radius="md"
         style={{
-          height: '100%',
+          flex: 1,
+          minHeight: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -120,7 +121,8 @@ export function MonacoFileEditor({ filePath, fileName }: MonacoFileEditorProps) 
         p="xl"
         radius="md"
         style={{
-          height: '100%',
+          flex: 1,
+          minHeight: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -147,7 +149,8 @@ export function MonacoFileEditor({ filePath, fileName }: MonacoFileEditorProps) 
     <Paper
       radius="md"
       style={{
-        height: '100%',
+        flex: 1,
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: 'var(--mantine-color-dark-7)',
@@ -200,10 +203,10 @@ export function MonacoFileEditor({ filePath, fileName }: MonacoFileEditorProps) 
         </Group>
       </Group>
 
-      {/* Editor */}
+      {/* Editor - using calc height for reliable Monaco sizing */}
       <div style={{ flex: 1, minHeight: 0 }}>
         <Editor
-          height="100%"
+          height="calc(100vh - 340px)"
           language={language}
           value={editorContent}
           onChange={handleEditorChange}

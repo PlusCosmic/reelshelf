@@ -81,10 +81,27 @@ export async function listDirectory(path: string): Promise<DirectoryListing> {
  * Fetches the content of a file from the Minecraft server
  * @param path - The full path to the file
  * @returns The file content as a string
+ *
+ * Note: The API may return the content as either a raw string or wrapped
+ * in an object like {content: "..."}. This function normalizes both formats.
  */
 export async function getFileContent(path: string): Promise<string> {
   const api = createApi();
-  return api.getMinecraftFileContent({ path });
+  const response = await api.getMinecraftFileContent({ path });
+
+  // Handle case where API returns an object with content property
+  // instead of a bare string (server implementation may vary)
+  if (typeof response === "object" && response !== null && "content" in response) {
+    return (response as { content: string }).content;
+  }
+
+  // If it's already a string, return as-is
+  if (typeof response === "string") {
+    return response;
+  }
+
+  // Fallback: stringify unexpected types to avoid silent failures
+  return String(response ?? "");
 }
 
 /**
