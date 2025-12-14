@@ -161,7 +161,8 @@ export function ConsoleTerminal() {
       p="md"
       radius="md"
       style={{
-        height: 'calc(100vh - 180px)',
+        height: 'calc(100vh - 100px)',
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: 'var(--mantine-color-dark-8)',

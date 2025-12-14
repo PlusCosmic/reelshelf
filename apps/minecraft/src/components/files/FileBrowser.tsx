@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   Paper,
-  Grid,
+  Box,
   Group,
   Breadcrumbs,
   Anchor,
@@ -42,7 +42,8 @@ export function FileBrowser() {
     <Paper
       radius="md"
       style={{
-        height: 'calc(100vh - 180px)',
+        height: 'calc(100vh - 100px)',
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -84,16 +85,16 @@ export function FileBrowser() {
         </Breadcrumbs>
       </Group>
 
-      {/* Main Content */}
-      <Grid gutter={0} style={{ flex: 1, minHeight: 0 }}>
+      {/* Main Content - using flexbox instead of Grid for proper height inheritance */}
+      <Box style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* File Tree Panel */}
-        <Grid.Col
-          span={3}
+        <Box
           style={{
+            width: '25%',
             borderRight: '1px solid var(--mantine-color-dark-4)',
-            height: '100%',
             display: 'flex',
             flexDirection: 'column',
+            overflow: 'hidden',
           }}
         >
           <FileTree
@@ -102,16 +103,16 @@ export function FileBrowser() {
             onFileSelect={handleFileSelect}
             onPathChange={handlePathChange}
           />
-        </Grid.Col>
+        </Box>
 
         {/* Editor Panel */}
-        <Grid.Col span={9} style={{ height: '100%' }}>
+        <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <MonacoFileEditor
             filePath={selectedFilePath}
             fileName={selectedFileName}
           />
-        </Grid.Col>
-      </Grid>
+        </Box>
+      </Box>
     </Paper>
   );
 }

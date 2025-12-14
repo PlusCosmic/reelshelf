@@ -3,6 +3,7 @@ import { Link, useRouterState } from '@tanstack/react-router';
 import { AppShell as MantineAppShell, Group, Title, NavLink, Stack } from '@mantine/core';
 import { IconDashboard, IconTerminal, IconFolder } from '@tabler/icons-react';
 import { UserAvatar } from '@repo/ui';
+import { useCurrentUser, useLogout } from '../../hooks/queries';
 
 interface AppShellProps {
   children: ReactNode;
@@ -11,6 +12,8 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const router = useRouterState();
   const currentPath = router.location.pathname;
+  const { data: user, isLoading } = useCurrentUser();
+  const logoutMutation = useLogout();
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: IconDashboard },
@@ -21,7 +24,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <MantineAppShell
       withBorder={false}
-      padding="md"
+      padding="xs"
       header={{ height: 76 }}
       navbar={{ width: 250, breakpoint: 'sm' }}
       styles={{
@@ -42,7 +45,12 @@ export function AppShell({ children }: AppShellProps) {
           <Group gap="xs">
             <Title size="h3">Minecraft Server</Title>
           </Group>
-          <UserAvatar hideLogin={true} user={null} isLoading={false} onLogout={() => {}} />
+          <UserAvatar
+            hideLogin={true}
+            user={user}
+            isLoading={isLoading}
+            onLogout={() => logoutMutation.mutateAsync()}
+          />
         </Group>
       </MantineAppShell.Header>
 
