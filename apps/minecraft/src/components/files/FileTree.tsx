@@ -11,6 +11,8 @@ import {
   TextInput,
   Modal,
   Button,
+  Box,
+  ThemeIcon,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -24,6 +26,7 @@ import {
   IconFolderPlus,
   IconRefresh,
   IconAlertCircle,
+  IconFileCode,
 } from '@tabler/icons-react';
 import { useDirectoryListing, useDeleteFile, useCreateDirectory, isEditableFile } from '../../hooks/useFileOperations';
 import type { FileEntry } from '@repo/nucleus-api-client';
@@ -81,14 +84,16 @@ function FileTreeItem({
         style={{
           display: 'block',
           width: '100%',
-          padding: '4px 8px',
-          paddingLeft: `${8 + level * 16}px`,
-          borderRadius: 'var(--mantine-radius-sm)',
-          backgroundColor: isSelected
-            ? 'var(--mantine-color-dark-5)'
+          padding: '6px 10px',
+          paddingLeft: `${10 + level * 16}px`,
+          borderRadius: 8,
+          background: isSelected
+            ? 'linear-gradient(90deg, rgba(0, 212, 255, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%)'
             : 'transparent',
+          borderLeft: isSelected ? '2px solid #00d4ff' : '2px solid transparent',
           cursor: editable || isDirectory ? 'pointer' : 'default',
-          opacity: !isDirectory && !editable ? 0.5 : 1,
+          opacity: !isDirectory && !editable ? 0.4 : 1,
+          transition: 'all 0.15s ease',
         }}
         className="file-tree-item"
       >
@@ -97,24 +102,47 @@ function FileTreeItem({
             {isDirectory ? (
               <>
                 {isExpanded ? (
-                  <IconChevronDown size={14} style={{ flexShrink: 0 }} />
+                  <IconChevronDown size={14} style={{ flexShrink: 0, color: '#a855f7' }} />
                 ) : (
-                  <IconChevronRight size={14} style={{ flexShrink: 0 }} />
+                  <IconChevronRight size={14} style={{ flexShrink: 0, color: '#a855f7' }} />
                 )}
                 {isExpanded ? (
-                  <IconFolderOpen size={16} color="var(--mantine-color-blue-4)" style={{ flexShrink: 0 }} />
+                  <IconFolderOpen
+                    size={16}
+                    style={{
+                      flexShrink: 0,
+                      color: '#a855f7',
+                      filter: 'drop-shadow(0 0 4px rgba(168, 85, 247, 0.5))',
+                    }}
+                  />
                 ) : (
-                  <IconFolder size={16} color="var(--mantine-color-blue-4)" style={{ flexShrink: 0 }} />
+                  <IconFolder
+                    size={16}
+                    style={{
+                      flexShrink: 0,
+                      color: '#a855f7',
+                    }}
+                  />
                 )}
               </>
             ) : (
               <>
                 <span style={{ width: 14 }} />
-                <IconFile
-                  size={16}
-                  color={editable ? 'var(--mantine-color-gray-4)' : 'var(--mantine-color-gray-6)'}
-                  style={{ flexShrink: 0 }}
-                />
+                {editable ? (
+                  <IconFileCode
+                    size={16}
+                    style={{
+                      flexShrink: 0,
+                      color: isSelected ? '#00d4ff' : 'rgba(255, 255, 255, 0.6)',
+                      filter: isSelected ? 'drop-shadow(0 0 4px rgba(0, 212, 255, 0.5))' : 'none',
+                    }}
+                  />
+                ) : (
+                  <IconFile
+                    size={16}
+                    style={{ flexShrink: 0, color: 'rgba(255, 255, 255, 0.3)' }}
+                  />
+                )}
               </>
             )}
             <Text
@@ -123,7 +151,9 @@ function FileTreeItem({
               style={{
                 flex: 1,
                 minWidth: 0,
+                color: isSelected ? '#00d4ff' : 'inherit',
               }}
+              fw={isSelected ? 600 : 400}
             >
               {entry.name}
             </Text>
@@ -135,12 +165,19 @@ function FileTreeItem({
                 variant="subtle"
                 size="xs"
                 onClick={(e) => e.stopPropagation()}
-                style={{ opacity: 0.6 }}
+                style={{ opacity: 0.5 }}
+                color="gray"
               >
                 <IconDots size={14} />
               </ActionIcon>
             </Menu.Target>
-            <Menu.Dropdown>
+            <Menu.Dropdown
+              style={{
+                background: 'rgba(15, 15, 25, 0.95)',
+                border: '1px solid rgba(0, 212, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
+              }}
+            >
               <Menu.Item
                 color="red"
                 leftSection={<IconTrash size={14} />}
@@ -189,8 +226,8 @@ function DirectoryContents({
 
   if (isLoading) {
     return (
-      <Group gap="xs" pl={8 + level * 16} py={4}>
-        <Loader size="xs" />
+      <Group gap="xs" pl={10 + level * 16} py={6}>
+        <Loader size="xs" color="cyberBlue" />
         <Text size="xs" c="dimmed">Loading...</Text>
       </Group>
     );
@@ -198,8 +235,8 @@ function DirectoryContents({
 
   if (error) {
     return (
-      <Group gap="xs" pl={8 + level * 16} py={4}>
-        <IconAlertCircle size={14} color="var(--mantine-color-red-5)" />
+      <Group gap="xs" pl={10 + level * 16} py={6}>
+        <IconAlertCircle size={14} color="#ff4444" />
         <Text size="xs" c="red">Failed to load</Text>
       </Group>
     );
@@ -207,13 +244,12 @@ function DirectoryContents({
 
   if (!data?.entries?.length) {
     return (
-      <Text size="xs" c="dimmed" pl={8 + level * 16} py={4}>
+      <Text size="xs" c="dimmed" pl={10 + level * 16} py={6}>
         Empty directory
       </Text>
     );
   }
 
-  // Sort: directories first, then files, both alphabetically
   const sortedEntries = [...data.entries].sort((a, b) => {
     if (a.isDirectory !== b.isDirectory) {
       return a.isDirectory ? -1 : 1;
@@ -272,44 +308,75 @@ export function FileTree({
         justify="space-between"
         p="sm"
         style={{
-          borderBottom: '1px solid var(--mantine-color-dark-4)',
+          borderBottom: '1px solid rgba(168, 85, 247, 0.1)',
+          background: 'rgba(168, 85, 247, 0.03)',
         }}
       >
-        <Text size="sm" fw={600}>
+        <Text size="sm" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
           Files
         </Text>
         <Group gap={4}>
           <Tooltip label="New folder">
-            <ActionIcon variant="subtle" size="sm" onClick={openNewDirModal}>
-              <IconFolderPlus size={16} />
+            <ActionIcon
+              variant="light"
+              size="sm"
+              onClick={openNewDirModal}
+              color="cyberPurple"
+              style={{
+                background: 'rgba(168, 85, 247, 0.1)',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
+              }}
+            >
+              <IconFolderPlus size={14} />
             </ActionIcon>
           </Tooltip>
           <Tooltip label="Refresh">
-            <ActionIcon variant="subtle" size="sm" onClick={() => refetch()}>
-              <IconRefresh size={16} />
+            <ActionIcon
+              variant="light"
+              size="sm"
+              onClick={() => refetch()}
+              color="cyberBlue"
+              style={{
+                background: 'rgba(0, 212, 255, 0.1)',
+                border: '1px solid rgba(0, 212, 255, 0.2)',
+              }}
+            >
+              <IconRefresh size={14} />
             </ActionIcon>
           </Tooltip>
         </Group>
       </Group>
 
       {/* Tree */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+      <Box style={{ flex: 1, overflow: 'auto', padding: '8px 4px' }} className="cyber-scrollbar">
         {isLoading ? (
-          <Group justify="center" py="xl">
-            <Loader size="sm" />
-          </Group>
+          <Stack align="center" py="xl">
+            <Loader size="md" color="cyberBlue" />
+            <Text size="sm" c="dimmed">Loading files...</Text>
+          </Stack>
         ) : error ? (
           <Stack align="center" py="xl" gap="sm">
-            <IconAlertCircle size={32} color="var(--mantine-color-red-5)" />
+            <ThemeIcon size={48} radius="xl" color="red" variant="light">
+              <IconAlertCircle size={24} />
+            </ThemeIcon>
             <Text size="sm" c="red">Failed to load files</Text>
-            <Button size="xs" variant="light" onClick={() => refetch()}>
+            <Button
+              size="xs"
+              variant="light"
+              onClick={() => refetch()}
+              leftSection={<IconRefresh size={14} />}
+              color="cyberBlue"
+            >
               Retry
             </Button>
           </Stack>
         ) : !data?.entries?.length ? (
-          <Text size="sm" c="dimmed" ta="center" py="xl">
-            No files found
-          </Text>
+          <Stack align="center" py="xl" gap="sm">
+            <ThemeIcon size={48} radius="xl" color="gray" variant="light">
+              <IconFolder size={24} />
+            </ThemeIcon>
+            <Text size="sm" c="dimmed">No files found</Text>
+          </Stack>
         ) : (
           <Stack gap={0}>
             {[...data.entries]
@@ -330,7 +397,7 @@ export function FileTree({
               ))}
           </Stack>
         )}
-      </div>
+      </Box>
 
       {/* New Directory Modal */}
       <Modal
@@ -338,6 +405,16 @@ export function FileTree({
         onClose={closeNewDirModal}
         title="Create New Folder"
         size="sm"
+        styles={{
+          header: {
+            background: 'linear-gradient(90deg, rgba(168, 85, 247, 0.1) 0%, rgba(0, 212, 255, 0.1) 100%)',
+            borderBottom: '1px solid rgba(168, 85, 247, 0.2)',
+          },
+          content: {
+            background: 'rgba(15, 15, 25, 0.98)',
+            border: '1px solid rgba(168, 85, 247, 0.2)',
+          },
+        }}
       >
         <Stack gap="md">
           <TextInput
@@ -348,15 +425,23 @@ export function FileTree({
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleCreateDirectory();
             }}
+            styles={{
+              input: {
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
+              },
+            }}
           />
           <Group justify="flex-end" gap="sm">
-            <Button variant="subtle" onClick={closeNewDirModal}>
+            <Button variant="subtle" onClick={closeNewDirModal} color="gray">
               Cancel
             </Button>
             <Button
               onClick={handleCreateDirectory}
               loading={createDirMutation.isPending}
               disabled={!newDirName.trim()}
+              variant="gradient"
+              gradient={{ from: 'cyberPurple', to: 'cyberBlue', deg: 135 }}
             >
               Create
             </Button>
@@ -366,7 +451,7 @@ export function FileTree({
 
       <style>{`
         .file-tree-item:hover {
-          background-color: var(--mantine-color-dark-5) !important;
+          background: rgba(0, 212, 255, 0.05) !important;
         }
       `}</style>
     </Stack>

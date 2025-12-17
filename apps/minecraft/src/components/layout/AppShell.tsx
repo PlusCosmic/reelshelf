@@ -1,9 +1,27 @@
 import type { ReactNode } from 'react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AppShell as MantineAppShell, Group, Title, NavLink, Stack } from '@mantine/core';
-import { IconDashboard, IconTerminal, IconFolder } from '@tabler/icons-react';
+import {
+  AppShell as MantineAppShell,
+  Group,
+  Title,
+  Text,
+  NavLink,
+  Stack,
+  Box,
+  ThemeIcon,
+  Badge,
+  Tooltip,
+} from '@mantine/core';
+import {
+  IconDashboard,
+  IconTerminal2,
+  IconFolderCode,
+  IconServer2,
+  IconActivity,
+} from '@tabler/icons-react';
 import { UserAvatar } from '@repo/ui';
 import { useCurrentUser, useLogout } from '../../hooks/queries';
+import { useServerStatus } from '../../hooks/useServerStatus';
 
 interface AppShellProps {
   children: ReactNode;
@@ -14,67 +32,253 @@ export function AppShell({ children }: AppShellProps) {
   const currentPath = router.location.pathname;
   const { data: user, isLoading } = useCurrentUser();
   const logoutMutation = useLogout();
+  const { data: serverStatus } = useServerStatus();
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: IconDashboard },
-    { path: '/console', label: 'Console', icon: IconTerminal },
-    { path: '/files', label: 'Files', icon: IconFolder },
+    { path: '/', label: 'Dashboard', icon: IconDashboard, description: 'Server overview' },
+    { path: '/console', label: 'Console', icon: IconTerminal2, description: 'Terminal access' },
+    { path: '/files', label: 'Files', icon: IconFolderCode, description: 'File manager' },
   ];
 
   return (
     <MantineAppShell
       withBorder={false}
-      padding="xs"
-      header={{ height: 76 }}
-      navbar={{ width: 250, breakpoint: 'sm' }}
+      padding="md"
+      header={{ height: 70 }}
+      navbar={{ width: 260, breakpoint: 'sm' }}
+      className="cyber-background"
       styles={{
+        main: {
+          background: 'transparent',
+          minHeight: '100vh',
+        },
         header: {
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
-          backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'linear-gradient(90deg, rgba(0, 212, 255, 0.03) 0%, rgba(168, 85, 247, 0.05) 50%, rgba(0, 212, 255, 0.03) 100%)',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(0, 212, 255, 0.15)',
+          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3)',
         },
         navbar: {
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
-          backdropFilter: 'blur(10px)',
-          borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'linear-gradient(180deg, rgba(10, 10, 20, 0.95) 0%, rgba(15, 15, 30, 0.9) 100%)',
+          backdropFilter: 'blur(20px)',
+          borderRight: '1px solid rgba(0, 212, 255, 0.1)',
         },
       }}
     >
       <MantineAppShell.Header>
-        <Group m="md" gap="sm" justify="space-between">
-          <Group gap="xs">
-            <Title size="h3">Minecraft Server</Title>
+        <Group h="100%" px="lg" justify="space-between">
+          {/* Logo and Title */}
+          <Group gap="md">
+            <Box
+              style={{
+                position: 'relative',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ThemeIcon
+                size={44}
+                radius="md"
+                variant="gradient"
+                gradient={{ from: 'cyberBlue', to: 'cyberPurple', deg: 135 }}
+                style={{
+                  boxShadow: '0 0 20px rgba(0, 212, 255, 0.4)',
+                }}
+              >
+                <IconServer2 size={26} stroke={1.5} />
+              </ThemeIcon>
+            </Box>
+            <Stack gap={0}>
+              <Title
+                order={4}
+                style={{
+                  background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  fontWeight: 700,
+                }}
+              >
+                MINECRAFT SERVER
+              </Title>
+              <Group gap="xs">
+                <Box
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: serverStatus?.isOnline ? '#00ff88' : '#ff4444',
+                    boxShadow: serverStatus?.isOnline
+                      ? '0 0 8px rgba(0, 255, 136, 0.8)'
+                      : '0 0 8px rgba(255, 68, 68, 0.8)',
+                  }}
+                />
+                <Text size="xs" c="dimmed" fw={500}>
+                  {serverStatus?.isOnline ? 'Online' : 'Offline'}
+                </Text>
+              </Group>
+            </Stack>
           </Group>
-          <UserAvatar
-            hideLogin={true}
-            user={user}
-            isLoading={isLoading}
-            onLogout={() => logoutMutation.mutateAsync()}
-          />
+
+          {/* Right side - Status and User */}
+          <Group gap="lg">
+            <Tooltip label="Server activity">
+              <Badge
+                variant="dot"
+                color={serverStatus?.isOnline ? 'green' : 'red'}
+                size="lg"
+                style={{
+                  cursor: 'default',
+                  background: 'rgba(0, 212, 255, 0.1)',
+                  border: '1px solid rgba(0, 212, 255, 0.2)',
+                }}
+              >
+                <Group gap={6}>
+                  <IconActivity size={14} />
+                  <Text size="xs" fw={600}>
+                    {serverStatus?.onlinePlayers ?? 0} / {serverStatus?.maxPlayers ?? 0}
+                  </Text>
+                </Group>
+              </Badge>
+            </Tooltip>
+            <UserAvatar
+              hideLogin={true}
+              user={user}
+              isLoading={isLoading}
+              onLogout={() => logoutMutation.mutateAsync()}
+            />
+          </Group>
         </Group>
       </MantineAppShell.Header>
 
       <MantineAppShell.Navbar p="md">
-        <Stack gap="xs">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              style={{ textDecoration: 'none' }}
-            >
-              <NavLink
-                label={item.label}
-                leftSection={<item.icon size={20} />}
-                active={currentPath === item.path}
-                styles={{
-                  root: {
-                    borderRadius: '8px',
-                  },
-                }}
-              />
-            </Link>
-          ))}
+        <Stack gap="xs" mt="xs">
+          {/* Navigation Label */}
+          <Text
+            size="xs"
+            fw={600}
+            c="dimmed"
+            tt="uppercase"
+            pl="sm"
+            mb="xs"
+            style={{ letterSpacing: '0.1em' }}
+          >
+            Navigation
+          </Text>
+
+          {/* Nav Items */}
+          {navItems.map((item) => {
+            const isActive = currentPath === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                style={{ textDecoration: 'none' }}
+              >
+                <NavLink
+                  label={
+                    <Text size="sm" fw={isActive ? 600 : 500}>
+                      {item.label}
+                    </Text>
+                  }
+                  description={
+                    <Text size="xs" c="dimmed">
+                      {item.description}
+                    </Text>
+                  }
+                  leftSection={
+                    <ThemeIcon
+                      size="lg"
+                      radius="md"
+                      variant={isActive ? 'gradient' : 'light'}
+                      gradient={isActive ? { from: 'cyberBlue', to: 'cyberPurple', deg: 135 } : undefined}
+                      color={isActive ? undefined : 'cyberBlue'}
+                      style={
+                        isActive
+                          ? { boxShadow: '0 0 15px rgba(0, 212, 255, 0.4)' }
+                          : {}
+                      }
+                    >
+                      <item.icon
+                        size={18}
+                        style={
+                          isActive
+                            ? { filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.5))' }
+                            : {}
+                        }
+                      />
+                    </ThemeIcon>
+                  }
+                  active={isActive}
+                  variant={isActive ? 'filled' : 'subtle'}
+                  styles={{
+                    root: {
+                      borderRadius: 10,
+                      padding: '12px',
+                      background: isActive
+                        ? 'linear-gradient(90deg, rgba(0, 212, 255, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%)'
+                        : 'transparent',
+                      borderLeft: isActive
+                        ? '3px solid #00d4ff'
+                        : '3px solid transparent',
+                      boxShadow: isActive
+                        ? 'inset 0 0 30px rgba(0, 212, 255, 0.05)'
+                        : 'none',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        background: isActive
+                          ? undefined
+                          : 'rgba(0, 212, 255, 0.05)',
+                      },
+                    },
+                    label: {
+                      color: isActive ? '#00d4ff' : 'inherit',
+                    },
+                  }}
+                />
+              </Link>
+            );
+          })}
         </Stack>
+
+        {/* Bottom Section - Server Info */}
+        <Box mt="auto" pt="xl">
+          <Box
+            p="md"
+            style={{
+              background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(168, 85, 247, 0.08) 100%)',
+              borderRadius: 12,
+              border: '1px solid rgba(0, 212, 255, 0.1)',
+            }}
+          >
+            <Stack gap="xs">
+              <Group justify="space-between">
+                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                  Version
+                </Text>
+                <Badge
+                  size="sm"
+                  variant="light"
+                  color="cyberPurple"
+                >
+                  {serverStatus?.version || 'Unknown'}
+                </Badge>
+              </Group>
+              {serverStatus?.motd && (
+                <Text
+                  size="xs"
+                  c="dimmed"
+                  lineClamp={2}
+                  style={{ fontStyle: 'italic' }}
+                >
+                  "{serverStatus.motd}"
+                </Text>
+              )}
+            </Stack>
+          </Box>
+        </Box>
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main>{children}</MantineAppShell.Main>

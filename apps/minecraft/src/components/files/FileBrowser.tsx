@@ -1,16 +1,18 @@
 import { useState, useCallback } from 'react';
 import {
-  Paper,
   Box,
   Group,
   Breadcrumbs,
   Anchor,
   ActionIcon,
   Tooltip,
+  Text,
+  ThemeIcon,
 } from '@mantine/core';
 import {
   IconHome,
   IconChevronRight,
+  IconFolderCode,
 } from '@tabler/icons-react';
 import { FileTree } from './FileTree';
 import { MonacoFileEditor } from './MonacoFileEditor';
@@ -39,62 +41,102 @@ export function FileBrowser() {
     });
 
   return (
-    <Paper
-      radius="md"
+    <Box
       style={{
         height: 'calc(100vh - 100px)',
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        backgroundColor: 'var(--mantine-color-dark-8)',
+        background: 'linear-gradient(135deg, rgba(10, 10, 18, 0.95) 0%, rgba(15, 15, 28, 0.9) 100%)',
+        borderRadius: 14,
+        border: '1px solid rgba(168, 85, 247, 0.15)',
+        position: 'relative',
       }}
     >
-      {/* Breadcrumb Header */}
-      <Group
-        p="sm"
+      {/* Top gradient accent */}
+      <Box
         style={{
-          borderBottom: '1px solid var(--mantine-color-dark-4)',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 2,
+          background: 'linear-gradient(90deg, #a855f7 0%, #ec4899 50%, #00d4ff 100%)',
+        }}
+      />
+
+      {/* Breadcrumb Header */}
+      <Box
+        p="md"
+        style={{
+          background: 'linear-gradient(90deg, rgba(168, 85, 247, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%)',
+          borderBottom: '1px solid rgba(168, 85, 247, 0.1)',
         }}
       >
-        <Breadcrumbs
-          separator={<IconChevronRight size={14} />}
-          separatorMargin={4}
-        >
-          <Tooltip label="Root directory">
-            <ActionIcon
-              variant={currentPath === '/' ? 'filled' : 'subtle'}
-              size="sm"
-              onClick={() => setCurrentPath('/')}
+        <Group gap="md">
+          <ThemeIcon
+            size={40}
+            radius="md"
+            variant="gradient"
+            gradient={{ from: 'cyberPurple', to: 'cyberPink', deg: 135 }}
+            style={{ boxShadow: '0 0 15px rgba(168, 85, 247, 0.3)' }}
+          >
+            <IconFolderCode size={22} />
+          </ThemeIcon>
+          <Box flex={1}>
+            <Text fw={700} size="lg" mb={4}>File Manager</Text>
+            <Breadcrumbs
+              separator={<IconChevronRight size={14} style={{ color: 'rgba(255,255,255,0.3)' }} />}
+              separatorMargin={4}
             >
-              <IconHome size={16} />
-            </ActionIcon>
-          </Tooltip>
-          {breadcrumbItems.map((item, index) => (
-            <Anchor
-              key={item.path}
-              size="sm"
-              onClick={() => setCurrentPath(item.path)}
-              style={{ cursor: 'pointer' }}
-              c={index === breadcrumbItems.length - 1 ? undefined : 'dimmed'}
-              fw={index === breadcrumbItems.length - 1 ? 500 : undefined}
-            >
-              {item.label}
-            </Anchor>
-          ))}
-        </Breadcrumbs>
-      </Group>
+              <Tooltip label="Root directory">
+                <ActionIcon
+                  variant={currentPath === '/' ? 'gradient' : 'subtle'}
+                  gradient={{ from: 'cyberBlue', to: 'cyberPurple', deg: 135 }}
+                  size="sm"
+                  onClick={() => setCurrentPath('/')}
+                  style={{
+                    boxShadow: currentPath === '/' ? '0 0 10px rgba(0, 212, 255, 0.3)' : 'none',
+                  }}
+                >
+                  <IconHome size={14} />
+                </ActionIcon>
+              </Tooltip>
+              {breadcrumbItems.map((item, index) => (
+                <Anchor
+                  key={item.path}
+                  size="sm"
+                  onClick={() => setCurrentPath(item.path)}
+                  style={{
+                    cursor: 'pointer',
+                    color: index === breadcrumbItems.length - 1 ? '#00d4ff' : 'rgba(255,255,255,0.5)',
+                    textDecoration: 'none',
+                    transition: 'color 0.2s ease',
+                  }}
+                  fw={index === breadcrumbItems.length - 1 ? 600 : undefined}
+                >
+                  {item.label}
+                </Anchor>
+              ))}
+            </Breadcrumbs>
+          </Box>
+        </Group>
+      </Box>
 
-      {/* Main Content - using flexbox instead of Grid for proper height inheritance */}
+      {/* Main Content */}
       <Box style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* File Tree Panel */}
         <Box
           style={{
-            width: '25%',
-            borderRight: '1px solid var(--mantine-color-dark-4)',
+            width: '28%',
+            minWidth: 220,
+            maxWidth: 350,
+            borderRight: '1px solid rgba(168, 85, 247, 0.1)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            background: 'rgba(0, 0, 0, 0.2)',
           }}
         >
           <FileTree
@@ -113,6 +155,6 @@ export function FileBrowser() {
           />
         </Box>
       </Box>
-    </Paper>
+    </Box>
   );
 }
