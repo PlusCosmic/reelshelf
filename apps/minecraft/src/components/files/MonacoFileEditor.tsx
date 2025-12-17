@@ -1,22 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
 import {
-  Paper,
+  Box,
   Group,
   Text,
   Button,
   Badge,
   Loader,
-  Center,
   Stack,
   ActionIcon,
   Tooltip,
+  ThemeIcon,
 } from '@mantine/core';
 import {
   IconDeviceFloppy,
-  IconFile,
+  IconFileCode,
   IconRefresh,
   IconAlertCircle,
+  IconCode,
 } from '@tabler/icons-react';
 import { useFileContent, useSaveFile, getLanguageFromExtension, getFileExtension } from '../../hooks/useFileOperations';
 
@@ -64,129 +65,196 @@ export function MonacoFileEditor({ filePath, fileName }: MonacoFileEditorProps) 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       handleSave();
     });
+
+    // Custom theme
+    monaco.editor.defineTheme('cyberpunk', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '6b7280', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'a855f7' },
+        { token: 'string', foreground: '00ff88' },
+        { token: 'number', foreground: 'ec4899' },
+        { token: 'type', foreground: '00d4ff' },
+        { token: 'function', foreground: 'fbbf24' },
+        { token: 'variable', foreground: 'f8fafc' },
+      ],
+      colors: {
+        'editor.background': '#0a0a0f',
+        'editor.foreground': '#f8fafc',
+        'editor.lineHighlightBackground': '#0d1117',
+        'editor.selectionBackground': '#00d4ff30',
+        'editor.inactiveSelectionBackground': '#00d4ff20',
+        'editorCursor.foreground': '#00d4ff',
+        'editorLineNumber.foreground': '#4b5563',
+        'editorLineNumber.activeForeground': '#00d4ff',
+        'editor.selectionHighlightBackground': '#a855f720',
+        'editorIndentGuide.background1': '#1f2937',
+        'editorIndentGuide.activeBackground1': '#374151',
+      },
+    });
+    monaco.editor.setTheme('cyberpunk');
   }, [handleSave]);
 
   const language = fileName ? getLanguageFromExtension(getFileExtension(fileName)) : 'plaintext';
 
   if (!filePath || !fileName) {
     return (
-      <Paper
-        p="xl"
-        radius="md"
+      <Box
         style={{
           height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--mantine-color-dark-7)',
+          background: 'transparent',
         }}
       >
-        <Stack align="center" gap="md">
-          <IconFile size={48} color="var(--mantine-color-dimmed)" />
-          <Text c="dimmed" size="lg">
-            Select a file to edit
-          </Text>
-          <Text c="dimmed" size="sm">
-            Click on a file in the tree to view and edit it
-          </Text>
+        <Stack align="center" gap="lg">
+          <ThemeIcon
+            size={80}
+            radius="xl"
+            variant="light"
+            color="gray"
+            style={{
+              background: 'rgba(0, 212, 255, 0.05)',
+              border: '1px solid rgba(0, 212, 255, 0.1)',
+            }}
+          >
+            <IconCode size={40} style={{ color: 'rgba(255, 255, 255, 0.3)' }} />
+          </ThemeIcon>
+          <Stack align="center" gap={4}>
+            <Text c="dimmed" size="lg" fw={500}>
+              Select a file to edit
+            </Text>
+            <Text c="dimmed" size="sm">
+              Click on a file in the tree to view and edit it
+            </Text>
+          </Stack>
         </Stack>
-      </Paper>
+      </Box>
     );
   }
 
   if (isLoading) {
     return (
-      <Paper
-        p="xl"
-        radius="md"
+      <Box
         style={{
           flex: 1,
-          minHeight: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--mantine-color-dark-7)',
         }}
       >
-        <Center>
-          <Loader size="lg" />
-        </Center>
-      </Paper>
+        <Stack align="center" gap="md">
+          <Loader size="lg" color="cyberBlue" />
+          <Text c="dimmed" size="sm">Loading file...</Text>
+        </Stack>
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <Paper
-        p="xl"
-        radius="md"
+      <Box
         style={{
           flex: 1,
-          minHeight: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--mantine-color-dark-7)',
         }}
       >
         <Stack align="center" gap="md">
-          <IconAlertCircle size={48} color="var(--mantine-color-red-5)" />
-          <Text c="red" size="lg">
+          <ThemeIcon size={60} radius="xl" color="red" variant="light">
+            <IconAlertCircle size={32} />
+          </ThemeIcon>
+          <Text c="red" size="lg" fw={500}>
             Failed to load file
           </Text>
           <Text c="dimmed" size="sm">
             {error instanceof Error ? error.message : 'Unknown error'}
           </Text>
-          <Button variant="light" onClick={() => refetch()} leftSection={<IconRefresh size={16} />}>
+          <Button
+            variant="light"
+            onClick={() => refetch()}
+            leftSection={<IconRefresh size={16} />}
+            color="cyberBlue"
+          >
             Retry
           </Button>
         </Stack>
-      </Paper>
+      </Box>
     );
   }
 
   return (
-    <Paper
-      radius="md"
+    <Box
       style={{
         flex: 1,
         minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: 'var(--mantine-color-dark-7)',
         overflow: 'hidden',
       }}
     >
       {/* Header */}
       <Group
         justify="space-between"
-        p="sm"
+        px="md"
+        py="sm"
         style={{
-          borderBottom: '1px solid var(--mantine-color-dark-4)',
-          backgroundColor: 'var(--mantine-color-dark-8)',
+          borderBottom: '1px solid rgba(0, 212, 255, 0.1)',
+          background: 'linear-gradient(90deg, rgba(0, 212, 255, 0.03) 0%, rgba(168, 85, 247, 0.03) 100%)',
         }}
       >
         <Group gap="sm">
-          <IconFile size={18} />
-          <Text fw={500} size="sm">
+          <IconFileCode
+            size={18}
+            style={{
+              color: '#00d4ff',
+              filter: 'drop-shadow(0 0 4px rgba(0, 212, 255, 0.5))',
+            }}
+          />
+          <Text fw={600} size="sm" style={{ color: '#f8fafc' }}>
             {fileName}
           </Text>
           {hasChanges && (
-            <Badge color="yellow" size="xs" variant="filled">
+            <Badge
+              size="sm"
+              variant="light"
+              color="yellow"
+              style={{
+                background: 'rgba(251, 191, 36, 0.15)',
+                border: '1px solid rgba(251, 191, 36, 0.3)',
+              }}
+            >
               Unsaved
             </Badge>
           )}
-          <Badge color="gray" size="xs" variant="outline">
+          <Badge
+            size="sm"
+            variant="light"
+            color="cyberPurple"
+            style={{
+              background: 'rgba(168, 85, 247, 0.1)',
+              border: '1px solid rgba(168, 85, 247, 0.2)',
+            }}
+          >
             {language}
           </Badge>
         </Group>
         <Group gap="xs">
           <Tooltip label="Refresh (discard changes)">
             <ActionIcon
-              variant="subtle"
-              size="sm"
+              variant="light"
+              size="md"
+              radius="md"
               onClick={() => refetch()}
               disabled={saveMutation.isPending}
+              color="gray"
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
             >
               <IconRefresh size={16} />
             </ActionIcon>
@@ -197,16 +265,21 @@ export function MonacoFileEditor({ filePath, fileName }: MonacoFileEditorProps) 
             onClick={handleSave}
             loading={saveMutation.isPending}
             disabled={!hasChanges}
+            variant="gradient"
+            gradient={{ from: 'cyberBlue', to: 'cyberPurple', deg: 135 }}
+            style={{
+              boxShadow: hasChanges ? '0 0 15px rgba(0, 212, 255, 0.3)' : 'none',
+            }}
           >
             Save
           </Button>
         </Group>
       </Group>
 
-      {/* Editor - using calc height for reliable Monaco sizing */}
+      {/* Editor */}
       <div style={{ flex: 1, minHeight: 0 }}>
         <Editor
-          height="calc(100vh - 340px)"
+          height="100%"
           language={language}
           value={editorContent}
           onChange={handleEditorChange}
@@ -219,17 +292,22 @@ export function MonacoFileEditor({ filePath, fileName }: MonacoFileEditorProps) 
             wordWrap: 'on',
             scrollBeyondLastLine: false,
             automaticLayout: true,
-            padding: { top: 8, bottom: 8 },
+            padding: { top: 12, bottom: 12 },
             lineNumbers: 'on',
             renderLineHighlight: 'line',
             cursorBlinking: 'smooth',
             smoothScrolling: true,
             tabSize: 2,
+            bracketPairColorization: { enabled: true },
+            guides: {
+              bracketPairs: true,
+              indentation: true,
+            },
           }}
           loading={
-            <Center h="100%">
-              <Loader />
-            </Center>
+            <Stack align="center" justify="center" h="100%">
+              <Loader color="cyberBlue" />
+            </Stack>
           }
         />
       </div>
@@ -237,20 +315,20 @@ export function MonacoFileEditor({ filePath, fileName }: MonacoFileEditorProps) 
       {/* Footer */}
       <Group
         justify="space-between"
-        px="sm"
-        py={4}
+        px="md"
+        py={6}
         style={{
-          borderTop: '1px solid var(--mantine-color-dark-4)',
-          backgroundColor: 'var(--mantine-color-dark-8)',
+          borderTop: '1px solid rgba(0, 212, 255, 0.1)',
+          background: 'rgba(0, 0, 0, 0.2)',
         }}
       >
-        <Text size="xs" c="dimmed">
+        <Text size="xs" c="dimmed" ff="monospace">
           {filePath}
         </Text>
         <Text size="xs" c="dimmed">
-          Press Ctrl+S to save
+          Ctrl+S to save
         </Text>
       </Group>
-    </Paper>
+    </Box>
   );
 }

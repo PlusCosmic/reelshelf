@@ -1,5 +1,5 @@
 import {
-  Paper,
+  Box,
   Text,
   Stack,
   TextInput,
@@ -9,15 +9,16 @@ import {
   Badge,
   ActionIcon,
   Tooltip,
-  Box,
+  ThemeIcon,
 } from '@mantine/core';
 import {
-  IconTerminal,
+  IconTerminal2,
   IconSend,
   IconTrash,
   IconRefresh,
   IconWifi,
   IconWifiOff,
+  IconChevronRight,
 } from '@tabler/icons-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMinecraftConsole, type ConsoleEntry } from '../../hooks/useMinecraftConsole';
@@ -54,10 +55,8 @@ export function ConsoleTerminal() {
     if (!trimmedCommand) return;
 
     if (sendCommand(trimmedCommand)) {
-      // Add to command history
       setCommandHistory(prev => {
         const newHistory = [...prev.filter(c => c !== trimmedCommand), trimmedCommand];
-        // Keep last 100 commands
         return newHistory.slice(-100);
       });
       setCommand('');
@@ -92,20 +91,20 @@ export function ConsoleTerminal() {
   const getEntryStyle = (entry: ConsoleEntry) => {
     switch (entry.type) {
       case 'command':
-        return { color: 'var(--mantine-color-blue-4)', fontWeight: 600 };
+        return { color: '#00d4ff', fontWeight: 600 };
       case 'response':
-        return { color: 'var(--mantine-color-green-4)' };
+        return { color: '#00ff88' };
       case 'error':
-        return { color: 'var(--mantine-color-red-4)' };
+        return { color: '#ff4444' };
       case 'system':
-        return { color: 'var(--mantine-color-yellow-4)', fontStyle: 'italic' as const };
+        return { color: '#fbbf24', fontStyle: 'italic' as const };
       case 'log':
-        if (entry.level === 'warning') return { color: 'var(--mantine-color-orange-4)' };
-        if (entry.level === 'error') return { color: 'var(--mantine-color-red-4)' };
-        if (entry.level === 'debug') return { color: 'var(--mantine-color-gray-5)' };
-        return { color: 'var(--mantine-color-gray-3)' };
+        if (entry.level === 'warning') return { color: '#f97316' };
+        if (entry.level === 'error') return { color: '#ff4444' };
+        if (entry.level === 'debug') return { color: '#6b7280' };
+        return { color: '#a0a0a0' };
       default:
-        return { color: 'var(--mantine-color-gray-3)' };
+        return { color: '#a0a0a0' };
     }
   };
 
@@ -123,12 +122,13 @@ export function ConsoleTerminal() {
 
     if (entry.type === 'command') {
       return (
-        <Group key={entry.id} gap={4} wrap="nowrap" align="flex-start">
-          <Text size="xs" c="dimmed" ff="monospace" style={{ flexShrink: 0 }}>
+        <Group key={entry.id} gap={8} wrap="nowrap" align="flex-start">
+          <Text size="xs" c="dimmed" ff="monospace" style={{ flexShrink: 0, opacity: 0.6 }}>
             [{timestamp}]
           </Text>
-          <Text size="sm" ff="monospace" style={style}>
-            {'>'} {entry.text}
+          <IconChevronRight size={14} style={{ color: '#00d4ff', flexShrink: 0, marginTop: 2 }} />
+          <Text size="sm" ff="monospace" style={{ ...style, textShadow: '0 0 10px rgba(0, 212, 255, 0.5)' }}>
+            {entry.text}
           </Text>
         </Group>
       );
@@ -136,7 +136,7 @@ export function ConsoleTerminal() {
 
     if (entry.type === 'response' || entry.type === 'error') {
       return (
-        <Group key={entry.id} gap={4} wrap="nowrap" align="flex-start" pl="md">
+        <Group key={entry.id} gap={4} wrap="nowrap" align="flex-start" pl={30}>
           <Text size="sm" ff="monospace" style={style}>
             {entry.text || '(no response)'}
           </Text>
@@ -145,8 +145,8 @@ export function ConsoleTerminal() {
     }
 
     return (
-      <Group key={entry.id} gap={4} wrap="nowrap" align="flex-start">
-        <Text size="xs" c="dimmed" ff="monospace" style={{ flexShrink: 0 }}>
+      <Group key={entry.id} gap={8} wrap="nowrap" align="flex-start">
+        <Text size="xs" c="dimmed" ff="monospace" style={{ flexShrink: 0, opacity: 0.6 }}>
           [{timestamp}]
         </Text>
         <Text size="sm" ff="monospace" style={{ ...style, wordBreak: 'break-all' }}>
@@ -157,63 +157,129 @@ export function ConsoleTerminal() {
   };
 
   return (
-    <Paper
-      p="md"
-      radius="md"
+    <Box
       style={{
         height: 'calc(100vh - 100px)',
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: 'var(--mantine-color-dark-8)',
+        background: 'linear-gradient(135deg, rgba(10, 10, 18, 0.95) 0%, rgba(15, 15, 28, 0.9) 100%)',
+        borderRadius: 14,
+        border: '1px solid rgba(0, 212, 255, 0.15)',
+        overflow: 'hidden',
+        position: 'relative',
       }}
     >
+      {/* Top gradient accent */}
+      <Box
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 2,
+          background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 50%, #ec4899 100%)',
+        }}
+      />
+
       {/* Header */}
-      <Group justify="space-between" mb="sm">
-        <Group gap="sm">
-          <IconTerminal size={20} />
-          <Text fw={600}>Server Console</Text>
-          <Badge
-            color={isConnected ? 'green' : isConnecting ? 'yellow' : 'red'}
-            variant="dot"
-            size="sm"
-          >
-            {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Disconnected'}
-          </Badge>
-        </Group>
-        <Group gap="xs">
-          <Tooltip label="Clear console">
-            <ActionIcon variant="subtle" onClick={clearEntries} size="sm">
-              <IconTrash size={16} />
-            </ActionIcon>
-          </Tooltip>
-          {!isConnected && !isConnecting && (
-            <Tooltip label="Reconnect">
-              <ActionIcon variant="subtle" onClick={connect} size="sm" color="blue">
-                <IconRefresh size={16} />
+      <Box
+        p="md"
+        style={{
+          background: 'linear-gradient(90deg, rgba(0, 212, 255, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)',
+          borderBottom: '1px solid rgba(0, 212, 255, 0.1)',
+        }}
+      >
+        <Group justify="space-between">
+          <Group gap="md">
+            <ThemeIcon
+              size={40}
+              radius="md"
+              variant="gradient"
+              gradient={{ from: 'cyberBlue', to: 'cyberPurple', deg: 135 }}
+              style={{ boxShadow: '0 0 15px rgba(0, 212, 255, 0.3)' }}
+            >
+              <IconTerminal2 size={22} />
+            </ThemeIcon>
+            <Stack gap={2}>
+              <Text fw={700} size="lg">Server Console</Text>
+              <Text size="xs" c="dimmed">Real-time server output</Text>
+            </Stack>
+          </Group>
+          <Group gap="sm">
+            <Badge
+              size="lg"
+              variant="dot"
+              color={isConnected ? 'green' : isConnecting ? 'yellow' : 'red'}
+              style={{
+                background: isConnected
+                  ? 'rgba(0, 255, 136, 0.1)'
+                  : isConnecting
+                  ? 'rgba(251, 191, 36, 0.1)'
+                  : 'rgba(255, 68, 68, 0.1)',
+                border: `1px solid ${
+                  isConnected
+                    ? 'rgba(0, 255, 136, 0.3)'
+                    : isConnecting
+                    ? 'rgba(251, 191, 36, 0.3)'
+                    : 'rgba(255, 68, 68, 0.3)'
+                }`,
+              }}
+            >
+              {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Disconnected'}
+            </Badge>
+            <Tooltip label="Clear console">
+              <ActionIcon
+                variant="light"
+                color="red"
+                onClick={clearEntries}
+                size="lg"
+                radius="md"
+                style={{
+                  background: 'rgba(255, 68, 68, 0.1)',
+                  border: '1px solid rgba(255, 68, 68, 0.2)',
+                }}
+              >
+                <IconTrash size={18} />
               </ActionIcon>
             </Tooltip>
-          )}
+            {!isConnected && !isConnecting && (
+              <Tooltip label="Reconnect">
+                <ActionIcon
+                  variant="light"
+                  color="blue"
+                  onClick={connect}
+                  size="lg"
+                  radius="md"
+                  style={{
+                    background: 'rgba(0, 212, 255, 0.1)',
+                    border: '1px solid rgba(0, 212, 255, 0.2)',
+                  }}
+                >
+                  <IconRefresh size={18} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Group>
         </Group>
-      </Group>
+      </Box>
 
       {/* Console Output */}
       <ScrollArea
         ref={scrollAreaRef}
-        style={{
-          flex: 1,
-          backgroundColor: 'var(--mantine-color-dark-9)',
-          borderRadius: 'var(--mantine-radius-sm)',
-        }}
-        p="sm"
+        style={{ flex: 1 }}
+        p="md"
+        className="cyber-scrollbar"
       >
-        <Stack gap={2}>
+        <Stack gap={4}>
           {entries.length === 0 ? (
-            <Text c="dimmed" size="sm" ff="monospace">
-              {isConnected
-                ? 'Connected. Waiting for server logs...'
-                : 'Not connected. Logs will appear here when connected.'}
-            </Text>
+            <Box py="xl" ta="center">
+              <Text c="dimmed" size="sm" ff="monospace">
+                {isConnected
+                  ? '// Connected. Waiting for server logs...'
+                  : '// Not connected. Logs will appear here when connected.'}
+              </Text>
+            </Box>
           ) : (
             entries.map(renderEntry)
           )}
@@ -221,7 +287,13 @@ export function ConsoleTerminal() {
       </ScrollArea>
 
       {/* Input Area */}
-      <Box mt="sm">
+      <Box
+        p="md"
+        style={{
+          background: 'linear-gradient(90deg, rgba(0, 212, 255, 0.03) 0%, rgba(168, 85, 247, 0.03) 100%)',
+          borderTop: '1px solid rgba(0, 212, 255, 0.1)',
+        }}
+      >
         <Group gap="sm">
           <TextInput
             ref={inputRef}
@@ -233,15 +305,24 @@ export function ConsoleTerminal() {
             style={{ flex: 1 }}
             styles={{
               input: {
-                fontFamily: 'var(--mantine-font-family-monospace)',
-                backgroundColor: 'var(--mantine-color-dark-7)',
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(0, 212, 255, 0.2)',
+                color: '#00d4ff',
+                '&:focus': {
+                  borderColor: '#00d4ff',
+                  boxShadow: '0 0 10px rgba(0, 212, 255, 0.2)',
+                },
+                '&::placeholder': {
+                  color: 'rgba(255, 255, 255, 0.3)',
+                },
               },
             }}
             leftSection={
               isConnected ? (
-                <IconWifi size={16} color="var(--mantine-color-green-5)" />
+                <IconWifi size={16} style={{ color: '#00ff88' }} />
               ) : (
-                <IconWifiOff size={16} color="var(--mantine-color-red-5)" />
+                <IconWifiOff size={16} style={{ color: '#ff4444' }} />
               )
             }
           />
@@ -249,14 +330,21 @@ export function ConsoleTerminal() {
             leftSection={<IconSend size={16} />}
             onClick={handleSendCommand}
             disabled={!isConnected || !command.trim()}
+            variant="gradient"
+            gradient={{ from: 'cyberBlue', to: 'cyberPurple', deg: 135 }}
+            style={{
+              boxShadow: isConnected && command.trim()
+                ? '0 0 15px rgba(0, 212, 255, 0.3)'
+                : 'none',
+            }}
           >
             Send
           </Button>
         </Group>
-        <Text size="xs" c="dimmed" mt={4}>
-          Press Enter to send. Use Arrow Up/Down to navigate command history.
+        <Text size="xs" c="dimmed" mt={8} ta="center">
+          Press Enter to send • Arrow Up/Down for history
         </Text>
       </Box>
-    </Paper>
+    </Box>
   );
 }
