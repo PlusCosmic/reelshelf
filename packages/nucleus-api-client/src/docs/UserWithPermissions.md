@@ -1,5 +1,5 @@
 
-# CommandLogEntry
+# UserWithPermissions
 
 
 ## Properties
@@ -7,30 +7,30 @@
 Name | Type
 ------------ | -------------
 `id` | string
-`userId` | string
-`command` | string
-`response` | string
-`success` | boolean
-`error` | string
-`executedAt` | Date
-`serverId` | string
+`discordId` | string
+`username` | string
+`globalName` | string
+`avatar` | string
+`role` | number
+`additionalPermissions` | Array&lt;string&gt;
+`effectivePermissions` | Array&lt;string&gt;
 
 ## Example
 
 ```typescript
-import type { CommandLogEntry } from ''
+import type { UserWithPermissions } from ''
 
 // TODO: Update the object below with actual values
 const example = {
   "id": null,
-  "userId": null,
-  "command": null,
-  "response": null,
-  "success": null,
-  "error": null,
-  "executedAt": null,
-  "serverId": null,
-} satisfies CommandLogEntry
+  "discordId": null,
+  "username": null,
+  "globalName": null,
+  "avatar": null,
+  "role": null,
+  "additionalPermissions": null,
+  "effectivePermissions": null,
+} satisfies UserWithPermissions
 
 console.log(example)
 
@@ -39,7 +39,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as CommandLogEntry
+const exampleParsed = JSON.parse(exampleJSON) as UserWithPermissions
 console.log(exampleParsed)
 ```
 

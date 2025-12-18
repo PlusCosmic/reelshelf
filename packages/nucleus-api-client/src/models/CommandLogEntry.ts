@@ -61,6 +61,12 @@ export interface CommandLogEntry {
      * @memberof CommandLogEntry
      */
     executedAt: Date;
+    /**
+     * 
+     * @type {string}
+     * @memberof CommandLogEntry
+     */
+    serverId: string | null;
 }
 
 /**
@@ -74,6 +80,7 @@ export function instanceOfCommandLogEntry(value: object): value is CommandLogEnt
     if (!('success' in value) || value['success'] === undefined) return false;
     if (!('error' in value) || value['error'] === undefined) return false;
     if (!('executedAt' in value) || value['executedAt'] === undefined) return false;
+    if (!('serverId' in value) || value['serverId'] === undefined) return false;
     return true;
 }
 
@@ -94,6 +101,7 @@ export function CommandLogEntryFromJSONTyped(json: any, ignoreDiscriminator: boo
         'success': json['success'],
         'error': json['error'],
         'executedAt': (new Date(json['executed_at'])),
+        'serverId': json['server_id'],
     };
 }
 
@@ -115,6 +123,7 @@ export function CommandLogEntryToJSONTyped(value?: CommandLogEntry | null, ignor
         'success': value['success'],
         'error': value['error'],
         'executed_at': value['executedAt'].toISOString(),
+        'server_id': value['serverId'],
     };
 }
 

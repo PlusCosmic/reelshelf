@@ -1,36 +1,24 @@
 
-# CommandLogEntry
+# CreateGamingSessionPlaylistRequest
 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`userId` | string
-`command` | string
-`response` | string
-`success` | boolean
-`error` | string
-`executedAt` | Date
-`serverId` | string
+`participants` | Array&lt;string&gt;
+`category` | number
 
 ## Example
 
 ```typescript
-import type { CommandLogEntry } from ''
+import type { CreateGamingSessionPlaylistRequest } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "userId": null,
-  "command": null,
-  "response": null,
-  "success": null,
-  "error": null,
-  "executedAt": null,
-  "serverId": null,
-} satisfies CommandLogEntry
+  "participants": null,
+  "category": null,
+} satisfies CreateGamingSessionPlaylistRequest
 
 console.log(example)
 
@@ -39,7 +27,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as CommandLogEntry
+const exampleParsed = JSON.parse(exampleJSON) as CreateGamingSessionPlaylistRequest
 console.log(exampleParsed)
 ```
 

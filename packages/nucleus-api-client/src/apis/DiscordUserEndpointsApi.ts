@@ -167,4 +167,31 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
         return await response.value();
     }
 
+    /**
+     */
+    async usersSuggestionsGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<DiscordUser>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/users/suggestions`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(DiscordUserFromJSON));
+    }
+
+    /**
+     */
+    async usersSuggestionsGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DiscordUser>> {
+        const response = await this.usersSuggestionsGetRaw(initOverrides);
+        return await response.value();
+    }
+
 }
