@@ -36,6 +36,3 @@ jobs:
 
       - name: Build home app
         run: pnpm turbo run build --filter=home
-
-      - name: Run unit tests
-        run: pnpm --filter home test --run

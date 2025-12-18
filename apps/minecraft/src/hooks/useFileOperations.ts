@@ -9,6 +9,7 @@ import {
   createDirectory,
 } from '@repo/shared/services/minecraft';
 import { getFileExtension } from '@repo/shared/utils/format';
+import { useServerContext } from '../contexts/ServerContext';
 
 // ============================================================================
 // Query Hooks
@@ -20,11 +21,14 @@ import { getFileExtension } from '@repo/shared/utils/format';
  * @param path - The directory path to list (e.g., "/" or "/plugins")
  */
 export function useDirectoryListing(path: string) {
+  const { serverId } = useServerContext();
+
   return useQuery({
-    queryKey: ['minecraft', 'files', path],
-    queryFn: () => listDirectory(path),
+    queryKey: ['minecraft', 'files', serverId, path],
+    queryFn: () => listDirectory(serverId!, path),
     staleTime: 30000, // 30 seconds
     retry: 1,
+    enabled: !!serverId,
   });
 }
 
@@ -35,10 +39,12 @@ export function useDirectoryListing(path: string) {
  * @param path - The full path to the file, or null if no file is selected
  */
 export function useFileContent(path: string | null) {
+  const { serverId } = useServerContext();
+
   return useQuery({
-    queryKey: ['minecraft', 'files', 'content', path],
-    queryFn: () => (path ? getFileContent(path) : Promise.resolve('')),
-    enabled: !!path,
+    queryKey: ['minecraft', 'files', 'content', serverId, path],
+    queryFn: () => (path ? getFileContent(serverId!, path) : Promise.resolve('')),
+    enabled: !!path && !!serverId,
     staleTime: 0, // Always fetch fresh content when selecting a file
     retry: 1,
   });
@@ -56,25 +62,26 @@ export function useFileContent(path: string | null) {
  */
 export function useSaveFile() {
   const queryClient = useQueryClient();
+  const { serverId } = useServerContext();
 
   return useMutation({
     mutationFn: ({ path, content }: { path: string; content: string }) =>
-      saveFile(path, content),
+      saveFile(serverId!, path, content),
     onMutate: async ({ path, content }) => {
       const dirPath = path.substring(0, path.lastIndexOf('/')) || '/';
       const fileName = path.split('/').pop() || '';
 
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['minecraft', 'files', dirPath] });
-      await queryClient.cancelQueries({ queryKey: ['minecraft', 'files', 'content', path] });
+      await queryClient.cancelQueries({ queryKey: ['minecraft', 'files', serverId, dirPath] });
+      await queryClient.cancelQueries({ queryKey: ['minecraft', 'files', 'content', serverId, path] });
 
       // Snapshot the previous values
-      const previousDirListing = queryClient.getQueryData<DirectoryListing>(['minecraft', 'files', dirPath]);
-      const previousContent = queryClient.getQueryData<string>(['minecraft', 'files', 'content', path]);
+      const previousDirListing = queryClient.getQueryData<DirectoryListing>(['minecraft', 'files', serverId, dirPath]);
+      const previousContent = queryClient.getQueryData<string>(['minecraft', 'files', 'content', serverId, path]);
 
       // Optimistically update the directory listing with new modified time
       if (previousDirListing) {
-        queryClient.setQueryData<DirectoryListing>(['minecraft', 'files', dirPath], {
+        queryClient.setQueryData<DirectoryListing>(['minecraft', 'files', serverId, dirPath], {
           ...previousDirListing,
           entries: previousDirListing.entries.map((entry) =>
             entry.name === fileName
@@ -85,17 +92,17 @@ export function useSaveFile() {
       }
 
       // Optimistically update the file content
-      queryClient.setQueryData<string>(['minecraft', 'files', 'content', path], content);
+      queryClient.setQueryData<string>(['minecraft', 'files', 'content', serverId, path], content);
 
       return { previousDirListing, previousContent, dirPath };
     },
     onError: (error: Error, { path }, context) => {
       // Rollback on error
       if (context?.previousDirListing) {
-        queryClient.setQueryData(['minecraft', 'files', context.dirPath], context.previousDirListing);
+        queryClient.setQueryData(['minecraft', 'files', serverId, context.dirPath], context.previousDirListing);
       }
       if (context?.previousContent !== undefined) {
-        queryClient.setQueryData(['minecraft', 'files', 'content', path], context.previousContent);
+        queryClient.setQueryData(['minecraft', 'files', 'content', serverId, path], context.previousContent);
       }
 
       notifications.show({
@@ -108,8 +115,8 @@ export function useSaveFile() {
       const dirPath = path.substring(0, path.lastIndexOf('/')) || '/';
 
       // Invalidate to ensure consistency with server
-      queryClient.invalidateQueries({ queryKey: ['minecraft', 'files', 'content', path] });
-      queryClient.invalidateQueries({ queryKey: ['minecraft', 'files', dirPath] });
+      queryClient.invalidateQueries({ queryKey: ['minecraft', 'files', 'content', serverId, path] });
+      queryClient.invalidateQueries({ queryKey: ['minecraft', 'files', serverId, dirPath] });
 
       notifications.show({
         title: 'File saved',
@@ -127,36 +134,37 @@ export function useSaveFile() {
  */
 export function useDeleteFile() {
   const queryClient = useQueryClient();
+  const { serverId } = useServerContext();
 
   return useMutation({
-    mutationFn: (path: string) => deleteFile(path),
+    mutationFn: (path: string) => deleteFile(serverId!, path),
     onMutate: async (path) => {
       const dirPath = path.substring(0, path.lastIndexOf('/')) || '/';
       const fileName = path.split('/').pop() || '';
 
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['minecraft', 'files', dirPath] });
+      await queryClient.cancelQueries({ queryKey: ['minecraft', 'files', serverId, dirPath] });
 
       // Snapshot the previous directory listing
-      const previousDirListing = queryClient.getQueryData<DirectoryListing>(['minecraft', 'files', dirPath]);
+      const previousDirListing = queryClient.getQueryData<DirectoryListing>(['minecraft', 'files', serverId, dirPath]);
 
       // Optimistically remove the file from the listing
       if (previousDirListing) {
-        queryClient.setQueryData<DirectoryListing>(['minecraft', 'files', dirPath], {
+        queryClient.setQueryData<DirectoryListing>(['minecraft', 'files', serverId, dirPath], {
           ...previousDirListing,
           entries: previousDirListing.entries.filter((entry) => entry.name !== fileName),
         });
       }
 
       // Remove the file content from cache
-      queryClient.removeQueries({ queryKey: ['minecraft', 'files', 'content', path] });
+      queryClient.removeQueries({ queryKey: ['minecraft', 'files', 'content', serverId, path] });
 
       return { previousDirListing, dirPath };
     },
     onError: (error: Error, _path, context) => {
       // Rollback on error
       if (context?.previousDirListing) {
-        queryClient.setQueryData(['minecraft', 'files', context.dirPath], context.previousDirListing);
+        queryClient.setQueryData(['minecraft', 'files', serverId, context.dirPath], context.previousDirListing);
       }
 
       notifications.show({
@@ -169,7 +177,7 @@ export function useDeleteFile() {
       const dirPath = path.substring(0, path.lastIndexOf('/')) || '/';
 
       // Invalidate to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['minecraft', 'files', dirPath] });
+      queryClient.invalidateQueries({ queryKey: ['minecraft', 'files', serverId, dirPath] });
 
       notifications.show({
         title: 'File deleted',
@@ -187,18 +195,19 @@ export function useDeleteFile() {
  */
 export function useCreateDirectory() {
   const queryClient = useQueryClient();
+  const { serverId } = useServerContext();
 
   return useMutation({
-    mutationFn: (path: string) => createDirectory(path),
+    mutationFn: (path: string) => createDirectory(serverId!, path),
     onMutate: async (path) => {
       const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
       const dirName = path.split('/').pop() || '';
 
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['minecraft', 'files', parentPath] });
+      await queryClient.cancelQueries({ queryKey: ['minecraft', 'files', serverId, parentPath] });
 
       // Snapshot the previous directory listing
-      const previousDirListing = queryClient.getQueryData<DirectoryListing>(['minecraft', 'files', parentPath]);
+      const previousDirListing = queryClient.getQueryData<DirectoryListing>(['minecraft', 'files', serverId, parentPath]);
 
       // Optimistically add the new directory to the listing
       if (previousDirListing) {
@@ -210,7 +219,7 @@ export function useCreateDirectory() {
           lastModified: new Date(),
         };
 
-        queryClient.setQueryData<DirectoryListing>(['minecraft', 'files', parentPath], {
+        queryClient.setQueryData<DirectoryListing>(['minecraft', 'files', serverId, parentPath], {
           ...previousDirListing,
           entries: [...previousDirListing.entries, newEntry].sort((a, b) => {
             // Directories first, then alphabetically
@@ -225,7 +234,7 @@ export function useCreateDirectory() {
     onError: (error: Error, _path, context) => {
       // Rollback on error
       if (context?.previousDirListing) {
-        queryClient.setQueryData(['minecraft', 'files', context.parentPath], context.previousDirListing);
+        queryClient.setQueryData(['minecraft', 'files', serverId, context.parentPath], context.previousDirListing);
       }
 
       notifications.show({
@@ -238,7 +247,7 @@ export function useCreateDirectory() {
       const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
 
       // Invalidate to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['minecraft', 'files', parentPath] });
+      queryClient.invalidateQueries({ queryKey: ['minecraft', 'files', serverId, parentPath] });
 
       notifications.show({
         title: 'Directory created',
