@@ -2,9 +2,9 @@ import { apiConfig } from "@repo/shared";
 import { Avatar, Badge, Box, Card, Group, Image, Skeleton, Stack, Text, Tooltip } from "@mantine/core";
 import { IconClock } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { formatDate, formatDuration, getProcessingStatusMessage, isClipProcessing } from "../../utils/format";
-import { useUserById } from "../../hooks/queries";
 import type { Clip } from "@repo/nucleus-api-client";
+import { formatDate, formatDuration, getProcessingStatusMessage, isClipProcessing } from "@/utils/format.ts";
+import { useUserById } from "@/hooks/queries.ts";
 
 interface SidebarClipCardProps {
   clip: Clip;
@@ -26,16 +26,17 @@ export function SidebarClipCard({ clip }: SidebarClipCardProps) {
         radius="md"
         style={{
           cursor: "pointer",
-          transition: "all 0.2s ease",
-          border: "1px solid rgba(255, 255, 255, 0.05)",
-          background: "rgba(255, 255, 255, 0.02)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          border: "1px solid rgba(0, 212, 255, 0.1)",
+          background: "linear-gradient(135deg, rgba(15, 15, 25, 0.8) 0%, rgba(20, 20, 35, 0.7) 100%)",
         }}
         styles={{
           root: {
             "&:hover": {
-              transform: "translateY(-2px)",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-              background: "rgba(255, 255, 255, 0.04)",
+              transform: "translateY(-3px)",
+              boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 212, 255, 0.1)",
+              background: "linear-gradient(135deg, rgba(15, 15, 25, 0.95) 0%, rgba(20, 20, 35, 0.9) 100%)",
+              borderColor: "rgba(0, 212, 255, 0.3)",
             },
           },
         }}
@@ -68,11 +69,13 @@ export function SidebarClipCard({ clip }: SidebarClipCardProps) {
                 size="xs"
                 radius="sm"
                 style={{
-                  background: "rgba(245, 158, 11, 0.9)",
+                  background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
                   backdropFilter: "blur(4px)",
                   color: "white",
                   fontSize: "9px",
                   fontWeight: 700,
+                  border: "1px solid rgba(245, 158, 11, 0.5)",
+                  boxShadow: "0 2px 8px rgba(245, 158, 11, 0.4)",
                 }}
               >
                 PROCESSING
@@ -87,9 +90,10 @@ export function SidebarClipCard({ clip }: SidebarClipCardProps) {
                 radius="sm"
                 leftSection={<IconClock size={10} />}
                 style={{
-                  background: "rgba(0, 0, 0, 0.75)",
+                  background: "rgba(10, 10, 20, 0.85)",
                   backdropFilter: "blur(4px)",
-                  color: "white",
+                  color: "#00d4ff",
+                  border: "1px solid rgba(0, 212, 255, 0.3)",
                 }}
               >
                 {formatDuration(clip.video.length)}
@@ -107,6 +111,7 @@ export function SidebarClipCard({ clip }: SidebarClipCardProps) {
                   backdropFilter: "blur(4px)",
                   color: "white",
                   fontSize: "9px",
+                  border: "1px solid rgba(245, 158, 11, 0.5)",
                 }}
               >
                 {processingMessage}
@@ -129,8 +134,8 @@ export function SidebarClipCard({ clip }: SidebarClipCardProps) {
                   bottom={4}
                   left={4}
                   style={{
-                    border: "2px solid rgba(255, 255, 255, 0.9)",
-                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                    border: "2px solid rgba(0, 212, 255, 0.5)",
+                    boxShadow: "0 2px 8px rgba(0, 212, 255, 0.3)",
                     cursor: "pointer",
                   }}
                 />

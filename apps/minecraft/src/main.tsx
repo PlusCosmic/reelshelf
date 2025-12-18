@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MantineProvider } from "@mantine/core";
 import { minecraftTheme } from "./theme";
 import { routeTree } from "./routeTree.gen";
+import { ServerProvider } from "./contexts/ServerContext";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "./styles/cyberpunk.css";
@@ -45,7 +46,9 @@ if (rootElement && !rootElement.innerHTML) {
     <StrictMode>
       <MantineProvider theme={minecraftTheme} defaultColorScheme="dark">
         <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
+          <ServerProvider>
+            <RouterProvider router={router} />
+          </ServerProvider>
         </QueryClientProvider>
       </MantineProvider>
     </StrictMode>,

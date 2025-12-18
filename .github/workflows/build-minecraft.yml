@@ -1,0 +1,41 @@
+name: Build Minecraft App
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'apps/minecraft/**'
+      - 'packages/shared/**'
+      - 'packages/ui/**'
+      - 'packages/nucleus-api-client/**'
+      - 'packages/typescript-config/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/build-minecraft.yml'
+
+jobs:
+  build:
+    name: Build & Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build minecraft app
+        run: pnpm turbo run build --filter=minecraft
+
+      - name: Typecheck
+        run: pnpm --filter minecraft typecheck

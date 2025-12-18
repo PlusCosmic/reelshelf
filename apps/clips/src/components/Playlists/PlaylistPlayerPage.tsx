@@ -11,12 +11,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, Center, Loader, Stack, Text } from "@mantine/core";
 import { useNavigate } from "@tanstack/react-router";
 import { fetchPlaylistById } from "@repo/shared";
-import { useClip, useMarkAsViewed, useUserById } from "../../hooks/queries";
-import { useClipFormState } from "../../hooks/apex/useClipFormState";
 import { useClipActions } from "../../hooks/apex/useClipActions";
 import { VideoPlayer } from "../Apex/VideoPlayer";
 import { ClipInfoCard } from "../Apex/ClipInfoCard";
 import { PlaylistQueueSidebar } from "./PlaylistQueueSidebar";
+import { useClipFormState } from "@/hooks/apex/useClipFormState.ts";
+import { useClip, useMarkAsViewed, useUserById } from "@/hooks/queries.ts";
 
 type PlaylistPlayerPageProps = {
   playlistId: string;
@@ -79,9 +79,10 @@ export function PlaylistPlayerPage({ playlistId }: PlaylistPlayerPageProps) {
           radius="xl"
           p="xl"
           style={{
-            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)",
+            background: "linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)",
             backdropFilter: "blur(10px)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            border: "1px solid rgba(0, 212, 255, 0.15)",
+            boxShadow: "0 4px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 212, 255, 0.05)",
           }}
         >
           <Center>

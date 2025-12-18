@@ -88,9 +88,10 @@ export function PlaylistQueueSidebar({
       style={{
         width: "380px",
         background:
-          "linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)",
+          "linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)",
         backdropFilter: "blur(10px)",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
+        border: "1px solid rgba(0, 212, 255, 0.15)",
+        boxShadow: "0 4px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 212, 255, 0.05)",
         flexShrink: 0,
       }}
     >
@@ -102,11 +103,25 @@ export function PlaylistQueueSidebar({
             size="lg"
             onClick={() => navigate({ to: "/playlists" })}
             aria-label="Back to playlists"
-            style={{ position: "absolute", left: 0 }}
+            style={{
+              position: "absolute",
+              left: 0,
+              color: "#00d4ff",
+              transition: "all 0.2s ease",
+            }}
           >
             <IconArrowLeft size={20} />
           </ActionIcon>
-          <Text size="lg" fw={600} style={{ letterSpacing: "-0.3px" }}>
+          <Text
+            size="lg"
+            fw={600}
+            style={{
+              letterSpacing: "-0.3px",
+              background: "linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
             Queue
           </Text>
         </Group>
@@ -151,7 +166,15 @@ export function PlaylistQueueSidebar({
                   <Text size="xs" c="dimmed">
                     {currentClipIndex + 1} / {playlist.clips.length}
                   </Text>
-                  <Badge variant="light" color="green" size="sm">
+                  <Badge
+                    variant="light"
+                    size="sm"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)",
+                      border: "1px solid rgba(0, 212, 255, 0.3)",
+                      color: "#00d4ff",
+                    }}
+                  >
                     {playlist.clips.length} clips
                   </Badge>
                 </Group>
@@ -159,9 +182,14 @@ export function PlaylistQueueSidebar({
                   value={progressPercentage}
                   size="sm"
                   radius="xl"
-                  color="green"
                   style={{
-                    background: "rgba(255, 255, 255, 0.05)",
+                    background: "rgba(0, 212, 255, 0.1)",
+                  }}
+                  styles={{
+                    section: {
+                      background: "linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)",
+                      boxShadow: "0 0 15px rgba(0, 212, 255, 0.4)",
+                    },
                   }}
                 />
               </Stack>
@@ -177,13 +205,13 @@ export function PlaylistQueueSidebar({
               styles={{
                 scrollbar: {
                   "&:hover": {
-                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    backgroundColor: "rgba(0, 212, 255, 0.1)",
                   },
                 },
                 thumb: {
-                  backgroundColor: "rgba(255, 255, 255, 0.2)",
+                  backgroundColor: "rgba(0, 212, 255, 0.3)",
                   "&:hover": {
-                    backgroundColor: "rgba(255, 255, 255, 0.3)",
+                    backgroundColor: "rgba(0, 212, 255, 0.5)",
                   },
                 },
               }}
@@ -192,7 +220,15 @@ export function PlaylistQueueSidebar({
                 {playlist.clips.length === 0 && (
                   <Center py="xl">
                     <Stack align="center" gap="md">
-                      <IconPlayerPlay size={48} stroke={1} style={{ opacity: 0.3 }} />
+                      <IconPlayerPlay
+                        size={48}
+                        stroke={1}
+                        style={{
+                          color: "#00d4ff",
+                          opacity: 0.5,
+                          filter: "drop-shadow(0 0 15px rgba(0, 212, 255, 0.3))",
+                        }}
+                      />
                       <Text size="sm" c="dimmed" ta="center">
                         No clips in this playlist yet
                       </Text>
@@ -280,8 +316,8 @@ function PlaylistQueueCardWrapper({
         p="sm"
         radius="md"
         style={{
-          background: "rgba(255, 255, 255, 0.02)",
-          border: "1px solid rgba(255, 255, 255, 0.05)",
+          background: "linear-gradient(135deg, rgba(15, 15, 25, 0.6) 0%, rgba(20, 20, 35, 0.5) 100%)",
+          border: "1px solid rgba(0, 212, 255, 0.08)",
         }}
       >
         <Group wrap="nowrap" gap="sm">
@@ -295,7 +331,7 @@ function PlaylistQueueCardWrapper({
             style={{
               width: 80,
               aspectRatio: "16/9",
-              background: "rgba(255, 255, 255, 0.05)",
+              background: "linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)",
               borderRadius: "4px",
             }}
           />
@@ -304,7 +340,7 @@ function PlaylistQueueCardWrapper({
               style={{
                 height: 14,
                 width: "80%",
-                background: "rgba(255, 255, 255, 0.1)",
+                background: "rgba(0, 212, 255, 0.1)",
                 borderRadius: "4px",
               }}
             />
@@ -312,7 +348,7 @@ function PlaylistQueueCardWrapper({
               style={{
                 height: 10,
                 width: "50%",
-                background: "rgba(255, 255, 255, 0.05)",
+                background: "rgba(0, 212, 255, 0.05)",
                 borderRadius: "4px",
               }}
             />

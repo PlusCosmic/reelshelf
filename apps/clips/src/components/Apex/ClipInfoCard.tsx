@@ -1,4 +1,3 @@
-import type { RefObject } from 'react';
 import {
   ActionIcon,
   Avatar,
@@ -11,6 +10,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { IconDownload, IconTrash } from '@tabler/icons-react';
+import type { RefObject } from 'react';
 import type { Clip, DiscordUser } from '@repo/nucleus-api-client';
 
 interface ClipInfoCardProps {
@@ -50,9 +50,10 @@ export function ClipInfoCard({
       p="lg"
       mih={"170px"}
       style={{
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+        background: 'linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)',
         backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        border: '1px solid rgba(0, 212, 255, 0.15)',
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 212, 255, 0.05)',
       }}
     >
       <Stack gap="md">
@@ -74,6 +75,9 @@ export function ClipInfoCard({
                 fontSize: '1.5rem',
                 fontWeight: 600,
                 letterSpacing: '-0.5px',
+                background: 'linear-gradient(90deg, #f8fafc 0%, #00d4ff 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               }
             }}
           />
@@ -88,13 +92,21 @@ export function ClipInfoCard({
                     src={clipOwner.avatar}
                     radius="xl"
                     size="lg"
+                    style={{
+                      border: '2px solid rgba(0, 212, 255, 0.4)',
+                      boxShadow: '0 0 15px rgba(0, 212, 255, 0.2)',
+                    }}
                   />
                 ) : (
                   <Avatar
                     variant="filled"
                     radius="xl"
-                    color="green"
+                    color="cyan"
                     size="lg"
+                    style={{
+                      border: '2px solid rgba(0, 212, 255, 0.4)',
+                      boxShadow: '0 0 15px rgba(0, 212, 255, 0.2)',
+                    }}
                   />
                 )}
               </>
@@ -120,9 +132,18 @@ export function ClipInfoCard({
               placeholder="Add tags"
               styles={{
                 input: {
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                }
+                  backgroundColor: 'rgba(168, 85, 247, 0.05)',
+                  border: '1px solid rgba(168, 85, 247, 0.2)',
+                  '&:focus-within': {
+                    borderColor: 'rgba(168, 85, 247, 0.5)',
+                    boxShadow: '0 0 15px rgba(168, 85, 247, 0.15)',
+                  },
+                },
+                pill: {
+                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(236, 72, 153, 0.3) 100%)',
+                  border: '1px solid rgba(168, 85, 247, 0.4)',
+                  color: '#f8fafc',
+                },
               }}
             />
             <Tooltip label="Download clip">
@@ -134,23 +155,27 @@ export function ClipInfoCard({
                 onClick={onDownload}
                 style={{
                   transition: 'all 0.2s ease',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
                 }}
               >
-                <IconDownload size={18} />
+                <IconDownload size={18} style={{ color: '#10b981' }} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Delete clip">
               <ActionIcon
                 variant="light"
-                color="red"
+                color="pink"
                 size="lg"
                 radius="md"
                 onClick={onDelete}
                 style={{
                   transition: 'all 0.2s ease',
+                  background: 'rgba(236, 72, 153, 0.15)',
+                  border: '1px solid rgba(236, 72, 153, 0.3)',
                 }}
               >
-                <IconTrash size={18} />
+                <IconTrash size={18} style={{ color: '#ec4899' }} />
               </ActionIcon>
             </Tooltip>
           </Group>

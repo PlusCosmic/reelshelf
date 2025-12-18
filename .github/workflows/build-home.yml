@@ -1,0 +1,38 @@
+name: Build Home App
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'apps/home/**'
+      - 'packages/shared/**'
+      - 'packages/ui/**'
+      - 'packages/nucleus-api-client/**'
+      - 'packages/typescript-config/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/build-home.yml'
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build home app
+        run: pnpm turbo run build --filter=home

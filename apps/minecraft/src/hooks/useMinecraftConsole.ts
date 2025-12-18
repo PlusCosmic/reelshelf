@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getConsoleWebSocketUrl } from '@repo/shared/services/minecraft';
+import { useServerContext } from '../contexts/ServerContext';
 
 export interface LogEntry {
   type: 'log';
@@ -46,6 +47,7 @@ interface UseMinecraftConsoleOptions {
 
 export function useMinecraftConsole(options: UseMinecraftConsoleOptions = {}) {
   const { enabled = true, maxEntries = 1000 } = options;
+  const { serverId } = useServerContext();
 
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -119,6 +121,11 @@ export function useMinecraftConsole(options: UseMinecraftConsoleOptions = {}) {
   }, [addEntry]);
 
   const connect = useCallback(() => {
+    if (!serverId) {
+      setConnectionError('No server selected');
+      return;
+    }
+
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
@@ -126,7 +133,7 @@ export function useMinecraftConsole(options: UseMinecraftConsoleOptions = {}) {
     setIsConnecting(true);
     setConnectionError(null);
 
-    const wsUrl = getConsoleWebSocketUrl();
+    const wsUrl = getConsoleWebSocketUrl(serverId);
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -151,7 +158,7 @@ export function useMinecraftConsole(options: UseMinecraftConsoleOptions = {}) {
         setIsConnecting(false);
         wsRef.current = null;
 
-        if (!event.wasClean && enabled) {
+        if (!event.wasClean && enabled && serverId) {
           // Attempt to reconnect with exponential backoff
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           reconnectAttempts.current++;
@@ -172,7 +179,7 @@ export function useMinecraftConsole(options: UseMinecraftConsoleOptions = {}) {
       setConnectionError('Failed to create WebSocket connection');
       console.error('Failed to create WebSocket:', error);
     }
-  }, [enabled, handleMessage, addEntry]);
+  }, [enabled, serverId, handleMessage, addEntry]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -220,14 +227,14 @@ export function useMinecraftConsole(options: UseMinecraftConsoleOptions = {}) {
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {
-    if (enabled) {
+    if (enabled && serverId) {
       connect();
     }
 
     return () => {
       disconnect();
     };
-  }, [enabled, connect, disconnect]);
+  }, [enabled, serverId, connect, disconnect]);
 
   return {
     isConnected,

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getServerStatus, getOnlinePlayers } from '@repo/shared/services/minecraft';
+import { useServerContext } from '../contexts/ServerContext';
 
 /**
  * Fetches the current Minecraft server status
@@ -7,11 +8,14 @@ import { getServerStatus, getOnlinePlayers } from '@repo/shared/services/minecra
  * Uses 2 retries for resilience against temporary network issues
  */
 export function useServerStatus() {
+  const { serverId } = useServerContext();
+
   return useQuery({
-    queryKey: ['minecraft', 'status'],
-    queryFn: getServerStatus,
+    queryKey: ['minecraft', 'status', serverId],
+    queryFn: () => getServerStatus(serverId!),
     refetchInterval: 30000, // Poll every 30 seconds
     retry: 2,
+    enabled: !!serverId,
   });
 }
 
@@ -21,10 +25,13 @@ export function useServerStatus() {
  * Uses 2 retries for resilience against temporary network issues
  */
 export function useOnlinePlayers() {
+  const { serverId } = useServerContext();
+
   return useQuery({
-    queryKey: ['minecraft', 'players'],
-    queryFn: getOnlinePlayers,
+    queryKey: ['minecraft', 'players', serverId],
+    queryFn: () => getOnlinePlayers(serverId!),
     refetchInterval: 30000, // Poll every 30 seconds
     retry: 2,
+    enabled: !!serverId,
   });
 }

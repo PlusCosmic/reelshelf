@@ -26,7 +26,7 @@ import {
   TextInput,
   Title,
   Tooltip,
-  UnstyledButton,
+  UnstyledButton
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -36,7 +36,7 @@ import {
   IconShare,
   IconTrash,
   IconUsers,
-  IconVideo,
+  IconVideo
 } from "@tabler/icons-react";
 import { deletePlaylist, fetchPlaylists } from "@repo/shared";
 import { useDisclosure } from "@mantine/hooks";
@@ -61,13 +61,13 @@ export function PlaylistsPage() {
 
   // Filter playlists based on search and tab
   const filteredPlaylists = playlists.filter(playlist => {
-    const matchesSearch = searchQuery === "" ||
-      playlist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      playlist.description?.toLowerCase().includes(searchQuery.toLowerCase());
-
     // TODO: Filter by tab (need current user ID to implement)
     // For now, show all playlists in all tabs
-    return matchesSearch;
+    return (
+      searchQuery === "" ||
+      playlist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      playlist.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
   const handlePlaylistClick = (playlistId: string) => {
@@ -133,9 +133,10 @@ export function PlaylistsPage() {
         p="md"
         style={{
           width: '320px',
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+          background: 'linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)',
           backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          border: '1px solid rgba(0, 212, 255, 0.15)',
+          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 212, 255, 0.05)',
           flexShrink: 0,
           display: "flex",
           flexDirection: "column",
@@ -149,11 +150,26 @@ export function PlaylistsPage() {
               size="lg"
               onClick={() => navigate({ to: '/apex-legends' })}
               aria-label="Back to clips"
-              style={{ position: 'absolute', left: 0 }}
+              style={{
+                position: 'absolute',
+                left: 0,
+                color: '#00d4ff',
+                transition: 'all 0.2s ease',
+              }}
             >
               <IconArrowLeft size={20} />
             </ActionIcon>
-            <Title order={3} style={{ letterSpacing: '-0.3px' }}>Playlists</Title>
+            <Title
+              order={3}
+              style={{
+                letterSpacing: '-0.3px',
+                background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Playlists
+            </Title>
           </Group>
           <Text c="dimmed" size="sm" ta="center">
             Collaborative clip collections
@@ -164,10 +180,16 @@ export function PlaylistsPage() {
             leftSection={<IconPlus size={18} />}
             size="md"
             variant="filled"
-            color="green"
             onClick={openCreateModal}
             radius="md"
             fullWidth
+            style={{
+              background: 'linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)',
+              border: '1px solid rgba(0, 212, 255, 0.5)',
+              boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)',
+              color: '#0a0a14',
+              fontWeight: 600,
+            }}
           >
             Create Playlist
           </Button>
@@ -175,15 +197,19 @@ export function PlaylistsPage() {
           {/* Search */}
           <TextInput
             placeholder="Search playlists..."
-            leftSection={<IconSearch size={16} />}
+            leftSection={<IconSearch size={16} style={{ color: '#00d4ff' }} />}
             size="sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             styles={{
               input: {
                 borderRadius: "8px",
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: 'rgba(0, 212, 255, 0.03)',
+                border: '1px solid rgba(0, 212, 255, 0.15)',
+                '&:focus': {
+                  borderColor: 'rgba(0, 212, 255, 0.5)',
+                  boxShadow: '0 0 15px rgba(0, 212, 255, 0.15)',
+                },
               },
             }}
           />
@@ -205,7 +231,14 @@ export function PlaylistsPage() {
 
           {/* Stats */}
           <Group gap="xs">
-            <Badge variant="light" color="green">
+            <Badge
+              variant="light"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)',
+                border: '1px solid rgba(0, 212, 255, 0.3)',
+                color: '#00d4ff',
+              }}
+            >
               {filteredPlaylists.length} playlists
             </Badge>
           </Group>
@@ -218,9 +251,10 @@ export function PlaylistsPage() {
         p="lg"
         style={{
           flex: 1,
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+          background: 'linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)',
           backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          border: '1px solid rgba(0, 212, 255, 0.15)',
+          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3), inset 0 0 60px rgba(0, 212, 255, 0.03)',
           display: "flex",
           flexDirection: "column",
         }}
@@ -236,7 +270,15 @@ export function PlaylistsPage() {
         {!isLoading && filteredPlaylists.length === 0 && (
           <Center style={{ flex: 1 }}>
             <Stack align="center" gap="md">
-              <IconVideo size={64} stroke={1} style={{ opacity: 0.3 }} />
+              <IconVideo
+                size={64}
+                stroke={1}
+                style={{
+                  color: '#00d4ff',
+                  opacity: 0.5,
+                  filter: 'drop-shadow(0 0 20px rgba(0, 212, 255, 0.3))',
+                }}
+              />
               <Stack gap="xs" align="center">
                 <Text size="lg" fw={600}>
                   {searchQuery ? "No playlists found" : "No playlists yet"}
@@ -254,6 +296,11 @@ export function PlaylistsPage() {
                   variant="light"
                   size="md"
                   onClick={openCreateModal}
+                  style={{
+                    background: 'rgba(0, 212, 255, 0.1)',
+                    border: '1px solid rgba(0, 212, 255, 0.3)',
+                    color: '#00d4ff',
+                  }}
                 >
                   Create Your First Playlist
                 </Button>
@@ -271,13 +318,13 @@ export function PlaylistsPage() {
             styles={{
               scrollbar: {
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backgroundColor: 'rgba(0, 212, 255, 0.1)',
                 }
               },
               thumb: {
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                backgroundColor: 'rgba(0, 212, 255, 0.3)',
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                  backgroundColor: 'rgba(0, 212, 255, 0.5)',
                 }
               }
             }}
@@ -356,15 +403,17 @@ function PlaylistCard({
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
       style={{
-        transition: "all 0.2s ease",
-        transform: isHovered ? "translateY(-2px)" : "translateY(0)",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: isHovered ? "translateY(-4px)" : "translateY(0)",
         boxShadow: isHovered
-          ? "0 8px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1)"
-          : "0 2px 8px rgba(0, 0, 0, 0.08)",
-        border: "1px solid rgba(255, 255, 255, 0.05)",
+          ? "0 12px 30px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 212, 255, 0.15)"
+          : "0 4px 15px rgba(0, 0, 0, 0.2)",
+        border: isHovered
+          ? "1px solid rgba(0, 212, 255, 0.4)"
+          : "1px solid rgba(0, 212, 255, 0.1)",
         background: isHovered
-          ? "linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)"
-          : "rgba(255, 255, 255, 0.02)",
+          ? "linear-gradient(135deg, rgba(15, 15, 25, 0.95) 0%, rgba(20, 20, 35, 0.9) 100%)"
+          : "linear-gradient(135deg, rgba(15, 15, 25, 0.8) 0%, rgba(20, 20, 35, 0.7) 100%)",
         cursor: "pointer",
       }}
     >
@@ -392,10 +441,12 @@ function PlaylistCard({
               radius="sm"
               leftSection={<IconVideo size={14} />}
               style={{
-                background: "rgba(0, 0, 0, 0.75)",
+                background: "rgba(10, 10, 20, 0.9)",
                 backdropFilter: "blur(4px)",
-                color: "white",
+                color: "#00d4ff",
                 fontWeight: 700,
+                border: "1px solid rgba(0, 212, 255, 0.3)",
+                boxShadow: "0 0 15px rgba(0, 212, 255, 0.2)",
               }}
             >
               {playlist.clipCount} {playlist.clipCount === 1 ? "clip" : "clips"}
@@ -409,7 +460,11 @@ function PlaylistCard({
                 fw={600}
                 size="lg"
                 lineClamp={1}
-                c="var(--mantine-color-nucleusColour-2)"
+                style={{
+                  background: 'linear-gradient(90deg, #f8fafc 0%, #00d4ff 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
               >
                 {playlist.name}
               </Text>
@@ -422,7 +477,7 @@ function PlaylistCard({
 
             {/* Collaborators */}
             <Group gap="xs">
-              <IconUsers size={16} style={{ opacity: 0.6 }} />
+              <IconUsers size={16} style={{ color: '#a855f7', opacity: 0.8 }} />
               <Text size="xs" c="dimmed">
                 {playlist.collaboratorCount}{" "}
                 {playlist.collaboratorCount === 1 ? "collaborator" : "collaborators"}
@@ -432,7 +487,7 @@ function PlaylistCard({
             {/* Metadata */}
             <Group gap="md">
               <Group gap="xs">
-                <IconClock size={14} style={{ opacity: 0.6 }} />
+                <IconClock size={14} style={{ color: '#00d4ff', opacity: 0.6 }} />
                 <Text size="xs" c="dimmed">
                   Updated {formatDate(playlist.updatedAt)}
                 </Text>
@@ -454,10 +509,15 @@ function PlaylistCard({
             <Tooltip label="Manage collaborators" position="left">
               <ActionIcon
                 variant="light"
-                color="blue"
                 size="lg"
                 radius="md"
                 onClick={onManageCollaborators}
+                style={{
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  color: '#a855f7',
+                  transition: 'all 0.2s ease',
+                }}
               >
                 <IconUsers size={18} />
               </ActionIcon>
@@ -466,10 +526,15 @@ function PlaylistCard({
             <Tooltip label="Share playlist" position="left">
               <ActionIcon
                 variant="light"
-                color="green"
                 size="lg"
                 radius="md"
                 onClick={onShare}
+                style={{
+                  background: 'rgba(0, 212, 255, 0.15)',
+                  border: '1px solid rgba(0, 212, 255, 0.3)',
+                  color: '#00d4ff',
+                  transition: 'all 0.2s ease',
+                }}
               >
                 <IconShare size={18} />
               </ActionIcon>
@@ -478,10 +543,15 @@ function PlaylistCard({
             <Tooltip label="Delete playlist" position="left">
               <ActionIcon
                 variant="light"
-                color="red"
                 size="lg"
                 radius="md"
                 onClick={onDelete}
+                style={{
+                  background: 'rgba(236, 72, 153, 0.15)',
+                  border: '1px solid rgba(236, 72, 153, 0.3)',
+                  color: '#ec4899',
+                  transition: 'all 0.2s ease',
+                }}
               >
                 <IconTrash size={18} />
               </ActionIcon>

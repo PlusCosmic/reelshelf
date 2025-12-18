@@ -35,13 +35,13 @@ export function ClipsContentArea({ isLoading, clips, hasActiveFilters }: ClipsCo
       styles={{
         scrollbar: {
           '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            backgroundColor: 'rgba(0, 212, 255, 0.1)',
           }
         },
         thumb: {
-          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+          backgroundColor: 'rgba(0, 212, 255, 0.3)',
           '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+            backgroundColor: 'rgba(0, 212, 255, 0.5)',
           }
         }
       }}
