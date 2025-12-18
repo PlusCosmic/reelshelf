@@ -15,22 +15,35 @@
 
 import * as runtime from '../runtime';
 import type {
+  BackupListResult,
+  BackupSyncResult,
   CommandLogEntry,
   CreateDirectoryRequest,
+  CreateMinecraftServerRequest,
   DirectoryListing,
+  MinecraftServer,
   OnlinePlayer,
   RconCommand,
   RconResponse,
   SaveFileRequest,
   ServerStatus,
+  UpdateMinecraftServerRequest,
 } from '../models/index';
 import {
+    BackupListResultFromJSON,
+    BackupListResultToJSON,
+    BackupSyncResultFromJSON,
+    BackupSyncResultToJSON,
     CommandLogEntryFromJSON,
     CommandLogEntryToJSON,
     CreateDirectoryRequestFromJSON,
     CreateDirectoryRequestToJSON,
+    CreateMinecraftServerRequestFromJSON,
+    CreateMinecraftServerRequestToJSON,
     DirectoryListingFromJSON,
     DirectoryListingToJSON,
+    MinecraftServerFromJSON,
+    MinecraftServerToJSON,
     OnlinePlayerFromJSON,
     OnlinePlayerToJSON,
     RconCommandFromJSON,
@@ -41,34 +54,80 @@ import {
     SaveFileRequestToJSON,
     ServerStatusFromJSON,
     ServerStatusToJSON,
+    UpdateMinecraftServerRequestFromJSON,
+    UpdateMinecraftServerRequestToJSON,
 } from '../models/index';
 
+export interface ConsoleWebSocketRequest {
+    serverId: string;
+}
+
 export interface CreateMinecraftDirectoryRequest {
+    serverId: string;
     createDirectoryRequest: CreateDirectoryRequest;
 }
 
+export interface CreateMinecraftServerOperationRequest {
+    createMinecraftServerRequest: CreateMinecraftServerRequest;
+}
+
 export interface DeleteMinecraftFileRequest {
+    serverId: string;
     path: string;
 }
 
+export interface DeleteMinecraftServerRequest {
+    serverId: string;
+}
+
+export interface GetBackupStatusRequest {
+    serverId: string;
+}
+
 export interface GetCommandHistoryRequest {
+    serverId: string;
     limit?: number;
 }
 
 export interface GetMinecraftFileContentRequest {
+    serverId: string;
     path: string;
 }
 
+export interface GetMinecraftPlayersRequest {
+    serverId: string;
+}
+
+export interface GetMinecraftServerRequest {
+    serverId: string;
+}
+
+export interface GetMinecraftStatusRequest {
+    serverId: string;
+}
+
 export interface ListMinecraftFilesRequest {
+    serverId: string;
     path?: string;
 }
 
 export interface SaveMinecraftFileContentRequest {
+    serverId: string;
     saveFileRequest: SaveFileRequest;
 }
 
 export interface SendMinecraftCommandRequest {
+    serverId: string;
     rconCommand: RconCommand;
+}
+
+export interface TriggerBackupSyncRequest {
+    serverId: string;
+}
+
+export interface UpdateMinecraftServerOperationRequest {
+    serverId: string;
+    updateMinecraftServerRequest: UpdateMinecraftServerRequest;
 }
 
 /**
@@ -78,13 +137,21 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
-    async consoleWebSocketRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async consoleWebSocketRaw(requestParameters: ConsoleWebSocketRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling consoleWebSocket().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/minecraft/console/live`;
+        let urlPath = `/minecraft/servers/{serverId}/console/live`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -98,13 +165,20 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
-    async consoleWebSocket(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.consoleWebSocketRaw(initOverrides);
+    async consoleWebSocket(requestParameters: ConsoleWebSocketRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.consoleWebSocketRaw(requestParameters, initOverrides);
     }
 
     /**
      */
     async createMinecraftDirectoryRaw(requestParameters: CreateMinecraftDirectoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling createMinecraftDirectory().'
+            );
+        }
+
         if (requestParameters['createDirectoryRequest'] == null) {
             throw new runtime.RequiredError(
                 'createDirectoryRequest',
@@ -119,7 +193,8 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/minecraft/files/mkdir`;
+        let urlPath = `/minecraft/servers/{serverId}/files/mkdir`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -140,7 +215,51 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
+    async createMinecraftServerRaw(requestParameters: CreateMinecraftServerOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MinecraftServer>> {
+        if (requestParameters['createMinecraftServerRequest'] == null) {
+            throw new runtime.RequiredError(
+                'createMinecraftServerRequest',
+                'Required parameter "createMinecraftServerRequest" was null or undefined when calling createMinecraftServer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/minecraft/servers`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateMinecraftServerRequestToJSON(requestParameters['createMinecraftServerRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MinecraftServerFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async createMinecraftServer(requestParameters: CreateMinecraftServerOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MinecraftServer> {
+        const response = await this.createMinecraftServerRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
     async deleteMinecraftFileRaw(requestParameters: DeleteMinecraftFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling deleteMinecraftFile().'
+            );
+        }
+
         if (requestParameters['path'] == null) {
             throw new runtime.RequiredError(
                 'path',
@@ -157,7 +276,8 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/minecraft/files`;
+        let urlPath = `/minecraft/servers/{serverId}/files`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -177,7 +297,83 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
+    async deleteMinecraftServerRaw(requestParameters: DeleteMinecraftServerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling deleteMinecraftServer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers/{serverId}`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async deleteMinecraftServer(requestParameters: DeleteMinecraftServerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteMinecraftServerRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     */
+    async getBackupStatusRaw(requestParameters: GetBackupStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BackupListResult>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling getBackupStatus().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers/{serverId}/backups`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BackupListResultFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async getBackupStatus(requestParameters: GetBackupStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BackupListResult> {
+        const response = await this.getBackupStatusRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
     async getCommandHistoryRaw(requestParameters: GetCommandHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CommandLogEntry>>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling getCommandHistory().'
+            );
+        }
+
         const queryParameters: any = {};
 
         if (requestParameters['limit'] != null) {
@@ -187,7 +383,8 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/minecraft/console/history`;
+        let urlPath = `/minecraft/servers/{serverId}/console/history`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -201,7 +398,7 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
-    async getCommandHistory(requestParameters: GetCommandHistoryRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CommandLogEntry>> {
+    async getCommandHistory(requestParameters: GetCommandHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CommandLogEntry>> {
         const response = await this.getCommandHistoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -209,6 +406,13 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
     /**
      */
     async getMinecraftFileContentRaw(requestParameters: GetMinecraftFileContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling getMinecraftFileContent().'
+            );
+        }
+
         if (requestParameters['path'] == null) {
             throw new runtime.RequiredError(
                 'path',
@@ -225,7 +429,8 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/minecraft/files/content`;
+        let urlPath = `/minecraft/servers/{serverId}/files/content`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -250,13 +455,21 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
-    async getMinecraftPlayersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OnlinePlayer>>> {
+    async getMinecraftPlayersRaw(requestParameters: GetMinecraftPlayersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OnlinePlayer>>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling getMinecraftPlayers().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/minecraft/players`;
+        let urlPath = `/minecraft/servers/{serverId}/players`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -270,20 +483,90 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
-    async getMinecraftPlayers(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OnlinePlayer>> {
-        const response = await this.getMinecraftPlayersRaw(initOverrides);
+    async getMinecraftPlayers(requestParameters: GetMinecraftPlayersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OnlinePlayer>> {
+        const response = await this.getMinecraftPlayersRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
      */
-    async getMinecraftStatusRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ServerStatus>> {
+    async getMinecraftServerRaw(requestParameters: GetMinecraftServerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MinecraftServer>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling getMinecraftServer().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/minecraft/status`;
+        let urlPath = `/minecraft/servers/{serverId}`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MinecraftServerFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async getMinecraftServer(requestParameters: GetMinecraftServerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MinecraftServer> {
+        const response = await this.getMinecraftServerRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async getMinecraftServersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MinecraftServer>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MinecraftServerFromJSON));
+    }
+
+    /**
+     */
+    async getMinecraftServers(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MinecraftServer>> {
+        const response = await this.getMinecraftServersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async getMinecraftStatusRaw(requestParameters: GetMinecraftStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ServerStatus>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling getMinecraftStatus().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers/{serverId}/status`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -297,14 +580,21 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
-    async getMinecraftStatus(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ServerStatus> {
-        const response = await this.getMinecraftStatusRaw(initOverrides);
+    async getMinecraftStatus(requestParameters: GetMinecraftStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ServerStatus> {
+        const response = await this.getMinecraftStatusRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
      */
     async listMinecraftFilesRaw(requestParameters: ListMinecraftFilesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DirectoryListing>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling listMinecraftFiles().'
+            );
+        }
+
         const queryParameters: any = {};
 
         if (requestParameters['path'] != null) {
@@ -314,7 +604,8 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/minecraft/files`;
+        let urlPath = `/minecraft/servers/{serverId}/files`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -328,7 +619,7 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
-    async listMinecraftFiles(requestParameters: ListMinecraftFilesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DirectoryListing> {
+    async listMinecraftFiles(requestParameters: ListMinecraftFilesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DirectoryListing> {
         const response = await this.listMinecraftFilesRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -336,6 +627,13 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
     /**
      */
     async saveMinecraftFileContentRaw(requestParameters: SaveMinecraftFileContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling saveMinecraftFileContent().'
+            );
+        }
+
         if (requestParameters['saveFileRequest'] == null) {
             throw new runtime.RequiredError(
                 'saveFileRequest',
@@ -350,7 +648,8 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/minecraft/files/content`;
+        let urlPath = `/minecraft/servers/{serverId}/files/content`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -372,6 +671,13 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
     /**
      */
     async sendMinecraftCommandRaw(requestParameters: SendMinecraftCommandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RconResponse>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling sendMinecraftCommand().'
+            );
+        }
+
         if (requestParameters['rconCommand'] == null) {
             throw new runtime.RequiredError(
                 'rconCommand',
@@ -386,7 +692,8 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/minecraft/console/command`;
+        let urlPath = `/minecraft/servers/{serverId}/console/command`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -403,6 +710,86 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
      */
     async sendMinecraftCommand(requestParameters: SendMinecraftCommandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RconResponse> {
         const response = await this.sendMinecraftCommandRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async triggerBackupSyncRaw(requestParameters: TriggerBackupSyncRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BackupSyncResult>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling triggerBackupSync().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers/{serverId}/backups/sync`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BackupSyncResultFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async triggerBackupSync(requestParameters: TriggerBackupSyncRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BackupSyncResult> {
+        const response = await this.triggerBackupSyncRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async updateMinecraftServerRaw(requestParameters: UpdateMinecraftServerOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MinecraftServer>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling updateMinecraftServer().'
+            );
+        }
+
+        if (requestParameters['updateMinecraftServerRequest'] == null) {
+            throw new runtime.RequiredError(
+                'updateMinecraftServerRequest',
+                'Required parameter "updateMinecraftServerRequest" was null or undefined when calling updateMinecraftServer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/minecraft/servers/{serverId}`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateMinecraftServerRequestToJSON(requestParameters['updateMinecraftServerRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MinecraftServerFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async updateMinecraftServer(requestParameters: UpdateMinecraftServerOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MinecraftServer> {
+        const response = await this.updateMinecraftServerRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -1,36 +1,28 @@
 
-# CommandLogEntry
+# BackupListResult
 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`userId` | string
-`command` | string
-`response` | string
-`success` | boolean
-`error` | string
-`executedAt` | Date
-`serverId` | string
+`isConfigured` | boolean
+`localFiles` | [Array&lt;BackupFileInfo&gt;](BackupFileInfo.md)
+`remoteFiles` | Array&lt;any&gt;
+`pendingSyncCount` | number
 
 ## Example
 
 ```typescript
-import type { CommandLogEntry } from ''
+import type { BackupListResult } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "userId": null,
-  "command": null,
-  "response": null,
-  "success": null,
-  "error": null,
-  "executedAt": null,
-  "serverId": null,
-} satisfies CommandLogEntry
+  "isConfigured": null,
+  "localFiles": null,
+  "remoteFiles": null,
+  "pendingSyncCount": null,
+} satisfies BackupListResult
 
 console.log(example)
 
@@ -39,7 +31,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as CommandLogEntry
+const exampleParsed = JSON.parse(exampleJSON) as BackupListResult
 console.log(exampleParsed)
 ```
 

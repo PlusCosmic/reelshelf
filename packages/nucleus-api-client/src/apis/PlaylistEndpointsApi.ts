@@ -17,6 +17,7 @@ import * as runtime from '../runtime';
 import type {
   AddClipToPlaylistRequest,
   AddCollaboratorRequest,
+  CreateGamingSessionPlaylistRequest,
   CreatePlaylistRequest,
   Playlist,
   PlaylistCollaborator,
@@ -30,6 +31,8 @@ import {
     AddClipToPlaylistRequestToJSON,
     AddCollaboratorRequestFromJSON,
     AddCollaboratorRequestToJSON,
+    CreateGamingSessionPlaylistRequestFromJSON,
+    CreateGamingSessionPlaylistRequestToJSON,
     CreatePlaylistRequestFromJSON,
     CreatePlaylistRequestToJSON,
     PlaylistFromJSON,
@@ -54,6 +57,10 @@ export interface AddClipsToPlaylistRequest {
 export interface AddCollaboratorOperationRequest {
     id: string;
     addCollaboratorRequest: AddCollaboratorRequest;
+}
+
+export interface CreateGamingSessionPlaylistOperationRequest {
+    createGamingSessionPlaylistRequest: CreateGamingSessionPlaylistRequest;
 }
 
 export interface CreatePlaylistOperationRequest {
@@ -184,6 +191,43 @@ export class PlaylistEndpointsApi extends runtime.BaseAPI {
      */
     async addCollaborator(requestParameters: AddCollaboratorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PlaylistCollaborator>> {
         const response = await this.addCollaboratorRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async createGamingSessionPlaylistRaw(requestParameters: CreateGamingSessionPlaylistOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlaylistWithDetails>> {
+        if (requestParameters['createGamingSessionPlaylistRequest'] == null) {
+            throw new runtime.RequiredError(
+                'createGamingSessionPlaylistRequest',
+                'Required parameter "createGamingSessionPlaylistRequest" was null or undefined when calling createGamingSessionPlaylist().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/playlists/gaming-session`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateGamingSessionPlaylistRequestToJSON(requestParameters['createGamingSessionPlaylistRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlaylistWithDetailsFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async createGamingSessionPlaylist(requestParameters: CreateGamingSessionPlaylistOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlaylistWithDetails> {
+        const response = await this.createGamingSessionPlaylistRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

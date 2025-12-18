@@ -1,3 +1,4 @@
+.openapi-generator-ignore
 apis/ApexDetectionEndpointsApi.ts
 apis/ApexEndpointsApi.ts
 apis/AuthEndpointsApi.ts
@@ -17,6 +18,9 @@ docs/ApexDetectionEndpointsApi.md
 docs/ApexEndpointsApi.md
 docs/AuthEndpointsApi.md
 docs/BackfillResult.md
+docs/BackupFileInfo.md
+docs/BackupListResult.md
+docs/BackupSyncResult.md
 docs/BunnyVideo.md
 docs/BunnyWebhookEndpointsApi.md
 docs/Clip.md
@@ -26,6 +30,8 @@ docs/ClipsEndpointsApi.md
 docs/CommandLogEntry.md
 docs/CreateClipResponse.md
 docs/CreateDirectoryRequest.md
+docs/CreateGamingSessionPlaylistRequest.md
+docs/CreateMinecraftServerRequest.md
 docs/CreatePlaylistRequest.md
 docs/CurrentMapRotation.md
 docs/DirectoryListing.md
@@ -38,6 +44,7 @@ docs/LinksEndpointsApi.md
 docs/MapInfo.md
 docs/MetaTag.md
 docs/MinecraftEndpointsApi.md
+docs/MinecraftServer.md
 docs/Moment.md
 docs/NucleusApi.md
 docs/OnlinePlayer.md
@@ -54,6 +61,7 @@ docs/ReorderPlaylistClipsRequest.md
 docs/SaveFileRequest.md
 docs/ServerStatus.md
 docs/TopTag.md
+docs/UpdateMinecraftServerRequest.md
 docs/UpdatePlaylistRequest.md
 docs/UpdatePreferencesRequest.md
 docs/UpdateTitleRequest.md
@@ -66,6 +74,9 @@ models/AddClipToPlaylistRequest.ts
 models/AddCollaboratorRequest.ts
 models/AddTagRequest.ts
 models/BackfillResult.ts
+models/BackupFileInfo.ts
+models/BackupListResult.ts
+models/BackupSyncResult.ts
 models/BunnyVideo.ts
 models/Clip.ts
 models/Clip2.ts
@@ -73,6 +84,8 @@ models/ClipCategory.ts
 models/CommandLogEntry.ts
 models/CreateClipResponse.ts
 models/CreateDirectoryRequest.ts
+models/CreateGamingSessionPlaylistRequest.ts
+models/CreateMinecraftServerRequest.ts
 models/CreatePlaylistRequest.ts
 models/CurrentMapRotation.ts
 models/DirectoryListing.ts
@@ -81,6 +94,7 @@ models/FileEntry.ts
 models/LinkRequest.ts
 models/MapInfo.ts
 models/MetaTag.ts
+models/MinecraftServer.ts
 models/Moment.ts
 models/OnlinePlayer.ts
 models/PagedClipsResponse.ts
@@ -95,6 +109,7 @@ models/ReorderPlaylistClipsRequest.ts
 models/SaveFileRequest.ts
 models/ServerStatus.ts
 models/TopTag.ts
+models/UpdateMinecraftServerRequest.ts
 models/UpdatePlaylistRequest.ts
 models/UpdatePreferencesRequest.ts
 models/UpdateTitleRequest.ts
