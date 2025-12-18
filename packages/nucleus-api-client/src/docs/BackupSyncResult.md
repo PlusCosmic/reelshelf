@@ -11,6 +11,8 @@ Name | Type
 `filesUploaded` | number
 `filesSkipped` | number
 `bytesUploaded` | number
+`filesDeleted` | number
+`bytesDeleted` | number
 
 ## Example
 
@@ -24,6 +26,8 @@ const example = {
   "filesUploaded": null,
   "filesSkipped": null,
   "bytesUploaded": null,
+  "filesDeleted": null,
+  "bytesDeleted": null,
 } satisfies BackupSyncResult
 
 console.log(example)

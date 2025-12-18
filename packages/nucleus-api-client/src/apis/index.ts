@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AdminEndpointsApi';
 export * from './ApexDetectionEndpointsApi';
 export * from './ApexEndpointsApi';
 export * from './AuthEndpointsApi';

@@ -1,4 +1,5 @@
 .openapi-generator-ignore
+apis/AdminEndpointsApi.ts
 apis/ApexDetectionEndpointsApi.ts
 apis/ApexEndpointsApi.ts
 apis/AuthEndpointsApi.ts
@@ -14,6 +15,7 @@ apis/index.ts
 docs/AddClipToPlaylistRequest.md
 docs/AddCollaboratorRequest.md
 docs/AddTagRequest.md
+docs/AdminEndpointsApi.md
 docs/ApexDetectionEndpointsApi.md
 docs/ApexEndpointsApi.md
 docs/AuthEndpointsApi.md
@@ -67,6 +69,7 @@ docs/UpdatePreferencesRequest.md
 docs/UpdateTitleRequest.md
 docs/UserFrequentLinkRow.md
 docs/UserPreferences.md
+docs/UserWithPermissions.md
 docs/VideoDetectionRequest.md
 docs/VideoProgressUpdate.md
 index.ts
@@ -115,6 +118,7 @@ models/UpdatePreferencesRequest.ts
 models/UpdateTitleRequest.ts
 models/UserFrequentLinkRow.ts
 models/UserPreferences.ts
+models/UserWithPermissions.ts
 models/VideoDetectionRequest.ts
 models/VideoProgressUpdate.ts
 models/index.ts

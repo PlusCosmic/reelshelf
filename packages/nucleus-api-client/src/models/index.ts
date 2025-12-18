@@ -45,5 +45,6 @@ export * from './UpdatePreferencesRequest';
 export * from './UpdateTitleRequest';
 export * from './UserFrequentLinkRow';
 export * from './UserPreferences';
+export * from './UserWithPermissions';
 export * from './VideoDetectionRequest';
 export * from './VideoProgressUpdate';

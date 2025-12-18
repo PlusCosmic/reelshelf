@@ -1,20 +1,19 @@
-# DiscordUserEndpointsApi
+# AdminEndpointsApi
 
 All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**meGet**](DiscordUserEndpointsApi.md#meget) | **GET** /me |  |
-| [**mePreferencesGet**](DiscordUserEndpointsApi.md#mepreferencesget) | **GET** /me/preferences |  |
-| [**mePreferencesPatch**](DiscordUserEndpointsApi.md#mepreferencespatch) | **PATCH** /me/preferences |  |
-| [**userUserIdGet**](DiscordUserEndpointsApi.md#useruseridget) | **GET** /user/{userId} |  |
-| [**usersSuggestionsGet**](DiscordUserEndpointsApi.md#userssuggestionsget) | **GET** /users/suggestions |  |
+| [**getAllUsers**](AdminEndpointsApi.md#getallusers) | **GET** /admin/users |  |
+| [**getUserById**](AdminEndpointsApi.md#getuserbyid) | **GET** /admin/users/{id} |  |
+| [**grantPermission**](AdminEndpointsApi.md#grantpermission) | **POST** /admin/users/{id}/permissions/{permission} |  |
+| [**revokePermission**](AdminEndpointsApi.md#revokepermission) | **DELETE** /admin/users/{id}/permissions/{permission} |  |
 
 
 
-## meGet
+## getAllUsers
 
-> DiscordUser meGet()
+> Array&lt;UserWithPermissions&gt; getAllUsers()
 
 
 
@@ -23,16 +22,16 @@ All URIs are relative to *http://localhost*
 ```ts
 import {
   Configuration,
-  DiscordUserEndpointsApi,
+  AdminEndpointsApi,
 } from '';
-import type { MeGetRequest } from '';
+import type { GetAllUsersRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new DiscordUserEndpointsApi();
+  const api = new AdminEndpointsApi();
 
   try {
-    const data = await api.meGet();
+    const data = await api.getAllUsers();
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -49,7 +48,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**DiscordUser**](DiscordUser.md)
+[**Array&lt;UserWithPermissions&gt;**](UserWithPermissions.md)
 
 ### Authorization
 
@@ -69,9 +68,9 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## mePreferencesGet
+## getUserById
 
-> UserPreferences mePreferencesGet()
+> UserWithPermissions getUserById(id)
 
 
 
@@ -80,16 +79,21 @@ No authorization required
 ```ts
 import {
   Configuration,
-  DiscordUserEndpointsApi,
+  AdminEndpointsApi,
 } from '';
-import type { MePreferencesGetRequest } from '';
+import type { GetUserByIdRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new DiscordUserEndpointsApi();
+  const api = new AdminEndpointsApi();
+
+  const body = {
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetUserByIdRequest;
 
   try {
-    const data = await api.mePreferencesGet();
+    const data = await api.getUserById(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -102,11 +106,14 @@ example().catch(console.error);
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
-[**UserPreferences**](UserPreferences.md)
+[**UserWithPermissions**](UserWithPermissions.md)
 
 ### Authorization
 
@@ -127,9 +134,9 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## mePreferencesPatch
+## grantPermission
 
-> UserPreferences mePreferencesPatch(updatePreferencesRequest)
+> UserWithPermissions grantPermission(id, permission)
 
 
 
@@ -138,21 +145,23 @@ No authorization required
 ```ts
 import {
   Configuration,
-  DiscordUserEndpointsApi,
+  AdminEndpointsApi,
 } from '';
-import type { MePreferencesPatchRequest } from '';
+import type { GrantPermissionRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new DiscordUserEndpointsApi();
+  const api = new AdminEndpointsApi();
 
   const body = {
-    // UpdatePreferencesRequest
-    updatePreferencesRequest: ...,
-  } satisfies MePreferencesPatchRequest;
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    permission: permission_example,
+  } satisfies GrantPermissionRequest;
 
   try {
-    const data = await api.mePreferencesPatch(body);
+    const data = await api.grantPermission(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -168,11 +177,12 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **updatePreferencesRequest** | [UpdatePreferencesRequest](UpdatePreferencesRequest.md) |  | |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **permission** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
-[**UserPreferences**](UserPreferences.md)
+[**UserWithPermissions**](UserWithPermissions.md)
 
 ### Authorization
 
@@ -180,7 +190,7 @@ No authorization required
 
 ### HTTP request headers
 
-- **Content-Type**: `application/json`
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -188,14 +198,15 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | OK |  -  |
+| **404** | Not Found |  -  |
 | **400** | Bad Request |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## userUserIdGet
+## revokePermission
 
-> DiscordUser userUserIdGet(userId)
+> UserWithPermissions revokePermission(id, permission)
 
 
 
@@ -204,21 +215,23 @@ No authorization required
 ```ts
 import {
   Configuration,
-  DiscordUserEndpointsApi,
+  AdminEndpointsApi,
 } from '';
-import type { UserUserIdGetRequest } from '';
+import type { RevokePermissionRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
-  const api = new DiscordUserEndpointsApi();
+  const api = new AdminEndpointsApi();
 
   const body = {
     // string
-    userId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-  } satisfies UserUserIdGetRequest;
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    permission: permission_example,
+  } satisfies RevokePermissionRequest;
 
   try {
-    const data = await api.userUserIdGet(body);
+    const data = await api.revokePermission(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -234,11 +247,12 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **userId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **permission** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
-[**DiscordUser**](DiscordUser.md)
+[**UserWithPermissions**](UserWithPermissions.md)
 
 ### Authorization
 
@@ -255,63 +269,6 @@ No authorization required
 |-------------|-------------|------------------|
 | **200** | OK |  -  |
 | **404** | Not Found |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
-## usersSuggestionsGet
-
-> Array&lt;DiscordUser&gt; usersSuggestionsGet()
-
-
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DiscordUserEndpointsApi,
-} from '';
-import type { UsersSuggestionsGetRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DiscordUserEndpointsApi();
-
-  try {
-    const data = await api.usersSuggestionsGet();
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-This endpoint does not need any parameter.
-
-### Return type
-
-[**Array&lt;DiscordUser&gt;**](DiscordUser.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | OK |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

@@ -190,7 +190,7 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
         }
 
         if (requestParameters['createdAt'] != null) {
-            queryParameters['createdAt'] = requestParameters['createdAt'];
+            queryParameters['createdAt'] = (requestParameters['createdAt'] as any).toISOString();
         }
 
         if (requestParameters['md5Hash'] != null) {
@@ -394,11 +394,11 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
         }
 
         if (requestParameters['startDate'] != null) {
-            queryParameters['startDate'] = requestParameters['startDate'];
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString();
         }
 
         if (requestParameters['endDate'] != null) {
-            queryParameters['endDate'] = requestParameters['endDate'];
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString();
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

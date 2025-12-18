@@ -49,6 +49,18 @@ export interface BackupSyncResult {
      * @memberof BackupSyncResult
      */
     bytesUploaded: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof BackupSyncResult
+     */
+    filesDeleted?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof BackupSyncResult
+     */
+    bytesDeleted?: number;
 }
 
 /**
@@ -78,6 +90,8 @@ export function BackupSyncResultFromJSONTyped(json: any, ignoreDiscriminator: bo
         'filesUploaded': json['files_uploaded'],
         'filesSkipped': json['files_skipped'],
         'bytesUploaded': json['bytes_uploaded'],
+        'filesDeleted': json['files_deleted'] == null ? undefined : json['files_deleted'],
+        'bytesDeleted': json['bytes_deleted'] == null ? undefined : json['bytes_deleted'],
     };
 }
 
@@ -97,6 +111,8 @@ export function BackupSyncResultToJSONTyped(value?: BackupSyncResult | null, ign
         'files_uploaded': value['filesUploaded'],
         'files_skipped': value['filesSkipped'],
         'bytes_uploaded': value['bytesUploaded'],
+        'files_deleted': value['filesDeleted'],
+        'bytes_deleted': value['bytesDeleted'],
     };
 }
 
