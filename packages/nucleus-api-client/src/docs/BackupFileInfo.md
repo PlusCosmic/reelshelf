@@ -1,36 +1,26 @@
 
-# CommandLogEntry
+# BackupFileInfo
 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`userId` | string
-`command` | string
-`response` | string
-`success` | boolean
-`error` | string
-`executedAt` | Date
-`serverId` | string
+`path` | string
+`size` | number
+`lastModified` | Date
 
 ## Example
 
 ```typescript
-import type { CommandLogEntry } from ''
+import type { BackupFileInfo } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "userId": null,
-  "command": null,
-  "response": null,
-  "success": null,
-  "error": null,
-  "executedAt": null,
-  "serverId": null,
-} satisfies CommandLogEntry
+  "path": null,
+  "size": null,
+  "lastModified": null,
+} satisfies BackupFileInfo
 
 console.log(example)
 
@@ -39,7 +29,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as CommandLogEntry
+const exampleParsed = JSON.parse(exampleJSON) as BackupFileInfo
 console.log(exampleParsed)
 ```
 

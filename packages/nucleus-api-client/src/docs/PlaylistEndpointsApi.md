@@ -6,6 +6,7 @@ All URIs are relative to *http://localhost*
 |------------- | ------------- | -------------|
 | [**addClipsToPlaylist**](PlaylistEndpointsApi.md#addclipstoplaylist) | **POST** /api/playlists/{id}/clips |  |
 | [**addCollaborator**](PlaylistEndpointsApi.md#addcollaboratoroperation) | **POST** /api/playlists/{id}/collaborators |  |
+| [**createGamingSessionPlaylist**](PlaylistEndpointsApi.md#creategamingsessionplaylistoperation) | **POST** /api/playlists/gaming-session |  |
 | [**createPlaylist**](PlaylistEndpointsApi.md#createplaylistoperation) | **POST** /api/playlists |  |
 | [**deletePlaylist**](PlaylistEndpointsApi.md#deleteplaylist) | **DELETE** /api/playlists/{id} |  |
 | [**getCollaborators**](PlaylistEndpointsApi.md#getcollaborators) | **GET** /api/playlists/{id}/collaborators |  |
@@ -153,6 +154,72 @@ No authorization required
 |-------------|-------------|------------------|
 | **200** | OK |  -  |
 | **404** | Not Found |  -  |
+| **400** | Bad Request |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## createGamingSessionPlaylist
+
+> PlaylistWithDetails createGamingSessionPlaylist(createGamingSessionPlaylistRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  PlaylistEndpointsApi,
+} from '';
+import type { CreateGamingSessionPlaylistOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new PlaylistEndpointsApi();
+
+  const body = {
+    // CreateGamingSessionPlaylistRequest
+    createGamingSessionPlaylistRequest: ...,
+  } satisfies CreateGamingSessionPlaylistOperationRequest;
+
+  try {
+    const data = await api.createGamingSessionPlaylist(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **createGamingSessionPlaylistRequest** | [CreateGamingSessionPlaylistRequest](CreateGamingSessionPlaylistRequest.md) |  | |
+
+### Return type
+
+[**PlaylistWithDetails**](PlaylistWithDetails.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** | Created |  -  |
 | **400** | Bad Request |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
