@@ -2,6 +2,7 @@ import {
   type PlaylistSummary,
   type PlaylistWithDetails,
   type CreatePlaylistRequest,
+  type CreateGamingSessionPlaylistRequest,
   type UpdatePlaylistRequest,
   type AddClipToPlaylistRequest,
   type AddCollaboratorRequest,
@@ -49,6 +50,22 @@ export async function createPlaylist(
   const api = getPlaylistApi();
   return api.createPlaylist({ createPlaylistRequest: request }).catch((error: any) => {
     console.error('Failed to create playlist:', { request, error });
+    throw error;
+  });
+}
+
+/**
+ * Create a gaming session playlist from the last 24 hours of clips
+ * Automatically compiles clips from selected participants for the chosen game
+ */
+export async function createGamingSessionPlaylist(
+  request: CreateGamingSessionPlaylistRequest
+): Promise<PlaylistWithDetails | null> {
+  const api = getPlaylistApi();
+  return api.createGamingSessionPlaylist({
+    createGamingSessionPlaylistRequest: request,
+  }).catch((error: any) => {
+    console.error('Failed to create gaming session playlist:', { request, error });
     throw error;
   });
 }

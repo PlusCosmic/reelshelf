@@ -31,6 +31,7 @@ import {
 import {
   IconArrowLeft,
   IconClock,
+  IconDeviceGamepad2,
   IconPlus,
   IconSearch,
   IconShare,
@@ -42,6 +43,7 @@ import { deletePlaylist, fetchPlaylists } from "@repo/shared";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { CreatePlaylistModal } from "./CreatePlaylistModal";
+import { CreateGamingSessionModal } from "./CreateGamingSessionModal";
 import { PlaylistCollaboratorsModal } from "./PlaylistCollaboratorsModal";
 import type { PlaylistSummary } from "@repo/nucleus-api-client";
 
@@ -50,6 +52,7 @@ export function PlaylistsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredPlaylist, setHoveredPlaylist] = useState<string | null>(null);
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
+  const [gamingSessionModalOpened, { open: openGamingSessionModal, close: closeGamingSessionModal }] = useDisclosure(false);
   const [collaboratorsPlaylist, setCollaboratorsPlaylist] = useState<PlaylistSummary | null>(null);
   const navigate = useNavigate();
 
@@ -175,24 +178,42 @@ export function PlaylistsPage() {
             Collaborative clip collections
           </Text>
 
-          {/* Create Button */}
-          <Button
-            leftSection={<IconPlus size={18} />}
-            size="md"
-            variant="filled"
-            onClick={openCreateModal}
-            radius="md"
-            fullWidth
-            style={{
-              background: 'linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)',
-              border: '1px solid rgba(0, 212, 255, 0.5)',
-              boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)',
-              color: '#0a0a14',
-              fontWeight: 600,
-            }}
-          >
-            Create Playlist
-          </Button>
+          {/* Create Buttons */}
+          <Stack gap="xs">
+            <Button
+              leftSection={<IconPlus size={18} />}
+              size="md"
+              variant="filled"
+              onClick={openCreateModal}
+              radius="md"
+              fullWidth
+              style={{
+                background: 'linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)',
+                border: '1px solid rgba(0, 212, 255, 0.5)',
+                boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)',
+                color: '#0a0a14',
+                fontWeight: 600,
+              }}
+            >
+              Create Playlist
+            </Button>
+
+            <Button
+              leftSection={<IconDeviceGamepad2 size={18} />}
+              size="md"
+              variant="light"
+              onClick={openGamingSessionModal}
+              radius="md"
+              fullWidth
+              style={{
+                background: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                color: '#22c55e',
+              }}
+            >
+              Gaming Session
+            </Button>
+          </Stack>
 
           {/* Search */}
           <TextInput
@@ -369,6 +390,13 @@ export function PlaylistsPage() {
           creatorUserId={collaboratorsPlaylist.creatorUserId}
         />
       )}
+
+      {/* Gaming Session Modal */}
+      <CreateGamingSessionModal
+        opened={gamingSessionModalOpened}
+        onClose={closeGamingSessionModal}
+        onSuccess={refetch}
+      />
     </div>
   );
 }
