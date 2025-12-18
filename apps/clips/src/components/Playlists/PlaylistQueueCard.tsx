@@ -42,13 +42,18 @@ export function PlaylistQueueCard({
         radius="md"
         style={{
           background: isCurrentClip
-            ? "linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.1) 100%)"
+            ? "linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%)"
             : isHovered
-              ? "rgba(255, 255, 255, 0.05)"
-              : "rgba(255, 255, 255, 0.02)",
+              ? "linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)"
+              : "linear-gradient(135deg, rgba(15, 15, 25, 0.6) 0%, rgba(20, 20, 35, 0.5) 100%)",
           border: isCurrentClip
-            ? "1px solid rgba(34, 197, 94, 0.3)"
-            : "1px solid rgba(255, 255, 255, 0.05)",
+            ? "1px solid rgba(0, 212, 255, 0.4)"
+            : isHovered
+              ? "1px solid rgba(0, 212, 255, 0.2)"
+              : "1px solid rgba(0, 212, 255, 0.08)",
+          boxShadow: isCurrentClip
+            ? "0 0 20px rgba(0, 212, 255, 0.15)"
+            : "none",
           transition: "all 0.2s ease",
           cursor: "pointer",
         }}
@@ -68,7 +73,7 @@ export function PlaylistQueueCard({
           {/* Position Number / Playing Indicator */}
           <Box w={24} ta="center">
             {isCurrentClip ? (
-              <IconCheck size={18} color="var(--mantine-color-green-4)" />
+              <IconCheck size={18} color="#00d4ff" style={{ filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.5))" }} />
             ) : (
               <Text size="sm" c="dimmed" fw={600}>
                 {index + 1}
@@ -120,11 +125,12 @@ export function PlaylistQueueCard({
                 radius="sm"
                 leftSection={<IconClock size={8} />}
                 style={{
-                  background: "rgba(0, 0, 0, 0.75)",
+                  background: "rgba(10, 10, 20, 0.85)",
                   backdropFilter: "blur(4px)",
-                  color: "white",
+                  color: "#00d4ff",
                   fontSize: "9px",
                   padding: "2px 4px",
+                  border: "1px solid rgba(0, 212, 255, 0.2)",
                 }}
               >
                 {formatDuration(clip.video.length)}
@@ -138,7 +144,11 @@ export function PlaylistQueueCard({
               size="sm"
               fw={isCurrentClip ? 600 : 500}
               lineClamp={1}
-              c={isCurrentClip ? "var(--mantine-color-green-4)" : "inherit"}
+              style={isCurrentClip ? {
+                background: "linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              } : undefined}
             >
               {clip.video.title}
             </Text>
@@ -167,9 +177,12 @@ export function PlaylistQueueCard({
             <Tooltip label="Remove from playlist">
               <ActionIcon
                 variant="subtle"
-                color="red"
                 size="sm"
                 onClick={onRemove}
+                style={{
+                  color: "#ec4899",
+                  transition: "all 0.2s ease",
+                }}
               >
                 <IconTrash size={14} />
               </ActionIcon>

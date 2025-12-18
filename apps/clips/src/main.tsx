@@ -3,12 +3,13 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MantineProvider } from "@mantine/core";
-import { nucleusTheme } from "@repo/shared/theme";
+import { clipsTheme } from "./theme";
 import { routeTree } from "./routeTree.gen";
 import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
 import "@mantine/notifications/styles.css";
 import '@mantine/dates/styles.css';
+import "./styles/cyberpunk.css";
 import reportWebVitals from "./reportWebVitals.ts";
 
 // Create a new router instance
@@ -44,7 +45,7 @@ if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <MantineProvider theme={nucleusTheme} defaultColorScheme="dark">
+      <MantineProvider theme={clipsTheme} defaultColorScheme="dark">
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />
         </QueryClientProvider>

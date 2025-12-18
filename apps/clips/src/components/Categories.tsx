@@ -1,15 +1,19 @@
 import {
+  Box,
   Card,
-  Center,
   Group,
   Image,
+  Loader,
+  Stack,
+  Text,
+  ThemeIcon,
   Title,
   UnstyledButton,
 } from '@mantine/core'
+import { IconCategory } from '@tabler/icons-react'
 import { apiConfig } from "@repo/shared"
 import { useNavigate } from "@tanstack/react-router";
 import { useCategories, useCurrentUser } from '../hooks/queries'
-import { LoadingIndicator } from "./LoadingIndicator.tsx";
 import classes from './Categories.module.scss'
 
 export default function Categories() {
@@ -33,37 +37,76 @@ export default function Categories() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <Stack align="center" gap="md" py="xl">
+        <Loader size="lg" color="cyberBlue" />
+        <Text c="dimmed" size="sm">Loading categories...</Text>
+      </Stack>
+    )
+  }
+
+  if (!categories || categories.length === 0) {
+    return (
+      <Stack align="center" gap="md" py="xl">
+        <ThemeIcon
+          size={60}
+          radius="xl"
+          variant="light"
+          color="gray"
+          style={{
+            background: 'rgba(0, 212, 255, 0.05)',
+            border: '1px solid rgba(0, 212, 255, 0.1)',
+          }}
+        >
+          <IconCategory size={30} style={{ color: 'rgba(255, 255, 255, 0.3)' }} />
+        </ThemeIcon>
+        <Text c="dimmed" size="sm">No categories available</Text>
+      </Stack>
+    )
+  }
+
   return (
-    <div>
-      {isLoading && <LoadingIndicator message="Loading categories..." />}
-      {!isLoading && categories && categories.length > 0 && (
-        <div>
-          <Group mt="md">
-            {categories.map((category) => (
-              <div key={category.name}>
-                <Card className={classes.item} w="200" h="220">
-                  <UnstyledButton onClick={() => handleClick(category.categoryEnum)}>
-                    <Center>
-                      <Image
-                        src={apiConfig.baseUrl + category.artUrl}
-                        w={160}
-                        h={160}
-                        radius="md"
-                        fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='currentColor' fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5'%3E%3C/path%3E%3Cpath d='M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5'%3E%3C/path%3E%3C/svg%3E"
-                      />
-                    </Center>
-                    <Center>
-                      <Title h={24} order={6} maw={180} mt={7}>
-                        {category.name}
-                      </Title>
-                    </Center>
-                  </UnstyledButton>
-                </Card>
-              </div>
-            ))}
-          </Group>
-        </div>
-      )}
-    </div>
+    <Group mt="md" gap="lg">
+      {categories.map((category) => (
+        <Card
+          key={category.name}
+          className={classes.item}
+          w={220}
+          h={240}
+          p="lg"
+        >
+          <UnstyledButton
+            onClick={() => handleClick(category.categoryEnum)}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <Stack align="center" gap="md" h="100%" justify="center">
+              <Box className={classes.imageWrapper}>
+                <Image
+                  src={apiConfig.baseUrl + category.artUrl}
+                  w={160}
+                  h={160}
+                  radius="md"
+                  fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='%2300d4ff' fill='none' stroke-width='1.5'%3E%3Cpath d='M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z'%3E%3C/path%3E%3Crect x='3' y='6' width='12' height='12' rx='2'%3E%3C/rect%3E%3C/svg%3E"
+                  style={{
+                    border: '1px solid rgba(0, 212, 255, 0.1)',
+                    borderRadius: 'var(--mantine-radius-md)',
+                  }}
+                />
+              </Box>
+              <Title
+                className={classes.title}
+                order={5}
+                maw={180}
+                ta="center"
+                lineClamp={2}
+              >
+                {category.name}
+              </Title>
+            </Stack>
+          </UnstyledButton>
+        </Card>
+      ))}
+    </Group>
   )
 }

@@ -11,6 +11,7 @@ import {
   ThemeIcon,
   Badge,
   Tooltip,
+  ActionIcon,
 } from '@mantine/core';
 import {
   IconDashboard,
@@ -18,6 +19,8 @@ import {
   IconFolderCode,
   IconServer2,
   IconActivity,
+  IconBrandGithub,
+  IconBrandLinkedin,
 } from '@tabler/icons-react';
 import { UserAvatar } from '@repo/ui';
 import { useCurrentUser, useLogout } from '../../hooks/queries';
@@ -46,6 +49,7 @@ export function AppShell({ children }: AppShellProps) {
       padding="md"
       header={{ height: 70 }}
       navbar={{ width: 260, breakpoint: 'sm' }}
+      footer={{ height: 36 }}
       className="cyber-background"
       styles={{
         main: {
@@ -62,6 +66,11 @@ export function AppShell({ children }: AppShellProps) {
           background: 'linear-gradient(180deg, rgba(10, 10, 20, 0.95) 0%, rgba(15, 15, 30, 0.9) 100%)',
           backdropFilter: 'blur(20px)',
           borderRight: '1px solid rgba(0, 212, 255, 0.1)',
+        },
+        footer: {
+          background: 'linear-gradient(90deg, rgba(0, 212, 255, 0.02) 0%, rgba(168, 85, 247, 0.03) 50%, rgba(0, 212, 255, 0.02) 100%)',
+          backdropFilter: 'blur(10px)',
+          borderTop: '1px solid rgba(0, 212, 255, 0.1)',
         },
       }}
     >
@@ -282,6 +291,60 @@ export function AppShell({ children }: AppShellProps) {
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main>{children}</MantineAppShell.Main>
+
+      <MantineAppShell.Footer>
+        <Group h="100%" px="lg" justify="space-between">
+          <Text size="xs" c="dimmed">
+            <span style={{ color: '#00d4ff' }}>Minecraft Panel</span> by PlusCosmic
+          </Text>
+          <Group gap="md">
+            <Tooltip label="GitHub" position="top">
+              <ActionIcon
+                component="a"
+                href="https://github.com/PlusCosmic"
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="subtle"
+                size="sm"
+                style={{
+                  color: '#00d4ff',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <IconBrandGithub size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="LinkedIn" position="top">
+              <ActionIcon
+                component="a"
+                href="https://www.linkedin.com/in/harry-lovesey-leach-445075195/"
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="subtle"
+                size="sm"
+                style={{
+                  color: '#a855f7',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <IconBrandLinkedin size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Text size="xs" c="dimmed">
+              Powered by{' '}
+              <span
+                style={{
+                  background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Nucleus
+              </span>
+            </Text>
+          </Group>
+        </Group>
+      </MantineAppShell.Footer>
     </MantineAppShell>
   );
 }

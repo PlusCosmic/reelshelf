@@ -38,24 +38,31 @@ export function ClipsFilters({
         radius="lg"
         p="md"
         style={{
-          background: 'rgba(255, 255, 255, 0.03)',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
+          background: 'rgba(168, 85, 247, 0.05)',
+          border: '1px solid rgba(168, 85, 247, 0.2)',
+          boxShadow: 'inset 0 0 30px rgba(168, 85, 247, 0.05)',
         }}
       >
         <Stack gap="md">
           <div>
-            <Text size="sm" fw={500} c="dimmed" mb="xs">
+            <Text size="sm" fw={600} mb="xs" style={{ color: '#a855f7' }}>
               View Options
             </Text>
             <Switch
               label="Only show unviewed clips"
               checked={showUnviewed}
               onChange={(e) => onShowUnviewedChange(e.currentTarget.checked)}
+              styles={{
+                track: {
+                  backgroundColor: showUnviewed ? '#a855f7' : 'rgba(255, 255, 255, 0.1)',
+                  borderColor: showUnviewed ? '#a855f7' : 'rgba(255, 255, 255, 0.2)',
+                },
+              }}
             />
           </div>
 
           <div>
-            <Text size="sm" fw={500} c="dimmed" mb="xs">
+            <Text size="sm" fw={600} mb="xs" style={{ color: '#a855f7' }}>
               Sort & Filter
             </Text>
             <Group gap="md" grow>
@@ -68,12 +75,30 @@ export function ClipsFilters({
                   { value: '0', label: 'Newest First' },
                   { value: '1', label: 'Oldest First' },
                 ]}
+                styles={{
+                  input: {
+                    backgroundColor: 'rgba(168, 85, 247, 0.05)',
+                    border: '1px solid rgba(168, 85, 247, 0.2)',
+                    '&:focus': {
+                      borderColor: 'rgba(168, 85, 247, 0.5)',
+                    },
+                  },
+                }}
               />
               <DateTimePicker
                 placeholder="Start date"
                 clearable
                 value={startDate || null}
                 onChange={onStartDateChange}
+                styles={{
+                  input: {
+                    backgroundColor: 'rgba(168, 85, 247, 0.05)',
+                    border: '1px solid rgba(168, 85, 247, 0.2)',
+                    '&:focus': {
+                      borderColor: 'rgba(168, 85, 247, 0.5)',
+                    },
+                  },
+                }}
               />
               <DateTimePicker
                 placeholder="End date"
@@ -81,6 +106,15 @@ export function ClipsFilters({
                 value={endDate || null}
                 onChange={onEndDateChange}
                 minDate={startDate ? new Date(startDate) : undefined}
+                styles={{
+                  input: {
+                    backgroundColor: 'rgba(168, 85, 247, 0.05)',
+                    border: '1px solid rgba(168, 85, 247, 0.2)',
+                    '&:focus': {
+                      borderColor: 'rgba(168, 85, 247, 0.5)',
+                    },
+                  },
+                }}
               />
             </Group>
           </div>
@@ -88,7 +122,7 @@ export function ClipsFilters({
           {allTags.length > 0 && (
             <div>
               <Group justify="space-between" mb="xs">
-                <Text size="sm" fw={500} c="dimmed">
+                <Text size="sm" fw={600} style={{ color: '#a855f7' }}>
                   Filter by Tags
                 </Text>
                 {selectedTags.length > 0 && (
@@ -96,6 +130,9 @@ export function ClipsFilters({
                     size="xs"
                     variant="subtle"
                     onClick={onClearTags}
+                    style={{
+                      color: '#ec4899',
+                    }}
                   >
                     Clear all
                   </Button>
@@ -110,12 +147,19 @@ export function ClipsFilters({
                       size="lg"
                       radius="md"
                       variant={isSelected ? "filled" : "light"}
-                      color={isSelected ? "blue" : "gray"}
                       style={{
                         cursor: 'pointer',
                         textTransform: 'none',
                         transition: 'all 0.2s ease',
                         transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                        background: isSelected
+                          ? 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)'
+                          : 'rgba(168, 85, 247, 0.1)',
+                        border: isSelected
+                          ? 'none'
+                          : '1px solid rgba(168, 85, 247, 0.3)',
+                        color: isSelected ? 'white' : '#a855f7',
+                        boxShadow: isSelected ? '0 0 15px rgba(168, 85, 247, 0.4)' : 'none',
                       }}
                       onClick={() => onToggleTag(tag)}
                     >

@@ -128,9 +128,10 @@ export function ApexClips() {
             p="lg"
             radius="xl"
             style={{
-              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+              background: 'linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)',
               backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(0, 212, 255, 0.15)',
+              boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3), inset 0 0 60px rgba(0, 212, 255, 0.03)',
             }}
           >
             <Stack gap="md">

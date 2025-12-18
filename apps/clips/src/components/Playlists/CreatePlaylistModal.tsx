@@ -118,11 +118,16 @@ export function CreatePlaylistModal({
       size="lg"
       styles={{
         content: {
-          background: "var(--mantine-color-dark-7)",
+          background: "linear-gradient(135deg, rgba(15, 15, 25, 0.98) 0%, rgba(20, 20, 35, 0.95) 100%)",
+          border: "1px solid rgba(0, 212, 255, 0.2)",
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 212, 255, 0.1)",
         },
         header: {
-          background: "var(--mantine-color-dark-7)",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+          background: "transparent",
+          borderBottom: "1px solid rgba(0, 212, 255, 0.15)",
+        },
+        title: {
+          color: "#00d4ff",
         },
         body: {
           padding: "24px",
@@ -142,6 +147,15 @@ export function CreatePlaylistModal({
             styles={{
               input: {
                 borderRadius: "8px",
+                backgroundColor: "rgba(0, 212, 255, 0.03)",
+                border: "1px solid rgba(0, 212, 255, 0.15)",
+                "&:focus": {
+                  borderColor: "rgba(0, 212, 255, 0.5)",
+                  boxShadow: "0 0 15px rgba(0, 212, 255, 0.15)",
+                },
+              },
+              label: {
+                color: "#f8fafc",
               },
             }}
           />
@@ -157,6 +171,15 @@ export function CreatePlaylistModal({
             styles={{
               input: {
                 borderRadius: "8px",
+                backgroundColor: "rgba(0, 212, 255, 0.03)",
+                border: "1px solid rgba(0, 212, 255, 0.15)",
+                "&:focus": {
+                  borderColor: "rgba(0, 212, 255, 0.5)",
+                  boxShadow: "0 0 15px rgba(0, 212, 255, 0.15)",
+                },
+              },
+              label: {
+                color: "#f8fafc",
               },
             }}
           />
@@ -186,7 +209,15 @@ export function CreatePlaylistModal({
               <Text fw={600} size="sm">
                 Initial Clips
               </Text>
-              <Badge size="sm" variant="light" color="green">
+              <Badge
+                size="sm"
+                variant="light"
+                style={{
+                  background: "linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)",
+                  border: "1px solid rgba(0, 212, 255, 0.3)",
+                  color: "#00d4ff",
+                }}
+              >
                 {selectedClipIds.length}
               </Badge>
             </Group>
@@ -198,8 +229,8 @@ export function CreatePlaylistModal({
                   p="sm"
                   radius="md"
                   style={{
-                    background: "rgba(255, 255, 255, 0.02)",
-                    border: "1px solid rgba(255, 255, 255, 0.05)",
+                    background: "linear-gradient(135deg, rgba(15, 15, 25, 0.6) 0%, rgba(20, 20, 35, 0.5) 100%)",
+                    border: "1px solid rgba(0, 212, 255, 0.1)",
                   }}
                 >
                   <Group justify="space-between" wrap="nowrap">
@@ -210,9 +241,12 @@ export function CreatePlaylistModal({
                     <Tooltip label="Remove clip">
                       <ActionIcon
                         variant="subtle"
-                        color="red"
                         size="sm"
                         onClick={() => handleRemoveClip(clipId)}
+                        style={{
+                          color: "#ec4899",
+                          transition: "all 0.2s ease",
+                        }}
                       >
                         <IconX size={14} />
                       </ActionIcon>
@@ -234,6 +268,9 @@ export function CreatePlaylistModal({
             variant="subtle"
             onClick={handleClose}
             disabled={createMutation.isPending}
+            style={{
+              color: "#94a3b8",
+            }}
           >
             Cancel
           </Button>
@@ -243,7 +280,13 @@ export function CreatePlaylistModal({
             disabled={!isValid}
             loading={createMutation.isPending}
             variant="filled"
-            color="green"
+            style={{
+              background: "linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)",
+              border: "1px solid rgba(0, 212, 255, 0.5)",
+              boxShadow: "0 0 20px rgba(0, 212, 255, 0.3)",
+              color: "#0a0a14",
+              fontWeight: 600,
+            }}
           >
             Create Playlist
           </Button>

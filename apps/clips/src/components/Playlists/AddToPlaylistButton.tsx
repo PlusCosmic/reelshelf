@@ -136,12 +136,14 @@ export function AddToPlaylistButton({
           <Tooltip label="Add to playlist" position="left">
             <ActionIcon
               variant="light"
-              color="violet"
               size="lg"
               radius="md"
               onClick={handleButtonClick}
               style={{
                 transition: "all 0.2s ease",
+                background: "rgba(168, 85, 247, 0.15)",
+                border: "1px solid rgba(168, 85, 247, 0.3)",
+                color: "#a855f7",
               }}
             >
               <IconPlaylistAdd size={18} />
@@ -151,8 +153,9 @@ export function AddToPlaylistButton({
 
         <Menu.Dropdown
           style={{
-            background: "var(--mantine-color-dark-7)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: "linear-gradient(135deg, rgba(15, 15, 25, 0.98) 0%, rgba(20, 20, 35, 0.95) 100%)",
+            border: "1px solid rgba(168, 85, 247, 0.2)",
+            boxShadow: "0 10px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.1)",
           }}
         >
           {/* Header */}

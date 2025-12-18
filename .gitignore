@@ -32,3 +32,6 @@ packages/*/src/**/*.js
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Local SSL certificates
+*.pem

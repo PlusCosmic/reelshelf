@@ -281,7 +281,29 @@ export function VideoUpload() {
 
   return (
     <>
-      <Modal opened={opened} onClose={close} title="Upload Clips" centered radius="lg" size="xl">
+      <Modal
+        opened={opened}
+        onClose={close}
+        title="Upload Clips"
+        centered
+        radius="lg"
+        size="xl"
+        styles={{
+          content: {
+            background: "linear-gradient(135deg, rgba(15, 15, 25, 0.98) 0%, rgba(20, 20, 35, 0.95) 100%)",
+            border: "1px solid rgba(0, 212, 255, 0.2)",
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 212, 255, 0.1)",
+          },
+          header: {
+            background: "transparent",
+            borderBottom: "1px solid rgba(0, 212, 255, 0.15)",
+          },
+          title: {
+            color: "#00d4ff",
+            fontWeight: 600,
+          },
+        }}
+      >
         <Dropzone
           onDrop={onDrop}
           onReject={(files) => {
@@ -296,17 +318,39 @@ export function VideoUpload() {
         >
           <Group justify="center" gap="xl" mih={220} style={{ pointerEvents: 'none' }}>
             <Dropzone.Accept>
-              <IconUpload size={52} color="var(--mantine-color-blue-6)" stroke={1.5} />
+              <IconUpload
+                size={52}
+                stroke={1.5}
+                style={{
+                  color: "#00d4ff",
+                  filter: "drop-shadow(0 0 20px rgba(0, 212, 255, 0.5))",
+                }}
+              />
             </Dropzone.Accept>
             <Dropzone.Reject>
-              <IconX size={52} color="var(--mantine-color-red-6)" stroke={1.5} />
+              <IconX
+                size={52}
+                stroke={1.5}
+                style={{
+                  color: "#ec4899",
+                  filter: "drop-shadow(0 0 20px rgba(236, 72, 153, 0.5))",
+                }}
+              />
             </Dropzone.Reject>
             <Dropzone.Idle>
-              <IconMovie size={52} color="var(--mantine-color-dimmed)" stroke={1.5} />
+              <IconMovie
+                size={52}
+                stroke={1.5}
+                style={{
+                  color: "#00d4ff",
+                  opacity: 0.6,
+                  filter: "drop-shadow(0 0 15px rgba(0, 212, 255, 0.3))",
+                }}
+              />
             </Dropzone.Idle>
 
             <div>
-              <Text size="xl" inline>
+              <Text size="xl" inline style={{ color: "#f8fafc" }}>
                 Drag clips here or click to select files
               </Text>
             </div>
@@ -314,34 +358,71 @@ export function VideoUpload() {
         </Dropzone>
 
         {queue.length > 0 && (
-          <Card mt="md" withBorder padding="md" radius="md">
+          <Card
+            mt="md"
+            padding="md"
+            radius="md"
+            style={{
+              background: "linear-gradient(135deg, rgba(15, 15, 25, 0.8) 0%, rgba(20, 20, 35, 0.7) 100%)",
+              border: "1px solid rgba(0, 212, 255, 0.15)",
+            }}
+          >
             <Stack gap="xs">
               <Group justify="space-between">
-                <Text size="sm" fw={600}>Upload Overview</Text>
-                <Badge size="lg" variant="light">
+                <Text
+                  size="sm"
+                  fw={600}
+                  style={{
+                    background: "linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  Upload Overview
+                </Text>
+                <Badge
+                  size="lg"
+                  variant="light"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)",
+                    border: "1px solid rgba(0, 212, 255, 0.3)",
+                    color: "#00d4ff",
+                  }}
+                >
                   {stats.overallProgress}%
                 </Badge>
               </Group>
 
-              <Progress value={stats.overallProgress} size="lg" radius="md" />
+              <Progress
+                value={stats.overallProgress}
+                size="lg"
+                radius="md"
+                style={{ background: "rgba(0, 212, 255, 0.1)" }}
+                styles={{
+                  section: {
+                    background: "linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)",
+                    boxShadow: "0 0 20px rgba(0, 212, 255, 0.4)",
+                  },
+                }}
+              />
 
               <Group justify="space-between" mt="xs">
                 <Group gap="lg">
                   <Group gap="xs">
-                    <IconCheck size={16} color="var(--mantine-color-green-6)" />
+                    <IconCheck size={16} color="#10b981" />
                     <Text size="sm">{stats.completed} completed</Text>
                   </Group>
                   <Group gap="xs">
-                    <IconUpload size={16} color="var(--mantine-color-blue-6)" />
+                    <IconUpload size={16} color="#00d4ff" />
                     <Text size="sm">{stats.inProgress} uploading</Text>
                   </Group>
                   <Group gap="xs">
-                    <IconClock size={16} color="var(--mantine-color-gray-6)" />
+                    <IconClock size={16} color="#a855f7" />
                     <Text size="sm">{stats.queued} queued</Text>
                   </Group>
                   {stats.failed > 0 && (
                     <Group gap="xs">
-                      <IconAlertCircle size={16} color="var(--mantine-color-red-6)" />
+                      <IconAlertCircle size={16} color="#ec4899" />
                       <Text size="sm">{stats.failed} failed</Text>
                     </Group>
                   )}
@@ -381,14 +462,32 @@ export function VideoUpload() {
                           {item.file.name}
                         </Text>
                         <Group gap="xs">
-                          <Badge color={
-                            item.status === 'done' ? 'green'
-                              : item.status === 'error' ? 'red'
-                                : item.status === 'uploading' ? 'blue'
-                                  : item.status === 'processing' ? 'cyan'
-                                    : item.status === 'paused' ? 'yellow'
-                                      : 'gray'
-                          }>
+                          <Badge
+                            style={{
+                              background:
+                                item.status === 'done' ? 'rgba(16, 185, 129, 0.2)'
+                                  : item.status === 'error' ? 'rgba(236, 72, 153, 0.2)'
+                                    : item.status === 'uploading' ? 'rgba(0, 212, 255, 0.2)'
+                                      : item.status === 'processing' ? 'rgba(0, 212, 255, 0.15)'
+                                        : item.status === 'paused' ? 'rgba(245, 158, 11, 0.2)'
+                                          : 'rgba(148, 163, 184, 0.2)',
+                              color:
+                                item.status === 'done' ? '#10b981'
+                                  : item.status === 'error' ? '#ec4899'
+                                    : item.status === 'uploading' ? '#00d4ff'
+                                      : item.status === 'processing' ? '#00d4ff'
+                                        : item.status === 'paused' ? '#f59e0b'
+                                          : '#94a3b8',
+                              border: `1px solid ${
+                                item.status === 'done' ? 'rgba(16, 185, 129, 0.3)'
+                                  : item.status === 'error' ? 'rgba(236, 72, 153, 0.3)'
+                                    : item.status === 'uploading' ? 'rgba(0, 212, 255, 0.3)'
+                                      : item.status === 'processing' ? 'rgba(0, 212, 255, 0.25)'
+                                        : item.status === 'paused' ? 'rgba(245, 158, 11, 0.3)'
+                                          : 'rgba(148, 163, 184, 0.3)'
+                              }`,
+                            }}
+                          >
                             {item.status}
                           </Badge>
                           <Text size="xs" c="dimmed">
@@ -398,7 +497,18 @@ export function VideoUpload() {
                       </Group>
 
                       {item.status !== 'error' && (
-                        <Progress value={item.progress} size="sm" striped animated={item.status === 'uploading' || item.status === 'processing'} />
+                        <Progress
+                          value={item.progress}
+                          size="sm"
+                          striped
+                          animated={item.status === 'uploading' || item.status === 'processing'}
+                          style={{ background: "rgba(0, 212, 255, 0.1)" }}
+                          styles={{
+                            section: {
+                              background: "linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)",
+                            },
+                          }}
+                        />
                       )}
                       {item.status === 'error' && (
                         <Alert color="red" variant="light" title="Upload failed">
@@ -408,17 +518,42 @@ export function VideoUpload() {
 
                       <Group justify="end" gap="xs">
                         {(item.status === 'uploading') && (
-                          <Button variant="light" size="xs" onClick={() => pause(item.id)}>
+                          <Button
+                            variant="light"
+                            size="xs"
+                            onClick={() => pause(item.id)}
+                            style={{
+                              background: "rgba(245, 158, 11, 0.15)",
+                              border: "1px solid rgba(245, 158, 11, 0.3)",
+                              color: "#f59e0b",
+                            }}
+                          >
                             Pause
                           </Button>
                         )}
                         {(item.status === 'paused' || item.status === 'queued') && (
-                          <Button variant="light" size="xs" onClick={() => resume(item.id)}>
+                          <Button
+                            variant="light"
+                            size="xs"
+                            onClick={() => resume(item.id)}
+                            style={{
+                              background: "rgba(0, 212, 255, 0.15)",
+                              border: "1px solid rgba(0, 212, 255, 0.3)",
+                              color: "#00d4ff",
+                            }}
+                          >
                             Resume
                           </Button>
                         )}
                         {(item.status === 'uploading' || item.status === 'processing' || item.status === 'paused' || item.status === 'queued') && (
-                          <Button variant="subtle" size="xs" color="red" onClick={() => cancel(item.id)}>
+                          <Button
+                            variant="subtle"
+                            size="xs"
+                            onClick={() => cancel(item.id)}
+                            style={{
+                              color: "#ec4899",
+                            }}
+                          >
                             Cancel
                           </Button>
                         )}
@@ -430,7 +565,15 @@ export function VideoUpload() {
               </div>
 
               <Group justify="end" mt="sm">
-                <Button variant="light" onClick={clearFinished}>
+                <Button
+                  variant="light"
+                  onClick={clearFinished}
+                  style={{
+                    background: "rgba(0, 212, 255, 0.1)",
+                    border: "1px solid rgba(0, 212, 255, 0.3)",
+                    color: "#00d4ff",
+                  }}
+                >
                   Clear finished
                 </Button>
               </Group>
@@ -439,7 +582,14 @@ export function VideoUpload() {
         </Stack>
       </Modal>
 
-      <ActionIcon variant="transparent" onClick={open}>
+      <ActionIcon
+        variant="transparent"
+        onClick={open}
+        style={{
+          color: "#00d4ff",
+          transition: "all 0.2s ease",
+        }}
+      >
         <IconUpload size={24} />
       </ActionIcon>
     </>

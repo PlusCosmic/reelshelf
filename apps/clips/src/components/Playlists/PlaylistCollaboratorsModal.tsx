@@ -170,11 +170,16 @@ export function PlaylistCollaboratorsModal({
       size="md"
       styles={{
         content: {
-          background: "var(--mantine-color-dark-7)",
+          background: "linear-gradient(135deg, rgba(15, 15, 25, 0.98) 0%, rgba(20, 20, 35, 0.95) 100%)",
+          border: "1px solid rgba(168, 85, 247, 0.2)",
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(168, 85, 247, 0.1)",
         },
         header: {
-          background: "var(--mantine-color-dark-7)",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+          background: "transparent",
+          borderBottom: "1px solid rgba(168, 85, 247, 0.15)",
+        },
+        title: {
+          color: "#a855f7",
         },
         body: {
           padding: "24px",
@@ -203,6 +208,12 @@ export function PlaylistCollaboratorsModal({
               styles={{
                 input: {
                   borderRadius: "8px",
+                  backgroundColor: "rgba(168, 85, 247, 0.03)",
+                  border: "1px solid rgba(168, 85, 247, 0.15)",
+                  "&:focus": {
+                    borderColor: "rgba(168, 85, 247, 0.5)",
+                    boxShadow: "0 0 15px rgba(168, 85, 247, 0.15)",
+                  },
                 },
               }}
             />
@@ -214,7 +225,13 @@ export function PlaylistCollaboratorsModal({
               disabled={!usernameInput.trim()}
               loading={addMutation.isPending}
               variant="filled"
-              color="blue"
+              style={{
+                background: "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)",
+                border: "1px solid rgba(168, 85, 247, 0.5)",
+                boxShadow: "0 0 20px rgba(168, 85, 247, 0.3)",
+                color: "#fff",
+                fontWeight: 600,
+              }}
             >
               Add
             </Button>
@@ -231,7 +248,15 @@ export function PlaylistCollaboratorsModal({
               Current Collaborators
             </Text>
             {collaborators && collaborators.length > 0 && (
-              <Badge size="sm" variant="light" color="blue">
+              <Badge
+                size="sm"
+                variant="light"
+                style={{
+                  background: "linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)",
+                  border: "1px solid rgba(168, 85, 247, 0.3)",
+                  color: "#a855f7",
+                }}
+              >
                 {collaborators.length}
               </Badge>
             )}
@@ -242,12 +267,12 @@ export function PlaylistCollaboratorsModal({
               p="lg"
               radius="md"
               style={{
-                background: "rgba(255, 255, 255, 0.02)",
-                border: "1px solid rgba(255, 255, 255, 0.05)",
+                background: "linear-gradient(135deg, rgba(15, 15, 25, 0.6) 0%, rgba(20, 20, 35, 0.5) 100%)",
+                border: "1px solid rgba(168, 85, 247, 0.1)",
               }}
             >
               <Group justify="center">
-                <Loader size="sm" />
+                <Loader size="sm" color="violet" />
               </Group>
             </Card>
           ) : !collaborators || collaborators.length === 0 ? (
@@ -255,8 +280,8 @@ export function PlaylistCollaboratorsModal({
               p="lg"
               radius="md"
               style={{
-                background: "rgba(255, 255, 255, 0.02)",
-                border: "1px solid rgba(255, 255, 255, 0.05)",
+                background: "linear-gradient(135deg, rgba(15, 15, 25, 0.6) 0%, rgba(20, 20, 35, 0.5) 100%)",
+                border: "1px solid rgba(168, 85, 247, 0.1)",
               }}
             >
               <Text size="sm" c="dimmed" ta="center">
@@ -280,7 +305,14 @@ export function PlaylistCollaboratorsModal({
 
         {/* Close Button */}
         <Group justify="flex-end" mt="md">
-          <Button variant="subtle" onClick={onClose}>
+          <Button
+            variant="subtle"
+            onClick={onClose}
+            style={{
+              color: "#a855f7",
+              transition: "all 0.2s ease",
+            }}
+          >
             Done
           </Button>
         </Group>
@@ -315,8 +347,9 @@ function CollaboratorCard({
       p="sm"
       radius="md"
       style={{
-        background: "rgba(255, 255, 255, 0.02)",
-        border: "1px solid rgba(255, 255, 255, 0.05)",
+        background: "linear-gradient(135deg, rgba(15, 15, 25, 0.6) 0%, rgba(20, 20, 35, 0.5) 100%)",
+        border: "1px solid rgba(168, 85, 247, 0.1)",
+        transition: "all 0.2s ease",
       }}
     >
       <Group justify="space-between" wrap="nowrap">
@@ -326,6 +359,10 @@ function CollaboratorCard({
             alt={collaborator.username}
             size="md"
             radius="xl"
+            style={{
+              border: "2px solid rgba(168, 85, 247, 0.4)",
+              boxShadow: "0 0 15px rgba(168, 85, 247, 0.2)",
+            }}
           >
             {collaborator.username.slice(0, 2).toUpperCase()}
           </Avatar>
@@ -343,11 +380,14 @@ function CollaboratorCard({
           <Tooltip label="Remove collaborator">
             <ActionIcon
               variant="subtle"
-              color="red"
               size="sm"
               onClick={onRemove}
               disabled={isRemoving}
               loading={isRemoving}
+              style={{
+                color: "#ec4899",
+                transition: "all 0.2s ease",
+              }}
             >
               <IconX size={14} />
             </ActionIcon>

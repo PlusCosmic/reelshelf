@@ -24,10 +24,10 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { apiConfig, downloadVideo } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
-import { useDeleteClip, useUserById } from "../../hooks/queries.ts";
-import { getProcessingStatusMessage, isClipProcessing } from "../../utils/format";
 import { AddToPlaylistButton } from "../Playlists/AddToPlaylistButton";
 import type { Clip } from "@repo/nucleus-api-client";
+import { useDeleteClip, useUserById } from "@/hooks/queries.ts";
+import { getProcessingStatusMessage, isClipProcessing } from "@/utils/format.ts";
 
 type ClipCardProps = {
   clip: Clip;
@@ -159,15 +159,17 @@ export function ClipCard({ clip }: ClipCardProps) {
       radius="lg"
       p="md"
       style={{
-        transition: "all 0.2s ease",
-        transform: isHovered ? "translateY(-2px)" : "translateY(0)",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: isHovered ? "translateY(-4px)" : "translateY(0)",
         boxShadow: isHovered
-          ? "0 8px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1)"
-          : "0 2px 8px rgba(0, 0, 0, 0.08)",
-        border: "1px solid rgba(255, 255, 255, 0.05)",
+          ? "0 12px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 212, 255, 0.15)"
+          : "0 2px 8px rgba(0, 0, 0, 0.2)",
+        border: isHovered
+          ? "1px solid rgba(0, 212, 255, 0.4)"
+          : "1px solid rgba(0, 212, 255, 0.1)",
         background: isHovered
-          ? "linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)"
-          : "rgba(255, 255, 255, 0.02)",
+          ? "linear-gradient(135deg, rgba(15, 15, 25, 0.95) 0%, rgba(20, 20, 35, 0.9) 100%)"
+          : "linear-gradient(135deg, rgba(15, 15, 25, 0.8) 0%, rgba(20, 20, 35, 0.7) 100%)",
       }}
     >
       <Link style={{ textDecoration: 'none', color: 'inherit' }}
@@ -216,14 +218,14 @@ export function ClipCard({ clip }: ClipCardProps) {
                   size="md"
                   radius="sm"
                   variant="filled"
-                  color="orange"
                   style={{
                     background:
                       "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
                     backdropFilter: "blur(4px)",
-                    boxShadow: "0 2px 8px rgba(245, 158, 11, 0.4)",
+                    boxShadow: "0 2px 12px rgba(245, 158, 11, 0.5)",
                     fontWeight: 700,
                     letterSpacing: "0.5px",
+                    border: "1px solid rgba(245, 158, 11, 0.5)",
                   }}
                 >
                   PROCESSING
@@ -237,14 +239,15 @@ export function ClipCard({ clip }: ClipCardProps) {
                   size="md"
                   radius="sm"
                   variant="filled"
-                  color="blue"
                   style={{
                     background:
-                      "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                      "linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)",
                     backdropFilter: "blur(4px)",
-                    boxShadow: "0 2px 8px rgba(59, 130, 246, 0.4)",
+                    boxShadow: "0 2px 12px rgba(0, 212, 255, 0.5)",
                     fontWeight: 700,
                     letterSpacing: "0.5px",
+                    border: "1px solid rgba(0, 212, 255, 0.5)",
+                    color: "#0a0a14",
                   }}
                 >
                   NEW
@@ -259,9 +262,10 @@ export function ClipCard({ clip }: ClipCardProps) {
                   radius="sm"
                   leftSection={<IconClock size={12} />}
                   style={{
-                    background: "rgba(0, 0, 0, 0.75)",
+                    background: "rgba(10, 10, 20, 0.85)",
                     backdropFilter: "blur(4px)",
-                    color: "white",
+                    color: "#00d4ff",
+                    border: "1px solid rgba(0, 212, 255, 0.3)",
                   }}
                 >
                   {formatDuration(clip.video.length)}
@@ -278,6 +282,7 @@ export function ClipCard({ clip }: ClipCardProps) {
                     background: "rgba(245, 158, 11, 0.9)",
                     backdropFilter: "blur(4px)",
                     color: "white",
+                    border: "1px solid rgba(245, 158, 11, 0.5)",
                   }}
                 >
                   {processingMessage}
@@ -303,8 +308,8 @@ export function ClipCard({ clip }: ClipCardProps) {
                     bottom={8}
                     left={8}
                     style={{
-                      border: "2px solid rgba(255, 255, 255, 0.9)",
-                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                      border: isHovered ? "2px solid #00d4ff" : "2px solid rgba(255, 255, 255, 0.9)",
+                      boxShadow: isHovered ? "0 0 15px rgba(0, 212, 255, 0.5)" : "0 2px 8px rgba(0, 0, 0, 0.3)",
                       transition: "all 0.2s ease",
                       transform: isHovered ? "scale(1.1)" : "scale(1)",
                       cursor: "pointer",
@@ -320,10 +325,11 @@ export function ClipCard({ clip }: ClipCardProps) {
                 fw={600}
                 size="md"
                 lineClamp={2}
-                c={"var(--mantine-color-nucleusColour-2)"}
                 style={{
                   lineHeight: 1.4,
                   letterSpacing: "-0.2px",
+                  color: isHovered ? "#00d4ff" : "#f8fafc",
+                  transition: "color 0.2s ease",
                 }}
               >
                 {clip.video.title}
@@ -338,8 +344,12 @@ export function ClipCard({ clip }: ClipCardProps) {
                       size="sm"
                       radius="md"
                       variant="light"
-                      color="blue"
-                      style={{ textTransform: "none" }}
+                      style={{
+                        textTransform: "none",
+                        background: "rgba(168, 85, 247, 0.15)",
+                        border: "1px solid rgba(168, 85, 247, 0.3)",
+                        color: "#a855f7",
+                      }}
                     >
                       {tag}
                     </Badge>
@@ -394,12 +404,14 @@ export function ClipCard({ clip }: ClipCardProps) {
               <Tooltip label="Share clip" position="left">
                 <ActionIcon
                   variant="light"
-                  color="blue"
                   size="lg"
                   radius="md"
                   onClick={handleShare}
                   style={{
                     transition: "all 0.2s ease",
+                    background: "rgba(0, 212, 255, 0.1)",
+                    border: "1px solid rgba(0, 212, 255, 0.3)",
+                    color: "#00d4ff",
                   }}
                 >
                   <IconShare size={18} />
@@ -412,12 +424,14 @@ export function ClipCard({ clip }: ClipCardProps) {
               <Tooltip label="Edit clip" position="left">
                 <ActionIcon
                   variant="light"
-                  color="violet"
                   size="lg"
                   radius="md"
                   onClick={handleEdit}
                   style={{
                     transition: "all 0.2s ease",
+                    background: "rgba(168, 85, 247, 0.1)",
+                    border: "1px solid rgba(168, 85, 247, 0.3)",
+                    color: "#a855f7",
                   }}
                 >
                   <IconEdit size={18} />
@@ -427,12 +441,14 @@ export function ClipCard({ clip }: ClipCardProps) {
               <Tooltip label="Download clip" position="left">
                 <ActionIcon
                   variant="light"
-                  color="green"
                   size="lg"
                   radius="md"
                   onClick={handleDownload}
                   style={{
                     transition: "all 0.2s ease",
+                    background: "rgba(34, 197, 94, 0.1)",
+                    border: "1px solid rgba(34, 197, 94, 0.3)",
+                    color: "#22c55e",
                   }}
                 >
                   <IconDownload size={18} />
@@ -442,7 +458,6 @@ export function ClipCard({ clip }: ClipCardProps) {
               <Tooltip label="Delete clip" position="left">
                 <ActionIcon
                   variant="light"
-                  color="red"
                   size="lg"
                   radius="md"
                   onClick={handleDelete}
@@ -450,6 +465,9 @@ export function ClipCard({ clip }: ClipCardProps) {
                   disabled={deleteClip.isPending}
                   style={{
                     transition: "all 0.2s ease",
+                    background: "rgba(236, 72, 153, 0.1)",
+                    border: "1px solid rgba(236, 72, 153, 0.3)",
+                    color: "#ec4899",
                   }}
                 >
                   <IconTrash size={18} />
