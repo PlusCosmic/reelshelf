@@ -21,6 +21,9 @@ Name | Type
 `curseforgePageUrl` | string
 `isActive` | boolean
 `createdAt` | Date
+`rconPassword` | string
+`maxPlayers` | number
+`motd` | string
 
 ## Example
 
@@ -44,6 +47,9 @@ const example = {
   "curseforgePageUrl": null,
   "isActive": null,
   "createdAt": null,
+  "rconPassword": null,
+  "maxPlayers": null,
+  "motd": null,
 } satisfies MinecraftServer
 
 console.log(example)
