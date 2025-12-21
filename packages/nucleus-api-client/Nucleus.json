@@ -1646,6 +1646,249 @@
         }
       }
     },
+    "/minecraft/servers/{serverId}/container": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetContainerState",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerStateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "DestroyContainer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "removeData",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerActionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/servers/{serverId}/container/start": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "StartContainer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerActionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/servers/{serverId}/container/stop": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "StopContainer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "timeout",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 120
+            }
+          },
+          {
+            "name": "announce",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerActionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/minecraft/servers/{serverId}/container/provision": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "ProvisionContainer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/minecraft/servers/{serverId}/console/command": {
       "post": {
         "tags": [
@@ -2655,6 +2898,79 @@
           }
         }
       },
+      "ContainerActionResponse": {
+        "required": [
+          "success",
+          "message",
+          "new_status"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        }
+      },
+      "ContainerStateResponse": {
+        "required": [
+          "exists",
+          "status",
+          "is_running",
+          "container_id",
+          "started_at",
+          "cpu_percent",
+          "memory_used_mb",
+          "memory_limit_mb",
+          "memory_percent"
+        ],
+        "type": "object",
+        "properties": {
+          "exists": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "is_running": {
+            "type": "boolean"
+          },
+          "container_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cpu_percent": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "memory_used_mb": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "memory_limit_mb": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "memory_percent": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        }
+      },
       "CreateClipResponse": {
         "required": [
           "signature",
@@ -2997,6 +3313,17 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "rcon_password": {
+            "type": "string",
+            "nullable": true
+          },
+          "max_players": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "motd": {
+            "type": "string"
           }
         }
       },
@@ -3259,6 +3586,29 @@
             "items": {
               "$ref": "#/components/schemas/PlaylistClip"
             }
+          }
+        }
+      },
+      "ProvisionResponse": {
+        "required": [
+          "success",
+          "message",
+          "container_id",
+          "volume_name"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "container_id": {
+            "type": "string"
+          },
+          "volume_name": {
+            "type": "string"
           }
         }
       },

@@ -18,11 +18,14 @@ import type {
   BackupListResult,
   BackupSyncResult,
   CommandLogEntry,
+  ContainerActionResponse,
+  ContainerStateResponse,
   CreateDirectoryRequest,
   CreateMinecraftServerRequest,
   DirectoryListing,
   MinecraftServer,
   OnlinePlayer,
+  ProvisionResponse,
   RconCommand,
   RconResponse,
   SaveFileRequest,
@@ -36,6 +39,10 @@ import {
     BackupSyncResultToJSON,
     CommandLogEntryFromJSON,
     CommandLogEntryToJSON,
+    ContainerActionResponseFromJSON,
+    ContainerActionResponseToJSON,
+    ContainerStateResponseFromJSON,
+    ContainerStateResponseToJSON,
     CreateDirectoryRequestFromJSON,
     CreateDirectoryRequestToJSON,
     CreateMinecraftServerRequestFromJSON,
@@ -46,6 +53,8 @@ import {
     MinecraftServerToJSON,
     OnlinePlayerFromJSON,
     OnlinePlayerToJSON,
+    ProvisionResponseFromJSON,
+    ProvisionResponseToJSON,
     RconCommandFromJSON,
     RconCommandToJSON,
     RconResponseFromJSON,
@@ -80,6 +89,11 @@ export interface DeleteMinecraftServerRequest {
     serverId: string;
 }
 
+export interface DestroyContainerRequest {
+    serverId: string;
+    removeData?: boolean;
+}
+
 export interface GetBackupStatusRequest {
     serverId: string;
 }
@@ -87,6 +101,10 @@ export interface GetBackupStatusRequest {
 export interface GetCommandHistoryRequest {
     serverId: string;
     limit?: number;
+}
+
+export interface GetContainerStateRequest {
+    serverId: string;
 }
 
 export interface GetMinecraftFileContentRequest {
@@ -111,6 +129,10 @@ export interface ListMinecraftFilesRequest {
     path?: string;
 }
 
+export interface ProvisionContainerRequest {
+    serverId: string;
+}
+
 export interface SaveMinecraftFileContentRequest {
     serverId: string;
     saveFileRequest: SaveFileRequest;
@@ -119,6 +141,16 @@ export interface SaveMinecraftFileContentRequest {
 export interface SendMinecraftCommandRequest {
     serverId: string;
     rconCommand: RconCommand;
+}
+
+export interface StartContainerRequest {
+    serverId: string;
+}
+
+export interface StopContainerRequest {
+    serverId: string;
+    timeout?: number;
+    announce?: boolean;
 }
 
 export interface TriggerBackupSyncRequest {
@@ -331,6 +363,45 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
+    async destroyContainerRaw(requestParameters: DestroyContainerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ContainerActionResponse>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling destroyContainer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['removeData'] != null) {
+            queryParameters['removeData'] = requestParameters['removeData'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers/{serverId}/container`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ContainerActionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async destroyContainer(requestParameters: DestroyContainerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ContainerActionResponse> {
+        const response = await this.destroyContainerRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
     async getBackupStatusRaw(requestParameters: GetBackupStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BackupListResult>> {
         if (requestParameters['serverId'] == null) {
             throw new runtime.RequiredError(
@@ -400,6 +471,41 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
      */
     async getCommandHistory(requestParameters: GetCommandHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CommandLogEntry>> {
         const response = await this.getCommandHistoryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async getContainerStateRaw(requestParameters: GetContainerStateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ContainerStateResponse>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling getContainerState().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers/{serverId}/container`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ContainerStateResponseFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async getContainerState(requestParameters: GetContainerStateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ContainerStateResponse> {
+        const response = await this.getContainerStateRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -626,6 +732,41 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
 
     /**
      */
+    async provisionContainerRaw(requestParameters: ProvisionContainerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ProvisionResponse>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling provisionContainer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers/{serverId}/container/provision`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ProvisionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async provisionContainer(requestParameters: ProvisionContainerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ProvisionResponse> {
+        const response = await this.provisionContainerRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
     async saveMinecraftFileContentRaw(requestParameters: SaveMinecraftFileContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         if (requestParameters['serverId'] == null) {
             throw new runtime.RequiredError(
@@ -710,6 +851,84 @@ export class MinecraftEndpointsApi extends runtime.BaseAPI {
      */
     async sendMinecraftCommand(requestParameters: SendMinecraftCommandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RconResponse> {
         const response = await this.sendMinecraftCommandRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async startContainerRaw(requestParameters: StartContainerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ContainerActionResponse>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling startContainer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers/{serverId}/container/start`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ContainerActionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async startContainer(requestParameters: StartContainerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ContainerActionResponse> {
+        const response = await this.startContainerRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async stopContainerRaw(requestParameters: StopContainerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ContainerActionResponse>> {
+        if (requestParameters['serverId'] == null) {
+            throw new runtime.RequiredError(
+                'serverId',
+                'Required parameter "serverId" was null or undefined when calling stopContainer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['timeout'] != null) {
+            queryParameters['timeout'] = requestParameters['timeout'];
+        }
+
+        if (requestParameters['announce'] != null) {
+            queryParameters['announce'] = requestParameters['announce'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/minecraft/servers/{serverId}/container/stop`;
+        urlPath = urlPath.replace(`{${"serverId"}}`, encodeURIComponent(String(requestParameters['serverId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ContainerActionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async stopContainer(requestParameters: StopContainerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ContainerActionResponse> {
+        const response = await this.stopContainerRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

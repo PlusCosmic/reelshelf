@@ -109,6 +109,24 @@ export interface MinecraftServer {
      * @memberof MinecraftServer
      */
     createdAt?: Date;
+    /**
+     * 
+     * @type {string}
+     * @memberof MinecraftServer
+     */
+    rconPassword?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof MinecraftServer
+     */
+    maxPlayers?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof MinecraftServer
+     */
+    motd?: string;
 }
 
 /**
@@ -143,6 +161,9 @@ export function MinecraftServerFromJSONTyped(json: any, ignoreDiscriminator: boo
         'curseforgePageUrl': json['curseforge_page_url'] == null ? undefined : json['curseforge_page_url'],
         'isActive': json['is_active'] == null ? undefined : json['is_active'],
         'createdAt': json['created_at'] == null ? undefined : (new Date(json['created_at'])),
+        'rconPassword': json['rcon_password'] == null ? undefined : json['rcon_password'],
+        'maxPlayers': json['max_players'] == null ? undefined : json['max_players'],
+        'motd': json['motd'] == null ? undefined : json['motd'],
     };
 }
 
@@ -172,6 +193,9 @@ export function MinecraftServerToJSONTyped(value?: MinecraftServer | null, ignor
         'curseforge_page_url': value['curseforgePageUrl'],
         'is_active': value['isActive'],
         'created_at': value['createdAt'] == null ? value['createdAt'] : value['createdAt'].toISOString(),
+        'rcon_password': value['rconPassword'],
+        'max_players': value['maxPlayers'],
+        'motd': value['motd'],
     };
 }
 

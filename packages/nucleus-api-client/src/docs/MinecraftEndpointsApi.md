@@ -9,16 +9,21 @@ All URIs are relative to *http://localhost*
 | [**createMinecraftServer**](MinecraftEndpointsApi.md#createminecraftserveroperation) | **POST** /minecraft/servers |  |
 | [**deleteMinecraftFile**](MinecraftEndpointsApi.md#deleteminecraftfile) | **DELETE** /minecraft/servers/{serverId}/files |  |
 | [**deleteMinecraftServer**](MinecraftEndpointsApi.md#deleteminecraftserver) | **DELETE** /minecraft/servers/{serverId} |  |
+| [**destroyContainer**](MinecraftEndpointsApi.md#destroycontainer) | **DELETE** /minecraft/servers/{serverId}/container |  |
 | [**getBackupStatus**](MinecraftEndpointsApi.md#getbackupstatus) | **GET** /minecraft/servers/{serverId}/backups |  |
 | [**getCommandHistory**](MinecraftEndpointsApi.md#getcommandhistory) | **GET** /minecraft/servers/{serverId}/console/history |  |
+| [**getContainerState**](MinecraftEndpointsApi.md#getcontainerstate) | **GET** /minecraft/servers/{serverId}/container |  |
 | [**getMinecraftFileContent**](MinecraftEndpointsApi.md#getminecraftfilecontent) | **GET** /minecraft/servers/{serverId}/files/content |  |
 | [**getMinecraftPlayers**](MinecraftEndpointsApi.md#getminecraftplayers) | **GET** /minecraft/servers/{serverId}/players |  |
 | [**getMinecraftServer**](MinecraftEndpointsApi.md#getminecraftserver) | **GET** /minecraft/servers/{serverId} |  |
 | [**getMinecraftServers**](MinecraftEndpointsApi.md#getminecraftservers) | **GET** /minecraft/servers |  |
 | [**getMinecraftStatus**](MinecraftEndpointsApi.md#getminecraftstatus) | **GET** /minecraft/servers/{serverId}/status |  |
 | [**listMinecraftFiles**](MinecraftEndpointsApi.md#listminecraftfiles) | **GET** /minecraft/servers/{serverId}/files |  |
+| [**provisionContainer**](MinecraftEndpointsApi.md#provisioncontainer) | **POST** /minecraft/servers/{serverId}/container/provision |  |
 | [**saveMinecraftFileContent**](MinecraftEndpointsApi.md#saveminecraftfilecontent) | **PUT** /minecraft/servers/{serverId}/files/content |  |
 | [**sendMinecraftCommand**](MinecraftEndpointsApi.md#sendminecraftcommand) | **POST** /minecraft/servers/{serverId}/console/command |  |
+| [**startContainer**](MinecraftEndpointsApi.md#startcontainer) | **POST** /minecraft/servers/{serverId}/container/start |  |
+| [**stopContainer**](MinecraftEndpointsApi.md#stopcontainer) | **POST** /minecraft/servers/{serverId}/container/stop |  |
 | [**triggerBackupSync**](MinecraftEndpointsApi.md#triggerbackupsync) | **POST** /minecraft/servers/{serverId}/backups/sync |  |
 | [**updateMinecraftServer**](MinecraftEndpointsApi.md#updateminecraftserveroperation) | **PUT** /minecraft/servers/{serverId} |  |
 
@@ -362,6 +367,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## destroyContainer
+
+> ContainerActionResponse destroyContainer(serverId, removeData)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  MinecraftEndpointsApi,
+} from '';
+import type { DestroyContainerRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new MinecraftEndpointsApi();
+
+  const body = {
+    // string
+    serverId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // boolean (optional)
+    removeData: true,
+  } satisfies DestroyContainerRequest;
+
+  try {
+    const data = await api.destroyContainer(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **serverId** | `string` |  | [Defaults to `undefined`] |
+| **removeData** | `boolean` |  | [Optional] [Defaults to `false`] |
+
+### Return type
+
+[**ContainerActionResponse**](ContainerActionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+| **404** | Not Found |  -  |
+| **400** | Bad Request |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getBackupStatus
 
 > BackupListResult getBackupStatus(serverId)
@@ -477,6 +552,72 @@ example().catch(console.error);
 ### Return type
 
 [**Array&lt;CommandLogEntry&gt;**](CommandLogEntry.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+| **404** | Not Found |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getContainerState
+
+> ContainerStateResponse getContainerState(serverId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  MinecraftEndpointsApi,
+} from '';
+import type { GetContainerStateRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new MinecraftEndpointsApi();
+
+  const body = {
+    // string
+    serverId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetContainerStateRequest;
+
+  try {
+    const data = await api.getContainerState(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **serverId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ContainerStateResponse**](ContainerStateResponse.md)
 
 ### Authorization
 
@@ -892,6 +1033,74 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## provisionContainer
+
+> ProvisionResponse provisionContainer(serverId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  MinecraftEndpointsApi,
+} from '';
+import type { ProvisionContainerRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new MinecraftEndpointsApi();
+
+  const body = {
+    // string
+    serverId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ProvisionContainerRequest;
+
+  try {
+    const data = await api.provisionContainer(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **serverId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ProvisionResponse**](ProvisionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+| **404** | Not Found |  -  |
+| **400** | Bad Request |  -  |
+| **409** | Conflict |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## saveMinecraftFileContent
 
 > saveMinecraftFileContent(serverId, saveFileRequest)
@@ -1019,6 +1228,146 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+| **404** | Not Found |  -  |
+| **400** | Bad Request |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## startContainer
+
+> ContainerActionResponse startContainer(serverId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  MinecraftEndpointsApi,
+} from '';
+import type { StartContainerRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new MinecraftEndpointsApi();
+
+  const body = {
+    // string
+    serverId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies StartContainerRequest;
+
+  try {
+    const data = await api.startContainer(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **serverId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ContainerActionResponse**](ContainerActionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+| **404** | Not Found |  -  |
+| **400** | Bad Request |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## stopContainer
+
+> ContainerActionResponse stopContainer(serverId, timeout, announce)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  MinecraftEndpointsApi,
+} from '';
+import type { StopContainerRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new MinecraftEndpointsApi();
+
+  const body = {
+    // string
+    serverId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    timeout: 56,
+    // boolean (optional)
+    announce: true,
+  } satisfies StopContainerRequest;
+
+  try {
+    const data = await api.stopContainer(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **serverId** | `string` |  | [Defaults to `undefined`] |
+| **timeout** | `number` |  | [Optional] [Defaults to `120`] |
+| **announce** | `boolean` |  | [Optional] [Defaults to `true`] |
+
+### Return type
+
+[**ContainerActionResponse**](ContainerActionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
