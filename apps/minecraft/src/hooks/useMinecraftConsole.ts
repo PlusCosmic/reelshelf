@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getConsoleWebSocketUrl } from '@repo/shared/services/minecraft';
-import { useServerContext } from '../contexts/ServerContext';
 
 export interface LogEntry {
   type: 'log';
@@ -41,13 +40,13 @@ export interface ConsoleEntry {
 }
 
 interface UseMinecraftConsoleOptions {
+  serverId: string | undefined;
   enabled?: boolean;
   maxEntries?: number;
 }
 
-export function useMinecraftConsole(options: UseMinecraftConsoleOptions = {}) {
-  const { enabled = true, maxEntries = 1000 } = options;
-  const { serverId } = useServerContext();
+export function useMinecraftConsole(options: UseMinecraftConsoleOptions) {
+  const { serverId, enabled = true, maxEntries = 1000 } = options;
 
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);

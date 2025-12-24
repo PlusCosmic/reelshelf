@@ -21,9 +21,12 @@ import {
   IconChevronRight,
 } from '@tabler/icons-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useParams } from '@tanstack/react-router';
 import { useMinecraftConsole, type ConsoleEntry } from '../../hooks/useMinecraftConsole';
 
 export function ConsoleTerminal() {
+  const { serverId } = useParams({ from: '/servers/$serverId/console' });
+
   const {
     isConnected,
     isConnecting,
@@ -31,7 +34,7 @@ export function ConsoleTerminal() {
     sendCommand,
     clearEntries,
     connect,
-  } = useMinecraftConsole();
+  } = useMinecraftConsole({ serverId });
 
   const [command, setCommand] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
