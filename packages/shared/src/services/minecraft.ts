@@ -6,6 +6,7 @@ import {
   type DirectoryListing,
   type RconResponse,
   type MinecraftServer,
+  type ContainerStateResponse,
 } from "@repo/nucleus-api-client";
 import { apiConfig } from "../config/apiConfig";
 
@@ -64,6 +65,16 @@ export async function getServerStatus(serverId: string): Promise<ServerStatus> {
 export async function getOnlinePlayers(serverId: string): Promise<OnlinePlayer[]> {
   const api = createApi();
   return api.getMinecraftPlayers({ serverId });
+}
+
+/**
+ * Fetches the container state including resource usage
+ * @param serverId - The server ID
+ * @returns Container state with CPU, memory usage, and uptime
+ */
+export async function getContainerState(serverId: string): Promise<ContainerStateResponse> {
+  const api = createApi();
+  return api.getContainerState({ serverId });
 }
 
 // ============================================================================
