@@ -21,10 +21,12 @@ import {
   IconActivity,
   IconBrandGithub,
   IconBrandLinkedin,
+  IconList,
 } from '@tabler/icons-react';
 import { UserAvatar } from '@repo/ui';
 import { useCurrentUser, useLogout } from '../../hooks/queries';
 import { useServerStatus } from '../../hooks/useServerStatus';
+import { useServerContext } from '../../contexts/ServerContext';
 
 interface AppShellProps {
   children: ReactNode;
@@ -35,12 +37,24 @@ export function AppShell({ children }: AppShellProps) {
   const currentPath = router.location.pathname;
   const { data: user, isLoading } = useCurrentUser();
   const logoutMutation = useLogout();
-  const { data: serverStatus } = useServerStatus();
 
-  const navItems = [
-    { path: '/', label: 'Dashboard', icon: IconDashboard, description: 'Server overview' },
-    { path: '/console', label: 'Console', icon: IconTerminal2, description: 'Terminal access' },
-    { path: '/files', label: 'Files', icon: IconFolderCode, description: 'File manager' },
+  // Try to get serverId from route params (if we're on a server-specific route)
+  const params = router.matches[router.matches.length - 1]?.params as { serverId?: string } | undefined;
+  const serverId = params?.serverId;
+
+  const { data: serverStatus } = useServerStatus(serverId);
+  const { servers } = useServerContext();
+
+  // Find current server name
+  const currentServer = servers.find(s => s.id === serverId);
+
+  // Navigation items change based on whether we're on a server route
+  const navItems = serverId ? [
+    { path: `/servers/${serverId}`, label: 'Dashboard', icon: IconDashboard, description: 'Server overview' },
+    { path: `/servers/${serverId}/console`, label: 'Console', icon: IconTerminal2, description: 'Terminal access' },
+    { path: `/servers/${serverId}/files`, label: 'Files', icon: IconFolderCode, description: 'File manager' },
+  ] : [
+    { path: '/servers', label: 'Servers', icon: IconList, description: 'Select server' },
   ];
 
   return (
@@ -110,23 +124,32 @@ export function AppShell({ children }: AppShellProps) {
                   fontWeight: 700,
                 }}
               >
-                MINECRAFT SERVER
+                {currentServer?.name || 'MINECRAFT PANEL'}
               </Title>
               <Group gap="xs">
-                <Box
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    backgroundColor: serverStatus?.isOnline ? '#00ff88' : '#ff4444',
-                    boxShadow: serverStatus?.isOnline
-                      ? '0 0 8px rgba(0, 255, 136, 0.8)'
-                      : '0 0 8px rgba(255, 68, 68, 0.8)',
-                  }}
-                />
-                <Text size="xs" c="dimmed" fw={500}>
-                  {serverStatus?.isOnline ? 'Online' : 'Offline'}
-                </Text>
+                {serverId && (
+                  <>
+                    <Box
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        backgroundColor: serverStatus?.isOnline ? '#00ff88' : '#ff4444',
+                        boxShadow: serverStatus?.isOnline
+                          ? '0 0 8px rgba(0, 255, 136, 0.8)'
+                          : '0 0 8px rgba(255, 68, 68, 0.8)',
+                      }}
+                    />
+                    <Text size="xs" c="dimmed" fw={500}>
+                      {serverStatus?.isOnline ? 'Online' : 'Offline'}
+                    </Text>
+                  </>
+                )}
+                {!serverId && (
+                  <Text size="xs" c="dimmed" fw={500}>
+                    Select a server to manage
+                  </Text>
+                )}
               </Group>
             </Stack>
           </Group>
@@ -164,6 +187,42 @@ export function AppShell({ children }: AppShellProps) {
 
       <MantineAppShell.Navbar p="md">
         <Stack gap="xs" mt="xs">
+          {/* Back to Servers link when on a server-specific route */}
+          {serverId && (
+            <Link to="/servers" style={{ textDecoration: 'none' }}>
+              <NavLink
+                label={
+                  <Text size="sm" fw={500}>
+                    All Servers
+                  </Text>
+                }
+                description={
+                  <Text size="xs" c="dimmed">
+                    Back to server list
+                  </Text>
+                }
+                leftSection={
+                  <ThemeIcon
+                    size="lg"
+                    radius="md"
+                    variant="light"
+                    color="cyberBlue"
+                  >
+                    <IconList size={18} />
+                  </ThemeIcon>
+                }
+                variant="subtle"
+                styles={{
+                  root: {
+                    borderRadius: 10,
+                    padding: '12px',
+                    marginBottom: 8,
+                  },
+                }}
+              />
+            </Link>
+          )}
+
           {/* Navigation Label */}
           <Text
             size="xs"
@@ -174,7 +233,7 @@ export function AppShell({ children }: AppShellProps) {
             mb="xs"
             style={{ letterSpacing: '0.1em' }}
           >
-            Navigation
+            {serverId ? 'Server Management' : 'Navigation'}
           </Text>
 
           {/* Nav Items */}
@@ -252,42 +311,44 @@ export function AppShell({ children }: AppShellProps) {
           })}
         </Stack>
 
-        {/* Bottom Section - Server Info */}
-        <Box mt="auto" pt="xl">
-          <Box
-            p="md"
-            style={{
-              background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(168, 85, 247, 0.08) 100%)',
-              borderRadius: 12,
-              border: '1px solid rgba(0, 212, 255, 0.1)',
-            }}
-          >
-            <Stack gap="xs">
-              <Group justify="space-between">
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Version
-                </Text>
-                <Badge
-                  size="sm"
-                  variant="light"
-                  color="cyberPurple"
-                >
-                  {serverStatus?.version || 'Unknown'}
-                </Badge>
-              </Group>
-              {serverStatus?.motd && (
-                <Text
-                  size="xs"
-                  c="dimmed"
-                  lineClamp={2}
-                  style={{ fontStyle: 'italic' }}
-                >
-                  "{serverStatus.motd}"
-                </Text>
-              )}
-            </Stack>
+        {/* Bottom Section - Server Info (only show on server routes) */}
+        {serverId && serverStatus && (
+          <Box mt="auto" pt="xl">
+            <Box
+              p="md"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(168, 85, 247, 0.08) 100%)',
+                borderRadius: 12,
+                border: '1px solid rgba(0, 212, 255, 0.1)',
+              }}
+            >
+              <Stack gap="xs">
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                    Version
+                  </Text>
+                  <Badge
+                    size="sm"
+                    variant="light"
+                    color="cyberPurple"
+                  >
+                    {serverStatus.version || 'Unknown'}
+                  </Badge>
+                </Group>
+                {serverStatus.motd && (
+                  <Text
+                    size="xs"
+                    c="dimmed"
+                    lineClamp={2}
+                    style={{ fontStyle: 'italic' }}
+                  >
+                    "{serverStatus.motd}"
+                  </Text>
+                )}
+              </Stack>
+            </Box>
           </Box>
-        </Box>
+        )}
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main>{children}</MantineAppShell.Main>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getServers } from '@repo/shared/services/minecraft';
 import type { MinecraftServer } from '@repo/nucleus-api-client';
@@ -24,7 +24,8 @@ interface ServerProviderProps {
 
 /**
  * Provides server selection context to the minecraft app.
- * Fetches available servers and auto-selects the first one if none selected.
+ * Fetches available servers but does NOT auto-select.
+ * Server selection is now handled via route parameters.
  */
 export function ServerProvider({ children }: ServerProviderProps) {
   const [serverId, setServerId] = useState<string | null>(null);
@@ -34,13 +35,6 @@ export function ServerProvider({ children }: ServerProviderProps) {
     queryFn: getServers,
     staleTime: 60000, // 1 minute
   });
-
-  // Auto-select first server when servers load
-  useEffect(() => {
-    if (!serverId && servers.length > 0 && servers[0].id) {
-      setServerId(servers[0].id);
-    }
-  }, [serverId, servers]);
 
   return (
     <ServerContext.Provider

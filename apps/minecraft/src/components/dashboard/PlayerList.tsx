@@ -1,9 +1,11 @@
 import { Box, Text, Stack, Avatar, Group, Loader, ScrollArea, Badge } from '@mantine/core';
 import { IconUsers, IconUserCircle } from '@tabler/icons-react';
+import { useParams } from '@tanstack/react-router';
 import { useOnlinePlayers } from '../../hooks/useServerStatus';
 
 export function PlayerList() {
-  const { data: players, isLoading, error } = useOnlinePlayers();
+  const { serverId } = useParams({ from: '/servers/$serverId/' });
+  const { data: players, isLoading, error } = useOnlinePlayers(serverId);
 
   if (isLoading) {
     return (

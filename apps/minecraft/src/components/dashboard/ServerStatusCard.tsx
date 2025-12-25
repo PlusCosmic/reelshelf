@@ -6,10 +6,12 @@ import {
   IconWorldWww,
   IconVersions,
 } from '@tabler/icons-react';
+import { useParams } from '@tanstack/react-router';
 import { useServerStatus } from '../../hooks/useServerStatus';
 
 export function ServerStatusCard() {
-  const { data: status, isLoading, error } = useServerStatus();
+  const { serverId } = useParams({ from: '/servers/$serverId/' });
+  const { data: status, isLoading, error } = useServerStatus(serverId);
 
   if (isLoading) {
     return (
