@@ -1,5 +1,5 @@
 import { Box, Text, Stack, Group, ThemeIcon, UnstyledButton, Tooltip } from '@mantine/core';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import {
   IconBolt,
   IconTerminal2,
@@ -61,6 +61,7 @@ function QuickAction({ icon, label, description, color, onClick, disabled }: Qui
 
 export function QuickActions() {
   const navigate = useNavigate();
+  const { serverId } = useParams({ from: '/servers/$serverId' });
 
   const handleRestart = () => {
     notifications.show({
@@ -86,14 +87,14 @@ export function QuickActions() {
       label: 'Open Console',
       description: 'Access server terminal',
       color: '#00d4ff',
-      onClick: () => navigate({ to: '/console' }),
+      onClick: () => navigate({ to: '/servers/$serverId/console', params: { serverId } }),
     },
     {
       icon: <IconFolderCode size={20} />,
       label: 'File Manager',
       description: 'Browse server files',
       color: '#a855f7',
-      onClick: () => navigate({ to: '/files' }),
+      onClick: () => navigate({ to: '/servers/$serverId/files', params: { serverId } }),
     },
     {
       icon: <IconRefresh size={20} />,

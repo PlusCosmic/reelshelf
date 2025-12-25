@@ -48,17 +48,19 @@ export function CreateServerModal({ opened, onClose }: CreateServerModalProps) {
       const api = new MinecraftEndpointsApi(
         new Configuration({ basePath: apiConfig.baseUrl, credentials: 'include' })
       );
+      // Generate container name from server name (lowercase, alphanumeric with dashes)
+      const containerName = values.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'minecraft-server';
       return api.createMinecraftServer({
         createMinecraftServerRequest: {
           name: values.name,
           minecraftVersion: values.minecraftVersion,
-          maxPlayers: values.maxPlayers,
-          motd: values.motd,
           serverType: parseInt(values.serverType),
           ramReservation: values.ramReservation,
           ramLimit: values.ramLimit,
           cpuReservation: 1,
           cpuLimit: 2,
+          containerName,
+          persistenceLocation: `/data/minecraft/${containerName}`
         },
       });
     },
