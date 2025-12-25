@@ -5,6 +5,7 @@ import {
   IconDatabase,
   IconClock,
 } from '@tabler/icons-react';
+import { useParams } from '@tanstack/react-router';
 import { useServerStatus } from '../../hooks/useServerStatus';
 
 interface MetricCardProps {
@@ -96,7 +97,8 @@ function MetricCard({ icon, label, value, subValue, color, glowColor, progress }
 }
 
 export function ServerMetrics() {
-  const { data: status, isLoading } = useServerStatus();
+  const { serverId } = useParams({ from: '/servers/$serverId/' });
+  const { data: status, isLoading } = useServerStatus(serverId);
 
   // Calculate player percentage
   const playerPercentage = status?.maxPlayers

@@ -17,4 +17,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    port: 5174,
+    host: '0.0.0.0', // Allow access from code-server proxy
+    allowedHosts: ['code-server.pluscosmic.dev'],
+  },
 })

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ConsoleTerminal } from '../components/console/ConsoleTerminal';
+import { ConsoleTerminal } from '../../../components/console/ConsoleTerminal';
 
-export const Route = createFileRoute('/console')({
+export const Route = createFileRoute('/servers/$serverId/console')({
   component: Console,
 });
 

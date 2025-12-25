@@ -40,7 +40,8 @@ const queryClient = new QueryClient({
 
 // Render the app
 const rootElement = document.getElementById("app");
-if (rootElement && !rootElement.innerHTML) {
+if (rootElement) {
+  rootElement.innerHTML = ''; // Clear any loading text
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
