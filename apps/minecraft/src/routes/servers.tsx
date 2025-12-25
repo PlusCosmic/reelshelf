@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Outlet, useMatches } from '@tanstack/react-router';
 import { Container, Title, Text, Stack, SimpleGrid, Box, Group, Button, Loader, Center } from '@mantine/core';
 import { IconPlus, IconServer2 } from '@tabler/icons-react';
 import { useServerContext } from '../contexts/ServerContext';
@@ -7,8 +7,26 @@ import { useState } from 'react';
 import { CreateServerModal } from '../components/servers/CreateServerModal';
 
 export const Route = createFileRoute('/servers')({
-  component: ServerSelection,
+  component: ServersLayout,
 });
+
+/**
+ * Layout component for /servers routes.
+ * Shows server selection when on /servers, or renders child routes via Outlet.
+ */
+function ServersLayout() {
+  const matches = useMatches();
+  // Check if we have a child route (more than just /servers)
+  const hasChildRoute = matches.some(match => match.routeId.startsWith('/servers/$'));
+
+  if (hasChildRoute) {
+    // Render child route content
+    return <Outlet />;
+  }
+
+  // Show server selection when on /servers directly
+  return <ServerSelection />;
+}
 
 function ServerSelection() {
   const { servers, isLoading, error } = useServerContext();
