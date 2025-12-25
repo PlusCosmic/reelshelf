@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getServerStatus, getOnlinePlayers } from '@repo/shared/services/minecraft';
+import { getServerStatus, getOnlinePlayers, getContainerState } from '@repo/shared/services/minecraft';
 
 /**
  * Fetches the current Minecraft server status
@@ -28,6 +28,21 @@ export function useOnlinePlayers(serverId: string | undefined) {
     queryKey: ['minecraft', 'players', serverId],
     queryFn: () => getOnlinePlayers(serverId!),
     refetchInterval: 30000, // Poll every 30 seconds
+    retry: 2,
+    enabled: !!serverId,
+  });
+}
+
+/**
+ * Fetches the container state including CPU, memory, and uptime
+ * Polls every 10 seconds for more responsive resource monitoring
+ * @param serverId - The server ID to fetch container state for
+ */
+export function useContainerState(serverId: string | undefined) {
+  return useQuery({
+    queryKey: ['minecraft', 'container', serverId],
+    queryFn: () => getContainerState(serverId!),
+    refetchInterval: 10000, // Poll every 10 seconds for responsive resource monitoring
     retry: 2,
     enabled: !!serverId,
   });

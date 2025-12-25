@@ -6,7 +6,7 @@ import {
   IconClock,
 } from '@tabler/icons-react';
 import { useParams } from '@tanstack/react-router';
-import { useServerStatus } from '../../hooks/useServerStatus';
+import { useServerStatus, useContainerState } from '../../hooks/useServerStatus';
 
 interface MetricCardProps {
   icon: React.ReactNode;
@@ -16,6 +16,36 @@ interface MetricCardProps {
   color: string;
   glowColor: string;
   progress?: number;
+}
+
+/**
+ * Formats a duration from startedAt to now as a human-readable string
+ */
+function formatUptime(startedAt: Date | null): string {
+  if (!startedAt) return 'N/A';
+
+  const now = new Date();
+  const diffMs = now.getTime() - startedAt.getTime();
+
+  if (diffMs < 0) return 'N/A';
+
+  const seconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    return `${days}d ${remainingHours}h`;
+  }
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+  return `${seconds}s`;
 }
 
 function MetricCard({ icon, label, value, subValue, color, glowColor, progress }: MetricCardProps) {
@@ -98,17 +128,20 @@ function MetricCard({ icon, label, value, subValue, color, glowColor, progress }
 
 export function ServerMetrics() {
   const { serverId } = useParams({ from: '/servers/$serverId/' });
-  const { data: status, isLoading } = useServerStatus(serverId);
+  const { data: status, isLoading: statusLoading } = useServerStatus(serverId);
+  const { data: containerState, isLoading: containerLoading } = useContainerState(serverId);
 
   // Calculate player percentage
   const playerPercentage = status?.maxPlayers
     ? Math.round((status.onlinePlayers / status.maxPlayers) * 100)
     : 0;
 
-  // Mock data for demo - in production these would come from your API
-  const cpuUsage = 45;
-  const memoryUsage = 62;
-  const uptime = '4d 12h';
+  // Get real data from container state
+  const cpuUsage = Math.round(containerState?.cpuPercent ?? 0);
+  const memoryUsage = Math.round(containerState?.memoryPercent ?? 0);
+  const uptime = formatUptime(containerState?.startedAt ?? null);
+
+  const isLoading = statusLoading || containerLoading;
 
   if (isLoading) {
     return (

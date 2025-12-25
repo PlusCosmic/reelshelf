@@ -3,15 +3,20 @@ import {
   IconServer2,
   IconCircleCheck,
   IconCircleX,
-  IconWorldWww,
+  IconBox,
   IconVersions,
 } from '@tabler/icons-react';
 import { useParams } from '@tanstack/react-router';
 import { useServerStatus } from '../../hooks/useServerStatus';
+import { useServerContext } from '../../contexts/ServerContext';
 
 export function ServerStatusCard() {
   const { serverId } = useParams({ from: '/servers/$serverId/' });
   const { data: status, isLoading, error } = useServerStatus(serverId);
+  const { servers } = useServerContext();
+
+  // Find the current server to get container name
+  const currentServer = servers.find(s => s.id === serverId);
 
   if (isLoading) {
     return (
@@ -164,15 +169,15 @@ export function ServerStatusCard() {
               </Group>
             </Tooltip>
 
-            <Tooltip label="Server address">
+            <Tooltip label="Container name">
               <Group gap="xs">
-                <IconWorldWww
+                <IconBox
                   size={18}
                   style={{ color: '#00d4ff', filter: 'drop-shadow(0 0 4px rgba(0, 212, 255, 0.5))' }}
                 />
                 <Stack gap={0}>
-                  <Text size="xs" c="dimmed">Address</Text>
-                  <Text size="sm" fw={600} ff="monospace">mc.server.net</Text>
+                  <Text size="xs" c="dimmed">Container</Text>
+                  <Text size="sm" fw={600} ff="monospace">{currentServer?.containerName || 'Unknown'}</Text>
                 </Stack>
               </Group>
             </Tooltip>

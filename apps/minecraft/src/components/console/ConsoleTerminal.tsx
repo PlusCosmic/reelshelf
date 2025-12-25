@@ -41,15 +41,13 @@ export function ConsoleTerminal() {
   const [historyIndex, setHistoryIndex] = useState(-1);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to bottom when new entries arrive
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const viewport = scrollAreaRef.current.querySelector('[data-viewport]');
-      if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [entries]);
 
@@ -286,6 +284,8 @@ export function ConsoleTerminal() {
           ) : (
             entries.map(renderEntry)
           )}
+          {/* Invisible element to scroll to */}
+          <div ref={bottomRef} />
         </Stack>
       </ScrollArea>
 
