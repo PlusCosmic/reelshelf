@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Link, useRouterState, useParams } from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 import {
   AppShell as MantineAppShell,
   Group,
