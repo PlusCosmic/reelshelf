@@ -60,7 +60,7 @@ export function CreateServerModal({ opened, onClose }: CreateServerModalProps) {
           cpuReservation: 1,
           cpuLimit: 2,
           containerName,
-          persistenceLocation: `/data/minecraft/${containerName}`,
+          persistenceLocation: `/data/minecraft/${containerName}`
         },
       });
     },
