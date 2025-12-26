@@ -96,7 +96,7 @@ export function AppShell({ children }: AppShellProps) {
       <MantineAppShell.Header>
         <Group h="100%" px={{ base: 'sm', sm: 'lg' }} justify="space-between">
           {/* Left side - Burger (mobile) + Logo and Title */}
-          <Group gap={{ base: 'xs', sm: 'md' }}>
+          <Group gap={isMobile ? 'xs' : 'md'}>
             <Burger
               opened={navbarOpened}
               onClick={toggleNavbar}
@@ -114,7 +114,7 @@ export function AppShell({ children }: AppShellProps) {
               }}
             >
               <ThemeIcon
-                size={{ base: 36, sm: 44 }}
+                size={isMobile ? 36 : 44}
                 radius="md"
                 variant="gradient"
                 gradient={{ from: 'cyberBlue', to: 'cyberPurple', deg: 135 }}
@@ -167,7 +167,7 @@ export function AppShell({ children }: AppShellProps) {
           </Group>
 
           {/* Right side - Status and User */}
-          <Group gap={{ base: 'sm', sm: 'lg' }}>
+          <Group gap={isMobile ? 'sm' : 'lg'}>
             <Box visibleFrom="sm">
               <Tooltip label="Server activity">
                 <Badge
@@ -374,7 +374,7 @@ export function AppShell({ children }: AppShellProps) {
             <span style={{ color: '#00d4ff' }}>Minecraft Panel</span>{' '}
             <Box component="span" visibleFrom="xs">by PlusCosmic</Box>
           </Text>
-          <Group gap={{ base: 'xs', sm: 'md' }}>
+          <Group gap={isMobile ? 'xs' : 'md'}>
             <Tooltip label="GitHub" position="top">
               <ActionIcon
                 component="a"
