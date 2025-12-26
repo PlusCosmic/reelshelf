@@ -127,15 +127,7 @@ export function LoginScreen() {
                 background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)',
               }}
             >
-              <Box
-                style={{
-                  background: 'rgba(10, 10, 20, 0.9)',
-                  borderRadius: 6,
-                  padding: '2px',
-                }}
-              >
-                <LoginButton />
-              </Box>
+              <LoginButton />
             </Box>
           </Stack>
         </Stack>
