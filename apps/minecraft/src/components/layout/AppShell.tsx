@@ -12,7 +12,9 @@ import {
   Badge,
   Tooltip,
   ActionIcon,
+  Burger,
 } from '@mantine/core';
+import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import {
   IconDashboard,
   IconTerminal2,
@@ -33,6 +35,9 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const [navbarOpened, { toggle: toggleNavbar, close: closeNavbar }] = useDisclosure();
+  const isMobile = useMediaQuery('(max-width: 48em)');
+
   const router = useRouterState();
   const currentPath = router.location.pathname;
   const { data: user, isLoading } = useCurrentUser();
@@ -62,7 +67,7 @@ export function AppShell({ children }: AppShellProps) {
       withBorder={false}
       padding="md"
       header={{ height: 70 }}
-      navbar={{ width: 260, breakpoint: 'sm' }}
+      navbar={{ width: 260, breakpoint: 'sm', collapsed: { mobile: !navbarOpened } }}
       footer={{ height: 36 }}
       className="cyber-background"
       styles={{
@@ -89,21 +94,27 @@ export function AppShell({ children }: AppShellProps) {
       }}
     >
       <MantineAppShell.Header>
-        <Group h="100%" px="lg" justify="space-between">
-          {/* Logo and Title */}
-          <Group gap="md">
+        <Group h="100%" px={{ base: 'sm', sm: 'lg' }} justify="space-between">
+          {/* Left side - Burger (mobile) + Logo and Title */}
+          <Group gap={isMobile ? 'xs' : 'md'}>
+            <Burger
+              opened={navbarOpened}
+              onClick={toggleNavbar}
+              hiddenFrom="sm"
+              size="sm"
+              color="#00d4ff"
+            />
             <Box
+              visibleFrom="xs"
               style={{
                 position: 'relative',
-                width: 44,
-                height: 44,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
               <ThemeIcon
-                size={44}
+                size={isMobile ? 36 : 44}
                 radius="md"
                 variant="gradient"
                 gradient={{ from: 'cyberBlue', to: 'cyberPurple', deg: 135 }}
@@ -111,12 +122,13 @@ export function AppShell({ children }: AppShellProps) {
                   boxShadow: '0 0 20px rgba(0, 212, 255, 0.4)',
                 }}
               >
-                <IconServer2 size={26} stroke={1.5} />
+                <IconServer2 size={isMobile ? 20 : 26} stroke={1.5} />
               </ThemeIcon>
             </Box>
             <Stack gap={0}>
               <Title
                 order={4}
+                size={isMobile ? 'sm' : 'h4'}
                 style={{
                   background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
                   WebkitBackgroundClip: 'text',
@@ -126,7 +138,7 @@ export function AppShell({ children }: AppShellProps) {
               >
                 {currentServer?.name || 'MINECRAFT PANEL'}
               </Title>
-              <Group gap="xs">
+              <Group gap="xs" visibleFrom="sm">
                 {serverId && (
                   <>
                     <Box
@@ -155,26 +167,28 @@ export function AppShell({ children }: AppShellProps) {
           </Group>
 
           {/* Right side - Status and User */}
-          <Group gap="lg">
-            <Tooltip label="Server activity">
-              <Badge
-                variant="dot"
-                color={serverStatus?.isOnline ? 'green' : 'red'}
-                size="lg"
-                style={{
-                  cursor: 'default',
-                  background: 'rgba(0, 212, 255, 0.1)',
-                  border: '1px solid rgba(0, 212, 255, 0.2)',
-                }}
-              >
-                <Group gap={6}>
-                  <IconActivity size={14} />
-                  <Text size="xs" fw={600}>
-                    {serverStatus?.onlinePlayers ?? 0} / {serverStatus?.maxPlayers ?? 0}
-                  </Text>
-                </Group>
-              </Badge>
-            </Tooltip>
+          <Group gap={isMobile ? 'sm' : 'lg'}>
+            <Box visibleFrom="sm">
+              <Tooltip label="Server activity">
+                <Badge
+                  variant="dot"
+                  color={serverStatus?.isOnline ? 'green' : 'red'}
+                  size="lg"
+                  style={{
+                    cursor: 'default',
+                    background: 'rgba(0, 212, 255, 0.1)',
+                    border: '1px solid rgba(0, 212, 255, 0.2)',
+                  }}
+                >
+                  <Group gap={6}>
+                    <IconActivity size={14} />
+                    <Text size="xs" fw={600}>
+                      {serverStatus?.onlinePlayers ?? 0} / {serverStatus?.maxPlayers ?? 0}
+                    </Text>
+                  </Group>
+                </Badge>
+              </Tooltip>
+            </Box>
             <UserAvatar
               hideLogin={true}
               user={user}
@@ -189,7 +203,7 @@ export function AppShell({ children }: AppShellProps) {
         <Stack gap="xs" mt="xs">
           {/* Back to Servers link when on a server-specific route */}
           {serverId && (
-            <Link to="/servers" style={{ textDecoration: 'none' }}>
+            <Link to="/servers" style={{ textDecoration: 'none' }} onClick={closeNavbar}>
               <NavLink
                 label={
                   <Text size="sm" fw={500}>
@@ -244,6 +258,7 @@ export function AppShell({ children }: AppShellProps) {
                 key={item.path}
                 to={item.path}
                 style={{ textDecoration: 'none' }}
+                onClick={closeNavbar}
               >
                 <NavLink
                   label={
@@ -354,11 +369,12 @@ export function AppShell({ children }: AppShellProps) {
       <MantineAppShell.Main>{children}</MantineAppShell.Main>
 
       <MantineAppShell.Footer>
-        <Group h="100%" px="lg" justify="space-between">
+        <Group h="100%" px={{ base: 'sm', sm: 'lg' }} justify="space-between">
           <Text size="xs" c="dimmed">
-            <span style={{ color: '#00d4ff' }}>Minecraft Panel</span> by PlusCosmic
+            <span style={{ color: '#00d4ff' }}>Minecraft Panel</span>{' '}
+            <Box component="span" visibleFrom="xs">by PlusCosmic</Box>
           </Text>
-          <Group gap="md">
+          <Group gap={isMobile ? 'xs' : 'md'}>
             <Tooltip label="GitHub" position="top">
               <ActionIcon
                 component="a"
@@ -391,18 +407,20 @@ export function AppShell({ children }: AppShellProps) {
                 <IconBrandLinkedin size={18} />
               </ActionIcon>
             </Tooltip>
-            <Text size="xs" c="dimmed">
-              Powered by{' '}
-              <span
-                style={{
-                  background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                Nucleus
-              </span>
-            </Text>
+            <Box visibleFrom="sm">
+              <Text size="xs" c="dimmed">
+                Powered by{' '}
+                <span
+                  style={{
+                    background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  Nucleus
+                </span>
+              </Text>
+            </Box>
           </Group>
         </Group>
       </MantineAppShell.Footer>

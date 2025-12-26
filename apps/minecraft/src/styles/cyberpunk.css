@@ -320,3 +320,36 @@
 .cyber-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--cyber-blue);
 }
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 48em) {
+  /* Navbar overlay styling on mobile */
+  .mantine-AppShell-navbar {
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Make cards full width and reduce padding */
+  .cyber-card {
+    border-radius: 8px;
+  }
+
+  .cyber-stat-card {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+
+  .cyber-action-card {
+    padding: 0.75rem;
+    border-radius: 8px;
+  }
+
+  /* Improve touch targets for navigation */
+  .cyber-nav-item {
+    min-height: 48px;
+  }
+
+  /* Make terminal more mobile-friendly */
+  .cyber-terminal {
+    font-size: 12px;
+  }
+}
