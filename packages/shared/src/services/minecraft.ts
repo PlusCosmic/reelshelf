@@ -7,6 +7,10 @@ import {
   type RconResponse,
   type MinecraftServer,
   type ContainerStateResponse,
+  type ContainerActionResponse,
+  type BackupListResult,
+  type BackupSyncResult,
+  type UpdateMinecraftServerRequest,
 } from "@repo/nucleus-api-client";
 import { apiConfig } from "../config/apiConfig";
 
@@ -175,4 +179,92 @@ export async function deleteFile(serverId: string, path: string): Promise<void> 
 export async function createDirectory(serverId: string, path: string): Promise<void> {
   const api = createApi();
   return api.createMinecraftDirectory({ serverId, createDirectoryRequest: { path } });
+}
+
+// ============================================================================
+// Container Control
+// ============================================================================
+
+/**
+ * Starts the Minecraft server container
+ * @param serverId - The server ID
+ * @returns Container action response with success status and new state
+ */
+export async function startContainer(serverId: string): Promise<ContainerActionResponse> {
+  const api = createApi();
+  return api.startContainer({ serverId });
+}
+
+/**
+ * Stops the Minecraft server container
+ * @param serverId - The server ID
+ * @param timeout - Optional timeout in seconds before force stop
+ * @param announce - Whether to announce the shutdown to players
+ * @returns Container action response with success status and new state
+ */
+export async function stopContainer(
+  serverId: string,
+  timeout?: number,
+  announce?: boolean
+): Promise<ContainerActionResponse> {
+  const api = createApi();
+  return api.stopContainer({ serverId, timeout, announce });
+}
+
+/**
+ * Restarts the Minecraft server container (stop then start)
+ * @param serverId - The server ID
+ * @param announce - Whether to announce the restart to players
+ * @returns Container action response with success status and new state
+ */
+export async function restartContainer(
+  serverId: string,
+  announce?: boolean
+): Promise<ContainerActionResponse> {
+  const api = createApi();
+  // Stop first, then start
+  await api.stopContainer({ serverId, timeout: 30, announce });
+  return api.startContainer({ serverId });
+}
+
+// ============================================================================
+// Backup Operations
+// ============================================================================
+
+/**
+ * Gets the backup status and list of backup files
+ * @param serverId - The server ID
+ * @returns Backup list with local and remote files
+ */
+export async function getBackupStatus(serverId: string): Promise<BackupListResult> {
+  const api = createApi();
+  return api.getBackupStatus({ serverId });
+}
+
+/**
+ * Triggers a backup sync operation
+ * @param serverId - The server ID
+ * @returns Backup sync result with uploaded/skipped file counts
+ */
+export async function triggerBackupSync(serverId: string): Promise<BackupSyncResult> {
+  const api = createApi();
+  return api.triggerBackupSync({ serverId });
+}
+
+// ============================================================================
+// Server Configuration
+// ============================================================================
+
+/**
+ * Updates a Minecraft server's configuration
+ * @param serverId - The server ID
+ * @param updates - The fields to update
+ * @returns Updated server configuration
+ */
+export async function updateServer(
+  serverId: string,
+  updates: UpdateMinecraftServerRequest
+): Promise<MinecraftServer> {
+  const api = createApi();
+  return api.updateMinecraftServer({ serverId, updateMinecraftServerRequest: updates });
 }
