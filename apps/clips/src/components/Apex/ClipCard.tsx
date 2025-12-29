@@ -154,16 +154,14 @@ export function ClipCard({ clip }: ClipCardProps) {
   return (
     <Card
       w="100%"
-      mt="xs"
-      mb="xs"
-      radius="lg"
-      p="md"
+      radius="md"
+      p="xs"
       style={{
-        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        transform: isHovered ? "translateY(-4px)" : "translateY(0)",
+        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: isHovered ? "translateY(-2px)" : "translateY(0)",
         boxShadow: isHovered
-          ? "0 12px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 212, 255, 0.15)"
-          : "0 2px 8px rgba(0, 0, 0, 0.2)",
+          ? "0 8px 24px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 212, 255, 0.1)"
+          : "0 1px 4px rgba(0, 0, 0, 0.15)",
         border: isHovered
           ? "1px solid rgba(0, 212, 255, 0.4)"
           : "1px solid rgba(0, 212, 255, 0.1)",
@@ -183,16 +181,16 @@ export function ClipCard({ clip }: ClipCardProps) {
           onMouseLeave={() => setIsHovered(false)}
           style={{ width: "100%" }}
         >
-          <Group wrap="nowrap" gap="lg" align="center">
+          <Group wrap="nowrap" gap="sm" align="center">
             {/* Thumbnail with overlay */}
             <Box pos="relative" style={{ flexShrink: 0 }}>
               {processing ? (
                 <Skeleton
                   style={{
                     aspectRatio: "16/9",
-                    width: "240px",
+                    width: "160px",
                   }}
-                  radius="md"
+                  radius="sm"
                 />
               ) : (
                 <Image
@@ -203,28 +201,28 @@ export function ClipCard({ clip }: ClipCardProps) {
                   }
                   style={{
                     aspectRatio: "16/9",
-                    width: "240px",
+                    width: "160px",
                     transition: "transform 0.2s ease",
                     transform: isHovered ? "scale(1.02)" : "scale(1)",
                   }}
-                  radius="md"
+                  radius="sm"
                 />
               )}
               {processing && (
                 <Badge
                   pos="absolute"
-                  top={8}
-                  left={8}
-                  size="md"
+                  top={4}
+                  left={4}
+                  size="xs"
                   radius="sm"
                   variant="filled"
                   style={{
                     background:
                       "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
                     backdropFilter: "blur(4px)",
-                    boxShadow: "0 2px 12px rgba(245, 158, 11, 0.5)",
-                    fontWeight: 700,
-                    letterSpacing: "0.5px",
+                    boxShadow: "0 2px 8px rgba(245, 158, 11, 0.4)",
+                    fontWeight: 600,
+                    fontSize: "9px",
                     border: "1px solid rgba(245, 158, 11, 0.5)",
                   }}
                 >
@@ -234,18 +232,18 @@ export function ClipCard({ clip }: ClipCardProps) {
               {!clip.isViewed && !processing && (
                 <Badge
                   pos="absolute"
-                  top={8}
-                  left={8}
-                  size="md"
+                  top={4}
+                  left={4}
+                  size="xs"
                   radius="sm"
                   variant="filled"
                   style={{
                     background:
                       "linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)",
                     backdropFilter: "blur(4px)",
-                    boxShadow: "0 2px 12px rgba(0, 212, 255, 0.5)",
-                    fontWeight: 700,
-                    letterSpacing: "0.5px",
+                    boxShadow: "0 2px 8px rgba(0, 212, 255, 0.4)",
+                    fontWeight: 600,
+                    fontSize: "9px",
                     border: "1px solid rgba(0, 212, 255, 0.5)",
                     color: "#0a0a14",
                   }}
@@ -256,16 +254,17 @@ export function ClipCard({ clip }: ClipCardProps) {
               {clip.video.length && !processing && (
                 <Badge
                   pos="absolute"
-                  bottom={8}
-                  right={8}
-                  size="sm"
+                  bottom={4}
+                  right={4}
+                  size="xs"
                   radius="sm"
-                  leftSection={<IconClock size={12} />}
+                  leftSection={<IconClock size={10} />}
                   style={{
                     background: "rgba(10, 10, 20, 0.85)",
                     backdropFilter: "blur(4px)",
                     color: "#00d4ff",
                     border: "1px solid rgba(0, 212, 255, 0.3)",
+                    fontSize: "10px",
                   }}
                 >
                   {formatDuration(clip.video.length)}
@@ -274,59 +273,31 @@ export function ClipCard({ clip }: ClipCardProps) {
               {processing && (
                 <Badge
                   pos="absolute"
-                  bottom={8}
-                  right={8}
-                  size="sm"
+                  bottom={4}
+                  right={4}
+                  size="xs"
                   radius="sm"
                   style={{
                     background: "rgba(245, 158, 11, 0.9)",
                     backdropFilter: "blur(4px)",
                     color: "white",
                     border: "1px solid rgba(245, 158, 11, 0.5)",
+                    fontSize: "9px",
                   }}
                 >
                   {processingMessage}
                 </Badge>
               )}
-              {/* Owner Avatar Badge */}
-              {clipOwner && (
-                <Tooltip
-                  label={clipOwner.globalName || clipOwner.username}
-                  position="right"
-                  withArrow
-                  offset={8}
-                  style={{
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <Avatar
-                    src={clipOwner.avatar}
-                    alt={clipOwner.username}
-                    size={40}
-                    radius="xl"
-                    pos="absolute"
-                    bottom={8}
-                    left={8}
-                    style={{
-                      border: isHovered ? "2px solid #00d4ff" : "2px solid rgba(255, 255, 255, 0.9)",
-                      boxShadow: isHovered ? "0 0 15px rgba(0, 212, 255, 0.5)" : "0 2px 8px rgba(0, 0, 0, 0.3)",
-                      transition: "all 0.2s ease",
-                      transform: isHovered ? "scale(1.1)" : "scale(1)",
-                      cursor: "pointer",
-                    }}
-                  />
-                </Tooltip>
-              )}
             </Box>
 
             {/* Content */}
-            <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
+            <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
               <Text
                 fw={600}
-                size="md"
-                lineClamp={2}
+                size="sm"
+                lineClamp={1}
                 style={{
-                  lineHeight: 1.4,
+                  lineHeight: 1.3,
                   letterSpacing: "-0.2px",
                   color: isHovered ? "#00d4ff" : "#f8fafc",
                   transition: "color 0.2s ease",
@@ -337,63 +308,60 @@ export function ClipCard({ clip }: ClipCardProps) {
 
               {/* Tags */}
               {clip.tags.length > 0 && (
-                <Group gap="xs">
-                  {clip.tags.slice(0, 4).map((tag, index) => (
+                <Group gap={4}>
+                  {clip.tags.slice(0, 3).map((tag, index) => (
                     <Badge
                       key={index}
-                      size="sm"
-                      radius="md"
+                      size="xs"
+                      radius="sm"
                       variant="light"
                       style={{
                         textTransform: "none",
                         background: "rgba(168, 85, 247, 0.15)",
                         border: "1px solid rgba(168, 85, 247, 0.3)",
                         color: "#a855f7",
+                        fontSize: "10px",
                       }}
                     >
                       {tag}
                     </Badge>
                   ))}
-                  {clip.tags.length > 4 && (
-                    <Text size="xs" c="dimmed">
-                      +{clip.tags.length - 4} more
+                  {clip.tags.length > 3 && (
+                    <Text size="xs" c="dimmed" style={{ fontSize: "10px" }}>
+                      +{clip.tags.length - 3}
                     </Text>
                   )}
                 </Group>
               )}
-              <Group gap="md">
+              <Group gap="sm">
                 {clipOwner && (
-                  <Group gap="xs">
+                  <Group gap={4}>
                     <Avatar
                       src={clipOwner.avatar}
                       alt={clipOwner.username}
-                      size={16}
+                      size={14}
                       radius="xl"
                     />
-                    <Text size="xs" c="dimmed" fw={500}>
+                    <Text size="xs" c="dimmed" fw={500} style={{ fontSize: "11px" }}>
                       {clipOwner.globalName || clipOwner.username}
                     </Text>
                   </Group>
                 )}
-                <Group gap="xs">
-                  <IconClock size={14} style={{ opacity: 0.6 }} />
-                  <Text size="xs" c="dimmed">
-                    {date}
-                  </Text>
-                </Group>
+                <Text size="xs" c="dimmed" style={{ fontSize: "11px" }}>
+                  {date}
+                </Text>
               </Group>
             </Stack>
 
-            { clip.detectedLegend !== 27 && (
-              <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
-                <Image radius={"xl"} src={`${apiConfig.baseUrl}${clip.detectedLegendCard}`} h={150} w={134}/>
-              </Stack>
+            {clip.detectedLegend !== 27 && (
+              <Box style={{ flexShrink: 0 }}>
+                <Image radius="md" src={`${apiConfig.baseUrl}${clip.detectedLegendCard}`} h={70} w={62} />
+              </Box>
             )}
 
-            {/* Action Buttons */}
-            <Stack
-              gap="xs"
-              justify="center"
+            {/* Action Buttons - Horizontal layout */}
+            <Group
+              gap={4}
               style={{
                 flexShrink: 0,
                 opacity: isHovered ? 1 : 0,
@@ -401,11 +369,11 @@ export function ClipCard({ clip }: ClipCardProps) {
                 pointerEvents: isHovered ? "auto" : "none",
               }}
             >
-              <Tooltip label="Share clip" position="left">
+              <Tooltip label="Share" position="top">
                 <ActionIcon
                   variant="light"
-                  size="lg"
-                  radius="md"
+                  size="sm"
+                  radius="sm"
                   onClick={handleShare}
                   style={{
                     transition: "all 0.2s ease",
@@ -414,18 +382,17 @@ export function ClipCard({ clip }: ClipCardProps) {
                     color: "#00d4ff",
                   }}
                 >
-                  <IconShare size={18} />
+                  <IconShare size={14} />
                 </ActionIcon>
               </Tooltip>
 
-              {/* Add to Playlist Button */}
-              <AddToPlaylistButton clipId={clip.clipId} />
+              <AddToPlaylistButton clipId={clip.clipId} compact />
 
-              <Tooltip label="Edit clip" position="left">
+              <Tooltip label="Edit" position="top">
                 <ActionIcon
                   variant="light"
-                  size="lg"
-                  radius="md"
+                  size="sm"
+                  radius="sm"
                   onClick={handleEdit}
                   style={{
                     transition: "all 0.2s ease",
@@ -434,15 +401,15 @@ export function ClipCard({ clip }: ClipCardProps) {
                     color: "#a855f7",
                   }}
                 >
-                  <IconEdit size={18} />
+                  <IconEdit size={14} />
                 </ActionIcon>
               </Tooltip>
 
-              <Tooltip label="Download clip" position="left">
+              <Tooltip label="Download" position="top">
                 <ActionIcon
                   variant="light"
-                  size="lg"
-                  radius="md"
+                  size="sm"
+                  radius="sm"
                   onClick={handleDownload}
                   style={{
                     transition: "all 0.2s ease",
@@ -451,15 +418,15 @@ export function ClipCard({ clip }: ClipCardProps) {
                     color: "#22c55e",
                   }}
                 >
-                  <IconDownload size={18} />
+                  <IconDownload size={14} />
                 </ActionIcon>
               </Tooltip>
 
-              <Tooltip label="Delete clip" position="left">
+              <Tooltip label="Delete" position="top">
                 <ActionIcon
                   variant="light"
-                  size="lg"
-                  radius="md"
+                  size="sm"
+                  radius="sm"
                   onClick={handleDelete}
                   loading={deleteClip.isPending}
                   disabled={deleteClip.isPending}
@@ -470,10 +437,10 @@ export function ClipCard({ clip }: ClipCardProps) {
                     color: "#ec4899",
                   }}
                 >
-                  <IconTrash size={18} />
+                  <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-            </Stack>
+            </Group>
           </Group>
         </UnstyledButton>
       </Link>

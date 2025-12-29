@@ -32,11 +32,14 @@ type AddToPlaylistButtonProps = {
   clipId: string;
   /** Optional: Override click behavior instead of using default menu */
   onClick?: (e: React.MouseEvent) => void;
+  /** Optional: Use compact styling for smaller displays */
+  compact?: boolean;
 };
 
 export function AddToPlaylistButton({
   clipId,
   onClick,
+  compact = false,
 }: AddToPlaylistButtonProps) {
   const [opened, setOpened] = useState(false);
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
@@ -133,11 +136,11 @@ export function AddToPlaylistButton({
         width={320}
       >
         <Menu.Target>
-          <Tooltip label="Add to playlist" position="left">
+          <Tooltip label="Add to playlist" position={compact ? "top" : "left"}>
             <ActionIcon
               variant="light"
-              size="lg"
-              radius="md"
+              size={compact ? "sm" : "lg"}
+              radius={compact ? "sm" : "md"}
               onClick={handleButtonClick}
               style={{
                 transition: "all 0.2s ease",
@@ -146,7 +149,7 @@ export function AddToPlaylistButton({
                 color: "#a855f7",
               }}
             >
-              <IconPlaylistAdd size={18} />
+              <IconPlaylistAdd size={compact ? 14 : 18} />
             </ActionIcon>
           </Tooltip>
         </Menu.Target>
