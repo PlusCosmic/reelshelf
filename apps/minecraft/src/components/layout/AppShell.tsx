@@ -24,6 +24,8 @@ import {
   IconBrandGithub,
   IconBrandLinkedin,
   IconList,
+  IconCloudUpload,
+  IconSettings,
 } from '@tabler/icons-react';
 import { UserAvatar } from '@repo/ui';
 import { useCurrentUser, useLogout } from '../../hooks/queries';
@@ -58,6 +60,8 @@ export function AppShell({ children }: AppShellProps) {
     { path: `/servers/${serverId}`, label: 'Dashboard', icon: IconDashboard, description: 'Server overview' },
     { path: `/servers/${serverId}/console`, label: 'Console', icon: IconTerminal2, description: 'Terminal access' },
     { path: `/servers/${serverId}/files`, label: 'Files', icon: IconFolderCode, description: 'File manager' },
+    { path: `/servers/${serverId}/backups`, label: 'Backups', icon: IconCloudUpload, description: 'Backup management' },
+    { path: `/servers/${serverId}/settings`, label: 'Settings', icon: IconSettings, description: 'Server configuration' },
   ] : [
     { path: '/servers', label: 'Servers', icon: IconList, description: 'Select server' },
   ];
