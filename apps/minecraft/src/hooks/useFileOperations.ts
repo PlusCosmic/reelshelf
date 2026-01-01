@@ -9,7 +9,6 @@ import {
   createDirectory,
 } from '@repo/shared/services/minecraft';
 import { getFileExtension } from '@repo/shared/utils/format';
-import { useServerContext } from '../contexts/ServerContext';
 
 // ============================================================================
 // Query Hooks
@@ -18,11 +17,10 @@ import { useServerContext } from '../contexts/ServerContext';
 /**
  * Fetches the contents of a directory on the Minecraft server
  * Cached with 30 second stale time - directory listings don't change frequently
+ * @param serverId - The server ID to fetch files from
  * @param path - The directory path to list (e.g., "/" or "/plugins")
  */
-export function useDirectoryListing(path: string) {
-  const { serverId } = useServerContext();
-
+export function useDirectoryListing(serverId: string | undefined, path: string) {
   return useQuery({
     queryKey: ['minecraft', 'files', serverId, path],
     queryFn: () => listDirectory(serverId!, path),
@@ -36,11 +34,10 @@ export function useDirectoryListing(path: string) {
  * Fetches the content of a specific file
  * Always fetches fresh content (staleTime: 0) to ensure editor shows latest version
  * Only enabled when a path is provided
+ * @param serverId - The server ID to fetch files from
  * @param path - The full path to the file, or null if no file is selected
  */
-export function useFileContent(path: string | null) {
-  const { serverId } = useServerContext();
-
+export function useFileContent(serverId: string | undefined, path: string | null) {
   return useQuery({
     queryKey: ['minecraft', 'files', 'content', serverId, path],
     queryFn: () => (path ? getFileContent(serverId!, path) : Promise.resolve('')),
@@ -59,10 +56,10 @@ export function useFileContent(path: string | null) {
  * Uses optimistic updates to immediately show updated modified timestamp
  * On success: invalidates caches to ensure server-client consistency
  * On error: rolls back optimistic update and shows error notification
+ * @param serverId - The server ID to save files to
  */
-export function useSaveFile() {
+export function useSaveFile(serverId: string | undefined) {
   const queryClient = useQueryClient();
-  const { serverId } = useServerContext();
 
   return useMutation({
     mutationFn: ({ path, content }: { path: string; content: string }) =>
@@ -131,10 +128,10 @@ export function useSaveFile() {
  * Deletes a file from the Minecraft server
  * Uses optimistic updates to immediately remove the file from the listing
  * On error: rolls back to show the file again and displays error notification
+ * @param serverId - The server ID to delete files from
  */
-export function useDeleteFile() {
+export function useDeleteFile(serverId: string | undefined) {
   const queryClient = useQueryClient();
-  const { serverId } = useServerContext();
 
   return useMutation({
     mutationFn: (path: string) => deleteFile(serverId!, path),
@@ -192,10 +189,10 @@ export function useDeleteFile() {
  * Creates a new directory on the Minecraft server
  * Uses optimistic updates to immediately show the new directory in the listing
  * On error: rolls back to remove the optimistically added directory
+ * @param serverId - The server ID to create directories on
  */
-export function useCreateDirectory() {
+export function useCreateDirectory(serverId: string | undefined) {
   const queryClient = useQueryClient();
-  const { serverId } = useServerContext();
 
   return useMutation({
     mutationFn: (path: string) => createDirectory(serverId!, path),

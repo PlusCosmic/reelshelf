@@ -22,13 +22,14 @@ import {
 import { useFileContent, useSaveFile, getLanguageFromExtension, getFileExtension } from '../../hooks/useFileOperations';
 
 interface MonacoFileEditorProps {
+  serverId: string;
   filePath: string | null;
   fileName: string | null;
 }
 
-export function MonacoFileEditor({ filePath, fileName }: MonacoFileEditorProps) {
-  const { data: originalContent, isLoading, error, refetch } = useFileContent(filePath);
-  const saveMutation = useSaveFile();
+export function MonacoFileEditor({ serverId, filePath, fileName }: MonacoFileEditorProps) {
+  const { data: originalContent, isLoading, error, refetch } = useFileContent(serverId, filePath);
+  const saveMutation = useSaveFile(serverId);
 
   const [editorContent, setEditorContent] = useState<string>('');
   const [hasChanges, setHasChanges] = useState(false);

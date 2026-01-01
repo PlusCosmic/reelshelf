@@ -32,6 +32,7 @@ import { useDirectoryListing, useDeleteFile, useCreateDirectory, isEditableFile 
 import type { FileEntry } from '@repo/nucleus-api-client';
 
 interface FileTreeProps {
+  serverId: string;
   currentPath: string;
   selectedFile: string | null;
   onFileSelect: (path: string, name: string) => void;
@@ -39,6 +40,7 @@ interface FileTreeProps {
 }
 
 interface FileTreeItemProps {
+  serverId: string;
   entry: FileEntry;
   basePath: string;
   selectedFile: string | null;
@@ -48,6 +50,7 @@ interface FileTreeItemProps {
 }
 
 function FileTreeItem({
+  serverId,
   entry,
   basePath,
   selectedFile,
@@ -61,7 +64,7 @@ function FileTreeItem({
   const isSelected = selectedFile === fullPath;
   const editable = !isDirectory && isEditableFile(entry.name);
 
-  const deleteMutation = useDeleteFile();
+  const deleteMutation = useDeleteFile(serverId);
 
   const handleClick = useCallback(() => {
     if (isDirectory) {
@@ -196,6 +199,7 @@ function FileTreeItem({
 
       {isDirectory && isExpanded && (
         <DirectoryContents
+          serverId={serverId}
           path={fullPath}
           selectedFile={selectedFile}
           onFileSelect={onFileSelect}
@@ -208,6 +212,7 @@ function FileTreeItem({
 }
 
 interface DirectoryContentsProps {
+  serverId: string;
   path: string;
   selectedFile: string | null;
   onFileSelect: (path: string, name: string) => void;
@@ -216,13 +221,14 @@ interface DirectoryContentsProps {
 }
 
 function DirectoryContents({
+  serverId,
   path,
   selectedFile,
   onFileSelect,
   onPathChange,
   level,
 }: DirectoryContentsProps) {
-  const { data, isLoading, error } = useDirectoryListing(path);
+  const { data, isLoading, error } = useDirectoryListing(serverId, path);
 
   if (isLoading) {
     return (
@@ -262,6 +268,7 @@ function DirectoryContents({
       {sortedEntries.map((entry) => (
         <FileTreeItem
           key={entry.name}
+          serverId={serverId}
           entry={entry}
           basePath={path}
           selectedFile={selectedFile}
@@ -275,13 +282,14 @@ function DirectoryContents({
 }
 
 export function FileTree({
+  serverId,
   currentPath,
   selectedFile,
   onFileSelect,
   onPathChange,
 }: FileTreeProps) {
-  const { data, isLoading, error, refetch } = useDirectoryListing(currentPath);
-  const createDirMutation = useCreateDirectory();
+  const { data, isLoading, error, refetch } = useDirectoryListing(serverId, currentPath);
+  const createDirMutation = useCreateDirectory(serverId);
 
   const [newDirModalOpened, { open: openNewDirModal, close: closeNewDirModal }] = useDisclosure(false);
   const [newDirName, setNewDirName] = useState('');
@@ -387,6 +395,7 @@ export function FileTree({
               .map((entry) => (
                 <FileTreeItem
                   key={entry.name}
+                  serverId={serverId}
                   entry={entry}
                   basePath={currentPath}
                   selectedFile={selectedFile}

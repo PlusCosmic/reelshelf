@@ -14,10 +14,12 @@ import {
   IconChevronRight,
   IconFolderCode,
 } from '@tabler/icons-react';
+import { useParams } from '@tanstack/react-router';
 import { FileTree } from './FileTree';
 import { MonacoFileEditor } from './MonacoFileEditor';
 
 export function FileBrowser() {
+  const { serverId } = useParams({ from: '/servers/$serverId/files' });
   const [currentPath, setCurrentPath] = useState('/');
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
@@ -140,6 +142,7 @@ export function FileBrowser() {
           }}
         >
           <FileTree
+            serverId={serverId}
             currentPath={currentPath}
             selectedFile={selectedFilePath}
             onFileSelect={handleFileSelect}
@@ -150,6 +153,7 @@ export function FileBrowser() {
         {/* Editor Panel */}
         <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <MonacoFileEditor
+            serverId={serverId}
             filePath={selectedFilePath}
             fileName={selectedFileName}
           />
