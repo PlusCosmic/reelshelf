@@ -8,7 +8,7 @@
     "./services/auth": "./src/services/auth.ts",
     "./services/user": "./src/services/user.ts",
     "./services/categories": "./src/services/categories.ts",
-    "./services/apexClips": "./src/services/apexClips.ts",
+    "./services/clips": "./src/services/clips.ts",
     "./services/ffmpeg": "./src/services/ffmpeg.ts",
     "./services/minecraft": "./src/services/minecraft.ts",
     "./hooks/useDebouncedValue": "./src/hooks/useDebouncedValue.ts",

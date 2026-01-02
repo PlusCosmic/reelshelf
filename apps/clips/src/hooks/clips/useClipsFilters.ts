@@ -10,9 +10,9 @@ import {
   startDateAtom,
   todayFilterActiveAtom,
   totalPagesAtom,
-} from '../../atoms/apexFilters';
+} from '../../atoms/clipsFilters';
 
-export function useApexClipsFilters() {
+export function useClipsFilters() {
   // Jotai atoms for filter/pagination state
   const [pageSize, setPageSize] = useAtom(pageSizeAtom);
   const [page, setPage] = useAtom(pageAtom);

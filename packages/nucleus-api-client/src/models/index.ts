@@ -2,15 +2,14 @@
 /* eslint-disable */
 export * from './AddClipToPlaylistRequest';
 export * from './AddCollaboratorRequest';
+export * from './AddCustomCategoryRequest';
+export * from './AddGameFromIgdbRequest';
 export * from './AddTagRequest';
 export * from './BackfillResult';
-export * from './BackupFileInfo';
 export * from './BackupListResult';
 export * from './BackupSyncResult';
 export * from './BunnyVideo';
 export * from './Clip';
-export * from './Clip2';
-export * from './ClipCategory';
 export * from './CommandLogEntry';
 export * from './ContainerActionResponse';
 export * from './ContainerStateResponse';
@@ -23,6 +22,8 @@ export * from './CurrentMapRotation';
 export * from './DirectoryListing';
 export * from './DiscordUser';
 export * from './FileEntry';
+export * from './GameCategoryResponse';
+export * from './GameSearchResult';
 export * from './LinkRequest';
 export * from './MapInfo';
 export * from './MetaTag';

@@ -15,9 +15,9 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as MockupsRouteImport } from './routes/mockups'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlaylistsIndexRouteImport } from './routes/playlists/index'
-import { Route as ApexLegendsIndexRouteImport } from './routes/apex-legends/index'
 import { Route as PlaylistsPlaylistIdRouteImport } from './routes/playlists/$playlistId'
-import { Route as ApexLegendsClipIdRouteImport } from './routes/apex-legends/$clipId'
+import { Route as GamesSlugIndexRouteImport } from './routes/games/$slug/index'
+import { Route as GamesSlugClipIdRouteImport } from './routes/games/$slug/$clipId'
 
 const WarzoneRoute = WarzoneRouteImport.update({
   id: '/warzone',
@@ -49,19 +49,19 @@ const PlaylistsIndexRoute = PlaylistsIndexRouteImport.update({
   path: '/playlists/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApexLegendsIndexRoute = ApexLegendsIndexRouteImport.update({
-  id: '/apex-legends/',
-  path: '/apex-legends/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlaylistsPlaylistIdRoute = PlaylistsPlaylistIdRouteImport.update({
   id: '/playlists/$playlistId',
   path: '/playlists/$playlistId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApexLegendsClipIdRoute = ApexLegendsClipIdRouteImport.update({
-  id: '/apex-legends/$clipId',
-  path: '/apex-legends/$clipId',
+const GamesSlugIndexRoute = GamesSlugIndexRouteImport.update({
+  id: '/games/$slug/',
+  path: '/games/$slug/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GamesSlugClipIdRoute = GamesSlugClipIdRouteImport.update({
+  id: '/games/$slug/$clipId',
+  path: '/games/$slug/$clipId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -71,10 +71,10 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/snowboarding': typeof SnowboardingRoute
   '/warzone': typeof WarzoneRoute
-  '/apex-legends/$clipId': typeof ApexLegendsClipIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
-  '/apex-legends': typeof ApexLegendsIndexRoute
   '/playlists': typeof PlaylistsIndexRoute
+  '/games/$slug/$clipId': typeof GamesSlugClipIdRoute
+  '/games/$slug': typeof GamesSlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -82,10 +82,10 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/snowboarding': typeof SnowboardingRoute
   '/warzone': typeof WarzoneRoute
-  '/apex-legends/$clipId': typeof ApexLegendsClipIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
-  '/apex-legends': typeof ApexLegendsIndexRoute
   '/playlists': typeof PlaylistsIndexRoute
+  '/games/$slug/$clipId': typeof GamesSlugClipIdRoute
+  '/games/$slug': typeof GamesSlugIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -94,10 +94,10 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/snowboarding': typeof SnowboardingRoute
   '/warzone': typeof WarzoneRoute
-  '/apex-legends/$clipId': typeof ApexLegendsClipIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
-  '/apex-legends/': typeof ApexLegendsIndexRoute
   '/playlists/': typeof PlaylistsIndexRoute
+  '/games/$slug/$clipId': typeof GamesSlugClipIdRoute
+  '/games/$slug/': typeof GamesSlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,10 +107,10 @@ export interface FileRouteTypes {
     | '/settings'
     | '/snowboarding'
     | '/warzone'
-    | '/apex-legends/$clipId'
     | '/playlists/$playlistId'
-    | '/apex-legends'
     | '/playlists'
+    | '/games/$slug/$clipId'
+    | '/games/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -118,10 +118,10 @@ export interface FileRouteTypes {
     | '/settings'
     | '/snowboarding'
     | '/warzone'
-    | '/apex-legends/$clipId'
     | '/playlists/$playlistId'
-    | '/apex-legends'
     | '/playlists'
+    | '/games/$slug/$clipId'
+    | '/games/$slug'
   id:
     | '__root__'
     | '/'
@@ -129,10 +129,10 @@ export interface FileRouteTypes {
     | '/settings'
     | '/snowboarding'
     | '/warzone'
-    | '/apex-legends/$clipId'
     | '/playlists/$playlistId'
-    | '/apex-legends/'
     | '/playlists/'
+    | '/games/$slug/$clipId'
+    | '/games/$slug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -141,10 +141,10 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SnowboardingRoute: typeof SnowboardingRoute
   WarzoneRoute: typeof WarzoneRoute
-  ApexLegendsClipIdRoute: typeof ApexLegendsClipIdRoute
   PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
-  ApexLegendsIndexRoute: typeof ApexLegendsIndexRoute
   PlaylistsIndexRoute: typeof PlaylistsIndexRoute
+  GamesSlugClipIdRoute: typeof GamesSlugClipIdRoute
+  GamesSlugIndexRoute: typeof GamesSlugIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -191,13 +191,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlaylistsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/apex-legends/': {
-      id: '/apex-legends/'
-      path: '/apex-legends'
-      fullPath: '/apex-legends'
-      preLoaderRoute: typeof ApexLegendsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/playlists/$playlistId': {
       id: '/playlists/$playlistId'
       path: '/playlists/$playlistId'
@@ -205,11 +198,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlaylistsPlaylistIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/apex-legends/$clipId': {
-      id: '/apex-legends/$clipId'
-      path: '/apex-legends/$clipId'
-      fullPath: '/apex-legends/$clipId'
-      preLoaderRoute: typeof ApexLegendsClipIdRouteImport
+    '/games/$slug/': {
+      id: '/games/$slug/'
+      path: '/games/$slug'
+      fullPath: '/games/$slug'
+      preLoaderRoute: typeof GamesSlugIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/games/$slug/$clipId': {
+      id: '/games/$slug/$clipId'
+      path: '/games/$slug/$clipId'
+      fullPath: '/games/$slug/$clipId'
+      preLoaderRoute: typeof GamesSlugClipIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -221,10 +221,10 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SnowboardingRoute: SnowboardingRoute,
   WarzoneRoute: WarzoneRoute,
-  ApexLegendsClipIdRoute: ApexLegendsClipIdRoute,
   PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,
-  ApexLegendsIndexRoute: ApexLegendsIndexRoute,
   PlaylistsIndexRoute: PlaylistsIndexRoute,
+  GamesSlugClipIdRoute: GamesSlugClipIdRoute,
+  GamesSlugIndexRoute: GamesSlugIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

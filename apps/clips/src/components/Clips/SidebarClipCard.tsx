@@ -8,17 +8,18 @@ import { useUserById } from "@/hooks/queries.ts";
 
 interface SidebarClipCardProps {
   clip: Clip;
+  categorySlug: string;
 }
 
-export function SidebarClipCard({ clip }: SidebarClipCardProps) {
+export function SidebarClipCard({ clip, categorySlug }: SidebarClipCardProps) {
   const { data: clipOwner } = useUserById(clip.ownerId);
   const processing = isClipProcessing(clip.video.status);
   const processingMessage = getProcessingStatusMessage(clip.video.status, clip.video.encodeProgress);
 
   return (
     <Link
-      to="/apex-legends/$clipId"
-      params={{ clipId: clip.clipId }}
+      to="/games/$slug/$clipId"
+      params={{ slug: categorySlug, clipId: clip.clipId }}
       style={{ textDecoration: "none", color: "inherit" }}
     >
       <Card

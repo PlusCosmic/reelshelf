@@ -9,13 +9,13 @@ Name | Type
 `clipId` | string
 `ownerId` | string
 `videoId` | string
-`categoryEnum` | number
+`gameCategoryId` | string
+`categorySlug` | string
 `createdAt` | Date
 `video` | [BunnyVideo](BunnyVideo.md)
 `tags` | Array&lt;string&gt;
 `isViewed` | boolean
-`detectedLegend` | number
-`detectedLegendCard` | string
+`gameMetadata` | any
 
 ## Example
 
@@ -27,13 +27,13 @@ const example = {
   "clipId": null,
   "ownerId": null,
   "videoId": null,
-  "categoryEnum": null,
+  "gameCategoryId": null,
+  "categorySlug": null,
   "createdAt": null,
   "video": null,
   "tags": null,
   "isViewed": null,
-  "detectedLegend": null,
-  "detectedLegendCard": null,
+  "gameMetadata": null,
 } satisfies Clip
 
 console.log(example)

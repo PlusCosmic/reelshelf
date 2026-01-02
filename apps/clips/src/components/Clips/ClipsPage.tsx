@@ -5,10 +5,16 @@ import { ClipsSearchBar } from './ClipsSearchBar';
 import { ClipsFilters } from './ClipsFilters';
 import { ClipsContentArea } from './ClipsContentArea';
 import { ClipsPaginationControls } from './ClipsPaginationControls';
-import { useApexClipsFilters } from "@/hooks/apex/useApexClipsFilters.ts";
-import { useApexClips, useCurrentUser, useTopTags } from "@/hooks/queries.ts";
+import { useClipsFilters } from "@/hooks/clips/useClipsFilters";
+import { useClips, useCurrentUser, useTopTags } from "@/hooks/queries";
 
-export function ApexClips() {
+export interface ClipsPageProps {
+  categoryId: string;
+  categorySlug: string;
+  categoryName: string;
+}
+
+export function ClipsPage({ categoryId, categorySlug, categoryName }: ClipsPageProps) {
   // UI state
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -41,7 +47,7 @@ export function ApexClips() {
     toggleTag,
     handlePageChange,
     handlePageSizeChange,
-  } = useApexClipsFilters();
+  } = useClipsFilters();
 
   // Handlers for new filters
   const handleSortOrderChange = (value: string | null) => {
@@ -99,7 +105,8 @@ export function ApexClips() {
   const { data: topTagsData } = useTopTags();
   const allTags = topTagsData?.map(t => t.name) || [];
 
-  const { data: clipsData, isLoading: isLoadingClips } = useApexClips({
+  const { data: clipsData, isLoading: isLoadingClips } = useClips({
+    categoryId,
     page,
     pageSize,
     tags: tagsParam,
@@ -136,6 +143,7 @@ export function ApexClips() {
           >
             <Stack gap="md">
               <ClipsHeader
+                categoryName={categoryName}
                 totalClips={totalClips}
                 filtersOpen={filtersOpen}
                 activeFilterCount={activeFilterCount}
@@ -172,6 +180,7 @@ export function ApexClips() {
           isLoading={isLoading}
           clips={clips}
           hasActiveFilters={hasActiveFilters}
+          categorySlug={categorySlug}
         />
 
         {!isLoading && clips.length > 0 && (

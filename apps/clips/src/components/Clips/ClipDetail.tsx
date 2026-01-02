@@ -1,21 +1,26 @@
 import { useEffect, useRef } from "react";
 import { Stack } from "@mantine/core";
 import { useNavigate } from '@tanstack/react-router';
-import { useClip, useMarkAsViewed, useUserById } from '../../hooks/queries';
-import { useClipFormState } from '../../hooks/apex/useClipFormState';
-import { useRelatedClips } from '../../hooks/apex/useRelatedClips';
-import { useClipActions } from '../../hooks/apex/useClipActions';
+import { useCategories, useClip, useMarkAsViewed, useUserById } from '../../hooks/queries';
+import { useClipFormState } from '../../hooks/clips/useClipFormState';
+import { useRelatedClips } from '../../hooks/clips/useRelatedClips';
+import { useClipActions } from '../../hooks/clips/useClipActions';
 import { VideoPlayer } from './VideoPlayer';
 import { ClipInfoCard } from './ClipInfoCard';
 import { RelatedClipsSidebar } from './RelatedClipsSidebar';
 
-interface ApexClipProps {
+interface ClipDetailProps {
   clipId: string;
+  categorySlug: string;
 }
 
-export function ApexClip({ clipId }: ApexClipProps) {
+export function ClipDetail({ clipId, categorySlug }: ClipDetailProps) {
   const navigate = useNavigate();
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Get category from slug
+  const { data: categories } = useCategories();
+  const category = categories?.find((c) => c.slug === categorySlug);
 
   // Data queries
   const { data: clip, isLoading: loadingClip } = useClip(clipId);
@@ -24,12 +29,13 @@ export function ApexClip({ clipId }: ApexClipProps) {
 
   // Custom hooks for business logic
   const { tagsValue, setTagsValue, titleValue, setTitleValue, topTags } = useClipFormState(clip);
-  const { relatedClips, isLoading: loadingRelatedClips } = useRelatedClips(clipId);
+  const { relatedClips, isLoading: loadingRelatedClips } = useRelatedClips(clipId, category?.id);
   const { handleSave, handleDownload, handleDelete } = useClipActions({
     clip,
     titleValue,
     titleInputRef,
     navigate,
+    categorySlug,
   });
 
   // Mark clip as viewed when it loads
@@ -45,6 +51,7 @@ export function ApexClip({ clipId }: ApexClipProps) {
       <RelatedClipsSidebar
         relatedClips={relatedClips}
         isLoading={loadingRelatedClips}
+        categorySlug={categorySlug}
       />
 
       {/* Main Content - Right Side */}

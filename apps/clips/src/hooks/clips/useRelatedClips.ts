@@ -6,11 +6,11 @@ import {
   sortOrderAtom,
   startDateAtom,
   endDateAtom,
-} from '../../atoms/apexFilters';
-import { useApexClips } from '../queries';
+} from '../../atoms/clipsFilters';
+import { useClips } from '../queries';
 
-export function useRelatedClips(clipId: string) {
-  // Filter state from ApexClips (shared via Jotai atoms)
+export function useRelatedClips(clipId: string, categoryId: string | undefined) {
+  // Filter state (shared via Jotai atoms)
   const [searchQuery] = useAtom(searchQueryAtom);
   const [selectedTags] = useAtom(selectedTagsAtom);
   const [showUnviewed] = useAtom(showUnviewedAtom);
@@ -18,7 +18,7 @@ export function useRelatedClips(clipId: string) {
   const [startDate] = useAtom(startDateAtom);
   const [endDate] = useAtom(endDateAtom);
 
-  // Format filter params (same as ApexClips)
+  // Format filter params
   const tagsParam = selectedTags.length > 0 ? selectedTags.join(',') : undefined;
   const titleSearchParam = searchQuery.trim() || undefined;
 
@@ -26,8 +26,9 @@ export function useRelatedClips(clipId: string) {
   const startDateObj = startDate ? new Date(startDate) : undefined;
   const endDateObj = endDate ? new Date(endDate) : undefined;
 
-  // Related clips - fetch with same filters as ApexClips, get enough to find next 5
-  const { data: relatedClipsData, isLoading: loadingRelatedClips } = useApexClips({
+  // Related clips - fetch with same filters, get enough to find next 5
+  const { data: relatedClipsData, isLoading: loadingRelatedClips } = useClips({
+    categoryId: categoryId ?? '',
     page: 1,
     pageSize: 100, // Fetch more to ensure we get clips after current one
     tags: tagsParam,
@@ -46,6 +47,6 @@ export function useRelatedClips(clipId: string) {
 
   return {
     relatedClips,
-    isLoading: loadingRelatedClips,
+    isLoading: loadingRelatedClips || !categoryId,
   };
 }

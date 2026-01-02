@@ -25,15 +25,17 @@ import { apiConfig, downloadVideo } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
 import { AddToPlaylistButton } from "../Playlists/AddToPlaylistButton";
+import { ApexMetadata } from "./ApexMetadata";
 import type { Clip } from "@repo/nucleus-api-client";
 import { useDeleteClip, useUserById } from "@/hooks/queries.ts";
 import { getProcessingStatusMessage, isClipProcessing } from "@/utils/format.ts";
 
 type ClipCardProps = {
   clip: Clip;
+  categorySlug: string;
 };
 
-export function ClipCard({ clip }: ClipCardProps) {
+export function ClipCard({ clip, categorySlug }: ClipCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const deleteClip = useDeleteClip();
   const navigate = useNavigate();
@@ -66,7 +68,7 @@ export function ClipCard({ clip }: ClipCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    const clipUrl = `${window.location.origin}/apex-legends/${clip.clipId}`;
+    const clipUrl = `${window.location.origin}/games/${categorySlug}/${clip.clipId}`;
 
     try {
       await navigator.clipboard.writeText(clipUrl);
@@ -144,7 +146,7 @@ export function ClipCard({ clip }: ClipCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    await navigate({ to: "/apex-legends/$clipId", params: { clipId: clip.clipId } });
+    await navigate({ to: "/games/$slug/$clipId", params: { slug: categorySlug, clipId: clip.clipId } });
   };
 
   const date = formatDate(clip.createdAt.toString());
@@ -171,8 +173,9 @@ export function ClipCard({ clip }: ClipCardProps) {
       }}
     >
       <Link style={{ textDecoration: 'none', color: 'inherit' }}
-        to="/apex-legends/$clipId"
+        to="/games/$slug/$clipId"
         params={{
+          slug: categorySlug,
           clipId: clip.clipId,
         }}
       >
@@ -353,11 +356,11 @@ export function ClipCard({ clip }: ClipCardProps) {
               </Group>
             </Stack>
 
-            {clip.detectedLegend !== 27 && (
-              <Box style={{ flexShrink: 0 }}>
-                <Image radius="md" src={`${apiConfig.baseUrl}${clip.detectedLegendCard}`} h={70} w={62} />
-              </Box>
-            )}
+            {/* Game-specific metadata (e.g., Apex legend detection) */}
+            <ApexMetadata
+              detectedLegend={clip.detectedLegend}
+              detectedLegendCard={clip.detectedLegendCard}
+            />
 
             {/* Action Buttons - Horizontal layout */}
             <Group

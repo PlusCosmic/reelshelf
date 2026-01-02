@@ -12,9 +12,10 @@ interface UseClipActionsParams {
   titleValue: string;
   titleInputRef: RefObject<HTMLInputElement | null>;
   navigate: (opts: NavigateOptions) => Promise<void>;
+  categorySlug?: string;
 }
 
-export function useClipActions({ clip, titleValue, titleInputRef, navigate }: UseClipActionsParams) {
+export function useClipActions({ clip, titleValue, titleInputRef, navigate, categorySlug }: UseClipActionsParams) {
   const updateTitle = useUpdateClipTitle();
   const deleteClip = useDeleteClip();
 
@@ -86,7 +87,7 @@ export function useClipActions({ clip, titleValue, titleInputRef, navigate }: Us
               message: 'The video has been successfully deleted',
               color: 'green',
             });
-            navigate({ to: '/apex-legends' });
+            navigate({ to: '/games/$slug', params: { slug: categorySlug ?? '' } });
           },
           onError: () => {
             notifications.show({
