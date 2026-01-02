@@ -6,12 +6,11 @@ All URIs are relative to *http://localhost*
 |------------- | ------------- | -------------|
 | [**addTagToClip**](ClipsEndpointsApi.md#addtagtoclip) | **POST** /clips/videos/{clipId}/tags |  |
 | [**backfillClipMetadata**](ClipsEndpointsApi.md#backfillclipmetadata) | **POST** /clips/backfill-metadata |  |
-| [**createVideo**](ClipsEndpointsApi.md#createvideo) | **POST** /clips/categories/{category}/videos |  |
+| [**createVideo**](ClipsEndpointsApi.md#createvideo) | **POST** /clips/categories/{categoryId}/videos |  |
 | [**deleteClip**](ClipsEndpointsApi.md#deleteclip) | **DELETE** /clips/videos/{clipId} |  |
-| [**getCategories**](ClipsEndpointsApi.md#getcategories) | **GET** /clips/categories |  |
 | [**getTopTags**](ClipsEndpointsApi.md#gettoptags) | **GET** /clips/tags/top |  |
 | [**getVideoById**](ClipsEndpointsApi.md#getvideobyid) | **GET** /clips/videos/{clipId} |  |
-| [**getVideosByCategory**](ClipsEndpointsApi.md#getvideosbycategory) | **GET** /clips/categories/{category}/videos |  |
+| [**getVideosByCategory**](ClipsEndpointsApi.md#getvideosbycategory) | **GET** /clips/categories/{categoryId}/videos |  |
 | [**markVideoAsViewed**](ClipsEndpointsApi.md#markvideoasviewed) | **POST** /clips/videos/{clipId}/view |  |
 | [**removeTagFromClip**](ClipsEndpointsApi.md#removetagfromclip) | **DELETE** /clips/videos/{clipId}/tags/{tag} |  |
 | [**updateClipTitle**](ClipsEndpointsApi.md#updatecliptitle) | **PATCH** /clips/videos/{clipId}/title |  |
@@ -146,7 +145,7 @@ No authorization required
 
 ## createVideo
 
-> CreateClipResponse createVideo(category, videoTitle, createdAt, md5Hash)
+> CreateClipResponse createVideo(categoryId, videoTitle, createdAt, md5Hash)
 
 
 
@@ -164,8 +163,8 @@ async function example() {
   const api = new ClipsEndpointsApi();
 
   const body = {
-    // number
-    category: 56,
+    // string
+    categoryId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // string
     videoTitle: videoTitle_example,
     // Date (optional)
@@ -191,7 +190,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **category** | `number` |  | [Defaults to `undefined`] |
+| **categoryId** | `string` |  | [Defaults to `undefined`] |
 | **videoTitle** | `string` |  | [Defaults to `undefined`] |
 | **createdAt** | `Date` |  | [Optional] [Defaults to `undefined`] |
 | **md5Hash** | `string` |  | [Optional] [Defaults to `undefined`] |
@@ -281,63 +280,6 @@ No authorization required
 |-------------|-------------|------------------|
 | **200** | OK |  -  |
 | **404** | Not Found |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
-## getCategories
-
-> Array&lt;ClipCategory&gt; getCategories()
-
-
-
-### Example
-
-```ts
-import {
-  Configuration,
-  ClipsEndpointsApi,
-} from '';
-import type { GetCategoriesRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new ClipsEndpointsApi();
-
-  try {
-    const data = await api.getCategories();
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-This endpoint does not need any parameter.
-
-### Return type
-
-[**Array&lt;ClipCategory&gt;**](ClipCategory.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | OK |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -467,7 +409,7 @@ No authorization required
 
 ## getVideosByCategory
 
-> PagedClipsResponse getVideosByCategory(category, page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate)
+> PagedClipsResponse getVideosByCategory(categoryId, page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate)
 
 
 
@@ -485,8 +427,8 @@ async function example() {
   const api = new ClipsEndpointsApi();
 
   const body = {
-    // number
-    category: 56,
+    // string
+    categoryId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // number
     page: 56,
     // number
@@ -522,7 +464,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **category** | `number` |  | [Defaults to `undefined`] |
+| **categoryId** | `string` |  | [Defaults to `undefined`] |
 | **page** | `number` |  | [Defaults to `undefined`] |
 | **pageSize** | `number` |  | [Defaults to `undefined`] |
 | **tags** | `Array<string>` |  | [Optional] |

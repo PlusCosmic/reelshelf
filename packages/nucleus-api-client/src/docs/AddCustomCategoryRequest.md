@@ -1,26 +1,24 @@
 
-# BackupFileInfo
+# AddCustomCategoryRequest
 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`path` | string
-`size` | number
-`lastModified` | Date
+`name` | string
+`coverUrl` | string
 
 ## Example
 
 ```typescript
-import type { BackupFileInfo } from ''
+import type { AddCustomCategoryRequest } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "path": null,
-  "size": null,
-  "lastModified": null,
-} satisfies BackupFileInfo
+  "name": null,
+  "coverUrl": null,
+} satisfies AddCustomCategoryRequest
 
 console.log(example)
 
@@ -29,7 +27,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as BackupFileInfo
+const exampleParsed = JSON.parse(exampleJSON) as AddCustomCategoryRequest
 console.log(exampleParsed)
 ```
 

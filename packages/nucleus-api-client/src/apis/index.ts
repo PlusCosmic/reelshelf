@@ -8,6 +8,7 @@ export * from './BunnyWebhookEndpointsApi';
 export * from './ClipsEndpointsApi';
 export * from './DiscordUserEndpointsApi';
 export * from './FFmpegEndpointsApi';
+export * from './GameCategoryEndpointsApi';
 export * from './LinksEndpointsApi';
 export * from './MinecraftEndpointsApi';
 export * from './NucleusApi';

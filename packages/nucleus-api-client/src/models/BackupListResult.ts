@@ -13,14 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { BackupFileInfo } from './BackupFileInfo';
-import {
-    BackupFileInfoFromJSON,
-    BackupFileInfoFromJSONTyped,
-    BackupFileInfoToJSON,
-    BackupFileInfoToJSONTyped,
-} from './BackupFileInfo';
-
 /**
  * 
  * @export
@@ -35,10 +27,10 @@ export interface BackupListResult {
     isConfigured: boolean;
     /**
      * 
-     * @type {Array<BackupFileInfo>}
+     * @type {Array<any>}
      * @memberof BackupListResult
      */
-    localFiles: Array<BackupFileInfo>;
+    localFiles: Array<any>;
     /**
      * 
      * @type {Array<any>}
@@ -75,7 +67,7 @@ export function BackupListResultFromJSONTyped(json: any, ignoreDiscriminator: bo
     return {
         
         'isConfigured': json['is_configured'],
-        'localFiles': ((json['local_files'] as Array<any>).map(BackupFileInfoFromJSON)),
+        'localFiles': json['local_files'],
         'remoteFiles': json['remote_files'],
         'pendingSyncCount': json['pending_sync_count'],
     };
@@ -93,7 +85,7 @@ export function BackupListResultToJSONTyped(value?: BackupListResult | null, ign
     return {
         
         'is_configured': value['isConfigured'],
-        'local_files': ((value['localFiles'] as Array<any>).map(BackupFileInfoToJSON)),
+        'local_files': value['localFiles'],
         'remote_files': value['remoteFiles'],
         'pending_sync_count': value['pendingSyncCount'],
     };
