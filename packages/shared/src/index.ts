@@ -2,8 +2,8 @@ export { apiConfig } from "./config/apiConfig";
 
 export { logout } from "./services/auth";
 export { fetchMe, fetchUser, fetchUserSuggestions } from "./services/user";
-export { fetchCategories } from "./services/categories";
-export { fetchApexClips, createVideoRequest, getVideo, addTagToVideo, removeTagFromVideo, getTopTags, updateVideoTitle, deleteVideo, markClipAsViewed, type FetchApexClipsParams } from "./services/apexClips";
+export { fetchCategories, fetchCategoryById, searchGames, addGameCategoryFromIgdb, addCustomCategory, removeCategory } from "./services/categories";
+export { fetchClips, createVideoRequest, getVideo, addTagToVideo, removeTagFromVideo, getTopTags, updateVideoTitle, deleteVideo, markClipAsViewed, type FetchClipsParams } from "./services/clips";
 export { downloadVideo } from "./services/ffmpeg";
 export {
   fetchPlaylists,

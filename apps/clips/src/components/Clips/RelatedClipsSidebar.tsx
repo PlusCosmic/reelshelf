@@ -7,9 +7,10 @@ import type { Clip } from '@repo/nucleus-api-client';
 interface RelatedClipsSidebarProps {
   relatedClips: Array<Clip>;
   isLoading: boolean;
+  categorySlug: string;
 }
 
-export function RelatedClipsSidebar({ relatedClips, isLoading }: RelatedClipsSidebarProps) {
+export function RelatedClipsSidebar({ relatedClips, isLoading, categorySlug }: RelatedClipsSidebarProps) {
   const navigate = useNavigate();
 
   return (
@@ -30,7 +31,7 @@ export function RelatedClipsSidebar({ relatedClips, isLoading }: RelatedClipsSid
           <ActionIcon
             variant="subtle"
             size="lg"
-            onClick={() => navigate({ to: '/apex-legends' })}
+            onClick={() => navigate({ to: '/games/$slug', params: { slug: categorySlug } })}
             aria-label="Back to clips list"
             style={{
               position: 'absolute',
@@ -75,7 +76,7 @@ export function RelatedClipsSidebar({ relatedClips, isLoading }: RelatedClipsSid
         >
           <Stack gap="xs">
             {!isLoading && relatedClips.map((relatedClip) => (
-              <SidebarClipCard key={relatedClip.clipId} clip={relatedClip} />
+              <SidebarClipCard key={relatedClip.clipId} clip={relatedClip} categorySlug={categorySlug} />
             ))}
           </Stack>
         </ScrollArea>

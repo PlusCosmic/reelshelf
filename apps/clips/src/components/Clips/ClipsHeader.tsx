@@ -1,10 +1,10 @@
-import { Badge, Box, Button, Group, Text } from '@mantine/core';
-import { IconAdjustments, IconChevronDown, IconChevronUp, IconHours24, IconPlaylist } from '@tabler/icons-react';
+import { Badge, Button, Group, Text, ThemeIcon } from '@mantine/core';
+import { IconAdjustments, IconChevronDown, IconChevronUp, IconHours24, IconPlaylist, IconVideo } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { VideoUpload } from '../VideoUpload';
-import { ApexIcon } from './ApexIcon';
 
 interface ClipsHeaderProps {
+  categoryName: string;
   totalClips: number;
   filtersOpen: boolean;
   activeFilterCount: number;
@@ -14,6 +14,7 @@ interface ClipsHeaderProps {
 }
 
 export function ClipsHeader({
+  categoryName,
   totalClips,
   filtersOpen,
   activeFilterCount,
@@ -24,13 +25,17 @@ export function ClipsHeader({
   return (
     <Group justify="space-between" align="center">
       <Group gap="md" flex={1}>
-        <Box
+        <ThemeIcon
+          size={40}
+          radius="md"
+          variant="light"
           style={{
-            filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.5))',
+            background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%)',
+            border: '1px solid rgba(0, 212, 255, 0.3)',
           }}
         >
-          <ApexIcon />
-        </Box>
+          <IconVideo size={24} style={{ color: '#00d4ff' }} />
+        </ThemeIcon>
         <Text
           size="xl"
           fw={700}
@@ -42,7 +47,7 @@ export function ClipsHeader({
             backgroundClip: 'text',
           }}
         >
-          Apex Legends Clips
+          {categoryName} Clips
         </Text>
         {totalClips > 0 && (
           <Badge

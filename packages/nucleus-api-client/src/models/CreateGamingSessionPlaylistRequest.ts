@@ -27,10 +27,10 @@ export interface CreateGamingSessionPlaylistRequest {
     participants: Array<string>;
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof CreateGamingSessionPlaylistRequest
      */
-    category: number;
+    categoryId: string;
 }
 
 /**
@@ -38,7 +38,7 @@ export interface CreateGamingSessionPlaylistRequest {
  */
 export function instanceOfCreateGamingSessionPlaylistRequest(value: object): value is CreateGamingSessionPlaylistRequest {
     if (!('participants' in value) || value['participants'] === undefined) return false;
-    if (!('category' in value) || value['category'] === undefined) return false;
+    if (!('categoryId' in value) || value['categoryId'] === undefined) return false;
     return true;
 }
 
@@ -53,7 +53,7 @@ export function CreateGamingSessionPlaylistRequestFromJSONTyped(json: any, ignor
     return {
         
         'participants': json['participants'],
-        'category': json['category'],
+        'categoryId': json['category_id'],
     };
 }
 
@@ -69,7 +69,7 @@ export function CreateGamingSessionPlaylistRequestToJSONTyped(value?: CreateGami
     return {
         
         'participants': value['participants'],
-        'category': value['category'],
+        'category_id': value['categoryId'],
     };
 }
 

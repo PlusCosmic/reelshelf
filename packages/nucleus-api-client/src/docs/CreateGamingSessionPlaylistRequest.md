@@ -7,7 +7,7 @@
 Name | Type
 ------------ | -------------
 `participants` | Array&lt;string&gt;
-`category` | number
+`categoryId` | string
 
 ## Example
 
@@ -17,7 +17,7 @@ import type { CreateGamingSessionPlaylistRequest } from ''
 // TODO: Update the object below with actual values
 const example = {
   "participants": null,
-  "category": null,
+  "categoryId": null,
 } satisfies CreateGamingSessionPlaylistRequest
 
 console.log(example)

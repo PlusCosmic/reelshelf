@@ -7,7 +7,7 @@
 Name | Type
 ------------ | -------------
 `isConfigured` | boolean
-`localFiles` | [Array&lt;BackupFileInfo&gt;](BackupFileInfo.md)
+`localFiles` | Array&lt;any&gt;
 `remoteFiles` | Array&lt;any&gt;
 `pendingSyncCount` | number
 

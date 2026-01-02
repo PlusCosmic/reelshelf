@@ -8,7 +8,8 @@ import {
 } from "@repo/nucleus-api-client";
 import { apiConfig } from "../config/apiConfig";
 
-export interface FetchApexClipsParams {
+export interface FetchClipsParams {
+  categoryId: string;
   page: number;
   pageSize: number;
   tags?: string;
@@ -19,10 +20,10 @@ export interface FetchApexClipsParams {
   endDate?: Date;
 }
 
-export async function fetchApexClips(
-  params: FetchApexClipsParams
+export async function fetchClips(
+  params: FetchClipsParams
 ): Promise<PagedClipsResponse | null> {
-  const { page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate } = params;
+  const { categoryId, page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate } = params;
   const api = new ClipsEndpointsApi(
     new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
   );
@@ -31,7 +32,7 @@ export async function fetchApexClips(
   const tagsArray = tags ? tags.split(',').map(t => t.trim()) : undefined;
 
   return api.getVideosByCategory({
-    category: 0,
+    categoryId,
     page,
     pageSize,
     tags: tagsArray,
@@ -41,12 +42,14 @@ export async function fetchApexClips(
     startDate,
     endDate,
   }).catch((error) => {
-    console.error('Failed to fetch apex clips:', { ...params, error });
+    console.error('Failed to fetch clips:', { ...params, error });
     return null;
   });
 }
 
+
 export async function createVideoRequest(
+  categoryId: string,
   title: string,
   md5Hash?: string,
   createdAt?: Date,
@@ -55,7 +58,7 @@ export async function createVideoRequest(
     new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
   );
 
-  return api.createVideo({ category: 0, videoTitle: title, md5Hash, createdAt });
+  return api.createVideo({ categoryId, videoTitle: title, md5Hash, createdAt });
 }
 
 export async function getVideo(videoId: string): Promise<Clip | null> {

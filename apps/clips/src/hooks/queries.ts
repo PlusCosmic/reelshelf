@@ -1,19 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, fetchUser } from "@repo/shared/services/user";
-import { fetchCategories } from "@repo/shared/services/categories";
+import { fetchCategories, fetchCategoryById, searchGames, addGameCategoryFromIgdb, addCustomCategory, removeCategory } from "@repo/shared/services/categories";
 import { logout } from "@repo/shared/services/auth";
 import {
   addTagToVideo,
   createVideoRequest,
   deleteVideo,
-  fetchApexClips,
+  fetchClips,
   getTopTags,
   getVideo,
   markClipAsViewed,
   removeTagFromVideo,
   updateVideoTitle,
-} from "@repo/shared/services/apexClips";
-import type { Clip, PagedClipsResponse } from "@repo/nucleus-api-client";
+} from "@repo/shared/services/clips";
+import type { Clip, PagedClipsResponse, GameCategoryResponse, GameSearchResult } from "@repo/nucleus-api-client";
 
 // ============================================================================
 // Query Hooks
@@ -72,9 +72,37 @@ export function useTopTags() {
 }
 
 /**
- * Parameters for fetching apex clips
+ * Fetches a category by ID
  */
-export interface ApexClipsParams {
+export function useCategoryById(categoryId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["categories", categoryId],
+    queryFn: () => {
+      if (!categoryId) throw new Error("Category ID is required");
+      return fetchCategoryById(categoryId);
+    },
+    enabled: !!categoryId,
+    staleTime: 10 * 60_000, // 10 minutes
+  });
+}
+
+/**
+ * Searches for games via IGDB
+ */
+export function useGameSearch(query: string) {
+  return useQuery({
+    queryKey: ["games", "search", query],
+    queryFn: () => searchGames(query),
+    enabled: query.length >= 2,
+    staleTime: 5 * 60_000, // 5 minutes - search results don't change often
+  });
+}
+
+/**
+ * Parameters for fetching clips
+ */
+export interface ClipsParams {
+  categoryId: string;
   page: number;
   pageSize: number;
   tags?: string;
@@ -86,16 +114,16 @@ export interface ApexClipsParams {
 }
 
 /**
- * Fetches a paginated list of apex clips with optional filters
+ * Fetches a paginated list of clips for a category with optional filters
  * Query key includes all params to ensure proper cache segregation
  */
-export function useApexClips(params: ApexClipsParams) {
-  const { page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate } = params;
+export function useClips(params: ClipsParams) {
+  const { categoryId, page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate } = params;
 
   return useQuery({
     queryKey: [
       "clips",
-      "apex",
+      categoryId,
       page,
       pageSize,
       tags,
@@ -106,7 +134,8 @@ export function useApexClips(params: ApexClipsParams) {
       endDate?.toISOString(),
     ],
     queryFn: async () => {
-      return fetchApexClips({
+      return fetchClips({
+        categoryId,
         page,
         pageSize,
         tags,
@@ -117,9 +146,16 @@ export function useApexClips(params: ApexClipsParams) {
         endDate,
       });
     },
+    enabled: !!categoryId,
     staleTime: 30_000, // 30 seconds - balance freshness vs requests
   });
 }
+
+/** @deprecated Use useClips instead */
+export const useApexClips = (params: Omit<ClipsParams, 'categoryId'> & { categoryId?: string }) => {
+  // This is a backwards-compatible shim - categoryId is now required
+  return useClips({ ...params, categoryId: params.categoryId ?? '' });
+};
 
 /**
  * Fetches a single clip by ID
@@ -203,7 +239,8 @@ export function useUpdateClipTitle() {
     onSuccess: (_data, { clipId }) => {
       // Invalidate queries to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["clips", clipId] });
-      queryClient.invalidateQueries({ queryKey: ["clips", "apex"] });
+      // Invalidate all clips list queries (any category)
+      queryClient.invalidateQueries({ queryKey: ["clips"], exact: false });
     },
   });
 }
@@ -243,7 +280,8 @@ export function useAddTag() {
     onSuccess: (_data, { clipId }) => {
       // Invalidate queries to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["clips", clipId] });
-      queryClient.invalidateQueries({ queryKey: ["clips", "apex"] });
+      // Invalidate all clips list queries (any category)
+      queryClient.invalidateQueries({ queryKey: ["clips"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["tags", "top"] });
     },
   });
@@ -284,7 +322,8 @@ export function useRemoveTag() {
     onSuccess: (_data, { clipId }) => {
       // Invalidate queries to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["clips", clipId] });
-      queryClient.invalidateQueries({ queryKey: ["clips", "apex"] });
+      // Invalidate all clips list queries (any category)
+      queryClient.invalidateQueries({ queryKey: ["clips"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["tags", "top"] });
     },
   });
@@ -341,7 +380,8 @@ export function useDeleteClip() {
       // Remove the individual clip from cache
       queryClient.removeQueries({ queryKey: ["clips", clipId] });
       // Invalidate all clips queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["clips", "apex"] });
+      // Invalidate all clips list queries (any category)
+      queryClient.invalidateQueries({ queryKey: ["clips"], exact: false });
     },
   });
 }
@@ -396,6 +436,72 @@ export function useLogout() {
     onSuccess: () => {
       // Clear all cached data after logout
       queryClient.clear();
+    },
+  });
+}
+
+// ============================================================================
+// Category Mutation Hooks
+// ============================================================================
+
+/**
+ * Adds a game category from IGDB
+ */
+export function useAddGameFromIgdb() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (igdbId: number) => addGameCategoryFromIgdb(igdbId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+}
+
+/**
+ * Adds a custom category
+ */
+export function useAddCustomCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ name, coverUrl }: { name: string; coverUrl?: string }) =>
+      addCustomCategory(name, coverUrl),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+}
+
+/**
+ * Removes a category from user's list
+ */
+export function useRemoveCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (categoryId: string) => removeCategory(categoryId),
+    onMutate: async (categoryId) => {
+      await queryClient.cancelQueries({ queryKey: ["categories"] });
+
+      const previousCategories = queryClient.getQueryData<GameCategoryResponse[]>(["categories"]);
+
+      if (previousCategories) {
+        queryClient.setQueryData<GameCategoryResponse[]>(
+          ["categories"],
+          previousCategories.filter((c) => c.id !== categoryId)
+        );
+      }
+
+      return { previousCategories };
+    },
+    onError: (_err, _categoryId, context) => {
+      if (context?.previousCategories) {
+        queryClient.setQueryData(["categories"], context.previousCategories);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
   });
 }

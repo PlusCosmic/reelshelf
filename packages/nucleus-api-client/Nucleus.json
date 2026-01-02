@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.1",
+  "openapi": "3.1.1",
   "info": {
     "title": "Nucleus | v1",
     "version": "1.0.0"
@@ -320,30 +320,7 @@
         }
       }
     },
-    "/clips/categories": {
-      "get": {
-        "tags": [
-          "ClipsEndpoints"
-        ],
-        "operationId": "GetCategories",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ClipCategory"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/clips/categories/{category}/videos": {
+    "/clips/categories/{categoryId}/videos": {
       "get": {
         "tags": [
           "ClipsEndpoints"
@@ -351,11 +328,12 @@
         "operationId": "GetVideosByCategory",
         "parameters": [
           {
-            "name": "category",
+            "name": "categoryId",
             "in": "path",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/ClipCategoryEnum"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -383,16 +361,14 @@
               "type": "array",
               "items": {
                 "type": "string"
-              },
-              "default": null
+              }
             }
           },
           {
             "name": "titleSearch",
             "in": "query",
             "schema": {
-              "type": "string",
-              "default": null
+              "type": "string"
             }
           },
           {
@@ -407,8 +383,7 @@
             "name": "sortOrder",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "default": 0
+              "$ref": "#/components/schemas/ClipSortOrder"
             }
           },
           {
@@ -416,8 +391,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "format": "date-time",
-              "default": null
+              "format": "date-time"
             }
           },
           {
@@ -425,8 +399,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "format": "date-time",
-              "default": null
+              "format": "date-time"
             }
           }
         ],
@@ -450,11 +423,12 @@
         "operationId": "CreateVideo",
         "parameters": [
           {
-            "name": "category",
+            "name": "categoryId",
             "in": "path",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/ClipCategoryEnum"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -470,16 +444,14 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "format": "date-time",
-              "default": null
+              "format": "date-time"
             }
           },
           {
             "name": "md5Hash",
             "in": "query",
             "schema": {
-              "type": "string",
-              "default": null
+              "type": "string"
             }
           }
         ],
@@ -759,6 +731,201 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BackfillResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/categories": {
+      "get": {
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
+        "operationId": "GetUserGameCategories",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameCategoryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/categories/{categoryId}": {
+      "get": {
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
+        "operationId": "GetGameCategoryById",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameCategoryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
+        "operationId": "RemoveGameCategory",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/games/search": {
+      "get": {
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
+        "operationId": "SearchGames",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameSearchResult"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/categories/from-igdb": {
+      "post": {
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
+        "operationId": "AddGameCategoryFromIgdb",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddGameFromIgdbRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameCategoryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/games/categories/custom": {
+      "post": {
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
+        "operationId": "AddCustomCategory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCustomCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameCategoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -2476,19 +2643,21 @@
         "type": "object",
         "properties": {
           "clip_id": {
-            "type": "string",
-            "format": "uuid",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "clip_ids": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string",
               "format": "uuid"
-            },
-            "default": null,
-            "nullable": true
+            }
           }
         }
       },
@@ -2496,15 +2665,47 @@
         "type": "object",
         "properties": {
           "user_id": {
-            "type": "string",
-            "format": "uuid",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "username": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AddCustomCategoryRequest": {
+        "required": [
+          "name",
+          "cover_url"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AddGameFromIgdbRequest": {
+        "required": [
+          "igdb_id"
+        ],
+        "type": "object",
+        "properties": {
+          "igdb_id": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -2518,9 +2719,6 @@
             "type": "string"
           }
         }
-      },
-      "ApexLegend": {
-        "type": "integer"
       },
       "BackfillResult": {
         "required": [
@@ -2544,27 +2742,7 @@
           }
         }
       },
-      "BackupFileInfo": {
-        "required": [
-          "path",
-          "size",
-          "last_modified"
-        ],
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string"
-          },
-          "size": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "last_modified": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
+      "BackupFileInfo": { },
       "BackupListResult": {
         "required": [
           "is_configured",
@@ -2585,7 +2763,9 @@
           },
           "remote_files": {
             "type": "array",
-            "items": { }
+            "items": {
+              "$ref": "#/components/schemas/BackupFileInfo"
+            }
           },
           "pending_sync_count": {
             "type": "integer",
@@ -2725,13 +2905,13 @@
           "clip_id",
           "owner_id",
           "video_id",
-          "category_enum",
+          "game_category_id",
+          "category_slug",
           "created_at",
           "video",
           "tags",
           "is_viewed",
-          "detected_legend",
-          "detected_legend_card"
+          "game_metadata"
         ],
         "type": "object",
         "properties": {
@@ -2747,8 +2927,12 @@
             "type": "string",
             "format": "uuid"
           },
-          "category_enum": {
-            "$ref": "#/components/schemas/ClipCategoryEnum"
+          "game_category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category_slug": {
+            "type": "string"
           },
           "created_at": {
             "type": "string",
@@ -2766,91 +2950,12 @@
           "is_viewed": {
             "type": "boolean"
           },
-          "detected_legend": {
-            "$ref": "#/components/schemas/ApexLegend"
-          },
-          "detected_legend_card": {
-            "type": "string"
-          }
+          "game_metadata": { }
         }
       },
-      "Clip2": {
-        "required": [
-          "clip_id",
-          "owner_id",
-          "video_id",
-          "category_enum",
-          "created_at",
-          "video",
-          "tags",
-          "is_viewed",
-          "detected_legend",
-          "detected_legend_card"
-        ],
-        "type": "object",
-        "properties": {
-          "clip_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "owner_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "video_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "category_enum": {
-            "$ref": "#/components/schemas/ClipCategoryEnum"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "video": {
-            "$ref": "#/components/schemas/BunnyVideo"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "is_viewed": {
-            "type": "boolean"
-          },
-          "detected_legend": {
-            "$ref": "#/components/schemas/ApexLegend"
-          },
-          "detected_legend_card": {
-            "type": "string"
-          }
-        },
-        "default": null,
-        "nullable": true
-      },
-      "ClipCategory": {
-        "required": [
-          "name",
-          "category_enum",
-          "art_url"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "category_enum": {
-            "$ref": "#/components/schemas/ClipCategoryEnum"
-          },
-          "art_url": {
-            "type": "string"
-          }
-        }
-      },
-      "ClipCategoryEnum": {
-        "type": "integer"
+      "ClipSortOrder": {
+        "type": "integer",
+        "default": 0
       },
       "CommandLogEntry": {
         "required": [
@@ -2877,24 +2982,30 @@
             "type": "string"
           },
           "response": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "success": {
             "type": "boolean"
           },
           "error": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "executed_at": {
             "type": "string",
             "format": "date-time"
           },
           "server_id": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -2941,33 +3052,45 @@
             "type": "boolean"
           },
           "container_id": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "started_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "cpu_percent": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           },
           "memory_used_mb": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
           },
           "memory_limit_mb": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
           },
           "memory_percent": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },
@@ -3015,7 +3138,7 @@
       "CreateGamingSessionPlaylistRequest": {
         "required": [
           "participants",
-          "category"
+          "category_id"
         ],
         "type": "object",
         "properties": {
@@ -3026,8 +3149,9 @@
               "format": "uuid"
             }
           },
-          "category": {
-            "$ref": "#/components/schemas/ClipCategoryEnum"
+          "category_id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -3077,14 +3201,16 @@
             "type": "string"
           },
           "modloader_version": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "curseforge_page_url": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3098,9 +3224,10 @@
             "type": "string"
           },
           "description": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3167,12 +3294,16 @@
             "type": "string"
           },
           "global_name": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "avatar": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3202,6 +3333,64 @@
           "last_modified": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "GameCategoryResponse": {
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "cover_url",
+          "is_custom"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "is_custom": {
+            "type": "boolean"
+          }
+        }
+      },
+      "GameSearchResult": {
+        "required": [
+          "igdb_id",
+          "name",
+          "slug",
+          "cover_url"
+        ],
+        "type": "object",
+        "properties": {
+          "igdb_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3300,12 +3489,16 @@
             "type": "string"
           },
           "modloader_version": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "curseforge_page_url": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "is_active": {
             "type": "boolean"
@@ -3315,8 +3508,10 @@
             "format": "date-time"
           },
           "rcon_password": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "max_players": {
             "type": "integer",
@@ -3347,9 +3542,10 @@
         }
       },
       "NullableOfMinecraftServerType": {
-        "type": "integer",
-        "default": null,
-        "nullable": true
+        "type": [
+          "null",
+          "integer"
+        ]
       },
       "OnlinePlayer": {
         "required": [
@@ -3410,8 +3606,10 @@
             "type": "string"
           },
           "description": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "creator_user_id": {
             "type": "string",
@@ -3458,7 +3656,7 @@
             "format": "date-time"
           },
           "clip_details": {
-            "$ref": "#/components/schemas/Clip2"
+            "$ref": "#/components/schemas/Clip"
           }
         }
       },
@@ -3480,8 +3678,10 @@
             "type": "string"
           },
           "avatar_url": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "added_at": {
             "type": "string",
@@ -3514,8 +3714,10 @@
             "type": "string"
           },
           "description": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "creator_user_id": {
             "type": "string",
@@ -3560,8 +3762,10 @@
             "type": "string"
           },
           "description": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "creator_user_id": {
             "type": "string",
@@ -3635,12 +3839,16 @@
             "type": "boolean"
           },
           "response": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "error": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3648,25 +3856,28 @@
         "type": "object",
         "properties": {
           "clip_id": {
-            "type": "string",
-            "format": "uuid",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "new_position": {
-            "type": "integer",
-            "format": "int32",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           },
           "clip_ordering": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string",
               "format": "uuid"
-            },
-            "default": null,
-            "nullable": true
+            }
           }
         }
       },
@@ -3681,8 +3892,10 @@
             "type": "string"
           },
           "content": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3708,12 +3921,16 @@
             "format": "int32"
           },
           "motd": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "version": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3737,66 +3954,77 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "persistence_location": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "container_name": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "cpu_reservation": {
-            "type": "number",
-            "format": "double",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           },
           "ram_reservation": {
-            "type": "integer",
-            "format": "int32",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           },
           "cpu_limit": {
-            "type": "number",
-            "format": "double",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           },
           "ram_limit": {
-            "type": "integer",
-            "format": "int32",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           },
           "server_type": {
             "$ref": "#/components/schemas/NullableOfMinecraftServerType"
           },
           "minecraft_version": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "modloader_version": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "curseforge_page_url": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "is_active": {
-            "type": "boolean",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -3804,14 +4032,16 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "description": {
-            "type": "string",
-            "default": null,
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3855,8 +4085,10 @@
             "type": "string"
           },
           "thumbnail_url": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3895,12 +4127,16 @@
             "type": "string"
           },
           "global_name": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "avatar": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "role": {
             "$ref": "#/components/schemas/UserRole"
@@ -3980,6 +4216,9 @@
     },
     {
       "name": "ClipsEndpoints"
+    },
+    {
+      "name": "GameCategoryEndpoints"
     },
     {
       "name": "FFmpegEndpoints"

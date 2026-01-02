@@ -18,7 +18,6 @@ import type {
   AddTagRequest,
   BackfillResult,
   Clip,
-  ClipCategory,
   CreateClipResponse,
   PagedClipsResponse,
   TopTag,
@@ -31,8 +30,6 @@ import {
     BackfillResultToJSON,
     ClipFromJSON,
     ClipToJSON,
-    ClipCategoryFromJSON,
-    ClipCategoryToJSON,
     CreateClipResponseFromJSON,
     CreateClipResponseToJSON,
     PagedClipsResponseFromJSON,
@@ -49,7 +46,7 @@ export interface AddTagToClipRequest {
 }
 
 export interface CreateVideoRequest {
-    category: number;
+    categoryId: string;
     videoTitle: string;
     createdAt?: Date;
     md5Hash?: string;
@@ -64,7 +61,7 @@ export interface GetVideoByIdRequest {
 }
 
 export interface GetVideosByCategoryRequest {
-    category: number;
+    categoryId: string;
     page: number;
     pageSize: number;
     tags?: Array<string>;
@@ -169,10 +166,10 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
     /**
      */
     async createVideoRaw(requestParameters: CreateVideoRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateClipResponse>> {
-        if (requestParameters['category'] == null) {
+        if (requestParameters['categoryId'] == null) {
             throw new runtime.RequiredError(
-                'category',
-                'Required parameter "category" was null or undefined when calling createVideo().'
+                'categoryId',
+                'Required parameter "categoryId" was null or undefined when calling createVideo().'
             );
         }
 
@@ -190,7 +187,7 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
         }
 
         if (requestParameters['createdAt'] != null) {
-            queryParameters['createdAt'] = (requestParameters['createdAt'] as any).toISOString();
+            queryParameters['createdAt'] = requestParameters['createdAt'];
         }
 
         if (requestParameters['md5Hash'] != null) {
@@ -200,8 +197,8 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/clips/categories/{category}/videos`;
-        urlPath = urlPath.replace(`{${"category"}}`, encodeURIComponent(String(requestParameters['category'])));
+        let urlPath = `/clips/categories/{categoryId}/videos`;
+        urlPath = urlPath.replace(`{${"categoryId"}}`, encodeURIComponent(String(requestParameters['categoryId'])));
 
         const response = await this.request({
             path: urlPath,
@@ -252,33 +249,6 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
      */
     async deleteClip(requestParameters: DeleteClipRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deleteClipRaw(requestParameters, initOverrides);
-    }
-
-    /**
-     */
-    async getCategoriesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<ClipCategory>>> {
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-
-        let urlPath = `/clips/categories`;
-
-        const response = await this.request({
-            path: urlPath,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ClipCategoryFromJSON));
-    }
-
-    /**
-     */
-    async getCategories(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<ClipCategory>> {
-        const response = await this.getCategoriesRaw(initOverrides);
-        return await response.value();
     }
 
     /**
@@ -346,10 +316,10 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
     /**
      */
     async getVideosByCategoryRaw(requestParameters: GetVideosByCategoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PagedClipsResponse>> {
-        if (requestParameters['category'] == null) {
+        if (requestParameters['categoryId'] == null) {
             throw new runtime.RequiredError(
-                'category',
-                'Required parameter "category" was null or undefined when calling getVideosByCategory().'
+                'categoryId',
+                'Required parameter "categoryId" was null or undefined when calling getVideosByCategory().'
             );
         }
 
@@ -394,18 +364,18 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
         }
 
         if (requestParameters['startDate'] != null) {
-            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString();
+            queryParameters['startDate'] = requestParameters['startDate'];
         }
 
         if (requestParameters['endDate'] != null) {
-            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString();
+            queryParameters['endDate'] = requestParameters['endDate'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/clips/categories/{category}/videos`;
-        urlPath = urlPath.replace(`{${"category"}}`, encodeURIComponent(String(requestParameters['category'])));
+        let urlPath = `/clips/categories/{categoryId}/videos`;
+        urlPath = urlPath.replace(`{${"categoryId"}}`, encodeURIComponent(String(requestParameters['categoryId'])));
 
         const response = await this.request({
             path: urlPath,

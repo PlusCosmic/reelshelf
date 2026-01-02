@@ -8,9 +8,10 @@ interface ClipsContentAreaProps {
   isLoading: boolean;
   clips: Array<Clip>;
   hasActiveFilters: boolean;
+  categorySlug: string;
 }
 
-export function ClipsContentArea({ isLoading, clips, hasActiveFilters }: ClipsContentAreaProps) {
+export function ClipsContentArea({ isLoading, clips, hasActiveFilters, categorySlug }: ClipsContentAreaProps) {
   if (isLoading) {
     return (
       <ScrollArea h="100%" type="scroll" scrollbarSize={8}>
@@ -56,7 +57,7 @@ export function ClipsContentArea({ isLoading, clips, hasActiveFilters }: ClipsCo
               animationFillMode: 'both',
             }}
           >
-            <ClipCard clip={clip} />
+            <ClipCard clip={clip} categorySlug={categorySlug} />
           </div>
         ))}
       </Stack>

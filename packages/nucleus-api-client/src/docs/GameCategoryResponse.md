@@ -1,26 +1,30 @@
 
-# ClipCategory
+# GameCategoryResponse
 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`id` | string
 `name` | string
-`categoryEnum` | number
-`artUrl` | string
+`slug` | string
+`coverUrl` | string
+`isCustom` | boolean
 
 ## Example
 
 ```typescript
-import type { ClipCategory } from ''
+import type { GameCategoryResponse } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "id": null,
   "name": null,
-  "categoryEnum": null,
-  "artUrl": null,
-} satisfies ClipCategory
+  "slug": null,
+  "coverUrl": null,
+  "isCustom": null,
+} satisfies GameCategoryResponse
 
 console.log(example)
 
@@ -29,7 +33,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as ClipCategory
+const exampleParsed = JSON.parse(exampleJSON) as GameCategoryResponse
 console.log(exampleParsed)
 ```
 

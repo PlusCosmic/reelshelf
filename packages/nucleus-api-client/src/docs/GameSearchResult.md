@@ -1,32 +1,28 @@
 
-# PlaylistClip
+# GameSearchResult
 
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`clipId` | string
-`position` | number
-`addedByUserId` | string
-`addedAt` | Date
-`clipDetails` | [Clip](Clip.md)
+`igdbId` | number
+`name` | string
+`slug` | string
+`coverUrl` | string
 
 ## Example
 
 ```typescript
-import type { PlaylistClip } from ''
+import type { GameSearchResult } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "clipId": null,
-  "position": null,
-  "addedByUserId": null,
-  "addedAt": null,
-  "clipDetails": null,
-} satisfies PlaylistClip
+  "igdbId": null,
+  "name": null,
+  "slug": null,
+  "coverUrl": null,
+} satisfies GameSearchResult
 
 console.log(example)
 
@@ -35,7 +31,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as PlaylistClip
+const exampleParsed = JSON.parse(exampleJSON) as GameSearchResult
 console.log(exampleParsed)
 ```
 

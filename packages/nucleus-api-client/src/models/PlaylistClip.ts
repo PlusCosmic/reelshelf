@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
-import type { Clip2 } from './Clip2';
+import type { Clip } from './Clip';
 import {
-    Clip2FromJSON,
-    Clip2FromJSONTyped,
-    Clip2ToJSON,
-    Clip2ToJSONTyped,
-} from './Clip2';
+    ClipFromJSON,
+    ClipFromJSONTyped,
+    ClipToJSON,
+    ClipToJSONTyped,
+} from './Clip';
 
 /**
  * 
@@ -59,10 +59,10 @@ export interface PlaylistClip {
     addedAt: Date;
     /**
      * 
-     * @type {Clip2}
+     * @type {Clip}
      * @memberof PlaylistClip
      */
-    clipDetails?: Clip2 | null;
+    clipDetails?: Clip;
 }
 
 /**
@@ -92,7 +92,7 @@ export function PlaylistClipFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'position': json['position'],
         'addedByUserId': json['added_by_user_id'],
         'addedAt': (new Date(json['added_at'])),
-        'clipDetails': json['clip_details'] == null ? undefined : Clip2FromJSON(json['clip_details']),
+        'clipDetails': json['clip_details'] == null ? undefined : ClipFromJSON(json['clip_details']),
     };
 }
 
@@ -112,7 +112,7 @@ export function PlaylistClipToJSONTyped(value?: PlaylistClip | null, ignoreDiscr
         'position': value['position'],
         'added_by_user_id': value['addedByUserId'],
         'added_at': value['addedAt'].toISOString(),
-        'clip_details': Clip2ToJSON(value['clipDetails']),
+        'clip_details': ClipToJSON(value['clipDetails']),
     };
 }
 

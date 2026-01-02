@@ -11,11 +11,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, Center, Loader, Stack, Text } from "@mantine/core";
 import { useNavigate } from "@tanstack/react-router";
 import { fetchPlaylistById } from "@repo/shared";
-import { useClipActions } from "../../hooks/apex/useClipActions";
-import { VideoPlayer } from "../Apex/VideoPlayer";
-import { ClipInfoCard } from "../Apex/ClipInfoCard";
+import { useClipActions } from "../../hooks/clips/useClipActions";
+import { VideoPlayer } from "../Clips/VideoPlayer";
+import { ClipInfoCard } from "../Clips/ClipInfoCard";
 import { PlaylistQueueSidebar } from "./PlaylistQueueSidebar";
-import { useClipFormState } from "@/hooks/apex/useClipFormState.ts";
+import { useClipFormState } from "@/hooks/clips/useClipFormState.ts";
 import { useClip, useMarkAsViewed, useUserById } from "@/hooks/queries.ts";
 
 type PlaylistPlayerPageProps = {

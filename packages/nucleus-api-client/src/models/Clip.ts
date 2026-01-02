@@ -47,10 +47,16 @@ export interface Clip {
     videoId: string;
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof Clip
      */
-    categoryEnum: number;
+    gameCategoryId: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Clip
+     */
+    categorySlug: string;
     /**
      * 
      * @type {Date}
@@ -77,16 +83,10 @@ export interface Clip {
     isViewed: boolean;
     /**
      * 
-     * @type {number}
+     * @type {any}
      * @memberof Clip
      */
-    detectedLegend: number;
-    /**
-     * 
-     * @type {string}
-     * @memberof Clip
-     */
-    detectedLegendCard: string;
+    gameMetadata: any | null;
 }
 
 /**
@@ -96,13 +96,13 @@ export function instanceOfClip(value: object): value is Clip {
     if (!('clipId' in value) || value['clipId'] === undefined) return false;
     if (!('ownerId' in value) || value['ownerId'] === undefined) return false;
     if (!('videoId' in value) || value['videoId'] === undefined) return false;
-    if (!('categoryEnum' in value) || value['categoryEnum'] === undefined) return false;
+    if (!('gameCategoryId' in value) || value['gameCategoryId'] === undefined) return false;
+    if (!('categorySlug' in value) || value['categorySlug'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('video' in value) || value['video'] === undefined) return false;
     if (!('tags' in value) || value['tags'] === undefined) return false;
     if (!('isViewed' in value) || value['isViewed'] === undefined) return false;
-    if (!('detectedLegend' in value) || value['detectedLegend'] === undefined) return false;
-    if (!('detectedLegendCard' in value) || value['detectedLegendCard'] === undefined) return false;
+    if (!('gameMetadata' in value) || value['gameMetadata'] === undefined) return false;
     return true;
 }
 
@@ -119,13 +119,13 @@ export function ClipFromJSONTyped(json: any, ignoreDiscriminator: boolean): Clip
         'clipId': json['clip_id'],
         'ownerId': json['owner_id'],
         'videoId': json['video_id'],
-        'categoryEnum': json['category_enum'],
+        'gameCategoryId': json['game_category_id'],
+        'categorySlug': json['category_slug'],
         'createdAt': (new Date(json['created_at'])),
         'video': BunnyVideoFromJSON(json['video']),
         'tags': json['tags'],
         'isViewed': json['is_viewed'],
-        'detectedLegend': json['detected_legend'],
-        'detectedLegendCard': json['detected_legend_card'],
+        'gameMetadata': json['game_metadata'],
     };
 }
 
@@ -143,13 +143,13 @@ export function ClipToJSONTyped(value?: Clip | null, ignoreDiscriminator: boolea
         'clip_id': value['clipId'],
         'owner_id': value['ownerId'],
         'video_id': value['videoId'],
-        'category_enum': value['categoryEnum'],
+        'game_category_id': value['gameCategoryId'],
+        'category_slug': value['categorySlug'],
         'created_at': value['createdAt'].toISOString(),
         'video': BunnyVideoToJSON(value['video']),
         'tags': value['tags'],
         'is_viewed': value['isViewed'],
-        'detected_legend': value['detectedLegend'],
-        'detected_legend_card': value['detectedLegendCard'],
+        'game_metadata': value['gameMetadata'],
     };
 }
 
