@@ -9,7 +9,7 @@ on:
       - 'packages/ui/**'
       - 'packages/nucleus-api-client/**'
       - 'packages/typescript-config/**'
-      - 'pnpm-lock.yaml'
+      - 'bun.lock'
       - '.github/workflows/build-minecraft.yml'
 
 jobs:
@@ -22,20 +22,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
-          cache: 'pnpm'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Build minecraft app
-        run: pnpm turbo run build --filter=minecraft
+        run: bun turbo run build --filter=minecraft
 
       - name: Typecheck
-        run: pnpm --filter minecraft typecheck
+        run: bun --filter minecraft typecheck

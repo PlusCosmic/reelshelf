@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Plus Cosmic Development is a Turborepo monorepo containing video clip management applications and shared packages. The project uses pnpm workspaces with Vite for fast development builds.
+Plus Cosmic Development is a Turborepo monorepo containing video clip management applications and shared packages. The project uses Bun workspaces with Vite for fast development builds.
 
 **Backend**: Nucleus API (separate backend service at nucleus.pluscosmic.dev)
 **Main Branch**: `develop` (use this for PRs, not `main`)
@@ -38,8 +38,8 @@ Homepage application using React Router DOM (not TanStack Router like clips). Si
 
 **Regeneration Process** (from `packages/nucleus-api-client/`):
 1. Clear the `src/` directory
-2. Run: `npx openapi-generator-cli generate -i Nucleus.json -g typescript-fetch -o src --additional-properties=supportsES6=true`
-3. Run: `pnpm run build`
+2. Run: `bunx openapi-generator-cli generate -i Nucleus.json -g typescript-fetch -o src --additional-properties=supportsES6=true`
+3. Run: `bun run build`
 
 The `Nucleus.json` OpenAPI spec must be updated before regenerating the client.
 
@@ -72,23 +72,26 @@ Shared UI components using Mantine. Components located in `components/` director
 
 ```sh
 # Development (all apps)
-pnpm dev
+bun run dev
 
 # Build all apps and packages
-pnpm build
+bun run build
 
 # Lint all packages
-pnpm lint
+bun run lint
 
 # Format code
-pnpm format
+bun run format
 
 # Individual app development (from app directory)
 cd apps/clips
-pnpm dev
+bun run dev
 
 cd apps/home
-pnpm dev
+bun run dev
+
+# Install a package in a specific workspace
+bun add <package> --cwd apps/<app-name>
 ```
 
 ## Testing
@@ -98,12 +101,12 @@ pnpm dev
 cd apps/home
 
 # Unit tests (vitest)
-pnpm test
-pnpm test:watch
+bun run test
+bun run test:watch
 
 # E2E tests (playwright)
-pnpm e2e
-pnpm e2e:ui
+bun run e2e
+bun run e2e:ui
 ```
 
 **Test Setup**:
