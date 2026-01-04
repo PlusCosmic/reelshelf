@@ -1,9 +1,17 @@
-import { Badge, Button, Group, Text, ThemeIcon } from '@mantine/core';
-import { IconAdjustments, IconChevronDown, IconChevronUp, IconHours24, IconPlaylist, IconVideo } from '@tabler/icons-react';
-import { Link } from '@tanstack/react-router';
-import { VideoUpload } from '../VideoUpload';
+import { Badge, Button, Group, Text, ThemeIcon } from "@mantine/core";
+import {
+  IconAdjustments,
+  IconChevronDown,
+  IconChevronUp,
+  IconHours24,
+  IconPlaylist,
+  IconVideo,
+} from "@tabler/icons-react";
+import { Link } from "@tanstack/react-router";
+import { VideoUpload } from "../VideoUpload";
 
 interface ClipsHeaderProps {
+  categoryId: string;
   categoryName: string;
   totalClips: number;
   filtersOpen: boolean;
@@ -14,6 +22,7 @@ interface ClipsHeaderProps {
 }
 
 export function ClipsHeader({
+  categoryId,
   categoryName,
   totalClips,
   filtersOpen,
@@ -30,21 +39,22 @@ export function ClipsHeader({
           radius="md"
           variant="light"
           style={{
-            background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%)',
-            border: '1px solid rgba(0, 212, 255, 0.3)',
+            background:
+              "linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%)",
+            border: "1px solid rgba(0, 212, 255, 0.3)",
           }}
         >
-          <IconVideo size={24} style={{ color: '#00d4ff' }} />
+          <IconVideo size={24} style={{ color: "#00d4ff" }} />
         </ThemeIcon>
         <Text
           size="xl"
           fw={700}
           style={{
-            letterSpacing: '-0.5px',
-            background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
+            letterSpacing: "-0.5px",
+            background: "linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
           }}
         >
           {categoryName} Clips
@@ -55,12 +65,12 @@ export function ClipsHeader({
             radius="md"
             variant="light"
             style={{
-              background: 'rgba(0, 212, 255, 0.1)',
-              border: '1px solid rgba(0, 212, 255, 0.3)',
-              color: '#00d4ff',
+              background: "rgba(0, 212, 255, 0.1)",
+              border: "1px solid rgba(0, 212, 255, 0.3)",
+              color: "#00d4ff",
             }}
           >
-            {totalClips} {totalClips === 1 ? 'clip' : 'clips'}
+            {totalClips} {totalClips === 1 ? "clip" : "clips"}
           </Badge>
         )}
       </Group>
@@ -73,14 +83,14 @@ export function ClipsHeader({
           leftSection={<IconPlaylist size={18} />}
           radius="md"
           style={{
-            color: 'rgba(255, 255, 255, 0.7)',
-            transition: 'all 0.2s ease',
+            color: "rgba(255, 255, 255, 0.7)",
+            transition: "all 0.2s ease",
           }}
           styles={{
             root: {
-              '&:hover': {
-                color: '#a855f7',
-                background: 'rgba(168, 85, 247, 0.1)',
+              "&:hover": {
+                color: "#a855f7",
+                background: "rgba(168, 85, 247, 0.1)",
               },
             },
           }}
@@ -94,12 +104,14 @@ export function ClipsHeader({
           radius="md"
           style={{
             background: todayFilterActive
-              ? 'linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)'
-              : 'rgba(0, 212, 255, 0.1)',
-            border: '1px solid rgba(0, 212, 255, 0.3)',
-            color: todayFilterActive ? '#0a0a14' : '#00d4ff',
-            boxShadow: todayFilterActive ? '0 0 20px rgba(0, 212, 255, 0.4)' : 'none',
-            transition: 'all 0.2s ease',
+              ? "linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)"
+              : "rgba(0, 212, 255, 0.1)",
+            border: "1px solid rgba(0, 212, 255, 0.3)",
+            color: todayFilterActive ? "#0a0a14" : "#00d4ff",
+            boxShadow: todayFilterActive
+              ? "0 0 20px rgba(0, 212, 255, 0.4)"
+              : "none",
+            transition: "all 0.2s ease",
           }}
         >
           Today
@@ -107,15 +119,25 @@ export function ClipsHeader({
         <Button
           variant={filtersOpen ? "light" : "subtle"}
           leftSection={<IconAdjustments size={18} />}
-          rightSection={filtersOpen ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+          rightSection={
+            filtersOpen ? (
+              <IconChevronUp size={16} />
+            ) : (
+              <IconChevronDown size={16} />
+            )
+          }
           onClick={onToggleFilters}
           radius="md"
           disabled={todayFilterActive}
           style={{
-            background: filtersOpen ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
-            border: filtersOpen ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid transparent',
-            color: filtersOpen ? '#a855f7' : 'rgba(255, 255, 255, 0.7)',
-            transition: 'all 0.2s ease',
+            background: filtersOpen
+              ? "rgba(168, 85, 247, 0.15)"
+              : "transparent",
+            border: filtersOpen
+              ? "1px solid rgba(168, 85, 247, 0.3)"
+              : "1px solid transparent",
+            color: filtersOpen ? "#a855f7" : "rgba(255, 255, 255, 0.7)",
+            transition: "all 0.2s ease",
           }}
         >
           Filters
@@ -124,19 +146,19 @@ export function ClipsHeader({
               size="sm"
               circle
               style={{
-                marginLeft: '0.5rem',
-                minWidth: '20px',
-                height: '20px',
-                padding: '0 6px',
-                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-                border: 'none',
+                marginLeft: "0.5rem",
+                minWidth: "20px",
+                height: "20px",
+                padding: "0 6px",
+                background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
+                border: "none",
               }}
             >
               {activeFilterCount}
             </Badge>
           )}
         </Button>
-        <VideoUpload />
+        <VideoUpload categoryId={categoryId} />
       </Group>
     </Group>
   );

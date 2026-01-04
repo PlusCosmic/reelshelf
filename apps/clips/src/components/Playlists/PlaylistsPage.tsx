@@ -26,7 +26,7 @@ import {
   TextInput,
   Title,
   Tooltip,
-  UnstyledButton
+  UnstyledButton,
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -37,7 +37,7 @@ import {
   IconShare,
   IconTrash,
   IconUsers,
-  IconVideo
+  IconVideo,
 } from "@tabler/icons-react";
 import { deletePlaylist, fetchPlaylists } from "@repo/shared";
 import { useDisclosure } from "@mantine/hooks";
@@ -51,19 +51,30 @@ export function PlaylistsPage() {
   const [activeTab, setActiveTab] = useState<string | null>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredPlaylist, setHoveredPlaylist] = useState<string | null>(null);
-  const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
-  const [gamingSessionModalOpened, { open: openGamingSessionModal, close: closeGamingSessionModal }] = useDisclosure(false);
-  const [collaboratorsPlaylist, setCollaboratorsPlaylist] = useState<PlaylistSummary | null>(null);
+  const [
+    createModalOpened,
+    { open: openCreateModal, close: closeCreateModal },
+  ] = useDisclosure(false);
+  const [
+    gamingSessionModalOpened,
+    { open: openGamingSessionModal, close: closeGamingSessionModal },
+  ] = useDisclosure(false);
+  const [collaboratorsPlaylist, setCollaboratorsPlaylist] =
+    useState<PlaylistSummary | null>(null);
   const navigate = useNavigate();
 
   // Fetch playlists
-  const { data: playlists = [], isLoading, refetch } = useQuery({
-    queryKey: ['playlists'],
+  const {
+    data: playlists = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["playlists"],
     queryFn: fetchPlaylists,
   });
 
   // Filter playlists based on search and tab
-  const filteredPlaylists = playlists.filter(playlist => {
+  const filteredPlaylists = playlists.filter((playlist) => {
     // TODO: Filter by tab (need current user ID to implement)
     // For now, show all playlists in all tabs
     return (
@@ -77,26 +88,34 @@ export function PlaylistsPage() {
     navigate({ to: `/playlists/$playlistId`, params: { playlistId } });
   };
 
-  const handleDeletePlaylist = async (playlistId: string, playlistName: string, e: React.MouseEvent) => {
+  const handleDeletePlaylist = async (
+    playlistId: string,
+    playlistName: string,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
 
-    if (!confirm(`Are you sure you want to delete "${playlistName}"? This action cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${playlistName}"? This action cannot be undone.`,
+      )
+    ) {
       return;
     }
 
     try {
       await deletePlaylist(playlistId);
       notifications.show({
-        title: 'Playlist deleted',
+        title: "Playlist deleted",
         message: `"${playlistName}" has been deleted`,
-        color: 'green',
+        color: "green",
       });
       refetch();
     } catch (error) {
       notifications.show({
-        title: 'Error',
-        message: 'Failed to delete playlist',
-        color: 'red',
+        title: "Error",
+        message: "Failed to delete playlist",
+        color: "red",
       });
     }
   };
@@ -108,9 +127,9 @@ export function PlaylistsPage() {
     navigator.clipboard.writeText(url);
 
     notifications.show({
-      title: 'Link copied',
-      message: 'Playlist link copied to clipboard',
-      color: 'blue',
+      title: "Link copied",
+      message: "Playlist link copied to clipboard",
+      color: "blue",
     });
   };
 
@@ -129,17 +148,21 @@ export function PlaylistsPage() {
   };
 
   return (
-    <div style={{ height: "calc(100vh - 138px)", display: "flex", gap: "1rem" }}>
+    <div
+      style={{ height: "calc(100vh - 138px)", display: "flex", gap: "1rem" }}
+    >
       {/* Sidebar - Left Side */}
       <Card
         radius="xl"
         p="md"
         style={{
-          width: '320px',
-          background: 'linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(0, 212, 255, 0.15)',
-          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 212, 255, 0.05)',
+          width: "320px",
+          background:
+            "linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)",
+          backdropFilter: "blur(10px)",
+          border: "1px solid rgba(0, 212, 255, 0.15)",
+          boxShadow:
+            "0 4px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 212, 255, 0.05)",
           flexShrink: 0,
           display: "flex",
           flexDirection: "column",
@@ -147,17 +170,21 @@ export function PlaylistsPage() {
       >
         <Stack gap="md" h="100%">
           {/* Header */}
-          <Group justify="center" align="center" style={{ position: 'relative' }}>
+          <Group
+            justify="center"
+            align="center"
+            style={{ position: "relative" }}
+          >
             <ActionIcon
               variant="subtle"
               size="lg"
-              onClick={() => navigate({ to: '/apex-legends' })}
+              onClick={() => navigate({ to: "/" })}
               aria-label="Back to clips"
               style={{
-                position: 'absolute',
+                position: "absolute",
                 left: 0,
-                color: '#00d4ff',
-                transition: 'all 0.2s ease',
+                color: "#00d4ff",
+                transition: "all 0.2s ease",
               }}
             >
               <IconArrowLeft size={20} />
@@ -165,10 +192,10 @@ export function PlaylistsPage() {
             <Title
               order={3}
               style={{
-                letterSpacing: '-0.3px',
-                background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                letterSpacing: "-0.3px",
+                background: "linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
               }}
             >
               Playlists
@@ -188,10 +215,10 @@ export function PlaylistsPage() {
               radius="md"
               fullWidth
               style={{
-                background: 'linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)',
-                border: '1px solid rgba(0, 212, 255, 0.5)',
-                boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)',
-                color: '#0a0a14',
+                background: "linear-gradient(135deg, #00d4ff 0%, #0ea5e9 100%)",
+                border: "1px solid rgba(0, 212, 255, 0.5)",
+                boxShadow: "0 0 20px rgba(0, 212, 255, 0.3)",
+                color: "#0a0a14",
                 fontWeight: 600,
               }}
             >
@@ -206,9 +233,9 @@ export function PlaylistsPage() {
               radius="md"
               fullWidth
               style={{
-                background: 'rgba(34, 197, 94, 0.1)',
-                border: '1px solid rgba(34, 197, 94, 0.3)',
-                color: '#22c55e',
+                background: "rgba(34, 197, 94, 0.1)",
+                border: "1px solid rgba(34, 197, 94, 0.3)",
+                color: "#22c55e",
               }}
             >
               Gaming Session
@@ -218,18 +245,18 @@ export function PlaylistsPage() {
           {/* Search */}
           <TextInput
             placeholder="Search playlists..."
-            leftSection={<IconSearch size={16} style={{ color: '#00d4ff' }} />}
+            leftSection={<IconSearch size={16} style={{ color: "#00d4ff" }} />}
             size="sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             styles={{
               input: {
                 borderRadius: "8px",
-                backgroundColor: 'rgba(0, 212, 255, 0.03)',
-                border: '1px solid rgba(0, 212, 255, 0.15)',
-                '&:focus': {
-                  borderColor: 'rgba(0, 212, 255, 0.5)',
-                  boxShadow: '0 0 15px rgba(0, 212, 255, 0.15)',
+                backgroundColor: "rgba(0, 212, 255, 0.03)",
+                border: "1px solid rgba(0, 212, 255, 0.15)",
+                "&:focus": {
+                  borderColor: "rgba(0, 212, 255, 0.5)",
+                  boxShadow: "0 0 15px rgba(0, 212, 255, 0.15)",
                 },
               },
             }}
@@ -238,13 +265,25 @@ export function PlaylistsPage() {
           {/* Tabs */}
           <Tabs value={activeTab} onChange={setActiveTab} variant="pills">
             <Tabs.List grow>
-              <Tabs.Tab value="all" leftSection={<IconVideo size={14} />} size="xs">
+              <Tabs.Tab
+                value="all"
+                leftSection={<IconVideo size={14} />}
+                size="xs"
+              >
                 All
               </Tabs.Tab>
-              <Tabs.Tab value="created" leftSection={<IconPlus size={14} />} size="xs">
+              <Tabs.Tab
+                value="created"
+                leftSection={<IconPlus size={14} />}
+                size="xs"
+              >
                 Mine
               </Tabs.Tab>
-              <Tabs.Tab value="shared" leftSection={<IconUsers size={14} />} size="xs">
+              <Tabs.Tab
+                value="shared"
+                leftSection={<IconUsers size={14} />}
+                size="xs"
+              >
                 Shared
               </Tabs.Tab>
             </Tabs.List>
@@ -255,9 +294,10 @@ export function PlaylistsPage() {
             <Badge
               variant="light"
               style={{
-                background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)',
-                border: '1px solid rgba(0, 212, 255, 0.3)',
-                color: '#00d4ff',
+                background:
+                  "linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)",
+                border: "1px solid rgba(0, 212, 255, 0.3)",
+                color: "#00d4ff",
               }}
             >
               {filteredPlaylists.length} playlists
@@ -272,10 +312,12 @@ export function PlaylistsPage() {
         p="lg"
         style={{
           flex: 1,
-          background: 'linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(0, 212, 255, 0.15)',
-          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3), inset 0 0 60px rgba(0, 212, 255, 0.03)',
+          background:
+            "linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)",
+          backdropFilter: "blur(10px)",
+          border: "1px solid rgba(0, 212, 255, 0.15)",
+          boxShadow:
+            "0 4px 30px rgba(0, 0, 0, 0.3), inset 0 0 60px rgba(0, 212, 255, 0.03)",
           display: "flex",
           flexDirection: "column",
         }}
@@ -295,9 +337,9 @@ export function PlaylistsPage() {
                 size={64}
                 stroke={1}
                 style={{
-                  color: '#00d4ff',
+                  color: "#00d4ff",
                   opacity: 0.5,
-                  filter: 'drop-shadow(0 0 20px rgba(0, 212, 255, 0.3))',
+                  filter: "drop-shadow(0 0 20px rgba(0, 212, 255, 0.3))",
                 }}
               />
               <Stack gap="xs" align="center">
@@ -307,8 +349,7 @@ export function PlaylistsPage() {
                 <Text size="sm" c="dimmed" ta="center" maw={400}>
                   {searchQuery
                     ? "Try adjusting your search"
-                    : "Create your first playlist to start organizing clips"
-                  }
+                    : "Create your first playlist to start organizing clips"}
                 </Text>
               </Stack>
               {!searchQuery && (
@@ -318,9 +359,9 @@ export function PlaylistsPage() {
                   size="md"
                   onClick={openCreateModal}
                   style={{
-                    background: 'rgba(0, 212, 255, 0.1)',
-                    border: '1px solid rgba(0, 212, 255, 0.3)',
-                    color: '#00d4ff',
+                    background: "rgba(0, 212, 255, 0.1)",
+                    border: "1px solid rgba(0, 212, 255, 0.3)",
+                    color: "#00d4ff",
                   }}
                 >
                   Create Your First Playlist
@@ -338,16 +379,16 @@ export function PlaylistsPage() {
             scrollbarSize={8}
             styles={{
               scrollbar: {
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 212, 255, 0.1)',
-                }
+                "&:hover": {
+                  backgroundColor: "rgba(0, 212, 255, 0.1)",
+                },
               },
               thumb: {
-                backgroundColor: 'rgba(0, 212, 255, 0.3)',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 212, 255, 0.5)',
-                }
-              }
+                backgroundColor: "rgba(0, 212, 255, 0.3)",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 212, 255, 0.5)",
+                },
+              },
             }}
           >
             <Stack gap="md">
@@ -359,7 +400,9 @@ export function PlaylistsPage() {
                   onHover={() => setHoveredPlaylist(playlist.id)}
                   onLeave={() => setHoveredPlaylist(null)}
                   onClick={() => handlePlaylistClick(playlist.id)}
-                  onDelete={(e) => handleDeletePlaylist(playlist.id, playlist.name, e)}
+                  onDelete={(e) =>
+                    handleDeletePlaylist(playlist.id, playlist.name, e)
+                  }
                   onShare={(e) => handleSharePlaylist(playlist.id, e)}
                   onManageCollaborators={(e) => {
                     e.stopPropagation();
@@ -489,9 +532,10 @@ function PlaylistCard({
                 size="lg"
                 lineClamp={1}
                 style={{
-                  background: 'linear-gradient(90deg, #f8fafc 0%, #00d4ff 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  background:
+                    "linear-gradient(90deg, #f8fafc 0%, #00d4ff 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
                 }}
               >
                 {playlist.name}
@@ -505,17 +549,22 @@ function PlaylistCard({
 
             {/* Collaborators */}
             <Group gap="xs">
-              <IconUsers size={16} style={{ color: '#a855f7', opacity: 0.8 }} />
+              <IconUsers size={16} style={{ color: "#a855f7", opacity: 0.8 }} />
               <Text size="xs" c="dimmed">
                 {playlist.collaboratorCount}{" "}
-                {playlist.collaboratorCount === 1 ? "collaborator" : "collaborators"}
+                {playlist.collaboratorCount === 1
+                  ? "collaborator"
+                  : "collaborators"}
               </Text>
             </Group>
 
             {/* Metadata */}
             <Group gap="md">
               <Group gap="xs">
-                <IconClock size={14} style={{ color: '#00d4ff', opacity: 0.6 }} />
+                <IconClock
+                  size={14}
+                  style={{ color: "#00d4ff", opacity: 0.6 }}
+                />
                 <Text size="xs" c="dimmed">
                   Updated {formatDate(playlist.updatedAt)}
                 </Text>
@@ -541,10 +590,10 @@ function PlaylistCard({
                 radius="md"
                 onClick={onManageCollaborators}
                 style={{
-                  background: 'rgba(168, 85, 247, 0.15)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                  color: '#a855f7',
-                  transition: 'all 0.2s ease',
+                  background: "rgba(168, 85, 247, 0.15)",
+                  border: "1px solid rgba(168, 85, 247, 0.3)",
+                  color: "#a855f7",
+                  transition: "all 0.2s ease",
                 }}
               >
                 <IconUsers size={18} />
@@ -558,10 +607,10 @@ function PlaylistCard({
                 radius="md"
                 onClick={onShare}
                 style={{
-                  background: 'rgba(0, 212, 255, 0.15)',
-                  border: '1px solid rgba(0, 212, 255, 0.3)',
-                  color: '#00d4ff',
-                  transition: 'all 0.2s ease',
+                  background: "rgba(0, 212, 255, 0.15)",
+                  border: "1px solid rgba(0, 212, 255, 0.3)",
+                  color: "#00d4ff",
+                  transition: "all 0.2s ease",
                 }}
               >
                 <IconShare size={18} />
@@ -575,10 +624,10 @@ function PlaylistCard({
                 radius="md"
                 onClick={onDelete}
                 style={{
-                  background: 'rgba(236, 72, 153, 0.15)',
-                  border: '1px solid rgba(236, 72, 153, 0.3)',
-                  color: '#ec4899',
-                  transition: 'all 0.2s ease',
+                  background: "rgba(236, 72, 153, 0.15)",
+                  border: "1px solid rgba(236, 72, 153, 0.3)",
+                  color: "#ec4899",
+                  transition: "all 0.2s ease",
                 }}
               >
                 <IconTrash size={18} />
