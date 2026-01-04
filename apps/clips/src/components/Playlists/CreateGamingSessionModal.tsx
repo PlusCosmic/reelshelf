@@ -18,18 +18,17 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import {
-  IconCheck,
-  IconDeviceGamepad2,
-  IconUsers,
-} from "@tabler/icons-react";
+import { IconCheck, IconDeviceGamepad2, IconUsers } from "@tabler/icons-react";
 import {
   createGamingSessionPlaylist,
   fetchCategories,
   fetchUserSuggestions,
 } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
-import type { ClipCategory, DiscordUser } from "@repo/nucleus-api-client";
+import type {
+  GameCategoryResponse,
+  DiscordUser,
+} from "@repo/nucleus-api-client";
 
 type CreateGamingSessionModalProps = {
   opened: boolean;
@@ -43,7 +42,9 @@ export function CreateGamingSessionModal({
   onSuccess,
 }: CreateGamingSessionModalProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedParticipants, setSelectedParticipants] = useState<Array<string>>([]);
+  const [selectedParticipants, setSelectedParticipants] = useState<
+    Array<string>
+  >([]);
 
   // Fetch categories (games)
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
@@ -53,18 +54,19 @@ export function CreateGamingSessionModal({
   });
 
   // Fetch user suggestions (Discord friends)
-  const { data: userSuggestions = [], isLoading: suggestionsLoading } = useQuery({
-    queryKey: ["userSuggestions"],
-    queryFn: fetchUserSuggestions,
-    enabled: opened,
-    staleTime: 60 * 1000,
-  });
+  const { data: userSuggestions = [], isLoading: suggestionsLoading } =
+    useQuery({
+      queryKey: ["userSuggestions"],
+      queryFn: fetchUserSuggestions,
+      enabled: opened,
+      staleTime: 60 * 1000,
+    });
 
   // Transform categories into Select options
   const categoryOptions = useMemo(() => {
     if (!categories) return [];
-    return categories.map((cat: ClipCategory) => ({
-      value: cat.categoryEnum.toString(),
+    return categories.map((cat: GameCategoryResponse) => ({
+      value: cat.id,
       label: cat.name,
     }));
   }, [categories]);
@@ -84,7 +86,7 @@ export function CreateGamingSessionModal({
       if (!selectedCategory) throw new Error("No category selected");
 
       return createGamingSessionPlaylist({
-        category: parseInt(selectedCategory, 10),
+        categoryId: selectedCategory,
         participants: selectedParticipants,
       });
     },
@@ -92,9 +94,10 @@ export function CreateGamingSessionModal({
       const clipCount = playlist?.clips.length ?? 0;
       notifications.show({
         title: "Gaming session created",
-        message: clipCount > 0
-          ? `Found ${clipCount} clips from the last 24 hours`
-          : "Session created - no clips found from the last 24 hours",
+        message:
+          clipCount > 0
+            ? `Found ${clipCount} clips from the last 24 hours`
+            : "Session created - no clips found from the last 24 hours",
         color: "green",
       });
       handleClose();
@@ -137,9 +140,11 @@ export function CreateGamingSessionModal({
       size="lg"
       styles={{
         content: {
-          background: "linear-gradient(135deg, rgba(15, 15, 25, 0.98) 0%, rgba(20, 20, 35, 0.95) 100%)",
+          background:
+            "linear-gradient(135deg, rgba(15, 15, 25, 0.98) 0%, rgba(20, 20, 35, 0.95) 100%)",
           border: "1px solid rgba(34, 197, 94, 0.2)",
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(34, 197, 94, 0.1)",
+          boxShadow:
+            "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(34, 197, 94, 0.1)",
         },
         header: {
           background: "transparent",
@@ -234,7 +239,11 @@ export function CreateGamingSessionModal({
             </Badge>
           </Group>
           <MultiSelect
-            placeholder={suggestionsLoading ? "Loading friends..." : "Select friends from the session..."}
+            placeholder={
+              suggestionsLoading
+                ? "Loading friends..."
+                : "Select friends from the session..."
+            }
             data={participantOptions}
             value={selectedParticipants}
             onChange={setSelectedParticipants}
@@ -244,11 +253,17 @@ export function CreateGamingSessionModal({
             nothingFoundMessage="No friends found"
             maxDropdownHeight={200}
             renderOption={({ option }) => {
-              const participant = participantOptions.find(p => p.value === option.value);
+              const participant = participantOptions.find(
+                (p) => p.value === option.value,
+              );
               return (
                 <Group gap="sm" wrap="nowrap">
                   <Avatar
-                    src={participant?.avatar ? `https://cdn.discordapp.com/avatars/${participant.value}/${participant.avatar}.png` : undefined}
+                    src={
+                      participant?.avatar
+                        ? `https://cdn.discordapp.com/avatars/${participant.value}/${participant.avatar}.png`
+                        : undefined
+                    }
                     size="sm"
                     radius="xl"
                   >
@@ -257,7 +272,9 @@ export function CreateGamingSessionModal({
                   <Stack gap={0}>
                     <Text size="sm">{option.label}</Text>
                     {participant?.username !== option.label && (
-                      <Text size="xs" c="dimmed">@{participant?.username}</Text>
+                      <Text size="xs" c="dimmed">
+                        @{participant?.username}
+                      </Text>
                     )}
                   </Stack>
                 </Group>
@@ -286,14 +303,15 @@ export function CreateGamingSessionModal({
                 },
               },
               pill: {
-                background: "linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)",
+                background:
+                  "linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)",
                 border: "1px solid rgba(168, 85, 247, 0.3)",
               },
             }}
           />
           <Text size="xs" c="dimmed">
-            Adding participants will include their clips and add them as collaborators.
-            Leave empty to only include your own clips.
+            Adding participants will include their clips and add them as
+            collaborators. Leave empty to only include your own clips.
           </Text>
         </Stack>
 
@@ -303,7 +321,8 @@ export function CreateGamingSessionModal({
             gap="xs"
             p="md"
             style={{
-              background: "linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)",
+              background:
+                "linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)",
               borderRadius: "8px",
               border: "1px solid rgba(34, 197, 94, 0.15)",
             }}
@@ -314,12 +333,18 @@ export function CreateGamingSessionModal({
             <Text size="xs" c="dimmed">
               This will create a playlist with clips from the last 24 hours
               {selectedParticipants.length > 0 && (
-                <> from you and {selectedParticipants.length} friend{selectedParticipants.length > 1 ? "s" : ""}</>
+                <>
+                  {" "}
+                  from you and {selectedParticipants.length} friend
+                  {selectedParticipants.length > 1 ? "s" : ""}
+                </>
               )}
-              {selectedParticipants.length === 0 && <> (only your clips)</>}
-              {" "}in{" "}
+              {selectedParticipants.length === 0 && <> (only your clips)</>} in{" "}
               <Text span fw={600} c="white">
-                {categoryOptions.find(c => c.value === selectedCategory)?.label}
+                {
+                  categoryOptions.find((c) => c.value === selectedCategory)
+                    ?.label
+                }
               </Text>
             </Text>
           </Stack>
@@ -338,7 +363,9 @@ export function CreateGamingSessionModal({
             Cancel
           </Button>
           <Button
-            leftSection={createMutation.isPending ? null : <IconCheck size={18} />}
+            leftSection={
+              createMutation.isPending ? null : <IconCheck size={18} />
+            }
             onClick={handleCreate}
             disabled={!isValid}
             loading={createMutation.isPending}

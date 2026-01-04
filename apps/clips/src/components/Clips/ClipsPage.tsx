@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Box, Card, Stack } from "@mantine/core";
-import { ClipsHeader } from './ClipsHeader';
-import { ClipsSearchBar } from './ClipsSearchBar';
-import { ClipsFilters } from './ClipsFilters';
-import { ClipsContentArea } from './ClipsContentArea';
-import { ClipsPaginationControls } from './ClipsPaginationControls';
+import { ClipsHeader } from "./ClipsHeader";
+import { ClipsSearchBar } from "./ClipsSearchBar";
+import { ClipsFilters } from "./ClipsFilters";
+import { ClipsContentArea } from "./ClipsContentArea";
+import { ClipsPaginationControls } from "./ClipsPaginationControls";
 import { useClipsFilters } from "@/hooks/clips/useClipsFilters";
 import { useClips, useCurrentUser, useTopTags } from "@/hooks/queries";
 
@@ -14,7 +14,11 @@ export interface ClipsPageProps {
   categoryName: string;
 }
 
-export function ClipsPage({ categoryId, categorySlug, categoryName }: ClipsPageProps) {
+export function ClipsPage({
+  categoryId,
+  categorySlug,
+  categoryName,
+}: ClipsPageProps) {
   // UI state
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -79,15 +83,15 @@ export function ClipsPage({ categoryId, categorySlug, categoryName }: ClipsPageP
       // Format dates as YYYY-MM-DD for Mantine DatePickerInput
       const formatDate = (date: Date) => {
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hour = String(date.getHours()).padStart(2, '0');
-        const minute = String(date.getMinutes()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hour = String(date.getHours()).padStart(2, "0");
+        const minute = String(date.getMinutes()).padStart(2, "0");
         return `${year}-${month}-${day}T${hour}:${minute}:00.000Z`;
       };
 
       // Reset ALL filters to defaults
-      setSearchQuery('');
+      setSearchQuery("");
       setSelectedTags([]);
 
       // Apply today's preset filters
@@ -103,7 +107,7 @@ export function ClipsPage({ categoryId, categorySlug, categoryName }: ClipsPageP
   // React Query hooks
   const { isLoading: isLoadingUser } = useCurrentUser();
   const { data: topTagsData } = useTopTags();
-  const allTags = topTagsData?.map(t => t.name) || [];
+  const allTags = topTagsData?.map((t) => t.name) || [];
 
   const { data: clipsData, isLoading: isLoadingClips } = useClips({
     categoryId,
@@ -135,14 +139,17 @@ export function ClipsPage({ categoryId, categorySlug, categoryName }: ClipsPageP
             p="lg"
             radius="xl"
             style={{
-              background: 'linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(0, 212, 255, 0.15)',
-              boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3), inset 0 0 60px rgba(0, 212, 255, 0.03)',
+              background:
+                "linear-gradient(135deg, rgba(15, 15, 25, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%)",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(0, 212, 255, 0.15)",
+              boxShadow:
+                "0 4px 30px rgba(0, 0, 0, 0.3), inset 0 0 60px rgba(0, 212, 255, 0.03)",
             }}
           >
             <Stack gap="md">
               <ClipsHeader
+                categoryId={categoryId}
                 categoryName={categoryName}
                 totalClips={totalClips}
                 filtersOpen={filtersOpen}
@@ -180,6 +187,7 @@ export function ClipsPage({ categoryId, categorySlug, categoryName }: ClipsPageP
           isLoading={isLoading}
           clips={clips}
           hasActiveFilters={hasActiveFilters}
+          categoryId={categoryId}
           categorySlug={categorySlug}
         />
 

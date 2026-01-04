@@ -28,7 +28,10 @@ import { AddToPlaylistButton } from "../Playlists/AddToPlaylistButton";
 import { ApexMetadata } from "./ApexMetadata";
 import type { Clip } from "@repo/nucleus-api-client";
 import { useDeleteClip, useUserById } from "@/hooks/queries.ts";
-import { getProcessingStatusMessage, isClipProcessing } from "@/utils/format.ts";
+import {
+  getProcessingStatusMessage,
+  isClipProcessing,
+} from "@/utils/format.ts";
 
 type ClipCardProps = {
   clip: Clip;
@@ -146,12 +149,18 @@ export function ClipCard({ clip, categorySlug }: ClipCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    await navigate({ to: "/games/$slug/$clipId", params: { slug: categorySlug, clipId: clip.clipId } });
+    await navigate({
+      to: "/games/$slug/$clipId",
+      params: { slug: categorySlug, clipId: clip.clipId },
+    });
   };
 
   const date = formatDate(clip.createdAt.toString());
   const processing = isClipProcessing(clip.video.status);
-  const processingMessage = getProcessingStatusMessage(clip.video.status, clip.video.encodeProgress);
+  const processingMessage = getProcessingStatusMessage(
+    clip.video.status,
+    clip.video.encodeProgress,
+  );
 
   return (
     <Card
@@ -172,7 +181,8 @@ export function ClipCard({ clip, categorySlug }: ClipCardProps) {
           : "linear-gradient(135deg, rgba(15, 15, 25, 0.8) 0%, rgba(20, 20, 35, 0.7) 100%)",
       }}
     >
-      <Link style={{ textDecoration: 'none', color: 'inherit' }}
+      <Link
+        style={{ textDecoration: "none", color: "inherit" }}
         to="/games/$slug/$clipId"
         params={{
           slug: categorySlug,
@@ -345,7 +355,12 @@ export function ClipCard({ clip, categorySlug }: ClipCardProps) {
                       size={14}
                       radius="xl"
                     />
-                    <Text size="xs" c="dimmed" fw={500} style={{ fontSize: "11px" }}>
+                    <Text
+                      size="xs"
+                      c="dimmed"
+                      fw={500}
+                      style={{ fontSize: "11px" }}
+                    >
                       {clipOwner.globalName || clipOwner.username}
                     </Text>
                   </Group>
@@ -358,8 +373,8 @@ export function ClipCard({ clip, categorySlug }: ClipCardProps) {
 
             {/* Game-specific metadata (e.g., Apex legend detection) */}
             <ApexMetadata
-              detectedLegend={clip.detectedLegend}
-              detectedLegendCard={clip.detectedLegendCard}
+              detectedLegend={clip.gameMetadata?.detected_legend}
+              detectedLegendCard={clip.gameMetadata?.detected_legend_card}
             />
 
             {/* Action Buttons - Horizontal layout */}

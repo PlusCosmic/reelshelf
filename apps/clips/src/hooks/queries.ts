@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, fetchUser } from "@repo/shared/services/user";
-import { fetchCategories, fetchCategoryById, searchGames, addGameCategoryFromIgdb, addCustomCategory, removeCategory } from "@repo/shared/services/categories";
+import {
+  fetchCategories,
+  fetchCategoryById,
+  searchGames,
+  addGameCategoryFromIgdb,
+  addCustomCategory,
+  removeCategory,
+} from "@repo/shared/services/categories";
 import { logout } from "@repo/shared/services/auth";
 import {
   addTagToVideo,
@@ -13,7 +20,11 @@ import {
   removeTagFromVideo,
   updateVideoTitle,
 } from "@repo/shared/services/clips";
-import type { Clip, PagedClipsResponse, GameCategoryResponse, GameSearchResult } from "@repo/nucleus-api-client";
+import type {
+  Clip,
+  PagedClipsResponse,
+  GameCategoryResponse,
+} from "@repo/nucleus-api-client";
 
 // ============================================================================
 // Query Hooks
@@ -118,7 +129,17 @@ export interface ClipsParams {
  * Query key includes all params to ensure proper cache segregation
  */
 export function useClips(params: ClipsParams) {
-  const { categoryId, page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate } = params;
+  const {
+    categoryId,
+    page,
+    pageSize,
+    tags,
+    titleSearch,
+    unviewedOnly,
+    sortOrder,
+    startDate,
+    endDate,
+  } = params;
 
   return useQuery({
     queryKey: [
@@ -152,9 +173,11 @@ export function useClips(params: ClipsParams) {
 }
 
 /** @deprecated Use useClips instead */
-export const useApexClips = (params: Omit<ClipsParams, 'categoryId'> & { categoryId?: string }) => {
+export const useApexClips = (
+  params: Omit<ClipsParams, "categoryId"> & { categoryId?: string },
+) => {
   // This is a backwards-compatible shim - categoryId is now required
-  return useClips({ ...params, categoryId: params.categoryId ?? '' });
+  return useClips({ ...params, categoryId: params.categoryId ?? "" });
 };
 
 /**
@@ -186,14 +209,16 @@ export function useCreateVideo() {
 
   return useMutation({
     mutationFn: ({
+      categoryId,
       title,
       md5Hash,
       createdAt,
     }: {
+      categoryId: string;
       title: string;
       md5Hash?: string;
       createdAt?: Date;
-    }) => createVideoRequest(title, md5Hash, createdAt),
+    }) => createVideoRequest(categoryId, title, md5Hash, createdAt),
     onSuccess: () => {
       // Invalidate all clips queries to show the new video
       queryClient.invalidateQueries({ queryKey: ["clips"] });
@@ -484,12 +509,14 @@ export function useRemoveCategory() {
     onMutate: async (categoryId) => {
       await queryClient.cancelQueries({ queryKey: ["categories"] });
 
-      const previousCategories = queryClient.getQueryData<GameCategoryResponse[]>(["categories"]);
+      const previousCategories = queryClient.getQueryData<
+        GameCategoryResponse[]
+      >(["categories"]);
 
       if (previousCategories) {
         queryClient.setQueryData<GameCategoryResponse[]>(
           ["categories"],
-          previousCategories.filter((c) => c.id !== categoryId)
+          previousCategories.filter((c) => c.id !== categoryId),
         );
       }
 

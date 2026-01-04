@@ -1,17 +1,24 @@
-import { ScrollArea, Stack } from '@mantine/core';
-import { ClipCard } from './ClipCard';
-import { ClipCardSkeleton } from './ClipCardSkeleton';
-import { ClipsEmptyState } from './ClipsEmptyState';
-import type { Clip } from '@repo/nucleus-api-client';
+import { ScrollArea, Stack } from "@mantine/core";
+import { ClipCard } from "./ClipCard";
+import { ClipCardSkeleton } from "./ClipCardSkeleton";
+import { ClipsEmptyState } from "./ClipsEmptyState";
+import type { Clip } from "@repo/nucleus-api-client";
 
 interface ClipsContentAreaProps {
   isLoading: boolean;
   clips: Array<Clip>;
   hasActiveFilters: boolean;
+  categoryId: string;
   categorySlug: string;
 }
 
-export function ClipsContentArea({ isLoading, clips, hasActiveFilters, categorySlug }: ClipsContentAreaProps) {
+export function ClipsContentArea({
+  isLoading,
+  clips,
+  hasActiveFilters,
+  categoryId,
+  categorySlug,
+}: ClipsContentAreaProps) {
   if (isLoading) {
     return (
       <ScrollArea h="100%" type="scroll" scrollbarSize={8}>
@@ -25,7 +32,9 @@ export function ClipsContentArea({ isLoading, clips, hasActiveFilters, categoryS
   }
 
   if (clips.length === 0) {
-    return <ClipsEmptyState hasFilters={hasActiveFilters} />;
+    return (
+      <ClipsEmptyState categoryId={categoryId} hasFilters={hasActiveFilters} />
+    );
   }
 
   return (
@@ -35,16 +44,16 @@ export function ClipsContentArea({ isLoading, clips, hasActiveFilters, categoryS
       scrollbarSize={8}
       styles={{
         scrollbar: {
-          '&:hover': {
-            backgroundColor: 'rgba(0, 212, 255, 0.1)',
-          }
+          "&:hover": {
+            backgroundColor: "rgba(0, 212, 255, 0.1)",
+          },
         },
         thumb: {
-          backgroundColor: 'rgba(0, 212, 255, 0.3)',
-          '&:hover': {
-            backgroundColor: 'rgba(0, 212, 255, 0.5)',
-          }
-        }
+          backgroundColor: "rgba(0, 212, 255, 0.3)",
+          "&:hover": {
+            backgroundColor: "rgba(0, 212, 255, 0.5)",
+          },
+        },
       }}
     >
       <Stack gap="xs">
@@ -52,9 +61,9 @@ export function ClipsContentArea({ isLoading, clips, hasActiveFilters, categoryS
           <div
             key={clip.clipId}
             style={{
-              animation: 'fadeIn 0.3s ease-in-out',
+              animation: "fadeIn 0.3s ease-in-out",
               animationDelay: `${index * 0.05}s`,
-              animationFillMode: 'both',
+              animationFillMode: "both",
             }}
           >
             <ClipCard clip={clip} categorySlug={categorySlug} />
