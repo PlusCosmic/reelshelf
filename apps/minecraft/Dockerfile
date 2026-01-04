@@ -1,13 +1,10 @@
 # Build stage
-FROM node:22-alpine AS builder
-
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+FROM oven/bun:alpine AS builder
 
 WORKDIR /app
 
 # Copy workspace config files
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY bun.lock package.json turbo.json ./
 
 # Copy all package.json files for dependency resolution
 COPY apps/minecraft/package.json ./apps/minecraft/
@@ -18,13 +15,13 @@ COPY packages/typescript-config/package.json ./packages/typescript-config/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 # Copy source files
 COPY . .
 
 # Build with turbo (handles dependency ordering)
-RUN pnpm turbo run build --filter=minecraft
+RUN bun turbo run build --filter=minecraft
 
 # Production stage - serve static files
 FROM nginx:alpine AS production
