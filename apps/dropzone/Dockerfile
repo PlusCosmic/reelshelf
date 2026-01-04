@@ -6,8 +6,11 @@ WORKDIR /app
 # Copy workspace config files
 COPY bun.lock package.json turbo.json ./
 
-# Copy all package.json files for dependency resolution
+# Copy all package.json files for dependency resolution (all apps needed for workspace resolution)
 COPY apps/dropzone/package.json ./apps/dropzone/
+COPY apps/clips/package.json ./apps/clips/
+COPY apps/home/package.json ./apps/home/
+COPY apps/minecraft/package.json ./apps/minecraft/
 COPY packages/nucleus-api-client/package.json ./packages/nucleus-api-client/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/ui/package.json ./packages/ui/
@@ -35,9 +38,9 @@ RUN echo 'server { \
     root /usr/share/nginx/html; \
     index index.html; \
     location / { \
-        try_files $uri $uri/ /index.html; \
+    try_files $uri $uri/ /index.html; \
     } \
-}' > /etc/nginx/conf.d/default.conf
+    }' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
