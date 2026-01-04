@@ -24,7 +24,9 @@ RUN bun install --frozen-lockfile
 COPY . .
 
 # Build with turbo (handles dependency ordering)
-RUN bun turbo run build --filter=clips
+# Use --env-file to explicitly load production env, as Bun auto-loads .env.development
+# which takes precedence over Vite's mode-based env loading
+RUN bun --env-file=apps/clips/.env.production turbo run build --filter=clips
 
 # Production stage - serve static files
 FROM nginx:alpine AS production

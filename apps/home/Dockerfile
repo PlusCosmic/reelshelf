@@ -24,7 +24,9 @@ RUN bun install --frozen-lockfile
 COPY . .
 
 # Build with turbo (handles dependency ordering)
-RUN bun turbo run build --filter=home
+# Use --env-file to explicitly load production env, as Bun auto-loads .env.development
+# which takes precedence over Vite's mode-based env loading
+RUN bun --env-file=apps/home/.env.production turbo run build --filter=home
 
 # Production stage - serve static files
 FROM nginx:alpine AS production
