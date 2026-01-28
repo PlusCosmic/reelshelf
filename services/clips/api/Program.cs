@@ -1,0 +1,273 @@
+using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Dapper;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.OpenApi;
+using Npgsql;
+using Nucleus.Clips.ApexLegends;
+using Nucleus.Clips.ApexLegends.LegendDetection;
+using Nucleus.Clips.Bunny;
+using Nucleus.Clips.Core;
+using Nucleus.Clips.FFmpeg;
+using Nucleus.Clips.Games;
+using Nucleus.Clips.Playlists;
+using Nucleus.Clips.Auth;
+using Nucleus.Clips.Discord;
+using Nucleus.Shared.Auth;
+using Nucleus.Shared.Discord;
+using Nucleus.Shared.Exceptions;
+using Nucleus.Shared.Games;
+using StackExchange.Redis;
+
+DefaultTypeMap.MatchNamesWithUnderscores = true;
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+builder.RegisterServices();
+builder.RegisterDatabase();
+builder.ConfigureDiscordAuth();
+
+WebApplication app = builder.Build();
+
+app.UseHttpsRedirection();
+app.UseExceptionHandler();
+app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseMiddleware<WhitelistMiddleware>();
+app.UseAuthenticatedUserResolution();
+
+// Static file serving for SPA
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+// Auth endpoints stay at root level (not under /api) for OAuth callback compatibility
+app.MapAuthEndpoints(builder.Configuration);
+
+// Create API group with /api prefix for all other endpoints
+RouteGroupBuilder apiGroup = app.MapGroup("/api");
+apiGroup.MapClipsEndpoints();
+apiGroup.MapPlaylistEndpoints();
+apiGroup.MapFFmpegEndpoints();
+apiGroup.MapBunnyWebhookEndpoints();
+apiGroup.MapGameCategoryEndpoints();
+apiGroup.MapApexEndpoints();
+apiGroup.MapApexDetectionEndpoints();
+apiGroup.MapUserEndpoints();
+
+// OpenAPI and health stay at root
+app.MapOpenApi();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => true,
+    AllowCachingResponses = false,
+    ResultStatusCodes =
+    {
+        [HealthStatus.Healthy] = StatusCodes.Status200OK,
+        [HealthStatus.Degraded] = StatusCodes.Status200OK,
+        [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+    }
+}).AllowAnonymous();
+
+// SPA fallback - serve index.html for client-side routing
+app.MapFallbackToFile("index.html");
+
+app.Run();
+
+internal static class BuilderExtensions
+{
+    public static void RegisterServices(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddOpenApi(options =>
+        {
+            // Fix for OpenAPI 3.1 nullable type arrays that break typescript-fetch generator.
+            // When a schema has type: ["null", "object"], the generator incorrectly creates
+            // references to a non-existent "Null" type. This transformer removes the Null flag
+            // from schema definitions so they generate as pure object types.
+            options.AddSchemaTransformer((schema, context, cancellationToken) =>
+            {
+                if (schema.Type.HasValue &&
+                    schema.Type.Value.HasFlag(JsonSchemaType.Null) &&
+                    schema.Type.Value.HasFlag(JsonSchemaType.Object))
+                {
+                    schema.Type = JsonSchemaType.Object;
+                }
+
+                return Task.CompletedTask;
+            });
+        });
+        builder.Services.AddHttpClient();
+        builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+        builder.Services.AddProblemDetails();
+        builder.Services.Configure<JsonOptions>(options =>
+        {
+            options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+            options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+            options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+        });
+
+        builder.Services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+                policy
+                    .SetIsOriginAllowed(origin =>
+                    {
+                        if (!Uri.TryCreate(origin, UriKind.Absolute, out Uri? uri))
+                        {
+                            return false;
+                        }
+
+                        if (uri.Host == "localhost" || uri.Host == "127.0.0.1")
+                        {
+                            return true;
+                        }
+
+                        return uri.Host == "pluscosmic.dev" || uri.Host.EndsWith(".pluscosmic.dev");
+                    })
+                    .AllowAnyMethod()
+                    .AllowCredentials()
+                    .AllowAnyHeader());
+        });
+
+        // Shared services
+        builder.Services.AddSingleton<WhitelistService>();
+        builder.Services.AddSingleton<DiscordRoleMapping>();
+        builder.Services.AddScoped<DiscordStatements>();
+        builder.Services.AddScoped<GameCategoryStatements>();
+
+        // Clips services
+        builder.Services.AddScoped<ClipsStatements>();
+        builder.Services.AddScoped<ClipsBackfillStatements>();
+        builder.Services.AddScoped<PlaylistStatements>();
+        builder.Services.AddScoped<ClipService>();
+        builder.Services.AddScoped<ClipsBackfillService>();
+        builder.Services.AddScoped<PlaylistService>();
+        builder.Services.AddScoped<BunnyService>();
+        builder.Services.AddScoped<FFmpegService>();
+
+        // Games services
+        builder.Services.AddScoped<IgdbService>();
+        builder.Services.AddScoped<GameCategoryService>();
+
+        // ApexLegends services
+        builder.Services.AddScoped<ApexStatements>();
+        builder.Services.AddScoped<MapService>();
+        builder.Services.AddScoped<IApexMapCacheService, ApexMapCacheService>();
+        builder.Services.AddScoped<IApexDetectionQueueService, ApexDetectionQueueService>();
+
+        // Background services
+        builder.Services.AddHostedService<ClipStatusRefreshService>();
+        builder.Services.AddHostedService<MapRefreshService>();
+        builder.Services.AddHostedService<ApexDetectionBackgroundService>();
+    }
+
+    public static void RegisterDatabase(this WebApplicationBuilder builder)
+    {
+        string? connectionString = builder.Configuration.GetConnectionString("DatabaseConnectionString")
+                                   ?? builder.Configuration["DatabaseConnectionString"];
+
+        string? redisConnectionString = builder.Configuration.GetConnectionString("RedisConnectionString")
+                                        ?? builder.Configuration["RedisConnectionString"]
+                                        ?? "localhost:6379";
+
+        NpgsqlDataSourceBuilder dataSourceBuilder = new(connectionString ??
+            "Host=localhost;Database=nucleus_db;Username=nucleus_user;Password=dummy");
+        NpgsqlDataSource dataSource = dataSourceBuilder.Build();
+
+        builder.Services.AddSingleton(dataSource);
+        builder.Services.AddScoped(_ => dataSource.CreateConnection());
+
+        builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect($"{redisConnectionString},abortConnect=false"));
+
+        IHealthChecksBuilder healthChecksBuilder = builder.Services.AddHealthChecks();
+
+        if (!string.IsNullOrEmpty(connectionString))
+        {
+            healthChecksBuilder.AddNpgSql(
+                connectionString,
+                name: "database",
+                timeout: TimeSpan.FromSeconds(3),
+                tags: ["ready"]);
+        }
+    }
+
+    public static void ConfigureDiscordAuth(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = "Discord";
+            })
+            .AddCookie(options =>
+            {
+                options.Cookie.Name = "pcdash.auth";
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.ExpireTimeSpan = TimeSpan.FromDays(7);
+                options.SlidingExpiration = true;
+
+                options.Events = new CookieAuthenticationEvents
+                {
+                    OnRedirectToLogin = context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return Task.CompletedTask;
+                    },
+                    OnRedirectToAccessDenied = context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return Task.CompletedTask;
+                    }
+                };
+            })
+            .AddOAuth("Discord", options =>
+            {
+                options.AuthorizationEndpoint = "https://discord.com/api/oauth2/authorize";
+                options.TokenEndpoint = "https://discord.com/api/oauth2/token";
+                options.UserInformationEndpoint = "https://discord.com/api/users/@me";
+
+                options.ClientId = builder.Configuration["DiscordClientId"] ?? "";
+                options.ClientSecret = builder.Configuration["DiscordClientSecret"] ?? "";
+
+                options.CallbackPath = new PathString("/auth/discord/callback");
+
+                options.Scope.Add("identify");
+
+                options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+                options.ClaimActions.MapJsonKey(ClaimTypes.Name, "username");
+                options.ClaimActions.MapJsonKey("urn:discord:avatar", "avatar");
+                options.ClaimActions.MapJsonKey("urn:discord:global_name", "global_name");
+
+                options.Events = new OAuthEvents
+                {
+                    OnCreatingTicket = async context =>
+                    {
+                        HttpRequestMessage request = new(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                        request.Headers.Authorization =
+                            new AuthenticationHeaderValue("Bearer", context.AccessToken);
+
+                        HttpResponseMessage response = await context.Backchannel.SendAsync(request);
+                        response.EnsureSuccessStatusCode();
+
+                        JsonDocument user = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+                        context.RunClaimActions(user.RootElement);
+                    }
+                };
+
+                options.SaveTokens = true;
+            });
+
+        builder.Services.AddAuthorization();
+    }
+}
+
+// Make Program class public for test access (in global namespace for WebApplicationFactory)
+public partial class Program { }
