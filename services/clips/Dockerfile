@@ -1,5 +1,5 @@
 # Stage 1: Build Frontend
-FROM oven/bun:1.3 AS frontend-build
+FROM oven/bun:1.3.5 AS frontend-build
 WORKDIR /build
 
 # Copy workspace files for dependency resolution
