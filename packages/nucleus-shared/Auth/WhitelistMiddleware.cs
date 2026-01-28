@@ -21,7 +21,7 @@ public class WhitelistMiddleware
         _whitelistService = whitelistService;
         _logger = logger;
 
-        string[] defaultBypassPaths = ["/health", "/auth", "/webhooks", "/apex-legends"];
+        string[] defaultBypassPaths = ["/health", "/auth", "/webhooks", "/apex-legends", "/index.html", "/assets", "/manifest.json", "/favicon"];
         _bypassPaths = new HashSet<string>(
             bypassPaths?.Any() == true ? bypassPaths : defaultBypassPaths,
             StringComparer.OrdinalIgnoreCase);
@@ -30,6 +30,13 @@ public class WhitelistMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         string path = context.Request.Path.Value ?? "";
+
+        // Allow root path (SPA entry point)
+        if (string.IsNullOrEmpty(path) || path == "/")
+        {
+            await _next(context);
+            return;
+        }
 
         // Skip whitelist check for bypass paths
         if (_bypassPaths.Any(bp => path.StartsWith(bp, StringComparison.OrdinalIgnoreCase)))
