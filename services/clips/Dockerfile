@@ -6,6 +6,7 @@ WORKDIR /build
 COPY package.json bun.lock ./
 COPY packages/ ./packages/
 COPY apps/ ./apps/
+COPY services/minecraft/frontend/ ./services/minecraft/frontend/
 COPY services/clips/frontend/ ./services/clips/frontend/
 
 # Install and build
