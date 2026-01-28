@@ -33,7 +33,13 @@ import {
   getBackupStatus,
   triggerBackupSync,
 } from '@repo/shared/services/minecraft';
-import type { BackupFileInfo } from '@repo/nucleus-api-client';
+
+// BackupFileInfo is not properly exported from the API client due to OpenAPI spec generation
+interface BackupFileInfo {
+  path: string;
+  size: number;
+  lastModified: Date;
+}
 
 export const Route = createFileRoute('/servers/$serverId/backups')({
   component: BackupsPage,
