@@ -5,6 +5,7 @@ WORKDIR /build
 # Copy workspace files for dependency resolution
 COPY package.json bun.lock ./
 COPY packages/ ./packages/
+COPY apps/ ./apps/
 COPY services/minecraft/frontend/ ./services/minecraft/frontend/
 
 # Install and build
