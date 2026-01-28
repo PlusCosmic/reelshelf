@@ -1,7 +1,6 @@
 import { Button, type ButtonProps } from "@mantine/core";
 import { DiscordIcon } from "@mantinex/dev-icons";
 import classes from "./LoginButton.module.scss";
-import { apiConfig } from "@repo/shared/api-config";
 import React from "react";
 
 export default function LoginButton() {
@@ -22,7 +21,8 @@ export default function LoginButton() {
       return;
     }
 
-    window.location.href = `${apiConfig.baseUrl}/auth/discord/login?returnUrl=${encodeURIComponent(currentUrl)}`;
+    // Auth endpoints are at root level (not under /api) for OAuth callback compatibility
+    window.location.href = `/auth/discord/login?returnUrl=${encodeURIComponent(currentUrl)}`;
   }
 
   return <DiscordButton onClick={handleLogin}>Log in with Discord</DiscordButton>;
