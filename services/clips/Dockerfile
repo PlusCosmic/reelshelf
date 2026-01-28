@@ -1,4 +1,5 @@
 # Stage 1: Build Frontend
+# Cache bust: 2026-01-29-001
 FROM oven/bun:1.3.5 AS frontend-build
 WORKDIR /build
 
