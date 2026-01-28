@@ -36,6 +36,10 @@ builder.ConfigureDiscordAuth();
 WebApplication app = builder.Build();
 
 app.UseHttpsRedirection();
+
+// Static file serving for SPA - must be before auth
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseExceptionHandler();
 app.UseCors();
 app.UseAuthentication();
@@ -43,9 +47,6 @@ app.UseAuthorization();
 app.UseMiddleware<WhitelistMiddleware>();
 app.UseAuthenticatedUserResolution();
 
-// Static file serving for SPA
-app.UseDefaultFiles();
-app.UseStaticFiles();
 
 // Auth endpoints stay at root level (not under /api) for OAuth callback compatibility
 app.MapAuthEndpoints(builder.Configuration);
