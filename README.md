@@ -1,40 +1,46 @@
 # Plus Cosmic Development
 
-A monorepo containing Plus Cosmic applications and shared packages, built with Turborepo and Vite.
+A Turborepo monorepo with full-stack services using .NET APIs and React frontends.
 
-## Applications
+## Services
 
-- **clips** - Video/media clip management application with TanStack Router
-- **home** - Homepage application with React Query and routing
+Each service contains an `api/` (C# .NET) and `frontend/` (React + Vite).
+
+- **clips** - Video clip management with resumable uploads, Apex Legends integration, and Bunny CDN
+- **minecraft** - Minecraft server tools with Monaco editor for configuration
 
 ## Packages
 
-- `@repo/nucleus-api-client` - Auto-generated API client for Nucleus backend
-- `@repo/shared` - Shared utilities and components
-- `@repo/ui` - UI component library
-- `@repo/eslint-config` - Shared ESLint configurations
-- `@repo/typescript-config` - Shared TypeScript configurations
+### TypeScript
+- `@repo/nucleus-api-client` - Auto-generated TypeScript client for Nucleus API
+- `@repo/shared` - Shared services and hooks
+- `@repo/ui` - Mantine-based UI components
+- `@repo/eslint-config` - ESLint configurations
+- `@repo/typescript-config` - TypeScript configurations
 
-## Development
+### .NET
+- `Nucleus.Shared` - Shared .NET library (Auth, Discord, Games)
 
-This monorepo uses:
-- [pnpm](https://pnpm.io/) for package management
-- [Turborepo](https://turbo.build/) for build orchestration
-- [Vite](https://vitejs.dev) for fast development and builds
-- [TypeScript](https://www.typescriptlang.org/) for type safety
+## Tech Stack
 
-### Commands
+**Frontend**: React 19, TanStack Router, TanStack Query, Mantine, Vite
+**Backend**: .NET, Entity Framework
+**Tooling**: Bun, Turborepo
+
+## Getting Started
 
 ```sh
-# Run all apps in development mode
-pnpm dev
+# Install frontend dependencies
+bun install
 
-# Build all apps and packages
-pnpm build
+# Run all frontends in development
+bun run dev
 
-# Lint all packages
-pnpm lint
+# Build all frontends
+bun run build
 
-# Format code
-pnpm format
+# Lint
+bun run lint
 ```
+
+For .NET APIs, use `dotnet run` from the respective `api/` directories.
