@@ -2,7 +2,7 @@
 node_modules
 .turbo
 *.log
-dist
+dist/
 dist-ssr
 *.local
 
@@ -35,3 +35,21 @@ packages/*/src/**/*.js
 
 # Local SSL certificates
 *.pem
+
+# .NET build outputs
+bin/
+obj/
+*.dll
+*.pdb
+*.exe
+*.cache
+*.deps.json
+
+# NuGet
+*.nupkg
+*.snupkg
+project.assets.json
+project.nuget.cache
+*.nuget.g.props
+*.nuget.g.targets
+*.nuget.dgspec.json
