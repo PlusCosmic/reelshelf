@@ -14,7 +14,7 @@ export function ScreenshotGallery({ screenshots }: ScreenshotGalleryProps) {
       <Title order={5} mb="sm">
         Screenshots
       </Title>
-      <Carousel withIndicators loop>
+      <Carousel withIndicators>
         {screenshots.map((src, i) => (
           <Carousel.Slide key={i}>
             <Image
