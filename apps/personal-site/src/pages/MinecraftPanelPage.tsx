@@ -13,6 +13,14 @@ import {
 import { IconArrowLeft, IconBrandGithub } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { projects } from "../data/projects";
+import { ScreenshotGallery } from "../components/ScreenshotGallery";
+import mcPanel1 from "../assets/mc-panel-1.png";
+import mcPanel2 from "../assets/mc-panel-2.png";
+import mcPanel3 from "../assets/mc-panel-3.png";
+import mcPanel4 from "../assets/mc-panel-4.png";
+import mcPanel5 from "../assets/mc-panel-5.png";
+
+const screenshots = [mcPanel1, mcPanel2, mcPanel3, mcPanel4, mcPanel5];
 
 const project = projects.find((p) => p.path === "/projects/minecraft-panel")!;
 
@@ -84,21 +92,7 @@ export function MinecraftPanelPage() {
 
       <Divider />
 
-      <Box
-        bg="var(--mantine-color-gray-light)"
-        p="xl"
-        style={{
-          borderRadius: "var(--mantine-radius-sm)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 200,
-        }}
-      >
-        <Text c="dimmed" size="sm">
-          Screenshot coming soon
-        </Text>
-      </Box>
+      <ScreenshotGallery screenshots={screenshots} />
     </Stack>
   );
 }

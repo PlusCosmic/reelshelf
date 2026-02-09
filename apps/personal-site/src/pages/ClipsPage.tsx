@@ -13,6 +13,12 @@ import {
 import { IconArrowLeft, IconBrandGithub } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { projects } from "../data/projects";
+import { ScreenshotGallery } from "../components/ScreenshotGallery";
+import clips1 from "../assets/clips-1.png";
+import clips2 from "../assets/clips-2.png";
+import clips3 from "../assets/clips-3.png";
+
+const screenshots = [clips1, clips2, clips3];
 
 const project = projects.find((p) => p.path === "/projects/clips")!;
 
@@ -84,21 +90,7 @@ export function ClipsPage() {
 
       <Divider />
 
-      <Box
-        bg="var(--mantine-color-gray-light)"
-        p="xl"
-        style={{
-          borderRadius: "var(--mantine-radius-sm)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 200,
-        }}
-      >
-        <Text c="dimmed" size="sm">
-          Screenshot coming soon
-        </Text>
-      </Box>
+      <ScreenshotGallery screenshots={screenshots} />
     </Stack>
   );
 }
