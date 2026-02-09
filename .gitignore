@@ -53,3 +53,6 @@ project.nuget.cache
 *.nuget.g.props
 *.nuget.g.targets
 *.nuget.dgspec.json
+
+# Claude docs
+CLAUDE-DOCS/
