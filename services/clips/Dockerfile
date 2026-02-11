@@ -11,7 +11,7 @@ COPY services/clips/frontend/ ./services/clips/frontend/
 
 # Install and build
 WORKDIR /build/services/clips/frontend
-RUN bun install --frozen-lockfile
+RUN bun install
 RUN cd /build/packages/nucleus-api-client && bun run build
 RUN bun run build
 
