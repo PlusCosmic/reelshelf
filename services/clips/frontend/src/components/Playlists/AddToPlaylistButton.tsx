@@ -23,6 +23,7 @@ import {
   IconPlus,
   IconVideo,
 } from "@tabler/icons-react";
+import { useNavigate } from "@tanstack/react-router";
 import { addClipsToPlaylist, fetchPlaylists } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
 import { useDisclosure } from "@mantine/hooks";
@@ -44,6 +45,7 @@ export function AddToPlaylistButton({
   const [opened, setOpened] = useState(false);
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Fetch all playlists
   const { data: playlists = [] } = useQuery({
@@ -103,7 +105,7 @@ export function AddToPlaylistButton({
   const handleViewAllPlaylists = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    window.location.href = '/playlists';
+    navigate({ to: '/playlists' });
     setOpened(false);
   };
 

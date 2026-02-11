@@ -1,9 +1,10 @@
+import { atom } from 'jotai';
 import { atomWithStorage } from 'jotai/utils';
 
 // Pagination atoms
 export const pageSizeAtom = atomWithStorage<number>('page-size', 20);
 export const pageAtom = atomWithStorage<number>('page', 1);
-export const totalPagesAtom = atomWithStorage<number>('total-pages', 1);
+export const totalPagesAtom = atom<number>(1);
 
 // Filter atoms
 export const searchQueryAtom = atomWithStorage<string>('search-query', '');

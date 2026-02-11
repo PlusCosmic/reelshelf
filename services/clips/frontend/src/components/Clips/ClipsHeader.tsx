@@ -101,6 +101,7 @@ export function ClipsHeader({
           variant={todayFilterActive ? "filled" : "light"}
           leftSection={<IconHours24 size={18} />}
           onClick={onToggleTodayFilter}
+          aria-label="Filter today's clips"
           radius="md"
           style={{
             background: todayFilterActive
@@ -118,6 +119,7 @@ export function ClipsHeader({
         </Button>
         <Button
           variant={filtersOpen ? "light" : "subtle"}
+          aria-label="Toggle filters"
           leftSection={<IconAdjustments size={18} />}
           rightSection={
             filtersOpen ? (

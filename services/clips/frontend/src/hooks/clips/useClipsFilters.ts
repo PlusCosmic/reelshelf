@@ -1,4 +1,5 @@
 import { useAtom } from 'jotai';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   endDateAtom,
   pageAtom,
@@ -18,6 +19,7 @@ export function useClipsFilters() {
   const [page, setPage] = useAtom(pageAtom);
   const [totalPages, setTotalPages] = useAtom(totalPagesAtom);
   const [searchQuery, setSearchQuery] = useAtom(searchQueryAtom);
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const [selectedTags, setSelectedTags] = useAtom(selectedTagsAtom);
   const [showUnviewed, setShowUnviewed] = useAtom(showUnviewedAtom);
   const [sortOrder, setSortOrder] = useAtom(sortOrderAtom);
@@ -31,7 +33,7 @@ export function useClipsFilters() {
 
   // Format query params
   const tagsParam = selectedTags.length > 0 ? selectedTags.join(',') : undefined;
-  const titleSearchParam = searchQuery.trim() || undefined;
+  const titleSearchParam = debouncedSearch.trim() || undefined;
 
   // Computed values
   const activeFilterCount = selectedTags.length + (showUnviewed ? 1 : 0) + (sortOrder !== undefined ? 1 : 0) + (startDate !== undefined ? 1 : 0) + (endDate !== undefined ? 1 : 0);

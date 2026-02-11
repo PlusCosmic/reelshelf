@@ -34,6 +34,7 @@ import {
   removeCollaborator,
 } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import type { PlaylistCollaborator } from "@repo/nucleus-api-client";
 import { useCurrentUser } from "@/hooks/queries.ts";
 
@@ -143,10 +144,13 @@ export function PlaylistCollaboratorsModal({
   };
 
   const handleRemoveCollaborator = (userId: string) => {
-    if (!confirm("Remove this collaborator from the playlist?")) {
-      return;
-    }
-    removeMutation.mutate(userId);
+    modals.openConfirmModal({
+      title: 'Remove Collaborator',
+      children: <Text size="sm">Remove this collaborator from the playlist?</Text>,
+      labels: { confirm: 'Remove', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => { removeMutation.mutate(userId); },
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

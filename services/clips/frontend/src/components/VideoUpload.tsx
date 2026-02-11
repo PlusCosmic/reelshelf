@@ -656,6 +656,7 @@ export function VideoUpload({ categoryId }: VideoUploadProps) {
       <ActionIcon
         variant="transparent"
         onClick={open}
+        aria-label="Upload clips"
         style={{
           color: "#00d4ff",
           transition: "all 0.2s ease",

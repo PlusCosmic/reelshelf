@@ -20,7 +20,7 @@ import {
   IconShare,
   IconTrash,
 } from "@tabler/icons-react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { apiConfig, downloadVideo } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
@@ -29,6 +29,8 @@ import { ApexMetadata } from "./ApexMetadata";
 import type { Clip } from "@repo/nucleus-api-client";
 import { useDeleteClip, useUserById } from "@/hooks/queries.ts";
 import {
+  formatDate,
+  formatDuration,
   getProcessingStatusMessage,
   isClipProcessing,
 } from "@/utils/format.ts";
@@ -43,29 +45,6 @@ export function ClipCard({ clip, categorySlug }: ClipCardProps) {
   const deleteClip = useDeleteClip();
   const navigate = useNavigate();
   const { data: clipOwner } = useUserById(clip.ownerId);
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -181,19 +160,12 @@ export function ClipCard({ clip, categorySlug }: ClipCardProps) {
           : "linear-gradient(135deg, rgba(15, 15, 25, 0.8) 0%, rgba(20, 20, 35, 0.7) 100%)",
       }}
     >
-      <Link
-        style={{ textDecoration: "none", color: "inherit" }}
-        to="/games/$slug/$clipId"
-        params={{
-          slug: categorySlug,
-          clipId: clip.clipId,
-        }}
+      <UnstyledButton
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={() => navigate({ to: '/games/$slug/$clipId', params: { slug: categorySlug, clipId: clip.clipId } })}
+        style={{ width: "100%" }}
       >
-        <UnstyledButton
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          style={{ width: "100%" }}
-        >
           <Group wrap="nowrap" gap="sm" align="center">
             {/* Thumbnail with overlay */}
             <Box pos="relative" style={{ flexShrink: 0 }}>
@@ -264,7 +236,7 @@ export function ClipCard({ clip, categorySlug }: ClipCardProps) {
                   NEW
                 </Badge>
               )}
-              {clip.video.length && !processing && (
+              {clip.video.length > 0 && !processing && (
                 <Badge
                   pos="absolute"
                   bottom={4}
@@ -460,8 +432,7 @@ export function ClipCard({ clip, categorySlug }: ClipCardProps) {
               </Tooltip>
             </Group>
           </Group>
-        </UnstyledButton>
-      </Link>
+      </UnstyledButton>
     </Card>
   );
 }

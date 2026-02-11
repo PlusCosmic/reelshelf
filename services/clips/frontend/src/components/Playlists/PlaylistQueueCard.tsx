@@ -116,7 +116,7 @@ export function PlaylistQueueCard({
                 {processingMessage}
               </Badge>
             )}
-            {clip.video.length && !processing && (
+            {clip.video.length > 0 && !processing && (
               <Badge
                 pos="absolute"
                 bottom={2}

@@ -66,17 +66,9 @@ export function ClipsEmptyState({
       <Text size="sm" c="dimmed" ta="center" maw={400} mb="xl">
         {hasFilters
           ? "Try adjusting your search or filter criteria to find more clips."
-          : "Start uploading your Apex Legends clips to build your collection. Your epic moments deserve to be remembered!"}
+          : "Start uploading clips to build your collection. Your best moments deserve to be remembered!"}
       </Text>
       {!hasFilters && <VideoUpload categoryId={categoryId} />}
-      <style>
-        {`
-          @keyframes pulse-ring {
-            0% { transform: scale(0.9); opacity: 1; }
-            100% { transform: scale(1.5); opacity: 0; }
-          }
-        `}
-      </style>
     </Box>
   );
 }

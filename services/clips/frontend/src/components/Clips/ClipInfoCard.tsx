@@ -117,7 +117,7 @@ export function ClipInfoCard({
                   {clipOwner.username}
                 </Text>
                 <Text c="dimmed" size="xs">
-                  {clip.video.dateUploaded.toDateString()}
+                  {new Date(clip.video.dateUploaded).toLocaleDateString()}
                 </Text>
               </Stack>
             )}

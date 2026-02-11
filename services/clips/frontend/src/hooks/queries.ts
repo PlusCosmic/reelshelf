@@ -172,14 +172,6 @@ export function useClips(params: ClipsParams) {
   });
 }
 
-/** @deprecated Use useClips instead */
-export const useApexClips = (
-  params: Omit<ClipsParams, "categoryId"> & { categoryId?: string },
-) => {
-  // This is a backwards-compatible shim - categoryId is now required
-  return useClips({ ...params, categoryId: params.categoryId ?? "" });
-};
-
 /**
  * Fetches a single clip by ID
  * Only enabled when clipId is provided
@@ -375,7 +367,7 @@ export function useDeleteClip() {
       // Remove clip from all clips list queries optimistically
       queryClient
         .getQueryCache()
-        .findAll({ queryKey: ["clips", "apex"] })
+        .findAll({ queryKey: ["clips"] })
         .forEach((query) => {
           const data = query.state.data as PagedClipsResponse | null;
           if (data?.clips) {

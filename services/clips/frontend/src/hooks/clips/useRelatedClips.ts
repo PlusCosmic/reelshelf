@@ -30,7 +30,7 @@ export function useRelatedClips(clipId: string, categoryId: string | undefined) 
   const { data: relatedClipsData, isLoading: loadingRelatedClips } = useClips({
     categoryId: categoryId ?? '',
     page: 1,
-    pageSize: 100, // Fetch more to ensure we get clips after current one
+    pageSize: 20, // Fetch enough to find current clip and get 5 related ones
     tags: tagsParam,
     titleSearch: titleSearchParam,
     unviewedOnly: showUnviewed,

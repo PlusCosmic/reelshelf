@@ -17,7 +17,7 @@ import {
   Card,
   Center,
   Group,
-  Image,
+
   Loader,
   ScrollArea,
   Stack,
@@ -40,8 +40,10 @@ import {
   IconVideo,
 } from "@tabler/icons-react";
 import { deletePlaylist, fetchPlaylists } from "@repo/shared";
+import { formatDate } from "@/utils/format.ts";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import { CreatePlaylistModal } from "./CreatePlaylistModal";
 import { CreateGamingSessionModal } from "./CreateGamingSessionModal";
 import { PlaylistCollaboratorsModal } from "./PlaylistCollaboratorsModal";
@@ -75,8 +77,6 @@ export function PlaylistsPage() {
 
   // Filter playlists based on search and tab
   const filteredPlaylists = playlists.filter((playlist) => {
-    // TODO: Filter by tab (need current user ID to implement)
-    // For now, show all playlists in all tabs
     return (
       searchQuery === "" ||
       playlist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -88,36 +88,35 @@ export function PlaylistsPage() {
     navigate({ to: `/playlists/$playlistId`, params: { playlistId } });
   };
 
-  const handleDeletePlaylist = async (
+  const handleDeletePlaylist = (
     playlistId: string,
     playlistName: string,
     e: React.MouseEvent,
   ) => {
     e.stopPropagation();
-
-    if (
-      !confirm(
-        `Are you sure you want to delete "${playlistName}"? This action cannot be undone.`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await deletePlaylist(playlistId);
-      notifications.show({
-        title: "Playlist deleted",
-        message: `"${playlistName}" has been deleted`,
-        color: "green",
-      });
-      refetch();
-    } catch (error) {
-      notifications.show({
-        title: "Error",
-        message: "Failed to delete playlist",
-        color: "red",
-      });
-    }
+    modals.openConfirmModal({
+      title: 'Delete Playlist',
+      children: <Text size="sm">Are you sure you want to delete "{playlistName}"? This action cannot be undone.</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await deletePlaylist(playlistId);
+          notifications.show({
+            title: 'Playlist deleted',
+            message: `"${playlistName}" has been deleted`,
+            color: 'green',
+          });
+          refetch();
+        } catch (error) {
+          notifications.show({
+            title: 'Error',
+            message: 'Failed to delete playlist',
+            color: 'red',
+          });
+        }
+      },
+    });
   };
 
   const handleSharePlaylist = (playlistId: string, e: React.MouseEvent) => {
@@ -130,20 +129,6 @@ export function PlaylistsPage() {
       title: "Link copied",
       message: "Playlist link copied to clipboard",
       color: "blue",
-    });
-  };
-
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
     });
   };
 
@@ -408,7 +393,7 @@ export function PlaylistsPage() {
                     e.stopPropagation();
                     setCollaboratorsPlaylist(playlist);
                   }}
-                  formatDate={formatDate}
+                  formatDate={(date) => formatDate(date.toString())}
                 />
               ))}
             </Stack>
@@ -490,18 +475,23 @@ function PlaylistCard({
     >
       <UnstyledButton style={{ width: "100%" }} onClick={onClick}>
         <Group wrap="nowrap" gap="lg" align="flex-start">
-          {/* Placeholder Thumbnail - would be first clip thumbnail in real implementation */}
           <Box pos="relative" style={{ flexShrink: 0 }}>
-            <Image
-              src="https://placehold.co/280x157/1a1b1e/white?text=Playlist"
+            <Box
               w={280}
               h={157}
-              radius="md"
               style={{
+                borderRadius: "var(--mantine-radius-md)",
+                background: "linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)",
+                border: "1px solid rgba(0, 212, 255, 0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 transition: "transform 0.2s ease",
                 transform: isHovered ? "scale(1.02)" : "scale(1)",
               }}
-            />
+            >
+              <IconVideo size={40} style={{ color: "#00d4ff", opacity: 0.3 }} />
+            </Box>
 
             {/* Clip Count Badge */}
             <Badge

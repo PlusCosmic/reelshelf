@@ -11,6 +11,7 @@ export function ClipsSearchBar({ searchQuery, onSearchChange }: ClipsSearchBarPr
     <TextInput
       size="lg"
       radius="xl"
+      aria-label="Search clips"
       placeholder="Search clips by title, tags, or description..."
       leftSection={<IconSearch size={20} style={{ color: '#00d4ff' }} />}
       value={searchQuery}

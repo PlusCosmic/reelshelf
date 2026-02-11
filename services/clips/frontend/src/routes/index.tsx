@@ -200,15 +200,6 @@ function App() {
         </Stack>
       )}
 
-      {/* CSS Animations */}
-      <style>
-        {`
-          @keyframes pulse-ring {
-            0% { transform: scale(0.9); opacity: 1; }
-            100% { transform: scale(1.5); opacity: 0; }
-          }
-        `}
-      </style>
     </Box>
   );
 }

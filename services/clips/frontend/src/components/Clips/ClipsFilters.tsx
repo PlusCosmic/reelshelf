@@ -147,6 +147,8 @@ export function ClipsFilters({
                       size="lg"
                       radius="md"
                       variant={isSelected ? "filled" : "light"}
+                      role="button"
+                      tabIndex={0}
                       style={{
                         cursor: 'pointer',
                         textTransform: 'none',
@@ -162,6 +164,7 @@ export function ClipsFilters({
                         boxShadow: isSelected ? '0 0 15px rgba(168, 85, 247, 0.4)' : 'none',
                       }}
                       onClick={() => onToggleTag(tag)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleTag(tag); } }}
                     >
                       {tag}
                     </Badge>

@@ -145,21 +145,6 @@ export function SettingsPage() {
           </Stack>
         </Card>
 
-        {/* Placeholder for future settings sections */}
-        <Card
-          radius="lg"
-          p="lg"
-          style={{
-            background: "rgba(255, 255, 255, 0.02)",
-            border: "1px dashed rgba(255, 255, 255, 0.1)",
-          }}
-        >
-          <Stack align="center" gap="xs" py="md">
-            <Text size="sm" c="dimmed" ta="center">
-              More settings coming soon...
-            </Text>
-          </Stack>
-        </Card>
       </Stack>
     </Container>
   );

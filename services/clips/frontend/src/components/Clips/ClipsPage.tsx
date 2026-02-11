@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, Card, Stack } from "@mantine/core";
 import { ClipsHeader } from "./ClipsHeader";
 import { ClipsSearchBar } from "./ClipsSearchBar";
@@ -125,9 +125,11 @@ export function ClipsPage({
   const totalClips = clipsData?.totalClips || 0;
 
   // Update totalPages atom when data changes
-  if (clipsData && clipsData.totalPages !== totalPages) {
-    setTotalPages(clipsData.totalPages);
-  }
+  useEffect(() => {
+    if (clipsData && clipsData.totalPages !== totalPages) {
+      setTotalPages(clipsData.totalPages);
+    }
+  }, [clipsData?.totalPages]);
 
   const isLoading = isLoadingUser || isLoadingClips;
 
@@ -201,18 +203,6 @@ export function ClipsPage({
           />
         )}
       </Stack>
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 }

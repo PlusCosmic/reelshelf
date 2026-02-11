@@ -82,7 +82,7 @@ export function SidebarClipCard({ clip, categorySlug }: SidebarClipCardProps) {
                 PROCESSING
               </Badge>
             )}
-            {clip.video.length && !processing && (
+            {clip.video.length > 0 && !processing && (
               <Badge
                 pos="absolute"
                 bottom={4}

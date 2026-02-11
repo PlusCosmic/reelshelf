@@ -185,22 +185,6 @@ export function CreatePlaylistModal({
           />
         </Stack>
 
-        {/* TODO: Collaborators section - needs user search API */}
-        {/* <Stack gap="sm">
-          <Group gap="xs">
-            <IconUsers size={18} />
-            <Text fw={600} size="sm">
-              Invite Collaborators
-            </Text>
-            <Badge size="sm" variant="light" color="blue">
-              Optional
-            </Badge>
-          </Group>
-          <Text size="xs" c="dimmed">
-            Collaborators can add clips, invite others, and manage the playlist
-          </Text>
-        </Stack> */}
-
         {/* Initial Clips Display */}
         {selectedClipIds.length > 0 && (
           <Stack gap="sm">

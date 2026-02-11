@@ -20,6 +20,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useNavigate } from "@tanstack/react-router";
 import { fetchPlaylistById, removeClipFromPlaylist } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import { PlaylistCollaboratorsModal } from "./PlaylistCollaboratorsModal";
 import { PlaylistQueueCard } from "./PlaylistQueueCard";
 import { useClip } from "@/hooks/queries.ts";
@@ -69,12 +70,13 @@ export function PlaylistQueueSidebar({
 
   const handleRemoveClip = (clipId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-
-    if (!confirm("Remove this clip from the playlist?")) {
-      return;
-    }
-
-    removeClipMutation.mutate({ playlistId, clipId });
+    modals.openConfirmModal({
+      title: 'Remove Clip',
+      children: <Text size="sm">Remove this clip from the playlist?</Text>,
+      labels: { confirm: 'Remove', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => { removeClipMutation.mutate({ playlistId, clipId }); },
+    });
   };
 
   const progressPercentage = playlist?.clips.length

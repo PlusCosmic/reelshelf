@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAddTag, useRemoveTag, useTopTags } from '../queries';
 import type { Clip } from '@repo/nucleus-api-client';
 
 export function useClipFormState(clip: Clip | null | undefined) {
   const [tagsValue, setTagsValue] = useState<Array<string>>([]);
   const [titleValue, setTitleValue] = useState<string>("");
+  const isInitializing = useRef(true);
 
   const { data: topTagsData } = useTopTags();
   const topTags = topTagsData?.map((t) => t.name.toLowerCase()) || [];
@@ -15,14 +16,20 @@ export function useClipFormState(clip: Clip | null | undefined) {
   // Initialize form values when clip loads
   useEffect(() => {
     if (clip) {
+      isInitializing.current = true;
       setTagsValue(clip.tags);
       setTitleValue(clip.video.title);
+      // Allow the state update to flush before enabling sync
+      requestAnimationFrame(() => {
+        isInitializing.current = false;
+      });
     }
   }, [clip]);
 
   // Sync tags when they change
   useEffect(() => {
     if (!clip) return;
+    if (isInitializing.current) return;
 
     const current = new Set(clip.tags);
     const nextLower = tagsValue.map((t) => t.toLowerCase());
