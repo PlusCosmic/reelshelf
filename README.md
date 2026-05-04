@@ -48,7 +48,30 @@ bun run test
 
 # Build .NET APIs
 bun run build:api
+
+# Apply pending database migrations locally
+bun run migrate
 ```
 
 For .NET APIs, use `dotnet run` from the respective `services/*/api/` directories.
-Database schema changes live in `migrations/` and should be applied in filename order.
+
+## Database Migrations
+
+Database schema changes are applied by the explicit Evolve runner in `tools/Nucleus.Migrations`.
+The APIs do not run migrations during startup. The clips Docker Compose stack owns the one-shot migration service, which should be deployed before or alongside API services that depend on the shared database.
+
+For a new empty database, run:
+
+```sh
+DatabaseConnectionString="Host=...;Database=...;Username=...;Password=..." bun run migrate
+```
+
+For the first deployment to an existing production database that already has the current schema, run this once:
+
+```sh
+DatabaseConnectionString="Host=...;Database=...;Username=...;Password=..." bun run migrate:adopt-existing
+```
+
+Adoption records the existing database as being at migration `V16` and does not execute the baseline SQL. The baseline starts at `V16` to avoid conflicts with the legacy backend's Evolve migrations `V1` through `V15`. Normal `bun run migrate` will refuse to touch a non-empty database that has no Evolve changelog so the baseline cannot be accidentally replayed against production.
+
+If the database already has the legacy Evolve `changelog`, normal migration continues from `V16` without requiring the old `V1`-`V15` SQL files in this split repo.

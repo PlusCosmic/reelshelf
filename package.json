@@ -9,6 +9,8 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "build:api": "dotnet build Nucleus.sln --disable-build-servers -maxcpucount:1",
+    "migrate": "dotnet run --project tools/Nucleus.Migrations --",
+    "migrate:adopt-existing": "dotnet run --project tools/Nucleus.Migrations -- --adopt-existing",
     "generate:openapi": "ASPNETCORE_ENVIRONMENT=OpenApi dotnet build services/clips/api/Nucleus.Clips.csproj /p:OpenApiGenerateDocumentsOnBuild=true --disable-build-servers && ASPNETCORE_ENVIRONMENT=OpenApi dotnet build services/minecraft/api/Nucleus.Minecraft.csproj /p:OpenApiGenerateDocumentsOnBuild=true --disable-build-servers && node scripts/merge-openapi.mjs",
     "generate:api-client": "bun run generate:openapi && bun run generate --cwd packages/nucleus-api-client && bun run build --cwd packages/nucleus-api-client",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""

@@ -86,6 +86,9 @@ bun run lint
 # Format code
 bun run format
 
+# Apply database migrations explicitly
+bun run migrate
+
 # Individual frontend development
 cd services/clips/frontend
 bun run dev
@@ -99,6 +102,12 @@ bun run dev
 # Install a package in a specific workspace
 bun add <package> --cwd services/<service-name>/frontend
 ```
+
+## Database Migrations
+
+Database migrations live in `tools/Nucleus.Migrations/db/migrations` and are applied with the explicit Evolve runner. Do not add migration execution to API startup.
+
+The consolidated baseline is `V16` because the legacy combined backend used Evolve versions `V1` through `V15`. For first deployment to an existing production database with no Evolve changelog, use `bun run migrate:adopt-existing` once so the baseline is recorded without executing its SQL.
 
 ## Testing
 

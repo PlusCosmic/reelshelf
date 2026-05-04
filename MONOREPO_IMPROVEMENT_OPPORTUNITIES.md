@@ -49,17 +49,36 @@ Align React, Vite, Mantine, TanStack, TypeScript, ESLint, and Tabler versions ac
 
 This repo has several domains: clips, Minecraft, shared .NET auth, shared frontend packages, generated client, and personal site. Lightweight ownership docs would help future work avoid accidental cross-domain regressions.
 
+The current backend split should be documented as a shared Nucleus database plus feature APIs, not as independently owned service databases. Shared identity/auth/schema concerns should have one explicit owner even while clips and Minecraft remain separate runtime APIs.
+
 ## Backend Architecture
 
-### Introduce migrations as a first-class package
+### Treat migrations as the shared database owner
 
-Use a migrations tool such as DbUp, FluentMigrator, Flyway, or plain versioned SQL scripts. Keep schema, indexes, seed data, and rollback strategy under version control.
+The repo now has a first-class migration runner in `tools/Nucleus.Migrations`. Keep it as the single owner of schema changes for the shared Nucleus PostgreSQL database.
 
-This is the highest-leverage backend improvement after fixing hard workflow breakage.
+Do not add migrations to API startup. Do not let both feature API stacks independently run the same migration job. Deployment should have one explicit migration step/container before starting code that depends on the schema.
+
+Future migration work should focus on:
+
+- adding small forward-only migrations after the current `V16` baseline
+- keeping seed data optional and environment-safe
+- documenting production adoption/rollback procedures
+- making local dev database bootstrap use the same runner
+
+This keeps the current split practical without pretending clips and Minecraft have independent database ownership.
+
+### Define the core backend boundary before adding a core service
+
+The split APIs still share auth, `discord_user`, roles/permissions, game categories, and migrations. That is acceptable for now if the repo explicitly treats these as shared Nucleus core concerns owned by `packages/nucleus-shared` and `tools/Nucleus.Migrations`.
+
+Do not create a third runtime `Nucleus.Core.Api` just to tidy ownership. It becomes worthwhile only if auth/user/role APIs need independent deployment, centralized admin UI, token issuance, or more apps start depending on the same identity surface. Until then, prefer a clear shared library plus migration-owner boundary over an extra service hop.
 
 ### Extract shared API startup patterns
 
 Clips and Minecraft duplicate CORS, cookie/OAuth configuration, JSON options, OpenAPI schema transformer, health checks, whitelist/user middleware, and static SPA hosting. A shared extension package could reduce drift while keeping app-specific services explicit.
+
+This should not hide ownership of runtime services. Shared startup extensions should cover cross-cutting mechanics; feature-specific registrations should stay in each API.
 
 ### Move config to typed options with validation
 
@@ -87,7 +106,7 @@ Title search, tag filtering, date range, viewed/unviewed, ordering, and paginati
 
 ### Add database indexes intentionally
 
-Once migrations exist, add indexes for common access paths:
+Use the shared migration runner to add indexes for common access paths:
 
 - clips by owner/category/created date
 - clip views by user/clip
@@ -96,6 +115,8 @@ Once migrations exist, add indexes for common access paths:
 - playlists by creator/collaborator
 - Minecraft servers by owner/container name
 - Discord users by Discord ID and username search
+
+Index migrations should be explicit, small, and reviewed for production lock/latency risk before deployment.
 
 ### Normalize timestamps
 
@@ -227,11 +248,12 @@ Add a short deployment doc covering:
 
 - where each service runs
 - which container image is authoritative
+- which deploy step owns shared database migrations
 - expected environment variables
 - network names
 - volumes
 - data-protection key storage
-- database migrations
+- how feature APIs are ordered after the shared migration step
 - backup restore procedure
 
 ## Documentation
@@ -250,6 +272,9 @@ Capture decisions that will matter later:
 
 - why Bun/Turbo
 - why Dapper instead of EF
+- why there is one shared Nucleus database today
+- why migrations are a separate tool rather than API startup code
+- why shared auth/core concerns remain a library/tooling boundary rather than a third runtime service for now
 - why generated `typescript-fetch`
 - why cookie auth and Discord OAuth
 - why combined service containers
@@ -287,7 +312,7 @@ Root `format` writes files. Add `format:check` for CI and pre-commit use.
 
 Make local startup predictable:
 
-- database setup
+- local PostgreSQL setup using `tools/Nucleus.Migrations`
 - Redis setup for clips
 - Discord OAuth callback URLs
 - local cert generation for `local.pluscosmic.dev`
@@ -301,8 +326,8 @@ Keep `.env.example` files for each service/frontend. Include safe placeholder va
 ## Suggested Short-Term Roadmap
 
 1. Fix broken lint/Docker/docs paths so the repo's advertised commands are trustworthy.
-2. Add migrations and a local dev database bootstrap.
+2. Finish the local dev database bootstrap around the shared migration runner.
 3. Add the first backend guardrail tests around auth, permissions, file paths, Docker provisioning, and webhooks.
 4. Wire OpenAPI generation and client regeneration into a repeatable script.
 5. Consolidate frontend API/error/WebSocket utilities.
-6. Add deployment docs and data-protection key persistence.
+6. Add deployment docs that make the single migration owner and shared database model explicit.
