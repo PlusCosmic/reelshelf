@@ -207,9 +207,6 @@ jobs:
           if os.environ["BUMP_CLIPS"] == "true":
               bumps.append(("services/clips.yml", "clips", f"ghcr.io/pluscosmic/clips:sha-{sha}"))
 
-          if os.environ["BUMP_MIGRATIONS"] == "true":
-              bumps.append(("services/clips.yml", "nucleus-migrations", f"ghcr.io/pluscosmic/nucleus-migrations:sha-{sha}"))
-
           if os.environ["BUMP_GAME_SERVER_PANEL"] == "true":
               bumps.append(("services/game-server-panel.yml", "game-server-panel", f"ghcr.io/pluscosmic/game-server-panel:sha-{sha}"))
 
