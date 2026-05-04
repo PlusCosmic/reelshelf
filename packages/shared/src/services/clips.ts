@@ -22,7 +22,7 @@ export interface FetchClipsParams {
 
 export async function fetchClips(
   params: FetchClipsParams
-): Promise<PagedClipsResponse | null> {
+): Promise<PagedClipsResponse> {
   const { categoryId, page, pageSize, tags, titleSearch, unviewedOnly, sortOrder, startDate, endDate } = params;
   const api = new ClipsEndpointsApi(
     new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
@@ -41,9 +41,6 @@ export async function fetchClips(
     sortOrder,
     startDate,
     endDate,
-  }).catch((error) => {
-    console.error('Failed to fetch clips:', { ...params, error });
-    return null;
   });
 }
 

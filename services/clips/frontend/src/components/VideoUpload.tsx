@@ -68,7 +68,6 @@ export function VideoUpload({ categoryId }: VideoUploadProps) {
       // Track which items we've started in this execution to avoid duplicates
       const startedInThisRun = new Set<string>();
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         // Count both 'processing' and 'uploading' towards the concurrent limit
         const activeUploads = queue.filter(
@@ -229,7 +228,6 @@ export function VideoUpload({ categoryId }: VideoUploadProps) {
 
   function cancel(id: string) {
     const up = uploadsRef.current[id];
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (up) {
       up.abort(true);
       delete uploadsRef.current[id];

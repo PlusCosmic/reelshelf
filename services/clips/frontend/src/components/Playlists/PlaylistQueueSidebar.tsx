@@ -237,7 +237,7 @@ export function PlaylistQueueSidebar({
                     </Stack>
                   </Center>
                 )}
-                {playlist.clips.map((playlistClip: any, index: number) => (
+                {playlist.clips.map((playlistClip, index) => (
                   <PlaylistQueueCardWrapper
                     key={playlistClip.id || playlistClip.clipId}
                     clipId={playlistClip.clipId}

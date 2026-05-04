@@ -1,11 +1,11 @@
 import { useAtom } from 'jotai';
 import {
+  endDateAtom,
   searchQueryAtom,
   selectedTagsAtom,
   showUnviewedAtom,
   sortOrderAtom,
   startDateAtom,
-  endDateAtom,
 } from '../../atoms/clipsFilters';
 import { useClips } from '../queries';
 

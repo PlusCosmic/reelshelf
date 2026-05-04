@@ -359,10 +359,10 @@ export function useDeleteClip() {
       await queryClient.cancelQueries({ queryKey: ["clips"] });
 
       // Snapshot previous values
-      const previousClipsQueries: Array<{
+      const previousClipsQueries: {
         queryKey: ReadonlyArray<unknown>;
         data: unknown;
-      }> = [];
+      }[] = [];
 
       // Remove clip from all clips list queries optimistically
       queryClient

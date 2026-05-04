@@ -10,7 +10,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepack": "pnpm run build"
+    "typecheck": "tsc --noEmit",
+    "prepack": "bun run build",
+    "generate": "openapi-generator-cli generate -i Nucleus.json -g typescript-fetch -o . --global-property apiDocs=false,modelDocs=false --additional-properties=supportsES6=true,typescriptThreePlus=true,withSeparateModelsAndApi=true,apiPackage=apis,modelPackage=models"
   },
   "dependencies": {
     "@openapitools/openapi-generator-cli": "^2.25.0",

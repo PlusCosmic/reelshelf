@@ -31,61 +31,125 @@ public class ClipsStatements(NpgsqlConnection connection)
         return await connection.QuerySingleAsync<ClipCollectionRow>(sql, new { ownerId, collectionId, gameCategoryId });
     }
 
-    public async Task<List<ClipWithTagsRow>> GetClipsWithTagsByOwnerAndCategory(Guid ownerId, Guid gameCategoryId,
-        List<string>? tags = null)
+    public async Task<PagedClipWithTagsRows> GetClipsWithTagsByOwnerAndCategory(
+        Guid ownerId,
+        Guid gameCategoryId,
+        List<string>? tags = null,
+        string? titleSearch = null,
+        DateTimeOffset? startDate = null,
+        DateTimeOffset? endDate = null,
+        bool unviewedOnly = false,
+        ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
+        Guid? viewedByUserId = null,
+        int limit = 50,
+        int offset = 0)
     {
-        StringBuilder sql = new("""
-            SELECT
-                c.id,
-                c.owner_id,
-                c.video_id,
-                c.game_category_id,
-                c.md5_hash,
-                c.created_at,
-                c.title,
-                c.length,
-                c.thumbnail_file_name,
-                c.date_uploaded,
-                c.storage_size,
-                c.video_status,
-                c.encode_progress,
-                STRING_AGG(t.name, ',') as tag_names
-            FROM clip c
-            LEFT JOIN clip_tag ct ON c.id = ct.clip_id
-            LEFT JOIN tag t ON ct.tag_id = t.id
-            WHERE c.owner_id = @ownerId AND c.game_category_id = @gameCategoryId
+        DynamicParameters parameters = new();
+        parameters.Add("ownerId", ownerId);
+        parameters.Add("gameCategoryId", gameCategoryId);
+        parameters.Add("titleSearch", string.IsNullOrWhiteSpace(titleSearch) ? null : $"%{titleSearch}%");
+        parameters.Add("startDate", startDate);
+        parameters.Add("endDate", endDate);
+        parameters.Add("viewedByUserId", viewedByUserId);
+        parameters.Add("limit", limit);
+        parameters.Add("offset", offset);
+
+        StringBuilder where = new("""
+            c.owner_id = @ownerId
+            AND c.game_category_id = @gameCategoryId
+            AND (@titleSearch IS NULL OR c.title ILIKE @titleSearch)
+            AND (@startDate IS NULL OR c.created_at >= @startDate)
+            AND (@endDate IS NULL OR c.created_at <= @endDate)
             """);
 
-        // If tags filter is provided, add HAVING clause to filter by tags
+        // If a tags filter is provided, require exact tag-name matches through relational predicates.
         if (tags != null && tags.Any())
         {
-            sql.Append("""
-
-                GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_status, c.encode_progress
-                HAVING
-                """);
-
-            // For each tag, ensure it exists in the aggregated tag_names
-            List<string> conditions = tags.Select((_, i) => $"STRING_AGG(t.name, ',') LIKE @tag{i}").ToList();
-            sql.Append(" " + string.Join(" AND ", conditions));
-
-            DynamicParameters parameters = new();
-            parameters.Add("ownerId", ownerId);
-            parameters.Add("gameCategoryId", gameCategoryId);
             for (int i = 0; i < tags.Count; i++)
             {
-                parameters.Add($"tag{i}", $"%{tags[i]}%");
-            }
+                where.Append($"""
 
-            return (await connection.QueryAsync<ClipWithTagsRow>(sql.ToString(), parameters)).ToList();
+                    AND EXISTS (
+                        SELECT 1
+                        FROM clip_tag filter_ct
+                        INNER JOIN tag filter_t ON filter_ct.tag_id = filter_t.id
+                        WHERE filter_ct.clip_id = c.id AND filter_t.name = @tag{i}
+                    )
+                    """);
+                parameters.Add($"tag{i}", tags[i]);
+            }
         }
 
-        sql.Append("""
+        if (unviewedOnly)
+        {
+            where.Append("""
 
-            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_status, c.encode_progress
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM clip_view cv
+                    WHERE cv.clip_id = c.id AND cv.user_id = @viewedByUserId
+                )
             """);
+        }
 
-        return (await connection.QueryAsync<ClipWithTagsRow>(sql.ToString(), new { ownerId, gameCategoryId })).ToList();
+        string orderBy = sortOrder == ClipSortOrder.DateAscending
+            ? "created_at ASC, id ASC"
+            : "created_at DESC, id DESC";
+
+        string sql = $"""
+            WITH filtered AS (
+                SELECT
+                    c.id,
+                    c.owner_id,
+                    c.video_id,
+                    c.game_category_id,
+                    c.md5_hash,
+                    c.created_at,
+                    c.title,
+                    c.length,
+                    c.thumbnail_file_name,
+                    c.date_uploaded,
+                    c.storage_size,
+                    c.video_status,
+                    c.encode_progress
+                FROM clip c
+                WHERE {where}
+            ),
+            tagged AS (
+                SELECT
+                    f.id,
+                    f.owner_id,
+                    f.video_id,
+                    f.game_category_id,
+                    f.md5_hash,
+                    f.created_at,
+                    f.title,
+                    f.length,
+                    f.thumbnail_file_name,
+                    f.date_uploaded,
+                    f.storage_size,
+                    f.video_status,
+                    f.encode_progress,
+                    STRING_AGG(t.name, ',' ORDER BY t.name) as tag_names
+                FROM filtered f
+                LEFT JOIN clip_tag ct ON f.id = ct.clip_id
+                LEFT JOIN tag t ON ct.tag_id = t.id
+                GROUP BY f.id, f.owner_id, f.video_id, f.game_category_id, f.md5_hash, f.created_at, f.title, f.length, f.thumbnail_file_name, f.date_uploaded, f.storage_size, f.video_status, f.encode_progress
+            )
+            SELECT *
+            FROM tagged
+            ORDER BY {orderBy}
+            LIMIT @limit OFFSET @offset;
+
+            SELECT COUNT(*)
+            FROM clip c
+            WHERE {where};
+            """;
+
+        using SqlMapper.GridReader results = await connection.QueryMultipleAsync(sql, parameters);
+        List<ClipWithTagsRow> rows = (await results.ReadAsync<ClipWithTagsRow>()).ToList();
+        int totalCount = await results.ReadSingleAsync<int>();
+        return new PagedClipWithTagsRows(rows, totalCount);
     }
 
     public async Task<HashSet<Guid>> GetViewedClipIds(Guid userId, List<Guid> clipIds)
@@ -435,6 +499,8 @@ public class ClipsStatements(NpgsqlConnection connection)
         public int? VideoStatus { get; set; }
         public int? EncodeProgress { get; set; }
     }
+
+    public record PagedClipWithTagsRows(List<ClipWithTagsRow> Rows, int TotalCount);
 
     public class TopTagRow
     {

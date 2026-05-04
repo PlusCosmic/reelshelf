@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import Editor, { type Monaco } from '@monaco-editor/react';
+import Editor, { type Monaco, type OnMount } from '@monaco-editor/react';
 import {
   Box,
   Group,
@@ -62,7 +62,7 @@ export function MonacoFileEditor({ serverId, filePath, fileName }: MonacoFileEdi
   }, [filePath, editorContent, saveMutation]);
 
   // Keyboard shortcut for save (Ctrl+S / Cmd+S)
-  const handleEditorMount = useCallback((editor: any, monaco: Monaco) => {
+  const handleEditorMount = useCallback<OnMount>((editor, monaco: Monaco) => {
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       handleSave();
     });

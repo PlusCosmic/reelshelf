@@ -1,8 +1,8 @@
 import { Card, Group, Text, Stack, Badge, Box, ThemeIcon, ActionIcon } from '@mantine/core';
 import { IconServer2, IconUsers, IconArrowRight, IconTrash, IconPower } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { getServerStatus } from '@repo/shared/services/minecraft';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { deleteServer, getServerStatus } from '@repo/shared/services/minecraft';
 import type { MinecraftServer } from '@repo/nucleus-api-client';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
@@ -12,6 +12,7 @@ interface ServerCardProps {
 }
 
 export function ServerCard({ server }: ServerCardProps) {
+  const queryClient = useQueryClient();
   const { data: status } = useQuery({
     queryKey: ['minecraft', 'status', server.id],
     queryFn: () => getServerStatus(server.id!),
@@ -30,12 +31,21 @@ export function ServerCard({ server }: ServerCardProps) {
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
       onConfirm: async () => {
-        // TODO: Implement delete functionality
-        notifications.show({
-          title: 'Server Deleted',
-          message: `${server.name} has been deleted`,
-          color: 'red',
-        });
+        try {
+          await deleteServer(server.id!);
+          await queryClient.invalidateQueries({ queryKey: ['minecraft', 'servers'] });
+          notifications.show({
+            title: 'Server deleted',
+            message: `${server.name} has been deleted`,
+            color: 'red',
+          });
+        } catch (error) {
+          notifications.show({
+            title: 'Delete failed',
+            message: error instanceof Error ? error.message : 'Unable to delete server',
+            color: 'red',
+          });
+        }
       },
     });
   };

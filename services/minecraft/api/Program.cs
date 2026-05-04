@@ -6,6 +6,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -33,9 +34,12 @@ WebApplication app = builder.Build();
 
 app.UseHttpsRedirection();
 
-// Static file serving for SPA - must be before auth
-app.UseDefaultFiles();
-app.UseStaticFiles();
+// Static file serving for SPA - must be before auth when a frontend is published with the API.
+if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
 app.UseExceptionHandler();
 app.UseWebSockets(new WebSocketOptions
 {
@@ -56,8 +60,13 @@ RouteGroupBuilder apiGroup = app.MapGroup("/api");
 apiGroup.MapMinecraftEndpoints();
 apiGroup.MapUserEndpoints();
 
-// OpenAPI and health stay at root
-app.MapOpenApi();
+// OpenAPI is useful during development and explicit client-generation jobs, but should not be public by default.
+if (app.Environment.IsDevelopment() ||
+    app.Environment.IsEnvironment("OpenApi") ||
+    app.Configuration.GetValue<bool>("OpenApi:Public"))
+{
+    app.MapOpenApi();
+}
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     Predicate = _ => true,
@@ -70,8 +79,11 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     }
 }).AllowAnonymous();
 
-// SPA fallback - serve index.html for client-side routing
-app.MapFallbackToFile("index.html");
+// SPA fallback - serve index.html for client-side routing when frontend assets are present.
+if (File.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html")))
+{
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();
 
@@ -116,7 +128,11 @@ public static class BuilderExtensions
         builder.Services.AddSingleton<LogTailerService>();
         builder.Services.AddScoped<ConsoleWebSocketHandler>();
         builder.Services.AddScoped<BackupService>();
-        builder.Services.AddHostedService<BackupSyncBackgroundService>();
+        // Background services should not run during explicit OpenAPI document generation.
+        if (!builder.Environment.IsEnvironment("OpenApi"))
+        {
+            builder.Services.AddHostedService<BackupSyncBackgroundService>();
+        }
 
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
         builder.Services.AddProblemDetails();
@@ -127,27 +143,30 @@ public static class BuilderExtensions
             options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
         });
 
+        string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                                  ?? builder.Configuration.GetSection("Auth:AllowedReturnOrigins").Get<string[]>()
+                                  ?? [];
+
         builder.Services.AddCors(options =>
         {
-            options.AddDefaultPolicy(policy =>
-                policy
-                    .SetIsOriginAllowed(origin =>
-                    {
-                        if (!Uri.TryCreate(origin, UriKind.Absolute, out Uri? uri))
-                        {
-                            return false;
-                        }
+            options.AddDefaultPolicy(policyBuilder =>
+            {
+                if (allowedOrigins.Length > 0)
+                {
+                    policyBuilder.WithOrigins(allowedOrigins);
+                }
+                else if (builder.Environment.IsDevelopment())
+                {
+                    policyBuilder.SetIsOriginAllowed(origin =>
+                        Uri.TryCreate(origin, UriKind.Absolute, out Uri? uri) &&
+                        (uri.Host == "localhost" || uri.Host == "127.0.0.1"));
+                }
 
-                        if (uri.Host == "localhost" || uri.Host == "127.0.0.1")
-                        {
-                            return true;
-                        }
-
-                        return uri.Host == "pluscosmic.dev" || uri.Host.EndsWith(".pluscosmic.dev");
-                    })
+                policyBuilder
                     .AllowAnyMethod()
                     .AllowCredentials()
-                    .AllowAnyHeader());
+                    .AllowAnyHeader();
+            });
         });
     }
 
@@ -180,6 +199,12 @@ public static class BuilderExtensions
     {
         string? discordClientId = builder.Configuration["DiscordClientId"];
         string? discordClientSecret = builder.Configuration["DiscordClientSecret"];
+        string keysPath = builder.Configuration["DataProtection:KeysPath"]
+                          ?? Path.Combine(builder.Environment.ContentRootPath, "keys");
+
+        builder.Services.AddDataProtection()
+            .SetApplicationName("Nucleus.Minecraft")
+            .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
         builder.Services.AddAuthentication(options =>
             {

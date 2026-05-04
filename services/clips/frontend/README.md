@@ -26,16 +26,16 @@ A video/media clip management application built with React, TanStack Router, and
 
 ```bash
 # Start development server
-pnpm dev
+bun run dev
 
 # Build for production
-pnpm build
+bun run build
 
 # Preview production build
-pnpm preview
+bun run preview
 
 # Lint code
-pnpm lint
+bun run lint
 ```
 
 ## Environment Variables

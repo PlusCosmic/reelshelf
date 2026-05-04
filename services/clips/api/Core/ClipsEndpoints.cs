@@ -29,7 +29,7 @@ public static class ClipsEndpoints
             .RequirePermission(Permissions.AdminUsers);
     }
 
-    private static async Task<Ok<PagedClipsResponse>> GetVideosByCategory(
+    private static async Task<Results<Ok<PagedClipsResponse>, BadRequest<string>>> GetVideosByCategory(
         ClipService clipService,
         Guid categoryId,
         AuthenticatedUser user,
@@ -42,6 +42,16 @@ public static class ClipsEndpoints
         DateTimeOffset? startDate = null,
         DateTimeOffset? endDate = null)
     {
+        if (page < 1)
+        {
+            return TypedResults.BadRequest("Page must be greater than zero");
+        }
+
+        if (pageSize < 1 || pageSize > 100)
+        {
+            return TypedResults.BadRequest("Page size must be between 1 and 100");
+        }
+
         List<string>? tagList = tags?.ToList();
         return TypedResults.Ok(
             await clipService.GetClipsForCategory(categoryId, user.DiscordId, page, pageSize, tagList, titleSearch, unviewedOnly, sortOrder, startDate, endDate));

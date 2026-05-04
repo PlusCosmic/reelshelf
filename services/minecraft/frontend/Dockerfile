@@ -1,21 +1,20 @@
 # Build stage
-FROM oven/bun:alpine AS builder
+FROM oven/bun:1.3.9-alpine AS builder
 
 WORKDIR /app
 
 # Copy workspace config files
 COPY bun.lock package.json turbo.json ./
 
-# Copy all package.json files for dependency resolution (all apps needed for workspace resolution)
-COPY apps/minecraft/package.json ./apps/minecraft/
-COPY apps/clips/package.json ./apps/clips/
-COPY apps/home/package.json ./apps/home/
-COPY apps/dropzone/package.json ./apps/dropzone/
+# Copy package manifests for workspace dependency resolution
+COPY apps/personal-site/package.json ./apps/personal-site/
 COPY packages/nucleus-api-client/package.json ./packages/nucleus-api-client/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/typescript-config/package.json ./packages/typescript-config/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY services/clips/frontend/package.json ./services/clips/frontend/
+COPY services/minecraft/frontend/package.json ./services/minecraft/frontend/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
@@ -30,7 +29,7 @@ RUN bun turbo run build --filter=minecraft
 FROM nginx:alpine AS production
 
 # Copy built assets
-COPY --from=builder /app/apps/minecraft/dist /usr/share/nginx/html
+COPY --from=builder /app/services/minecraft/frontend/dist /usr/share/nginx/html
 
 # Copy nginx config for SPA routing
 RUN echo 'server { \

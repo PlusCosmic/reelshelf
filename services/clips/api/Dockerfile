@@ -1,21 +1,21 @@
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 # Copy project files for restore (leverages Docker layer caching)
-COPY ["Nucleus.Clips/Nucleus.Clips.csproj", "Nucleus.Clips/"]
-COPY ["Nucleus.Shared/Nucleus.Shared.csproj", "Nucleus.Shared/"]
-RUN dotnet restore "Nucleus.Clips/Nucleus.Clips.csproj"
+COPY ["services/clips/api/Nucleus.Clips.csproj", "services/clips/api/"]
+COPY ["packages/nucleus-shared/Nucleus.Shared.csproj", "packages/nucleus-shared/"]
+RUN dotnet restore "services/clips/api/Nucleus.Clips.csproj"
 # Copy all source code
-COPY ["Nucleus.Clips/", "Nucleus.Clips/"]
-COPY ["Nucleus.Shared/", "Nucleus.Shared/"]
+COPY ["services/clips/api/", "services/clips/api/"]
+COPY ["packages/nucleus-shared/", "packages/nucleus-shared/"]
 # Build
-WORKDIR "/src/Nucleus.Clips"
+WORKDIR "/src/services/clips/api"
 RUN dotnet build "Nucleus.Clips.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish

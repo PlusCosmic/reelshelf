@@ -1,8 +1,8 @@
 services:
   nucleus-clips:
     build:
-      context: ..
-      dockerfile: Nucleus.Clips/Dockerfile
+      context: ../../..
+      dockerfile: services/clips/Dockerfile
     container_name: nucleus-clips
     restart: unless-stopped
     expose:
@@ -28,6 +28,9 @@ services:
       IgdbClientSecret: ${IgdbClientSecret}
       # FFmpeg
       FFmpegOutputPath: ${FFmpegSharedPath:-/tmp/ffmpeg-downloads}
+      DataProtection__KeysPath: ${DataProtection__KeysPath:-/app/keys}
+    volumes:
+      - nucleus-clips-keys:/app/keys:rw
     networks:
       - dokploy-network
     healthcheck:
@@ -40,3 +43,6 @@ services:
 networks:
   dokploy-network:
     external: true
+
+volumes:
+  nucleus-clips-keys:

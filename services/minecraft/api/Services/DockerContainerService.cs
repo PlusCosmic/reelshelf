@@ -1,11 +1,13 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Nucleus.Minecraft.Models;
+using System.Text.RegularExpressions;
 
 namespace Nucleus.Minecraft.Services;
 
 public class DockerContainerService
 {
+    private static readonly Regex ContainerNamePattern = new("^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$", RegexOptions.Compiled);
     private readonly DockerClient _client;
     private readonly ILogger<DockerContainerService> _logger;
     private readonly string _networkName;
@@ -111,6 +113,9 @@ public class DockerContainerService
     {
         string volumeName = $"mc-{server.ContainerName}-data";
 
+        ValidateContainerName(server.ContainerName);
+        ValidateResourceLimits(server);
+
         _logger.LogInformation("Creating container {ContainerName} with volume {VolumeName}",
             server.ContainerName, volumeName);
 
@@ -167,13 +172,7 @@ public class DockerContainerService
                 Memory = server.RamLimit * 1024L * 1024L,
                 MemoryReservation = server.RamReservation * 1024L * 1024L,
                 NanoCPUs = (long)(server.CpuLimit * 1_000_000_000),
-                PortBindings = new Dictionary<string, IList<PortBinding>>
-                {
-                    ["25565/tcp"] = new List<PortBinding>
-                    {
-                        new() { HostPort = "25565" }
-                    }
-                }
+                PublishAllPorts = false
             }
         };
 
@@ -321,6 +320,32 @@ public class DockerContainerService
         }
 
         return env;
+    }
+
+    private static void ValidateContainerName(string containerName)
+    {
+        if (!ContainerNamePattern.IsMatch(containerName) || containerName.Contains("..", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Container name contains unsupported characters");
+        }
+    }
+
+    private static void ValidateResourceLimits(MinecraftServer server)
+    {
+        if (server.RamReservation < 512 || server.RamLimit < server.RamReservation)
+        {
+            throw new InvalidOperationException("RAM limits are invalid");
+        }
+
+        if (server.CpuReservation < 0 || server.CpuLimit <= 0 || server.CpuLimit < server.CpuReservation)
+        {
+            throw new InvalidOperationException("CPU limits are invalid");
+        }
+
+        if (server.MaxPlayers < 1 || server.MaxPlayers > 200)
+        {
+            throw new InvalidOperationException("Max players must be between 1 and 200");
+        }
     }
 
     #endregion

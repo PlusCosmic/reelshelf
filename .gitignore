@@ -1,8 +1,11 @@
 .DS_Store
 node_modules
+node_modules.stale-nobody/
 .turbo
 *.log
+core.*
 dist/
+dist.stale-nobody/
 dist-ssr
 *.local
 

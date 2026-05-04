@@ -124,7 +124,6 @@ function SettingsPage() {
       });
       form.resetDirty();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [server]);
 
   const updateMutation = useMutation({

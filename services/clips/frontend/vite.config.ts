@@ -12,6 +12,7 @@ const hasLocalCerts = fs.existsSync(keyPath) && fs.existsSync(certPath)
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  cacheDir: '../../../.cache/vite/clips',
   plugins: [
     tanstackRouter({
       target: 'react',

@@ -1,4 +1,5 @@
 using System.Net.WebSockets;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Nucleus.Minecraft.Data;
 using Nucleus.Minecraft.Models;
@@ -9,6 +10,8 @@ namespace Nucleus.Minecraft.Endpoints;
 
 public static class MinecraftEndpoints
 {
+    private static readonly Regex ContainerNamePattern = new("^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$", RegexOptions.Compiled);
+
     public static void MapMinecraftEndpoints(this IEndpointRouteBuilder app)
     {
         RouteGroupBuilder group = app.MapGroup("minecraft")
@@ -107,6 +110,15 @@ public static class MinecraftEndpoints
         if (string.IsNullOrWhiteSpace(request.ContainerName))
             return TypedResults.BadRequest("Container name cannot be empty");
 
+        string? validationError = ValidateServerRequest(
+            request.ContainerName,
+            request.CpuReservation,
+            request.CpuLimit,
+            request.RamReservation,
+            request.RamLimit);
+        if (validationError is not null)
+            return TypedResults.BadRequest(validationError);
+
         if (await statements.ContainerNameExistsAsync(request.ContainerName))
             return TypedResults.Conflict($"Container name '{request.ContainerName}' is already in use");
 
@@ -134,6 +146,15 @@ public static class MinecraftEndpoints
         {
             return TypedResults.Conflict($"Container name '{request.ContainerName}' is already in use");
         }
+
+        string? validationError = ValidateServerRequest(
+            request.ContainerName ?? existing.ContainerName,
+            request.CpuReservation ?? existing.CpuReservation,
+            request.CpuLimit ?? existing.CpuLimit,
+            request.RamReservation ?? existing.RamReservation,
+            request.RamLimit ?? existing.RamLimit);
+        if (validationError is not null)
+            return TypedResults.BadRequest(validationError);
 
         MinecraftServer? updated = await statements.UpdateServerAsync(serverId, request);
         return TypedResults.Ok(updated!);
@@ -169,6 +190,31 @@ public static class MinecraftEndpoints
         if (server is null || server.OwnerId != userId)
             return null;
         return server;
+    }
+
+    private static string? ValidateServerRequest(
+        string containerName,
+        decimal cpuReservation,
+        decimal cpuLimit,
+        int ramReservation,
+        int ramLimit)
+    {
+        if (!ContainerNamePattern.IsMatch(containerName) || containerName.Contains("..", StringComparison.Ordinal))
+        {
+            return "Container name contains unsupported characters";
+        }
+
+        if (ramReservation < 512 || ramLimit < ramReservation)
+        {
+            return "RAM limits are invalid";
+        }
+
+        if (cpuReservation < 0 || cpuLimit <= 0 || cpuLimit < cpuReservation)
+        {
+            return "CPU limits are invalid";
+        }
+
+        return null;
     }
 
     #endregion

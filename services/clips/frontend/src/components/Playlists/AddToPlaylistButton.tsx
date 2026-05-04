@@ -71,9 +71,10 @@ export function AddToPlaylistButton({
       });
       setOpened(false);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const apiError = error as { message?: string; status?: number };
       // Check if it's a duplicate clip error
-      if (error?.message?.includes('duplicate') || error?.status === 409) {
+      if (apiError.message?.includes('duplicate') || apiError.status === 409) {
         notifications.show({
           title: 'Already in playlist',
           message: 'This clip is already in the selected playlist',

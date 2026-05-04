@@ -24,34 +24,23 @@ function getPlaylistApi() {
  */
 export async function fetchPlaylists(): Promise<PlaylistSummary[]> {
   const api = getPlaylistApi();
-  return api.getPlaylists().catch((error: any) => {
-    console.error('Failed to fetch playlists:', error);
-    return [];
-  });
+  return api.getPlaylists();
 }
 
 /**
  * Fetch detailed playlist information including clips and collaborators
  */
-export async function fetchPlaylistById(playlistId: string): Promise<PlaylistWithDetails | null> {
+export async function fetchPlaylistById(playlistId: string): Promise<PlaylistWithDetails> {
   const api = getPlaylistApi();
-  return api.getPlaylistById({ id: playlistId }).catch((error: any) => {
-    console.error('Failed to fetch playlist:', { playlistId, error });
-    return null;
-  });
+  return api.getPlaylistById({ id: playlistId });
 }
 
 /**
  * Create a new playlist
  */
-export async function createPlaylist(
-  request: CreatePlaylistRequest
-): Promise<any | null> {
+export async function createPlaylist(request: CreatePlaylistRequest): Promise<any> {
   const api = getPlaylistApi();
-  return api.createPlaylist({ createPlaylistRequest: request }).catch((error: any) => {
-    console.error('Failed to create playlist:', { request, error });
-    throw error;
-  });
+  return api.createPlaylist({ createPlaylistRequest: request });
 }
 
 /**
@@ -60,13 +49,10 @@ export async function createPlaylist(
  */
 export async function createGamingSessionPlaylist(
   request: CreateGamingSessionPlaylistRequest
-): Promise<PlaylistWithDetails | null> {
+): Promise<PlaylistWithDetails> {
   const api = getPlaylistApi();
   return api.createGamingSessionPlaylist({
     createGamingSessionPlaylistRequest: request,
-  }).catch((error: any) => {
-    console.error('Failed to create gaming session playlist:', { request, error });
-    throw error;
   });
 }
 
@@ -76,14 +62,11 @@ export async function createGamingSessionPlaylist(
 export async function updatePlaylist(
   playlistId: string,
   request: UpdatePlaylistRequest
-): Promise<any | null> {
+): Promise<any> {
   const api = getPlaylistApi();
   return api.updatePlaylist({
     id: playlistId,
     updatePlaylistRequest: request,
-  }).catch((error: any) => {
-    console.error('Failed to update playlist:', { playlistId, request, error });
-    throw error;
   });
 }
 
@@ -92,10 +75,7 @@ export async function updatePlaylist(
  */
 export async function deletePlaylist(playlistId: string): Promise<void> {
   const api = getPlaylistApi();
-  return api.deletePlaylist({ id: playlistId }).catch((error: any) => {
-    console.error('Failed to delete playlist:', { playlistId, error });
-    throw error;
-  });
+  return api.deletePlaylist({ id: playlistId });
 }
 
 /**
@@ -104,14 +84,11 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
 export async function addClipsToPlaylist(
   playlistId: string,
   request: AddClipToPlaylistRequest
-): Promise<any | null> {
+): Promise<any> {
   const api = getPlaylistApi();
   return api.addClipsToPlaylist({
     id: playlistId,
     addClipToPlaylistRequest: request,
-  }).catch((error: any) => {
-    console.error('Failed to add clips to playlist:', { playlistId, request, error });
-    throw error;
   });
 }
 
@@ -126,9 +103,6 @@ export async function removeClipFromPlaylist(
   return api.removeClipFromPlaylist({
     id: playlistId,
     clipId,
-  }).catch((error: any) => {
-    console.error('Failed to remove clip from playlist:', { playlistId, clipId, error });
-    throw error;
   });
 }
 
@@ -138,14 +112,11 @@ export async function removeClipFromPlaylist(
 export async function reorderPlaylistClips(
   playlistId: string,
   request: ReorderPlaylistClipsRequest
-): Promise<any | null> {
+): Promise<any> {
   const api = getPlaylistApi();
   return api.reorderPlaylistClips({
     id: playlistId,
     reorderPlaylistClipsRequest: request,
-  }).catch((error: any) => {
-    console.error('Failed to reorder playlist clips:', { playlistId, request, error });
-    throw error;
   });
 }
 
@@ -160,9 +131,6 @@ export async function addCollaborator(
   return api.addCollaborator({
     id: playlistId,
     addCollaboratorRequest: request,
-  }).catch((error: any) => {
-    console.error('Failed to add collaborator:', { playlistId, request, error });
-    throw error;
   });
 }
 
@@ -177,9 +145,6 @@ export async function removeCollaborator(
   return api.removeCollaborator({
     id: playlistId,
     userId,
-  }).catch((error: any) => {
-    console.error('Failed to remove collaborator:', { playlistId, userId, error });
-    throw error;
   });
 }
 
@@ -190,8 +155,5 @@ export async function fetchPlaylistCollaborators(
   playlistId: string
 ): Promise<any[]> {
   const api = getPlaylistApi();
-  return api.getCollaborators({ id: playlistId }).catch((error: any) => {
-    console.error('Failed to fetch collaborators:', { playlistId, error });
-    return [];
-  });
+  return api.getCollaborators({ id: playlistId });
 }

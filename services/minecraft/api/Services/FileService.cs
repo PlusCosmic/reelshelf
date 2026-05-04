@@ -6,6 +6,18 @@ namespace Nucleus.Minecraft.Services;
 public class FileService(ILogger<FileService> logger)
 {
     private const long MaxFileSize = 5 * 1024 * 1024; // 5MB
+    private static readonly HashSet<string> EditableExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".cfg",
+        ".conf",
+        ".json",
+        ".log",
+        ".properties",
+        ".toml",
+        ".txt",
+        ".yaml",
+        ".yml"
+    };
 
     private string GetSafePath(MinecraftServer server, string relativePath)
     {
@@ -20,8 +32,10 @@ public class FileService(ILogger<FileService> logger)
         // Get the full normalized path
         string fullPath = Path.GetFullPath(combinedPath);
 
-        // Verify the resulting path is still within the base path
-        if (!fullPath.StartsWith(basePath, StringComparison.OrdinalIgnoreCase))
+        // Verify the resulting path is still within the base path.
+        string relativeToBase = Path.GetRelativePath(basePath, fullPath);
+        if (relativeToBase.StartsWith("..", StringComparison.Ordinal) ||
+            Path.IsPathRooted(relativeToBase))
         {
             logger.LogWarning("Path traversal attempt detected: {RelativePath} -> {FullPath}", relativePath, fullPath);
             throw new SecurityException("Access to the specified path is denied");
@@ -30,9 +44,41 @@ public class FileService(ILogger<FileService> logger)
         return fullPath;
     }
 
+    private static void EnsureNoSymlink(string basePath, string targetPath)
+    {
+        string current = basePath;
+        string relative = Path.GetRelativePath(basePath, targetPath);
+
+        foreach (string segment in relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+        {
+            if (string.IsNullOrWhiteSpace(segment) || segment == ".")
+            {
+                continue;
+            }
+
+            current = Path.Combine(current, segment);
+            if ((File.Exists(current) || Directory.Exists(current)) &&
+                File.GetAttributes(current).HasFlag(FileAttributes.ReparsePoint))
+            {
+                throw new SecurityException("Symbolic links are not editable through this endpoint");
+            }
+        }
+    }
+
+    private static void EnsureEditableFile(string safePath)
+    {
+        string extension = Path.GetExtension(safePath);
+        if (!EditableExtensions.Contains(extension))
+        {
+            throw new InvalidOperationException($"Files with extension '{extension}' are not editable");
+        }
+    }
+
     public DirectoryListing ListDirectory(MinecraftServer server, string relativePath)
     {
         string safePath = GetSafePath(server, relativePath);
+        string basePath = Path.GetFullPath(server.PersistenceLocation);
+        EnsureNoSymlink(basePath, safePath);
 
         if (!Directory.Exists(safePath))
         {
@@ -82,6 +128,9 @@ public class FileService(ILogger<FileService> logger)
     public async Task<string> ReadFileAsync(MinecraftServer server, string relativePath)
     {
         string safePath = GetSafePath(server, relativePath);
+        string basePath = Path.GetFullPath(server.PersistenceLocation);
+        EnsureNoSymlink(basePath, safePath);
+        EnsureEditableFile(safePath);
 
         if (!File.Exists(safePath))
         {
@@ -100,6 +149,9 @@ public class FileService(ILogger<FileService> logger)
     public async Task WriteFileAsync(MinecraftServer server, string relativePath, string content)
     {
         string safePath = GetSafePath(server, relativePath);
+        string basePath = Path.GetFullPath(server.PersistenceLocation);
+        EnsureNoSymlink(basePath, safePath);
+        EnsureEditableFile(safePath);
 
         // Check content size
         long contentSize = System.Text.Encoding.UTF8.GetByteCount(content);
@@ -122,6 +174,8 @@ public class FileService(ILogger<FileService> logger)
     public void DeleteFile(MinecraftServer server, string relativePath)
     {
         string safePath = GetSafePath(server, relativePath);
+        string basePath = Path.GetFullPath(server.PersistenceLocation);
+        EnsureNoSymlink(basePath, safePath);
 
         if (!File.Exists(safePath))
         {
@@ -135,6 +189,8 @@ public class FileService(ILogger<FileService> logger)
     public void CreateDirectory(MinecraftServer server, string relativePath)
     {
         string safePath = GetSafePath(server, relativePath);
+        string basePath = Path.GetFullPath(server.PersistenceLocation);
+        EnsureNoSymlink(basePath, safePath);
 
         if (Directory.Exists(safePath))
         {

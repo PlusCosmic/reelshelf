@@ -59,7 +59,7 @@ export function ClipCard({ clip, categorySlug }: ClipCardProps) {
         message: "Clip link has been copied to clipboard",
         color: "green",
       });
-    } catch (error) {
+    } catch {
       notifications.show({
         title: "Copy Failed",
         message: "Failed to copy link to clipboard",

@@ -1,18 +1,19 @@
 {
   "private": true,
-  "name": "with-vite",
+  "name": "plus-cosmic-monorepo",
   "workspaces": ["apps/*", "packages/*", "services/*/frontend"],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "build:api": "dotnet build Nucleus.sln --disable-build-servers -maxcpucount:1",
+    "generate:openapi": "ASPNETCORE_ENVIRONMENT=OpenApi dotnet build services/clips/api/Nucleus.Clips.csproj /p:OpenApiGenerateDocumentsOnBuild=true --disable-build-servers && ASPNETCORE_ENVIRONMENT=OpenApi dotnet build services/minecraft/api/Nucleus.Minecraft.csproj /p:OpenApiGenerateDocumentsOnBuild=true --disable-build-servers && node scripts/merge-openapi.mjs",
+    "generate:api-client": "bun run generate:openapi && bun run generate --cwd packages/nucleus-api-client && bun run build --cwd packages/nucleus-api-client",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
-  "dependencies": {
-    "@mantine/core": "^8.3.14",
-    "@mantine/hooks": "^8.3.14",
-    "@repo/nucleus-api-client": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/node": "24.9.1",
@@ -21,5 +22,5 @@
     "turbo": "^2.8.3",
     "vite": "7.1.12"
   },
-  "packageManager": "bun@1.3.9"
+  "packageManager": "bun@1.3.13"
 }

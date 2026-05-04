@@ -33,6 +33,7 @@ public class BunnyService
         content.Headers.Remove("Content-Type");
         content.Headers.Add("Content-Type", "application/json");
         var collectionResponse = await _httpClient.PostAsync(_collectionsUrl, content);
+        collectionResponse.EnsureSuccessStatusCode();
         var response = await collectionResponse.Content.ReadFromJsonAsync<BunnyCollection>();
         return response ?? throw new InvalidOperationException("Failed to deserialize bunny collection");
     }
@@ -43,6 +44,7 @@ public class BunnyService
         var searchString = titleSearch != null ? $"&search={titleSearch}" : "";
         var url = _videosUrl + $"?collection={collectionId}&page={page}&itemsPerPage={pageSize}{searchString}";
         var videosResponse = await _httpClient.GetAsync(url);
+        videosResponse.EnsureSuccessStatusCode();
         var pagedResponse = await videosResponse.Content.ReadFromJsonAsync<PagedVideoResponse>() ??
                             throw new InvalidOperationException("Failed to deserialize bunny videos");
         return pagedResponse;
@@ -57,6 +59,7 @@ public class BunnyService
         content.Headers.Remove("Content-Type");
         content.Headers.Add("Content-Type", "application/json");
         var videoResponse = await _httpClient.PostAsync(url, content);
+        videoResponse.EnsureSuccessStatusCode();
         var response = await videoResponse.Content.ReadFromJsonAsync<BunnyVideo>();
         return response ?? throw new InvalidOperationException("Failed to deserialize bunny video");
     }
@@ -65,6 +68,7 @@ public class BunnyService
     {
         var url = _videosUrl + $"/{videoId}";
         var videoResponse = await _httpClient.GetAsync(url);
+        videoResponse.EnsureSuccessStatusCode();
         var response = await videoResponse.Content.ReadFromJsonAsync<BunnyVideo>();
         return response;
     }

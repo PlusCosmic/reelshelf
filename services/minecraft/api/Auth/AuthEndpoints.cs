@@ -10,6 +10,11 @@ namespace Nucleus.Minecraft.Auth;
 public static class AuthEndpoints
 {
     private static string _frontendOrigin = "http://localhost:5174";
+    private static HashSet<string> _allowedReturnOrigins = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "http://localhost:5173",
+        "http://localhost:5174"
+    };
 
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app, IConfiguration configuration)
     {
@@ -17,6 +22,18 @@ public static class AuthEndpoints
         if (frontendOrigin != null)
         {
             _frontendOrigin = frontendOrigin;
+        }
+
+        string[] configuredOrigins = configuration.GetSection("Auth:AllowedReturnOrigins").Get<string[]>()
+                                     ?? configuration["AllowedReturnOrigins"]?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                                     ?? [];
+        if (configuredOrigins.Length > 0)
+        {
+            _allowedReturnOrigins = configuredOrigins.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        else if (!string.IsNullOrWhiteSpace(_frontendOrigin))
+        {
+            _allowedReturnOrigins.Add(_frontendOrigin);
         }
 
         RouteGroupBuilder group = app.MapGroup("auth");
@@ -88,22 +105,7 @@ public static class AuthEndpoints
             return false;
         }
 
-        if (uri.Host == "localhost" || uri.Host == "127.0.0.1")
-        {
-            return true;
-        }
-
-        if (uri.Host == "pluscosmic.dev" || uri.Host.EndsWith(".pluscosmic.dev"))
-        {
-            return true;
-        }
-
-        if (uri.Host.EndsWith("pluscosmicdashboard.pages.dev"))
-        {
-            return true;
-        }
-
-        return false;
+        return _allowedReturnOrigins.Contains(uri.GetLeftPart(UriPartial.Authority));
     }
 
     private static string GenerateSecureRandomState()

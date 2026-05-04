@@ -10,14 +10,6 @@ public static class BunnyWebhookEndpoints
     {
         RouteGroupBuilder group = app.MapGroup("webhooks/bunny");
         group.MapPost("video-progress", ReceiveVideoProgress).WithName("ReceiveVideoProgress");
-        group.MapGet("test", TestWebhook).WithName("TestWebhook");
-    }
-
-    private static IResult TestWebhook(ILoggerFactory loggerFactory)
-    {
-        ILogger logger = loggerFactory.CreateLogger("Nucleus.Clips.Bunny.BunnyWebhookEndpoints");
-        logger.LogInformation("[WEBHOOK] Test endpoint hit - webhook routing is working");
-        return TypedResults.Ok(new { message = "Webhook endpoint is reachable", timestamp = DateTimeOffset.UtcNow });
     }
 
     public static async Task<Results<Ok, UnauthorizedHttpResult>> ReceiveVideoProgress(
@@ -43,7 +35,13 @@ public static class BunnyWebhookEndpoints
         logger.LogDebug("[WEBHOOK] Security check - Expected secret configured: {HasSecret}, Secret provided: {ProvidedSecret}",
             !string.IsNullOrEmpty(expectedSecret), !string.IsNullOrEmpty(providedSecret));
 
-        if (!string.IsNullOrEmpty(expectedSecret) && expectedSecret != providedSecret)
+        if (string.IsNullOrEmpty(expectedSecret))
+        {
+            logger.LogError("[WEBHOOK] BunnyWebhookSecret is not configured; rejecting webhook for VideoGuid: {VideoGuid}", update.VideoGuid);
+            return TypedResults.Unauthorized();
+        }
+
+        if (!TimeConstantEquals(expectedSecret, providedSecret))
         {
             logger.LogWarning("[WEBHOOK] Unauthorized webhook attempt - invalid secret for VideoGuid: {VideoGuid}", update.VideoGuid);
             return TypedResults.Unauthorized();
@@ -94,5 +92,17 @@ public static class BunnyWebhookEndpoints
 
         logger.LogInformation("[WEBHOOK] Webhook processing complete for VideoGuid: {VideoGuid}, returning OK", update.VideoGuid);
         return TypedResults.Ok();
+    }
+
+    private static bool TimeConstantEquals(string expected, string? provided)
+    {
+        if (string.IsNullOrEmpty(provided))
+        {
+            return false;
+        }
+
+        byte[] expectedBytes = System.Text.Encoding.UTF8.GetBytes(expected);
+        byte[] providedBytes = System.Text.Encoding.UTF8.GetBytes(provided);
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes);
     }
 }

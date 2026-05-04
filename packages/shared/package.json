@@ -2,21 +2,28 @@
   "name": "@repo/shared",
   "version": "0.0.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./api-config": "./src/config/apiConfig.ts",
-    "./services/auth": "./src/services/auth.ts",
-    "./services/user": "./src/services/user.ts",
-    "./services/categories": "./src/services/categories.ts",
-    "./services/clips": "./src/services/clips.ts",
-    "./services/ffmpeg": "./src/services/ffmpeg.ts",
-    "./services/minecraft": "./src/services/minecraft.ts",
-    "./hooks/useDebouncedValue": "./src/hooks/useDebouncedValue.ts",
-    "./utils/format": "./src/utils/format.ts",
-    "./theme": "./src/theme/index.ts",
-    "./index": "./src/index.ts"
+    ".": "./dist/index.js",
+    "./api-config": "./dist/config/apiConfig.js",
+    "./services/auth": "./dist/services/auth.js",
+    "./services/user": "./dist/services/user.js",
+    "./services/categories": "./dist/services/categories.js",
+    "./services/clips": "./dist/services/clips.js",
+    "./services/ffmpeg": "./dist/services/ffmpeg.js",
+    "./services/minecraft": "./dist/services/minecraft.js",
+    "./hooks/useDebouncedValue": "./dist/hooks/useDebouncedValue.js",
+    "./utils/format": "./dist/utils/format.js",
+    "./theme": "./dist/theme/index.js",
+    "./index": "./dist/index.js"
   },
   "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@repo/nucleus-api-client": "workspace:*"
   },
@@ -31,6 +38,7 @@
     "@repo/typescript-config": "workspace:*",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

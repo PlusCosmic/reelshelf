@@ -57,6 +57,13 @@ export function useMinecraftConsole(options: UseMinecraftConsoleOptions) {
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttempts = useRef(0);
   const entryIdCounter = useRef(0);
+  const enabledRef = useRef(enabled);
+  const serverIdRef = useRef(serverId);
+
+  useEffect(() => {
+    enabledRef.current = enabled;
+    serverIdRef.current = serverId;
+  }, [enabled, serverId]);
 
   const addEntry = useCallback((entry: Omit<ConsoleEntry, 'id'>) => {
     const newEntry: ConsoleEntry = {
@@ -157,7 +164,7 @@ export function useMinecraftConsole(options: UseMinecraftConsoleOptions) {
         setIsConnecting(false);
         wsRef.current = null;
 
-        if (!event.wasClean && enabled && serverId) {
+        if (!event.wasClean && enabledRef.current && serverIdRef.current) {
           // Attempt to reconnect with exponential backoff
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           reconnectAttempts.current++;
@@ -178,7 +185,7 @@ export function useMinecraftConsole(options: UseMinecraftConsoleOptions) {
       setConnectionError('Failed to create WebSocket connection');
       console.error('Failed to create WebSocket:', error);
     }
-  }, [enabled, serverId, handleMessage, addEntry]);
+  }, [serverId, handleMessage, addEntry]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

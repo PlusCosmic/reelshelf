@@ -24,7 +24,7 @@ Each service contains an `api/` (C# .NET) and `frontend/` (React + Vite).
 ## Tech Stack
 
 **Frontend**: React 19, TanStack Router, TanStack Query, Mantine, Vite
-**Backend**: .NET, Entity Framework
+**Backend**: .NET, Dapper, Npgsql, PostgreSQL
 **Tooling**: Bun, Turborepo
 
 ## Getting Started
@@ -41,6 +41,14 @@ bun run build
 
 # Lint
 bun run lint
+
+# Typecheck and tests
+bun run typecheck
+bun run test
+
+# Build .NET APIs
+bun run build:api
 ```
 
-For .NET APIs, use `dotnet run` from the respective `api/` directories.
+For .NET APIs, use `dotnet run` from the respective `services/*/api/` directories.
+Database schema changes live in `migrations/` and should be applied in filename order.

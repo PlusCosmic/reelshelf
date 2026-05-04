@@ -6,12 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Plus Cosmic Development is a Turborepo monorepo containing video clip management applications and shared packages. The project uses Bun workspaces with Vite for fast development builds.
 
-**Backend**: Nucleus API (separate backend service at nucleus.pluscosmic.dev)
+**Backend**: .NET APIs in `services/*/api` using Dapper/Npgsql
 **Main Branch**: `develop` (use this for PRs, not `main`)
 
 ## Applications
 
-### clips
+### `services/clips/frontend`
 Video/media clip management application using TanStack Router for file-based routing. Routes are auto-generated from `src/routes/` directory structure via the TanStack Router plugin.
 
 **Key Features**:
@@ -22,14 +22,16 @@ Video/media clip management application using TanStack Router for file-based rou
 
 **Route Structure**: Routes in `src/routes/` auto-generate `routeTree.gen.ts`. The `__root.tsx` provides the AppShell layout wrapper for all routes.
 
-### home
-Homepage application using React Router DOM (not TanStack Router like clips). Single-page application centered around the Home page.
+### `services/minecraft/frontend`
+Minecraft server management application using TanStack Router and Mantine.
 
 **Key Features**:
-- React Query for data fetching and caching
-- Playwright for E2E testing
-- MSW (Mock Service Worker) for API mocking in tests
-- Weather integration and Apex Legends game data
+- Live console and server status using React Query and WebSockets
+- File editor for server configuration files
+- Container lifecycle controls backed by the Minecraft API
+
+### `apps/personal-site`
+Personal/portfolio site built with React, Vite, and Mantine.
 
 ## Packages
 
@@ -37,11 +39,11 @@ Homepage application using React Router DOM (not TanStack Router like clips). Si
 **Auto-generated API client** from OpenAPI specification. Never manually edit the `src/` directory.
 
 **Regeneration Process** (from `packages/nucleus-api-client/`):
-1. Clear the `src/` directory
-2. Run: `bunx openapi-generator-cli generate -i Nucleus.json -g typescript-fetch -o src --additional-properties=supportsES6=true`
+1. Update `Nucleus.json` from the current API OpenAPI output.
+2. Run: `bun run generate`
 3. Run: `bun run build`
 
-The `Nucleus.json` OpenAPI spec must be updated before regenerating the client.
+The `Nucleus.json` OpenAPI spec must be updated before regenerating the client. Generated Markdown docs are intentionally excluded.
 
 ### @repo/shared
 Shared business logic, services, and hooks used by both apps.
@@ -55,10 +57,11 @@ Shared business logic, services, and hooks used by both apps.
 
 **Core Services**:
 - `services/http.ts` - HTTP utilities (`getJson`, `tryGetJson`, `withQuery`, `HttpError`)
-- `services/apexClips.ts` - Video clip operations (fetch, create, tag, delete, view tracking)
+- `services/clips.ts` - Video clip operations (fetch, create, tag, delete, view tracking)
+- `services/minecraft.ts` - Minecraft server, console, file, backup, and container operations
 - `services/ffmpeg.ts` - Video download functionality
 
-**API Configuration**: Uses `VITE_API_BASE_URL` environment variable, defaults to `https://nucleus.pluscosmic.dev`
+**API Configuration**: Uses `VITE_API_BASE_URL` environment variable, defaults to `/api` for same-origin deployments.
 
 ### @repo/ui
 Shared UI components using Mantine. Components located in `components/` directory (no `src/`).
@@ -83,53 +86,40 @@ bun run lint
 # Format code
 bun run format
 
-# Individual app development (from app directory)
-cd apps/clips
+# Individual frontend development
+cd services/clips/frontend
 bun run dev
 
-cd apps/home
+cd services/minecraft/frontend
+bun run dev
+
+cd apps/personal-site
 bun run dev
 
 # Install a package in a specific workspace
-bun add <package> --cwd apps/<app-name>
+bun add <package> --cwd services/<service-name>/frontend
 ```
 
 ## Testing
 
-### Home App
+### First-party tests
 ```sh
-cd apps/home
-
-# Unit tests (vitest)
 bun run test
-bun run test:watch
-
-# E2E tests (playwright)
-bun run e2e
-bun run e2e:ui
 ```
 
-**Test Setup**:
-- Vitest config in `package.json` (not separate file)
-- Setup file: `src/setupTests.ts`
-- E2E tests in `tests/` directory (excluded from vitest)
-- MSW for API mocking
-
-### Clips App
-Uses vitest but configuration is in `package.json`, not a separate config file.
-
 ### Testing Visual/Frontend Changes
-**IMPORTANT**: When making visual or frontend changes in TypeScript applications (clips or home apps), always test the changes using the Playwright MCP server to verify functionality before completing the task. This ensures UI changes work correctly in a real browser environment.
+When making visual or frontend changes in TypeScript applications, verify functionality in a browser before completing the task.
 
 ## Architecture Notes
 
 ### Routing Differences
-- **clips**: TanStack Router with file-based routing, auto-code splitting enabled
-- **home**: React Router DOM with traditional route configuration
+- **clips frontend**: TanStack Router with file-based routing
+- **minecraft frontend**: TanStack Router with file-based routing
+- **personal site**: React with route-like page components
 
 ### State Management
-- **clips**: React state + TanStack Router state
-- **home**: React Query for server state, React state for local state
+- React Query for server state
+- Jotai where the clips UI shares filter state
 
 ### API Client Usage
 Apps can use either:
@@ -146,7 +136,8 @@ Turborepo orchestrates builds with:
 
 ### Path Aliases
 - **clips**: `@/` maps to `src/` directory
-- **home**: No path aliases configured
+- **minecraft**: `@/` maps to `src/` directory
+- **personal-site**: no path aliases configured
 
 ## UI Framework
 All apps use Mantine v8 with:

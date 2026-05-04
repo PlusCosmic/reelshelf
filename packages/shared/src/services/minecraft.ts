@@ -103,7 +103,20 @@ export async function sendCommand(serverId: string, command: string): Promise<Rc
  * @returns WebSocket URL for console streaming
  */
 export function getConsoleWebSocketUrl(serverId: string): string {
-  return apiConfig.baseUrl.replace(/^http/, "ws") + `/minecraft/servers/${serverId}/console/live`;
+  return createConsoleWebSocketUrl(apiConfig.baseUrl, serverId, window.location.origin);
+}
+
+export function createConsoleWebSocketUrl(
+  apiBaseUrl: string,
+  serverId: string,
+  origin: string
+): string {
+  const baseUrl = new URL(apiBaseUrl, origin);
+  baseUrl.protocol = baseUrl.protocol === "https:" ? "wss:" : "ws:";
+  baseUrl.pathname = `${baseUrl.pathname.replace(/\/$/, "")}/minecraft/servers/${serverId}/console/live`;
+  baseUrl.search = "";
+  baseUrl.hash = "";
+  return baseUrl.toString();
 }
 
 // ============================================================================
@@ -267,4 +280,9 @@ export async function updateServer(
 ): Promise<MinecraftServer> {
   const api = createApi();
   return api.updateMinecraftServer({ serverId, updateMinecraftServerRequest: updates });
+}
+
+export async function deleteServer(serverId: string): Promise<void> {
+  const api = createApi();
+  return api.deleteMinecraftServer({ serverId });
 }

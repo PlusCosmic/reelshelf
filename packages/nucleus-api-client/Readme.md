@@ -1,10 +1,10 @@
 ## Code Generation Instructions
-- First clear the src directory in order to have a clean start.
-- Then from this directory run: 	
+- From the monorepo root, refresh the API specs and regenerate the client:
 ```
-npx openapi-generator-cli generate -i Nucleus.json -g typescript-fetch -o src  --additional-properties=supportsES6=true
+bun run generate:api-client
 ```
-- and then
+- Or from this package, regenerate from the existing `Nucleus.json` snapshot:
 ```
-pnpm run build
+bun run generate
+bun run build
 ```

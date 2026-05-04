@@ -285,6 +285,8 @@ public class ClipService(
         DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
                                                        ?? throw new UnauthorizedException("User not found");
         Guid userId = discordUser.Id;
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
 
         // Get the game category for the slug
         GameCategory? gameCategory = await gameCategoryStatements.GetByIdAsync(gameCategoryId);
@@ -303,46 +305,25 @@ public class ClipService(
         // Normalize tags for filtering (same as when adding tags)
         List<string>? normalizedTags = tags?.Select(NormalizeTag).ToList();
 
-        List<ClipsStatements.ClipWithTagsRow> clipsWithTags =
-            await clipsStatements.GetClipsWithTagsByOwnerAndCategory(userId, gameCategoryId, normalizedTags);
+        ClipsStatements.PagedClipWithTagsRows clipsPage =
+            await clipsStatements.GetClipsWithTagsByOwnerAndCategory(
+                userId,
+                gameCategoryId,
+                normalizedTags,
+                titleSearch,
+                startDate,
+                endDate,
+                unviewedOnly,
+                sortOrder,
+                userId,
+                pageSize,
+                (page - 1) * pageSize);
 
-        // Apply title search filter if provided
-        if (!string.IsNullOrWhiteSpace(titleSearch))
-        {
-            clipsWithTags = clipsWithTags
-                .Where(c => c.Title != null && c.Title.Contains(titleSearch, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-
-        // Apply date range filter if provided
-        if (startDate.HasValue)
-        {
-            clipsWithTags = clipsWithTags.Where(c => c.CreatedAt >= startDate.Value).ToList();
-        }
-
-        if (endDate.HasValue)
-        {
-            clipsWithTags = clipsWithTags.Where(c => c.CreatedAt <= endDate.Value).ToList();
-        }
-
-        List<Guid> clipIds = clipsWithTags.Select(c => c.Id).ToList();
+        List<ClipsStatements.ClipWithTagsRow> pagedClips = clipsPage.Rows;
+        List<Guid> clipIds = pagedClips.Select(c => c.Id).ToList();
         HashSet<Guid> viewedClipIds = await clipsStatements.GetViewedClipIds(userId, clipIds);
 
-        if (unviewedOnly)
-        {
-            clipsWithTags.RemoveAll(c => viewedClipIds.Contains(c.Id));
-        }
-
-        clipsWithTags = sortOrder switch
-        {
-            ClipSortOrder.DateAscending => clipsWithTags.OrderBy(c => c.CreatedAt).ToList(),
-            ClipSortOrder.DateDescending => clipsWithTags.OrderByDescending(c => c.CreatedAt).ToList(),
-            _ => clipsWithTags.OrderByDescending(c => c.CreatedAt).ToList()
-        };
-
-        // get correct page from filtered list
-        List<ClipsStatements.ClipWithTagsRow> pagedClips = clipsWithTags.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-        int totalPages = (int)Math.Ceiling((double)clipsWithTags.Count / pageSize);
+        int totalPages = (int)Math.Ceiling((double)clipsPage.TotalCount / pageSize);
 
         string libraryId = configuration["BunnyLibraryId"]
                            ?? throw new InvalidOperationException("Bunny API library ID not configured");
@@ -375,7 +356,7 @@ public class ClipService(
                 viewedClipIds.Contains(c.Id), null);
         }).ToList();
 
-        PagedClipsResponse pagedClipsResponse = new(finalClips, clipsWithTags.Count, totalPages);
+        PagedClipsResponse pagedClipsResponse = new(finalClips, clipsPage.TotalCount, totalPages);
         return pagedClipsResponse;
     }
 

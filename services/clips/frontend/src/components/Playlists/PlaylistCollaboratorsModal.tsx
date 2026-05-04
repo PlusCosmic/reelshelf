@@ -91,11 +91,12 @@ export function PlaylistCollaboratorsModal({
       });
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const apiError = error as { response?: { status?: number } };
       const message =
-        error?.response?.status === 404
+        apiError.response?.status === 404
           ? "User not found. Check the username and try again."
-          : error?.response?.status === 409
+          : apiError.response?.status === 409
             ? "This user is already a collaborator"
             : "Failed to add collaborator";
       notifications.show({

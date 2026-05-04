@@ -3,7 +3,12 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@repo/shared": ["../../../packages/shared/src/index.ts"],
+      "@repo/shared/api-config": ["../../../packages/shared/src/config/apiConfig.ts"],
+      "@repo/shared/*": ["../../../packages/shared/src/*"],
+      "@repo/ui": ["../../../packages/ui/index.ts"],
+      "@repo/ui/*": ["../../../packages/ui/*"]
     }
   },
   "include": ["src", "vite.config.ts"]

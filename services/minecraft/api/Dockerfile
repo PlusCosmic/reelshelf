@@ -1,21 +1,21 @@
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 # Copy project files for restore (leverages Docker layer caching)
-COPY ["Nucleus.Minecraft/Nucleus.Minecraft.csproj", "Nucleus.Minecraft/"]
-COPY ["Nucleus.Shared/Nucleus.Shared.csproj", "Nucleus.Shared/"]
-RUN dotnet restore "Nucleus.Minecraft/Nucleus.Minecraft.csproj"
+COPY ["services/minecraft/api/Nucleus.Minecraft.csproj", "services/minecraft/api/"]
+COPY ["packages/nucleus-shared/Nucleus.Shared.csproj", "packages/nucleus-shared/"]
+RUN dotnet restore "services/minecraft/api/Nucleus.Minecraft.csproj"
 # Copy all source code
-COPY ["Nucleus.Minecraft/", "Nucleus.Minecraft/"]
-COPY ["Nucleus.Shared/", "Nucleus.Shared/"]
+COPY ["services/minecraft/api/", "services/minecraft/api/"]
+COPY ["packages/nucleus-shared/", "packages/nucleus-shared/"]
 # Build
-WORKDIR "/src/Nucleus.Minecraft"
+WORKDIR "/src/services/minecraft/api"
 RUN dotnet build "Nucleus.Minecraft.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
