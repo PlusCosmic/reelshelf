@@ -7,6 +7,7 @@ on:
     paths:
       - 'services/clips/**'
       - 'services/minecraft/**'
+      - 'tools/Nucleus.Migrations/**'
       - 'packages/nucleus-shared/**'
       - 'packages/nucleus-api-client/**'
       - 'packages/shared/**'
@@ -17,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       service:
-        description: Service to build
+        description: Service image set to build
         required: true
         default: both
         type: choice
@@ -25,6 +26,7 @@ on:
           - both
           - clips
           - minecraft-panel
+          - migrations
 
 permissions:
   contents: read
@@ -36,6 +38,7 @@ jobs:
     outputs:
       clips: ${{ steps.filter.outputs.clips }}
       minecraft_panel: ${{ steps.filter.outputs.minecraft_panel }}
+      migrations: ${{ steps.filter.outputs.migrations }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,14 +54,22 @@ jobs:
               both)
                 echo "clips=true" >> "$GITHUB_OUTPUT"
                 echo "minecraft_panel=true" >> "$GITHUB_OUTPUT"
+                echo "migrations=true" >> "$GITHUB_OUTPUT"
                 ;;
               clips)
                 echo "clips=true" >> "$GITHUB_OUTPUT"
                 echo "minecraft_panel=false" >> "$GITHUB_OUTPUT"
+                echo "migrations=true" >> "$GITHUB_OUTPUT"
                 ;;
               minecraft-panel)
                 echo "clips=false" >> "$GITHUB_OUTPUT"
                 echo "minecraft_panel=true" >> "$GITHUB_OUTPUT"
+                echo "migrations=false" >> "$GITHUB_OUTPUT"
+                ;;
+              migrations)
+                echo "clips=false" >> "$GITHUB_OUTPUT"
+                echo "minecraft_panel=false" >> "$GITHUB_OUTPUT"
+                echo "migrations=true" >> "$GITHUB_OUTPUT"
                 ;;
             esac
             exit 0
@@ -73,9 +84,14 @@ jobs:
 
           clips=false
           minecraft_panel=false
+          migrations=false
 
-          if grep -Eq '^(services/clips/|packages/nucleus-shared/|packages/nucleus-api-client/|packages/shared/|package.json|bun.lock|turbo.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
+          if grep -Eq '^(services/clips/|tools/Nucleus.Migrations/|packages/nucleus-shared/|packages/nucleus-api-client/|packages/shared/|package.json|bun.lock|turbo.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
             clips=true
+          fi
+
+          if grep -Eq '^(tools/Nucleus.Migrations/|package.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
+            migrations=true
           fi
 
           if grep -Eq '^(services/minecraft/|packages/nucleus-shared/|packages/nucleus-api-client/|packages/shared/|package.json|bun.lock|turbo.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
@@ -84,10 +100,11 @@ jobs:
 
           echo "clips=${clips}" >> "$GITHUB_OUTPUT"
           echo "minecraft_panel=${minecraft_panel}" >> "$GITHUB_OUTPUT"
+          echo "migrations=${migrations}" >> "$GITHUB_OUTPUT"
 
   build:
     needs: detect
-    if: needs.detect.outputs.clips == 'true' || needs.detect.outputs.minecraft_panel == 'true'
+    if: needs.detect.outputs.clips == 'true' || needs.detect.outputs.minecraft_panel == 'true' || needs.detect.outputs.migrations == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -97,10 +114,17 @@ jobs:
             dockerfile: services/clips/Dockerfile
             image: ghcr.io/pluscosmic/clips
             compose_file: services/clips.yml
+            compose_image: clips
+          - service: migrations
+            dockerfile: tools/Nucleus.Migrations/Dockerfile
+            image: ghcr.io/pluscosmic/nucleus-migrations
+            compose_file: services/clips.yml
+            compose_image: nucleus-migrations
           - service: minecraft-panel
             dockerfile: services/minecraft/Dockerfile
             image: ghcr.io/pluscosmic/minecraft-panel
             compose_file: services/minecraft-panel.yml
+            compose_image: minecraft-panel
     steps:
       - name: Decide whether to build
         id: should_build
@@ -111,6 +135,9 @@ jobs:
             enabled=true
           fi
           if [[ "${{ matrix.service }}" == "minecraft-panel" && "${{ needs.detect.outputs.minecraft_panel }}" == "true" ]]; then
+            enabled=true
+          fi
+          if [[ "${{ matrix.service }}" == "migrations" && "${{ needs.detect.outputs.migrations }}" == "true" ]]; then
             enabled=true
           fi
           echo "enabled=${enabled}" >> "$GITHUB_OUTPUT"
@@ -146,55 +173,70 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
+  bump-infrastructure:
+    needs:
+      - detect
+      - build
+    if: needs.detect.outputs.clips == 'true' || needs.detect.outputs.minecraft_panel == 'true' || needs.detect.outputs.migrations == 'true'
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout infrastructure repo
-        if: steps.should_build.outputs.enabled == 'true'
         uses: actions/checkout@v4
         with:
           repository: PlusCosmic/infrastructure
           token: ${{ secrets.INFRASTRUCTURE_PR_TOKEN }}
           path: infrastructure
 
-      - name: Bump compose image tag
-        if: steps.should_build.outputs.enabled == 'true'
+      - name: Bump compose image tags
         working-directory: infrastructure
         shell: bash
+        env:
+          SHA: ${{ github.sha }}
+          BUMP_CLIPS: ${{ needs.detect.outputs.clips }}
+          BUMP_MINECRAFT_PANEL: ${{ needs.detect.outputs.minecraft_panel }}
+          BUMP_MIGRATIONS: ${{ needs.detect.outputs.migrations }}
         run: |
-          image="${{ matrix.image }}:sha-${{ github.sha }}"
-          compose_file="${{ matrix.compose_file }}"
           python3 - <<'PY'
           from pathlib import Path
           import os
           import re
 
-          compose_file = Path(os.environ["COMPOSE_FILE"])
-          image = os.environ["IMAGE"]
-          text = compose_file.read_text()
+          sha = os.environ["SHA"]
+          bumps = []
 
-          pattern = re.compile(r"(image:\s*['\"]?)ghcr\.io/pluscosmic/(clips|minecraft-panel):[^'\"\s]+(['\"]?)")
-          updated, count = pattern.subn(rf"\1{image}\3", text, count=1)
+          if os.environ["BUMP_CLIPS"] == "true":
+              bumps.append(("services/clips.yml", "clips", f"ghcr.io/pluscosmic/clips:sha-{sha}"))
 
-          if count != 1:
-              raise SystemExit(f"Expected to update one image reference in {compose_file}, updated {count}")
+          if os.environ["BUMP_MIGRATIONS"] == "true":
+              bumps.append(("services/clips.yml", "nucleus-migrations", f"ghcr.io/pluscosmic/nucleus-migrations:sha-{sha}"))
 
-          compose_file.write_text(updated)
+          if os.environ["BUMP_MINECRAFT_PANEL"] == "true":
+              bumps.append(("services/minecraft-panel.yml", "minecraft-panel", f"ghcr.io/pluscosmic/minecraft-panel:sha-{sha}"))
+
+          for compose_file_name, image_name, image in bumps:
+              compose_file = Path(compose_file_name)
+              text = compose_file.read_text()
+              pattern = re.compile(
+                  rf"(image:\s*['\"]?)ghcr\.io/pluscosmic/{re.escape(image_name)}:[^'\"\s]+(['\"]?)"
+              )
+              updated, count = pattern.subn(rf"\1{image}\2", text, count=1)
+
+              if count != 1:
+                  raise SystemExit(f"Expected to update one {image_name} image reference in {compose_file}, updated {count}")
+
+              compose_file.write_text(updated)
           PY
-        env:
-          COMPOSE_FILE: ${{ matrix.compose_file }}
-          IMAGE: ${{ matrix.image }}:sha-${{ github.sha }}
 
       - name: Create infrastructure PR
-        if: steps.should_build.outputs.enabled == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
           path: infrastructure
           token: ${{ secrets.INFRASTRUCTURE_PR_TOKEN }}
-          branch: automation/${{ matrix.service }}-${{ github.sha }}
+          branch: automation/app-images-${{ github.sha }}
           delete-branch: true
-          commit-message: Bump ${{ matrix.service }} image to sha-${{ github.sha }}
-          title: Bump ${{ matrix.service }} image to sha-${{ github.sha }}
+          commit-message: Bump app images to sha-${{ github.sha }}
+          title: Bump app images to sha-${{ github.sha }}
           body: |
-            Updates `${{ matrix.compose_file }}` to deploy:
-
-            `${{ matrix.image }}:sha-${{ github.sha }}`
+            Updates application image tags for `${{ github.sha }}`.
 
             Built from `${{ github.repository }}` commit `${{ github.sha }}`.
