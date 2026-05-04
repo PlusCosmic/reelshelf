@@ -1,9 +1,10 @@
 # Stage 1: Build Frontend
-FROM oven/bun:1.3.9 AS frontend-build
+FROM oven/bun:1.3.13 AS frontend-build
 WORKDIR /build
 
 # Copy workspace files for dependency resolution
 COPY package.json bun.lock ./
+COPY apps/personal-site/package.json ./apps/personal-site/package.json
 COPY packages/ ./packages/
 COPY services/clips/frontend/package.json ./services/clips/frontend/package.json
 COPY services/minecraft/frontend/ ./services/minecraft/frontend/
