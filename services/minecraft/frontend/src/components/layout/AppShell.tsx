@@ -375,7 +375,7 @@ export function AppShell({ children }: AppShellProps) {
       <MantineAppShell.Footer>
         <Group h="100%" px={{ base: 'sm', sm: 'lg' }} justify="space-between">
           <Text size="xs" c="dimmed">
-            <span style={{ color: '#00d4ff' }}>Minecraft Panel</span>{' '}
+            <span style={{ color: '#00d4ff' }}>Game Server Panel</span>{' '}
             <Box component="span" visibleFrom="xs">by PlusCosmic</Box>
           </Text>
           <Group gap={isMobile ? 'xs' : 'md'}>

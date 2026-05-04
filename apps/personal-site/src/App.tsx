@@ -2,7 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { RootLayout } from "./layouts/RootLayout";
 import { HomePage } from "./pages/HomePage";
 import { ClipsPage } from "./pages/ClipsPage";
-import { MinecraftPanelPage } from "./pages/MinecraftPanelPage";
+import { GameServerPanelPage } from "./pages/GameServerPanelPage";
 import { StarBattlesPage } from "./pages/StarBattlesPage";
 import "./App.css";
 
@@ -12,7 +12,7 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/projects/clips", element: <ClipsPage /> },
-      { path: "/projects/minecraft-panel", element: <MinecraftPanelPage /> },
+      { path: "/projects/game-server-panel", element: <GameServerPanelPage /> },
       { path: "/projects/star-battles", element: <StarBattlesPage /> },
     ],
   },

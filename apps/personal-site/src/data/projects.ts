@@ -40,15 +40,15 @@ export const projects: Project[] = [
       "React/TypeScript frontend with TanStack Router, C#/.NET backend API, PostgreSQL database, Bunny CDN for video storage and delivery",
   },
   {
-    title: "Minecraft Panel",
+    title: "Game Server Panel",
     subtitle: "Server management dashboard",
     description:
       "A web dashboard for managing and monitoring Minecraft servers, featuring real-time status monitoring, player management, an RCON command console, and file browsing. Built with a React/TypeScript frontend and C# .NET backend.",
     badges: ["React", "TypeScript", "C#", ".NET", "Docker", "PostgreSQL"],
-    path: "/projects/minecraft-panel",
+    path: "/projects/game-server-panel",
     githubUrl: "https://github.com/PlusCosmic/plus-cosmic-dev",
     overview:
-      "Minecraft Panel is a web-based dashboard for managing self-hosted Minecraft servers. It provides real-time server status monitoring, player management, and a full RCON command console — all from the browser. The panel also includes a file browser with an integrated Monaco editor for editing server configuration files without SSH access. Each Minecraft server runs in its own Docker container for isolation and easy lifecycle management.",
+      "Game Server Panel is a web-based dashboard for managing self-hosted game servers. It provides real-time server status monitoring, player management, and a full RCON command console — all from the browser. The panel also includes a file browser with an integrated Monaco editor for editing server configuration files without SSH access. Each Minecraft server runs in its own Docker container for isolation and easy lifecycle management.",
     features: [
       "Real-time server status monitoring",
       "Player management and moderation tools",

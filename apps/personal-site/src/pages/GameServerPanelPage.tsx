@@ -14,17 +14,23 @@ import { IconArrowLeft, IconBrandGithub } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { projects } from "../data/projects";
 import { ScreenshotGallery } from "../components/ScreenshotGallery";
-import mcPanel1 from "../assets/mc-panel-1.png";
-import mcPanel2 from "../assets/mc-panel-2.png";
-import mcPanel3 from "../assets/mc-panel-3.png";
-import mcPanel4 from "../assets/mc-panel-4.png";
-import mcPanel5 from "../assets/mc-panel-5.png";
+import gameServerPanel1 from "../assets/game-server-panel-1.png";
+import gameServerPanel2 from "../assets/game-server-panel-2.png";
+import gameServerPanel3 from "../assets/game-server-panel-3.png";
+import gameServerPanel4 from "../assets/game-server-panel-4.png";
+import gameServerPanel5 from "../assets/game-server-panel-5.png";
 
-const screenshots = [mcPanel1, mcPanel2, mcPanel3, mcPanel4, mcPanel5];
+const screenshots = [
+  gameServerPanel1,
+  gameServerPanel2,
+  gameServerPanel3,
+  gameServerPanel4,
+  gameServerPanel5,
+];
 
-const project = projects.find((p) => p.path === "/projects/minecraft-panel")!;
+const project = projects.find((p) => p.path === "/projects/game-server-panel")!;
 
-export function MinecraftPanelPage() {
+export function GameServerPanelPage() {
   return (
     <Stack>
       <Anchor component={Link} to="/" size="sm">

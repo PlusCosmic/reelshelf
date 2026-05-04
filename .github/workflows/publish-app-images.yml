@@ -25,7 +25,7 @@ on:
         options:
           - both
           - clips
-          - minecraft-panel
+          - game-server-panel
           - migrations
 
 permissions:
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       clips: ${{ steps.filter.outputs.clips }}
-      minecraft_panel: ${{ steps.filter.outputs.minecraft_panel }}
+      game_server_panel: ${{ steps.filter.outputs.game_server_panel }}
       migrations: ${{ steps.filter.outputs.migrations }}
     steps:
       - name: Checkout
@@ -53,22 +53,22 @@ jobs:
             case "${{ inputs.service }}" in
               both)
                 echo "clips=true" >> "$GITHUB_OUTPUT"
-                echo "minecraft_panel=true" >> "$GITHUB_OUTPUT"
+                echo "game_server_panel=true" >> "$GITHUB_OUTPUT"
                 echo "migrations=true" >> "$GITHUB_OUTPUT"
                 ;;
               clips)
                 echo "clips=true" >> "$GITHUB_OUTPUT"
-                echo "minecraft_panel=false" >> "$GITHUB_OUTPUT"
+                echo "game_server_panel=false" >> "$GITHUB_OUTPUT"
                 echo "migrations=true" >> "$GITHUB_OUTPUT"
                 ;;
-              minecraft-panel)
+              game-server-panel)
                 echo "clips=false" >> "$GITHUB_OUTPUT"
-                echo "minecraft_panel=true" >> "$GITHUB_OUTPUT"
+                echo "game_server_panel=true" >> "$GITHUB_OUTPUT"
                 echo "migrations=false" >> "$GITHUB_OUTPUT"
                 ;;
               migrations)
                 echo "clips=false" >> "$GITHUB_OUTPUT"
-                echo "minecraft_panel=false" >> "$GITHUB_OUTPUT"
+                echo "game_server_panel=false" >> "$GITHUB_OUTPUT"
                 echo "migrations=true" >> "$GITHUB_OUTPUT"
                 ;;
             esac
@@ -83,7 +83,7 @@ jobs:
           fi
 
           clips=false
-          minecraft_panel=false
+          game_server_panel=false
           migrations=false
 
           if grep -Eq '^(services/clips/|tools/Nucleus.Migrations/|packages/nucleus-shared/|packages/nucleus-api-client/|packages/shared/|package.json|bun.lock|turbo.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
@@ -95,16 +95,16 @@ jobs:
           fi
 
           if grep -Eq '^(services/minecraft/|packages/nucleus-shared/|packages/nucleus-api-client/|packages/shared/|package.json|bun.lock|turbo.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
-            minecraft_panel=true
+            game_server_panel=true
           fi
 
           echo "clips=${clips}" >> "$GITHUB_OUTPUT"
-          echo "minecraft_panel=${minecraft_panel}" >> "$GITHUB_OUTPUT"
+          echo "game_server_panel=${game_server_panel}" >> "$GITHUB_OUTPUT"
           echo "migrations=${migrations}" >> "$GITHUB_OUTPUT"
 
   build:
     needs: detect
-    if: needs.detect.outputs.clips == 'true' || needs.detect.outputs.minecraft_panel == 'true' || needs.detect.outputs.migrations == 'true'
+    if: needs.detect.outputs.clips == 'true' || needs.detect.outputs.game_server_panel == 'true' || needs.detect.outputs.migrations == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -120,11 +120,11 @@ jobs:
             image: ghcr.io/pluscosmic/nucleus-migrations
             compose_file: services/clips.yml
             compose_image: nucleus-migrations
-          - service: minecraft-panel
+          - service: game-server-panel
             dockerfile: services/minecraft/Dockerfile
-            image: ghcr.io/pluscosmic/minecraft-panel
-            compose_file: services/minecraft-panel.yml
-            compose_image: minecraft-panel
+            image: ghcr.io/pluscosmic/game-server-panel
+            compose_file: services/game-server-panel.yml
+            compose_image: game-server-panel
     steps:
       - name: Decide whether to build
         id: should_build
@@ -134,7 +134,7 @@ jobs:
           if [[ "${{ matrix.service }}" == "clips" && "${{ needs.detect.outputs.clips }}" == "true" ]]; then
             enabled=true
           fi
-          if [[ "${{ matrix.service }}" == "minecraft-panel" && "${{ needs.detect.outputs.minecraft_panel }}" == "true" ]]; then
+          if [[ "${{ matrix.service }}" == "game-server-panel" && "${{ needs.detect.outputs.game_server_panel }}" == "true" ]]; then
             enabled=true
           fi
           if [[ "${{ matrix.service }}" == "migrations" && "${{ needs.detect.outputs.migrations }}" == "true" ]]; then
@@ -177,7 +177,7 @@ jobs:
     needs:
       - detect
       - build
-    if: needs.detect.outputs.clips == 'true' || needs.detect.outputs.minecraft_panel == 'true' || needs.detect.outputs.migrations == 'true'
+    if: needs.detect.outputs.clips == 'true' || needs.detect.outputs.game_server_panel == 'true' || needs.detect.outputs.migrations == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout infrastructure repo
@@ -193,7 +193,7 @@ jobs:
         env:
           SHA: ${{ github.sha }}
           BUMP_CLIPS: ${{ needs.detect.outputs.clips }}
-          BUMP_MINECRAFT_PANEL: ${{ needs.detect.outputs.minecraft_panel }}
+          BUMP_GAME_SERVER_PANEL: ${{ needs.detect.outputs.game_server_panel }}
           BUMP_MIGRATIONS: ${{ needs.detect.outputs.migrations }}
         run: |
           python3 - <<'PY'
@@ -210,8 +210,8 @@ jobs:
           if os.environ["BUMP_MIGRATIONS"] == "true":
               bumps.append(("services/clips.yml", "nucleus-migrations", f"ghcr.io/pluscosmic/nucleus-migrations:sha-{sha}"))
 
-          if os.environ["BUMP_MINECRAFT_PANEL"] == "true":
-              bumps.append(("services/minecraft-panel.yml", "minecraft-panel", f"ghcr.io/pluscosmic/minecraft-panel:sha-{sha}"))
+          if os.environ["BUMP_GAME_SERVER_PANEL"] == "true":
+              bumps.append(("services/game-server-panel.yml", "game-server-panel", f"ghcr.io/pluscosmic/game-server-panel:sha-{sha}"))
 
           for compose_file_name, image_name, image in bumps:
               compose_file = Path(compose_file_name)

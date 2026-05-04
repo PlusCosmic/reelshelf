@@ -1,4 +1,4 @@
-# Minecraft Panel Enhancement Roadmap
+# Game Server Panel Enhancement Roadmap
 
 This document tracks planned feature enhancements for the Minecraft server management panel.
 
