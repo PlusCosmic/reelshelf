@@ -42,30 +42,76 @@ public class IgdbService
             IGDBClient.Endpoints.Games,
             $"""
             where id = {igdbId};
-            fields name,slug,cover.url,genres.name,platforms.name,summary,
-                artworks.image_id,artworks.url,artworks.width,artworks.height,artworks.alpha_channel,
-                artworks.artwork_type.name,artworks.artwork_type.slug;
+            fields name,slug,cover.image_id,cover.url,genres.name,platforms.name,summary;
             """
         );
 
         var game = games.FirstOrDefault();
         if (game == null) return null;
 
-        var artworkAssets = SelectArtworkAssets(game.Artworks ?? []);
+        var artworkAssets = SelectArtworkAssets(await GetArtworksForGameAsync(game.Id ?? igdbId));
 
         return new GameDetails(
             game.Id ?? 0,
             game.Name ?? "",
             game.Slug ?? "",
-            game.Cover?.Url != null
-                ? ConvertToHighResCover(game.Cover.Url)
-                : null,
+            GetCoverUrl(game.Cover),
             artworkAssets.KeyArtUrl,
             artworkAssets.GameLogoUrl,
             game.Genres?.Select(g => g.Name ?? "").ToList() ?? [],
             game.Platforms?.Select(p => p.Name ?? "").ToList() ?? [],
             game.Summary
         );
+    }
+
+    private async Task<List<IgdbArtwork>> GetArtworksForGameAsync(long igdbId)
+    {
+        var artworks = (await _client.QueryAsync<IgdbArtwork>(
+            "artworks",
+            $"""
+            where game = {igdbId};
+            fields image_id,url,width,height,alpha_channel,artwork_type;
+            limit 50;
+            """
+        )).ToList();
+
+        var artworkTypeIds = artworks
+            .Select(a => a.ArtworkTypeId)
+            .OfType<long>()
+            .Distinct()
+            .ToList();
+
+        if (artworkTypeIds.Count == 0) return artworks;
+
+        var artworkTypes = (await _client.QueryAsync<IgdbNamedEntity>(
+            "artwork_types",
+            $"""
+            where id = ({string.Join(",", artworkTypeIds)});
+            fields id,name,slug;
+            limit {artworkTypeIds.Count};
+            """
+        )).ToDictionary(t => t.Id);
+
+        foreach (var artwork in artworks)
+        {
+            if (artwork.ArtworkTypeId is { } typeId && artworkTypes.TryGetValue(typeId, out var artworkType))
+            {
+                artwork.ArtworkType = artworkType;
+            }
+        }
+
+        return artworks;
+    }
+
+    private static string? GetCoverUrl(IgdbImage? cover)
+    {
+        if (cover == null) return null;
+
+        return !string.IsNullOrWhiteSpace(cover.ImageId)
+            ? BuildIgdbImageUrl(cover.ImageId, "cover_big")
+            : cover.Url != null
+                ? ConvertToHighResCover(cover.Url)
+                : null;
     }
 
     private static string ConvertToHighResCover(string url)
@@ -102,7 +148,7 @@ public class IgdbService
     }
 
     private static bool IsGameLogo(IgdbArtwork artwork) =>
-        MatchesArtworkType(artwork, "game logo") || MatchesArtworkType(artwork, "game-logo");
+        NormalizedArtworkTypeValues(artwork).Any(value => value.Contains("logo"));
 
     private static bool IsKeyArtWithoutLogo(IgdbArtwork artwork) =>
         MatchesArtworkType(artwork, "key art without logo") || MatchesArtworkType(artwork, "key-art-without-logo");
@@ -116,6 +162,12 @@ public class IgdbService
 
     private static string NormalizeArtworkType(string? value) =>
         (value ?? "").Replace("-", " ").Replace("_", " ").Trim().ToLowerInvariant();
+
+    private static IEnumerable<string> NormalizedArtworkTypeValues(IgdbArtwork artwork)
+    {
+        yield return NormalizeArtworkType(artwork.ArtworkType?.Name);
+        yield return NormalizeArtworkType(artwork.ArtworkType?.Slug);
+    }
 
     private static string? GetImageId(IgdbArtwork artwork) =>
         !string.IsNullOrWhiteSpace(artwork.ImageId)
@@ -152,15 +204,14 @@ public class IgdbService
 
         [JsonProperty("summary")]
         public string? Summary { get; init; }
-
-        [JsonProperty("artworks")]
-        public List<IgdbArtwork>? Artworks { get; init; }
     }
 
     private sealed class IgdbArtwork : IgdbImage
     {
         [JsonProperty("artwork_type")]
-        public IgdbNamedEntity? ArtworkType { get; init; }
+        public long? ArtworkTypeId { get; init; }
+
+        public IgdbNamedEntity? ArtworkType { get; set; }
     }
 
     private class IgdbImage
@@ -180,6 +231,9 @@ public class IgdbService
 
     private sealed class IgdbNamedEntity
     {
+        [JsonProperty("id")]
+        public long Id { get; init; }
+
         [JsonProperty("name")]
         public string? Name { get; init; }
 

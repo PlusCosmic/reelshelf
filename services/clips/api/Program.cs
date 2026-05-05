@@ -182,6 +182,7 @@ internal static class BuilderExtensions
         {
             builder.Services.AddHostedService<ClipStatusRefreshService>();
             builder.Services.AddHostedService<MapRefreshService>();
+            builder.Services.AddHostedService<GameCategoryAssetRefreshService>();
             builder.Services.AddHostedService<ApexDetectionBackgroundService>();
         }
     }

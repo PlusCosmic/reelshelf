@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
-import { IconLayoutGrid, IconList, IconSparkles } from "@tabler/icons-react";
+import { IconLayoutGrid, IconList, IconPlus, IconSparkles } from "@tabler/icons-react";
+import { AddCategoryModal } from "@/components/AddCategoryModal";
 import { Chip, ClipGrid, SearchBox, StatLine } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { makeGameShelf, newestClips, topTags } from "@/components/Reelshelf/reelshelf-model";
 import { useLibraryData } from "@/components/Reelshelf/useLibraryData";
@@ -17,6 +18,7 @@ function LibraryRoute() {
   const [tag, setTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [variant, setVariant] = useState<"poster" | "grid" | "filmstrip">("filmstrip");
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
   const shelf = useMemo(() => makeGameShelf(categories, clips), [categories, clips]);
   const tags = useMemo(() => topTags(clips, 8), [clips]);
 
@@ -51,6 +53,15 @@ function LibraryRoute() {
             </h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="rs-icon-button"
+              type="button"
+              aria-label="Add a new book"
+              title="Add a new book"
+              onClick={() => setAddCategoryOpen(true)}
+            >
+              <IconPlus size={14} />
+            </button>
             <button
               className={`rs-icon-button${variant === "poster" ? " active" : ""}`}
               type="button"
@@ -94,12 +105,22 @@ function LibraryRoute() {
                       : undefined,
                   } as CSSProperties
                 }
+                title={game.name}
                 onClick={() => navigate({ to: "/games/$slug", params: { slug: game.slug } })}
               >
                 <span>{game.name}</span>
                 <span>{game.clipCount}</span>
               </button>
             ))}
+            <button
+              className="rs-spine rs-spine-add"
+              type="button"
+              title="Add a new book"
+              onClick={() => setAddCategoryOpen(true)}
+              aria-label="Add a new book"
+            >
+              <IconPlus size={18} aria-hidden="true" />
+            </button>
           </div>
         </div>
       </section>
@@ -132,6 +153,8 @@ function LibraryRoute() {
       <section className="rs-section">
         <ClipGrid clips={filtered} categories={categories} variant={variant} />
       </section>
+
+      <AddCategoryModal opened={addCategoryOpen} onClose={() => setAddCategoryOpen(false)} />
     </>
   );
 }

@@ -1,262 +1,202 @@
-import {
-  Modal,
-  Stack,
-  Tabs,
-  TextInput,
-  Button,
-  Loader,
-  Paper,
-  Group,
-  Image,
-  Text,
-  UnstyledButton,
-  Center,
-} from "@mantine/core";
-import { useState } from "react";
-import { useDebouncedValue } from "@mantine/hooks";
-import { IconSearch, IconPlus, IconPhoto } from "@tabler/icons-react";
-import { useGameSearch, useAddGameFromIgdb, useAddCustomCategory } from "@/hooks/queries";
+import { useEffect, useId, useState } from "react";
+import type { FormEvent } from "react";
+import { IconPhoto, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
+import { useAddCustomCategory, useAddGameFromIgdb, useGameSearch } from "@/hooks/queries";
 
 interface AddCategoryModalProps {
   opened: boolean;
   onClose: () => void;
 }
 
+type AddCategoryTab = "search" | "custom";
+
+function useDebouncedValue(value: string, delayMs = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => window.clearTimeout(timeout);
+  }, [delayMs, value]);
+
+  return debouncedValue;
+}
+
 export function AddCategoryModal({ opened, onClose }: AddCategoryModalProps) {
+  const titleId = useId();
+  const [activeTab, setActiveTab] = useState<AddCategoryTab>("search");
   const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebouncedValue(search, 300);
   const [customName, setCustomName] = useState("");
   const [customCoverUrl, setCustomCoverUrl] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
 
-  const { data: searchResults, isLoading: isSearching } = useGameSearch(debouncedSearch);
-
+  const { data: searchResults = [], isLoading: isSearching } = useGameSearch(debouncedSearch);
   const addFromIgdbMutation = useAddGameFromIgdb();
   const addCustomMutation = useAddCustomCategory();
+  const isSaving = addFromIgdbMutation.isPending || addCustomMutation.isPending;
+  const error = addFromIgdbMutation.error ?? addCustomMutation.error;
+
+  useEffect(() => {
+    if (!opened) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSaving) onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSaving, onClose, opened]);
+
+  if (!opened) return null;
+
+  const closeModal = () => {
+    if (!isSaving) onClose();
+  };
 
   const handleAddFromIgdb = (igdbId: number) => {
     addFromIgdbMutation.mutate(igdbId, {
       onSuccess: () => {
         setSearch("");
-        onClose();
+        closeModal();
       },
     });
   };
 
-  const handleAddCustom = () => {
+  const handleAddCustom = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = customName.trim();
+    if (!name) return;
+
     addCustomMutation.mutate(
-      { name: customName, coverUrl: customCoverUrl || undefined },
+      { name, coverUrl: customCoverUrl.trim() || undefined },
       {
         onSuccess: () => {
           setCustomName("");
           setCustomCoverUrl("");
-          onClose();
+          closeModal();
         },
-      }
+      },
     );
   };
 
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={
-        <Text
-          fw={600}
-          style={{
-            background: "linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-        >
-          Add Category
-        </Text>
-      }
-      size="md"
-      radius="lg"
-      styles={{
-        content: {
-          background:
-            "linear-gradient(135deg, rgba(15, 15, 25, 0.98) 0%, rgba(20, 20, 35, 0.95) 100%)",
-          border: "1px solid rgba(0, 212, 255, 0.2)",
-        },
-        header: {
-          background: "transparent",
-          borderBottom: "1px solid rgba(0, 212, 255, 0.1)",
-        },
-      }}
-    >
-      <Tabs defaultValue="search">
-        <Tabs.List
-          style={{
-            borderBottom: "1px solid rgba(0, 212, 255, 0.1)",
-          }}
-        >
-          <Tabs.Tab
-            value="search"
-            style={{
-              color: "#94a3b8",
-              "&[data-active]": {
-                color: "#00d4ff",
-                borderColor: "#00d4ff",
-              },
-            }}
+    <div className="rs-modal-layer" role="presentation" onMouseDown={closeModal}>
+      <section
+        className="rs-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="rs-modal-header">
+          <div>
+            <p className="rs-eyebrow">Bookshelf category</p>
+            <h2 className="rs-modal-title" id={titleId}>
+              Add a new book
+            </h2>
+          </div>
+          <button className="rs-icon-button" type="button" aria-label="Close modal" onClick={closeModal} disabled={isSaving}>
+            <IconX size={16} />
+          </button>
+        </header>
+
+        <div className="rs-modal-tabs" role="tablist" aria-label="Category type">
+          <button
+            className={`rs-modal-tab${activeTab === "search" ? " active" : ""}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "search"}
+            onClick={() => setActiveTab("search")}
           >
-            Search Games
-          </Tabs.Tab>
-          <Tabs.Tab
-            value="custom"
-            style={{
-              color: "#94a3b8",
-              "&[data-active]": {
-                color: "#00d4ff",
-                borderColor: "#00d4ff",
-              },
-            }}
+            Search games
+          </button>
+          <button
+            className={`rs-modal-tab${activeTab === "custom" ? " active" : ""}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "custom"}
+            onClick={() => setActiveTab("custom")}
           >
-            Custom Category
-          </Tabs.Tab>
-        </Tabs.List>
+            Custom category
+          </button>
+        </div>
 
-        <Tabs.Panel value="search" pt="md">
-          <Stack>
-            <TextInput
-              placeholder="Search for a game..."
-              leftSection={<IconSearch size={16} style={{ color: "#00d4ff" }} />}
-              rightSection={isSearching ? <Loader size="xs" color="cyan" /> : null}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              styles={{
-                input: {
-                  background: "rgba(15, 15, 25, 0.8)",
-                  border: "1px solid rgba(0, 212, 255, 0.2)",
-                  color: "#f8fafc",
-                  "&:focus": {
-                    borderColor: "#00d4ff",
-                  },
-                },
-              }}
-            />
+        {activeTab === "search" ? (
+          <div className="rs-modal-panel" role="tabpanel">
+            <label className="rs-field">
+              <span>Game title</span>
+              <span className="rs-input-shell">
+                <IconSearch size={16} />
+                <input
+                  autoFocus
+                  value={search}
+                  onChange={(event) => setSearch(event.currentTarget.value)}
+                  placeholder="Search for a game..."
+                />
+                {isSearching ? <span className="rs-spinner" aria-label="Searching" /> : null}
+              </span>
+            </label>
 
-            {searchResults && searchResults.length > 0 && (
-              <Paper
-                p="xs"
-                radius="md"
-                style={{
-                  background: "rgba(15, 15, 25, 0.6)",
-                  border: "1px solid rgba(0, 212, 255, 0.1)",
-                  maxHeight: "300px",
-                  overflowY: "auto",
-                }}
-              >
-                <Stack gap="xs">
-                  {searchResults.map((game) => (
-                    <UnstyledButton
-                      key={game.igdbId}
-                      onClick={() => handleAddFromIgdb(game.igdbId)}
-                      disabled={addFromIgdbMutation.isPending}
-                      style={{
-                        padding: "8px",
-                        borderRadius: "8px",
-                        transition: "all 0.2s ease",
-                        "&:hover": {
-                          background: "rgba(0, 212, 255, 0.1)",
-                        },
-                      }}
-                    >
-                      <Group>
-                        {game.coverUrl ? (
-                          <Image
-                            src={game.coverUrl}
-                            w={40}
-                            h={53}
-                            radius="sm"
-                            style={{ flexShrink: 0 }}
-                          />
-                        ) : (
-                          <Center
-                            w={40}
-                            h={53}
-                            style={{
-                              background: "rgba(0, 212, 255, 0.1)",
-                              borderRadius: "4px",
-                              flexShrink: 0,
-                            }}
-                          >
-                            <IconPhoto size={20} style={{ color: "#64748b" }} />
-                          </Center>
-                        )}
-                        <Text size="sm" style={{ color: "#f8fafc", flex: 1 }}>
-                          {game.name}
-                        </Text>
-                        <IconPlus size={16} style={{ color: "#00d4ff" }} />
-                      </Group>
-                    </UnstyledButton>
-                  ))}
-                </Stack>
-              </Paper>
+            {debouncedSearch.length >= 2 ? (
+              <div className="rs-game-results">
+                {searchResults.map((game) => (
+                  <button
+                    className="rs-game-result"
+                    key={game.igdbId}
+                    type="button"
+                    onClick={() => handleAddFromIgdb(game.igdbId)}
+                    disabled={isSaving}
+                  >
+                    {game.coverUrl ? (
+                      <img src={game.coverUrl} alt="" loading="lazy" />
+                    ) : (
+                      <span className="rs-game-result-fallback">
+                        <IconPhoto size={20} />
+                      </span>
+                    )}
+                    <span>{game.name}</span>
+                    <IconPlus size={16} />
+                  </button>
+                ))}
+                {!isSearching && searchResults.length === 0 ? (
+                  <p className="rs-modal-note">No games found. Try another search or create a custom category.</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="rs-modal-note">Search IGDB to add a game-backed book to your shelf.</p>
             )}
+          </div>
+        ) : (
+          <form className="rs-modal-panel" role="tabpanel" onSubmit={handleAddCustom}>
+            <label className="rs-field">
+              <span>Category name</span>
+              <span className="rs-input-shell">
+                <input
+                  autoFocus
+                  value={customName}
+                  onChange={(event) => setCustomName(event.currentTarget.value)}
+                  placeholder="Snowboarding, hiking, speedruns..."
+                />
+              </span>
+            </label>
+            <label className="rs-field">
+              <span>Cover image URL</span>
+              <span className="rs-input-shell">
+                <IconPhoto size={16} />
+                <input
+                  value={customCoverUrl}
+                  onChange={(event) => setCustomCoverUrl(event.currentTarget.value)}
+                  placeholder="https://..."
+                />
+              </span>
+            </label>
+            <button className="rs-primary rs-modal-submit" type="submit" disabled={!customName.trim() || isSaving}>
+              {addCustomMutation.isPending ? "Adding..." : "Add category"}
+            </button>
+          </form>
+        )}
 
-            {debouncedSearch.length >= 2 && !isSearching && searchResults?.length === 0 && (
-              <Text size="sm" c="dimmed" ta="center">
-                No games found. Try a different search or create a custom category.
-              </Text>
-            )}
-          </Stack>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="custom" pt="md">
-          <Stack>
-            <TextInput
-              label="Category Name"
-              placeholder="e.g., Snowboarding, Hiking"
-              value={customName}
-              onChange={(e) => setCustomName(e.currentTarget.value)}
-              required
-              styles={{
-                label: { color: "#94a3b8" },
-                input: {
-                  background: "rgba(15, 15, 25, 0.8)",
-                  border: "1px solid rgba(0, 212, 255, 0.2)",
-                  color: "#f8fafc",
-                  "&:focus": {
-                    borderColor: "#00d4ff",
-                  },
-                },
-              }}
-            />
-            <TextInput
-              label="Cover Image URL (optional)"
-              placeholder="https://..."
-              value={customCoverUrl}
-              onChange={(e) => setCustomCoverUrl(e.currentTarget.value)}
-              leftSection={<IconPhoto size={16} style={{ color: "#a855f7" }} />}
-              styles={{
-                label: { color: "#94a3b8" },
-                input: {
-                  background: "rgba(15, 15, 25, 0.8)",
-                  border: "1px solid rgba(168, 85, 247, 0.2)",
-                  color: "#f8fafc",
-                  "&:focus": {
-                    borderColor: "#a855f7",
-                  },
-                },
-              }}
-            />
-            <Button
-              onClick={handleAddCustom}
-              loading={addCustomMutation.isPending}
-              disabled={!customName.trim()}
-              style={{
-                background: "linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)",
-                border: "none",
-                fontWeight: 600,
-              }}
-            >
-              Add Category
-            </Button>
-          </Stack>
-        </Tabs.Panel>
-      </Tabs>
-    </Modal>
+        {error ? <p className="rs-modal-error">{error instanceof Error ? error.message : "Could not add category."}</p> : null}
+      </section>
+    </div>
   );
 }

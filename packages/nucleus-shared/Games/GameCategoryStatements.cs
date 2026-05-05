@@ -60,6 +60,24 @@ public class GameCategoryStatements(NpgsqlConnection connection)
         return await connection.QuerySingleOrDefaultAsync<GameCategory>(sql, new { IgdbId = igdbId });
     }
 
+    public async Task<List<GameCategory>> GetCategoriesNeedingIgdbAssetRefreshAsync(
+        int limit,
+        TimeSpan staleAfter)
+    {
+        const string sql = """
+            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, is_custom, created_at, updated_at
+            FROM game_category
+            WHERE igdb_id IS NOT NULL
+              AND (key_art_url IS NULL OR game_logo_url IS NULL)
+              AND updated_at <= now() - @StaleAfter
+            ORDER BY updated_at, name
+            LIMIT @Limit
+            """;
+
+        var results = await connection.QueryAsync<GameCategory>(sql, new { Limit = limit, StaleAfter = staleAfter });
+        return results.ToList();
+    }
+
     public async Task<GameCategory> CreateCategoryAsync(CreateGameCategoryRequest request)
     {
         const string sql = """

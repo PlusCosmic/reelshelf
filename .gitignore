@@ -48,6 +48,9 @@ obj/
 *.cache
 *.deps.json
 
+# ASP.NET Core Data Protection keys generated for local auth cookies
+services/clips/api/keys/
+
 # NuGet
 *.nupkg
 *.snupkg
