@@ -1019,6 +1019,186 @@ a {
   max-width: 760px;
 }
 
+.rs-upload-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 56px 32px 80px;
+}
+
+.rs-upload-title {
+  margin: 0 0 36px;
+  color: var(--fg);
+  font-size: clamp(36px, 6vw, 44px);
+  font-weight: 400;
+  line-height: 1.1;
+  text-wrap: pretty;
+}
+
+.rs-upload-steps {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 36px;
+}
+
+.rs-upload-steps span {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background: var(--line);
+  transition: background 0.24s;
+}
+
+.rs-upload-steps span.active {
+  background: var(--accent);
+}
+
+.rs-upload-dropzone {
+  display: grid;
+  width: 100%;
+  justify-items: center;
+  border: 2px dashed var(--line);
+  border-radius: 16px;
+  background: var(--bg-soft);
+  color: var(--fg);
+  cursor: pointer;
+  padding: 64px 32px;
+  text-align: center;
+  transition: background 0.18s, border-color 0.18s, transform 0.18s;
+}
+
+.rs-upload-dropzone:hover,
+.rs-upload-dropzone.active {
+  border-color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 6%, var(--bg));
+  transform: translateY(-1px);
+}
+
+.rs-upload-drop-icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--accent);
+}
+
+.rs-upload-drop-title {
+  margin-bottom: 6px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.rs-upload-drop-copy {
+  max-width: 380px;
+  color: var(--fg-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.rs-upload-panel {
+  display: grid;
+  gap: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-soft);
+  padding: 24px;
+}
+
+.rs-upload-file {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.rs-upload-thumb {
+  width: 120px;
+  aspect-ratio: 16 / 9;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--accent) 65%, var(--fg)), color-mix(in oklch, var(--bg) 46%, var(--fg))),
+    var(--track-bg);
+  overflow: hidden;
+}
+
+.rs-upload-file-name {
+  margin-bottom: 4px;
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.rs-upload-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.72fr);
+  gap: 18px;
+}
+
+.rs-upload-form-grid .rs-field:last-child {
+  grid-column: 1 / -1;
+}
+
+.rs-upload-progress {
+  display: grid;
+  gap: 10px;
+}
+
+.rs-upload-progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--track-bg);
+}
+
+.rs-upload-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.18s;
+}
+
+.rs-upload-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--fg-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-upload-error {
+  border: 1px solid color-mix(in oklch, #d44 48%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in oklch, #d44 10%, var(--bg));
+  color: color-mix(in oklch, #f66 72%, var(--fg));
+  margin-top: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.rs-upload-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rs-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .rs-field {
   display: grid;
   gap: 7px;
