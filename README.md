@@ -58,7 +58,7 @@ For .NET APIs, use `dotnet run` from the respective `services/*/api/` directorie
 ## Database Migrations
 
 Database schema changes are applied by the explicit Evolve runner in `tools/Nucleus.Migrations`.
-The APIs do not run migrations during startup. The clips Docker Compose stack owns the one-shot migration service, which should be deployed before or alongside API services that depend on the shared database.
+The APIs do not run migrations during startup. The clips Docker Compose stack in the infrastructure repository owns the one-shot migration service, which should be deployed before or alongside API services that depend on the shared database.
 
 For a new empty database, run:
 
