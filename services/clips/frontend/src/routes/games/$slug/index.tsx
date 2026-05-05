@@ -13,7 +13,6 @@ function GameCategoryRoute() {
   const { slug } = Route.useParams();
   const { categories, clips, isLoading, isError } = useLibraryData();
   const [tag, setTag] = useState<string | null>(null);
-  const [variant, setVariant] = useState<"poster" | "grid" | "filmstrip">("filmstrip");
   const category = categories.find((item) => item.slug === slug);
   const [colorA, colorB] = getGameColors(category?.id ?? slug);
   const gameClips = useMemo(
@@ -44,13 +43,9 @@ function GameCategoryRoute() {
         <div className="rs-eyebrow" style={{ color: "rgba(255,255,255,.76)" }}>
           {category.isCustom ? "Custom category" : "Game category"} - <StatLine clips={gameClips} />
         </div>
-        {category.gameLogoUrl ? (
-          <img className="rs-game-logo" src={category.gameLogoUrl} alt={category.name} />
-        ) : (
-          <h1 className="rs-display rs-h1" style={{ color: "white" }}>
-            {category.name}
-          </h1>
-        )}
+        <h1 className="rs-display rs-h1" style={{ color: "white" }}>
+          {category.name}
+        </h1>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 24 }}>
           <Chip active={!tag} onClick={() => setTag(null)}>
             All clips
@@ -64,25 +59,10 @@ function GameCategoryRoute() {
       </section>
 
       <section className="rs-section">
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, marginBottom: 24 }}>
+        <div style={{ marginBottom: 24 }}>
           <h2 className="rs-display rs-h2">All clips</h2>
-          <select
-            value={variant}
-            onChange={(event) => setVariant(event.currentTarget.value as typeof variant)}
-            style={{
-              border: "1px solid var(--line)",
-              borderRadius: 8,
-              background: "var(--bg-soft)",
-              color: "var(--fg-soft)",
-              padding: "7px 10px",
-            }}
-          >
-            <option value="poster">Poster shelf</option>
-            <option value="grid">Compact grid</option>
-            <option value="filmstrip">Filmstrip</option>
-          </select>
         </div>
-        <ClipGrid clips={filtered} categories={categories} variant={variant} />
+        <ClipGrid clips={filtered} categories={categories} variant="filmstrip" />
       </section>
     </>
   );

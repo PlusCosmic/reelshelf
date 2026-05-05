@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
-import { IconLayoutGrid, IconList, IconPlus, IconSparkles } from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
 import { Chip, ClipGrid, SearchBox, StatLine } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { makeGameShelf, newestClips, topTags } from "@/components/Reelshelf/reelshelf-model";
@@ -17,7 +17,6 @@ function LibraryRoute() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [tag, setTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [variant, setVariant] = useState<"poster" | "grid" | "filmstrip">("filmstrip");
   const [addCategoryOpen, setAddCategoryOpen] = useState(false);
   const shelf = useMemo(() => makeGameShelf(categories, clips), [categories, clips]);
   const tags = useMemo(() => topTags(clips, 8), [clips]);
@@ -43,7 +42,7 @@ function LibraryRoute() {
   return (
     <>
       <section className="rs-hero">
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+        <div>
           <div>
             <div className="rs-eyebrow">
               Your archive - <StatLine clips={clips} />
@@ -51,41 +50,6 @@ function LibraryRoute() {
             <h1 className="rs-display rs-h1">
               Welcome back. <em>{clips.filter((clip) => !clip.isViewed).length || "No"} new clips</em> are waiting on the shelf.
             </h1>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              className="rs-icon-button"
-              type="button"
-              aria-label="Add a new book"
-              title="Add a new book"
-              onClick={() => setAddCategoryOpen(true)}
-            >
-              <IconPlus size={14} />
-            </button>
-            <button
-              className={`rs-icon-button${variant === "poster" ? " active" : ""}`}
-              type="button"
-              onClick={() => setVariant("poster")}
-              aria-label="Poster view"
-            >
-              <IconSparkles size={16} />
-            </button>
-            <button
-              className={`rs-icon-button${variant === "grid" ? " active" : ""}`}
-              type="button"
-              onClick={() => setVariant("grid")}
-              aria-label="Grid view"
-            >
-              <IconLayoutGrid size={16} />
-            </button>
-            <button
-              className={`rs-icon-button${variant === "filmstrip" ? " active" : ""}`}
-              type="button"
-              onClick={() => setVariant("filmstrip")}
-              aria-label="Filmstrip view"
-            >
-              <IconList size={16} />
-            </button>
           </div>
         </div>
 
@@ -151,7 +115,7 @@ function LibraryRoute() {
       </section>
 
       <section className="rs-section">
-        <ClipGrid clips={filtered} categories={categories} variant={variant} />
+        <ClipGrid clips={filtered} categories={categories} variant="filmstrip" />
       </section>
 
       <AddCategoryModal opened={addCategoryOpen} onClose={() => setAddCategoryOpen(false)} />

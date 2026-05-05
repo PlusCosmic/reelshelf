@@ -1,5 +1,5 @@
 import { Link, Outlet, createRootRoute, useRouterState } from "@tanstack/react-router";
-import { IconLogout, IconMoon, IconPlayerPlayFilled, IconPlus, IconSearch, IconSun } from "@tabler/icons-react";
+import { IconLogout, IconMoon, IconPlayerPlayFilled, IconSun } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
@@ -14,7 +14,6 @@ function getInitialTheme(): ReelshelfTheme {
 }
 
 function RootComponent() {
-  const [globalSearch, setGlobalSearch] = useState("");
   const [theme, setTheme] = useState<ReelshelfTheme>(getInitialTheme);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -63,20 +62,6 @@ function RootComponent() {
             Upload
           </Link>
         </nav>
-
-        <label className="rs-search">
-          <IconSearch size={15} />
-          <input
-            value={globalSearch}
-            onChange={(event) => setGlobalSearch(event.currentTarget.value)}
-            placeholder="Search clips, games, tags..."
-          />
-        </label>
-
-        <Link to="/upload" className="rs-primary">
-          <IconPlus size={14} />
-          New clip
-        </Link>
 
         <div className="rs-user">
           <div

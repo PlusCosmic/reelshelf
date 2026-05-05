@@ -193,7 +193,7 @@ a {
   top: 0;
   z-index: 50;
   display: grid;
-  grid-template-columns: auto auto minmax(160px, 1fr) auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 28px;
   padding: 14px 32px;
@@ -300,6 +300,7 @@ a {
 }
 
 .rs-user {
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 10px;

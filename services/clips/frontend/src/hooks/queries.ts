@@ -67,6 +67,7 @@ export function useCategories() {
     queryKey: ["categories"],
     queryFn: fetchCategories,
     staleTime: 10 * 60_000, // 10 minutes
+    refetchOnMount: "always",
   });
 }
 
