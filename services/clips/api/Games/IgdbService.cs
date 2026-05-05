@@ -211,6 +211,7 @@ public class IgdbService
         [JsonProperty("artwork_type")]
         public long? ArtworkTypeId { get; init; }
 
+        [JsonIgnore]
         public IgdbNamedEntity? ArtworkType { get; set; }
     }
 
