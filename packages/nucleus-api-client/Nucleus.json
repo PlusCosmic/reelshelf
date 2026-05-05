@@ -3342,6 +3342,8 @@
           "name",
           "slug",
           "cover_url",
+          "key_art_url",
+          "game_logo_url",
           "is_custom"
         ],
         "type": "object",
@@ -3357,6 +3359,18 @@
             "type": "string"
           },
           "cover_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "key_art_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "game_logo_url": {
             "type": [
               "null",
               "string"

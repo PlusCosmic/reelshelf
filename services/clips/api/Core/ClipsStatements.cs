@@ -57,9 +57,9 @@ public class ClipsStatements(NpgsqlConnection connection)
         StringBuilder where = new("""
             c.owner_id = @ownerId
             AND c.game_category_id = @gameCategoryId
-            AND (@titleSearch IS NULL OR c.title ILIKE @titleSearch)
-            AND (@startDate IS NULL OR c.created_at >= @startDate)
-            AND (@endDate IS NULL OR c.created_at <= @endDate)
+            AND (@titleSearch::text IS NULL OR c.title ILIKE @titleSearch)
+            AND (@startDate::timestamptz IS NULL OR c.created_at >= @startDate)
+            AND (@endDate::timestamptz IS NULL OR c.created_at <= @endDate)
             """);
 
         // If a tags filter is provided, require exact tag-name matches through relational predicates.

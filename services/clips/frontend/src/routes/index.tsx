@@ -1,205 +1,137 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Box, Center, Group, Stack, Text, ThemeIcon } from "@mantine/core";
-import { LoginButton } from "@repo/ui";
-import { IconVideo } from "@tabler/icons-react";
-import logoDraft from "../assets/logo webp transparent.webp";
-import Categories from "../components/Categories";
-import { useCurrentUser } from "../hooks/queries";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import type { CSSProperties } from "react";
+import { useMemo, useState } from "react";
+import { IconLayoutGrid, IconList, IconSparkles } from "@tabler/icons-react";
+import { Chip, ClipGrid, SearchBox, StatLine } from "@/components/Reelshelf/ReelshelfPrimitives";
+import { makeGameShelf, newestClips, topTags } from "@/components/Reelshelf/reelshelf-model";
+import { useLibraryData } from "@/components/Reelshelf/useLibraryData";
 
 export const Route = createFileRoute("/")({
-  component: App,
+  component: LibraryRoute,
 });
 
-function App() {
-  const { data: user, isLoading } = useCurrentUser();
+function LibraryRoute() {
+  const navigate = useNavigate();
+  const { categories, clips, isLoading, isError } = useLibraryData();
+  const [gameId, setGameId] = useState<string | null>(null);
+  const [tag, setTag] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [variant, setVariant] = useState<"poster" | "grid" | "filmstrip">("filmstrip");
+  const shelf = useMemo(() => makeGameShelf(categories, clips), [categories, clips]);
+  const tags = useMemo(() => topTags(clips, 8), [clips]);
+
+  const filtered = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return newestClips(clips).filter((clip) => {
+      const category = categories.find((item) => item.id === clip.gameCategoryId);
+      if (gameId && clip.gameCategoryId !== gameId) return false;
+      if (tag && !clip.tags.includes(tag)) return false;
+      if (!normalizedQuery) return true;
+      return (
+        clip.video.title.toLowerCase().includes(normalizedQuery) ||
+        clip.tags.some((clipTag) => clipTag.toLowerCase().includes(normalizedQuery)) ||
+        category?.name.toLowerCase().includes(normalizedQuery)
+      );
+    });
+  }, [categories, clips, gameId, query, tag]);
+
+  if (isLoading) return <div className="rs-section rs-empty">Loading your archive...</div>;
+  if (isError) return <div className="rs-section rs-empty">The archive could not be loaded.</div>;
 
   return (
-    <Box
-      style={{
-        height: "calc(100vh - 138px)",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Background glow effects */}
-      <Box
-        style={{
-          position: "absolute",
-          top: "10%",
-          left: "20%",
-          width: 400,
-          height: 400,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(0, 212, 255, 0.1) 0%, transparent 70%)",
-          filter: "blur(80px)",
-          pointerEvents: "none",
-        }}
-      />
-      <Box
-        style={{
-          position: "absolute",
-          bottom: "20%",
-          right: "15%",
-          width: 350,
-          height: 350,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%)",
-          filter: "blur(80px)",
-          pointerEvents: "none",
-        }}
-      />
+    <>
+      <section className="rs-hero">
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+          <div>
+            <div className="rs-eyebrow">
+              Your archive - <StatLine clips={clips} />
+            </div>
+            <h1 className="rs-display rs-h1">
+              Welcome back. <em>{clips.filter((clip) => !clip.isViewed).length || "No"} new clips</em> are waiting on the shelf.
+            </h1>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className={`rs-icon-button${variant === "poster" ? " active" : ""}`}
+              type="button"
+              onClick={() => setVariant("poster")}
+              aria-label="Poster view"
+            >
+              <IconSparkles size={16} />
+            </button>
+            <button
+              className={`rs-icon-button${variant === "grid" ? " active" : ""}`}
+              type="button"
+              onClick={() => setVariant("grid")}
+              aria-label="Grid view"
+            >
+              <IconLayoutGrid size={16} />
+            </button>
+            <button
+              className={`rs-icon-button${variant === "filmstrip" ? " active" : ""}`}
+              type="button"
+              onClick={() => setVariant("filmstrip")}
+              aria-label="Filmstrip view"
+            >
+              <IconList size={16} />
+            </button>
+          </div>
+        </div>
 
-      {!user && (
-        <Stack
-          justify="center"
-          h="100%"
-          align="center"
-          gap="xl"
-          style={{ position: "relative", zIndex: 1 }}
-        >
-          <Stack align="center" gap="lg">
-            {/* Logo with glow */}
-            <Box style={{ position: "relative" }}>
-              <ThemeIcon
-                size={100}
-                radius="xl"
-                variant="gradient"
-                gradient={{ from: "cyberBlue", to: "cyberPurple", deg: 135 }}
-                style={{
-                  boxShadow:
-                    "0 0 40px rgba(0, 212, 255, 0.4), 0 0 80px rgba(168, 85, 247, 0.2)",
-                }}
-                className="cyber-glow-pulse"
+        <div className="rs-shelf">
+          <div className="rs-shelf-track">
+            {shelf.map((game) => (
+              <button
+                key={game.id}
+                className={`rs-spine${gameId === game.id ? " active" : ""}`}
+                type="button"
+                style={
+                  {
+                    "--game-a": game.colorA,
+                    "--game-b": game.colorB,
+                    backgroundImage: game.coverUrl
+                      ? `linear-gradient(to bottom, rgba(12, 9, 6, 0.08), rgba(12, 9, 6, 0.42)), url("${game.coverUrl}")`
+                      : undefined,
+                  } as CSSProperties
+                }
+                onClick={() => navigate({ to: "/games/$slug", params: { slug: game.slug } })}
               >
-                <IconVideo size={50} stroke={1.5} />
-              </ThemeIcon>
-              {/* Pulse ring */}
-              <Box
-                style={{
-                  position: "absolute",
-                  inset: -10,
-                  border: "2px solid rgba(0, 212, 255, 0.3)",
-                  borderRadius: "50%",
-                  animation: "pulse-ring 2s ease-out infinite",
-                }}
-              />
-            </Box>
+                <span>{game.name}</span>
+                <span>{game.clipCount}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
-            {/* Title */}
-            <Group gap="md" align="center">
-              <img
-                src={logoDraft}
-                width={70}
-                height={70}
-                referrerPolicy="no-referrer"
-                alt="Clips Logo"
-                style={{
-                  filter: "drop-shadow(0 0 12px rgba(0, 212, 255, 0.5))",
-                }}
-              />
-              <Text
-                size="4rem"
-                fw={800}
-                style={{
-                  letterSpacing: "-2px",
-                  background:
-                    "linear-gradient(90deg, #00d4ff 0%, #a855f7 50%, #ec4899 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  textShadow: "0 0 60px rgba(0, 212, 255, 0.3)",
-                }}
-              >
-                Clips
-              </Text>
-            </Group>
+      <section className="rs-filterbar">
+        <span className="rs-eyebrow" style={{ margin: "0 6px 0 0" }}>
+          Filter
+        </span>
+        <Chip active={!gameId} onClick={() => setGameId(null)}>
+          All games
+        </Chip>
+        {shelf.slice(0, 6).map((game) => (
+          <Chip key={game.id} active={gameId === game.id} onClick={() => setGameId(gameId === game.id ? null : game.id)}>
+            {game.name} <span style={{ opacity: 0.62 }}>{game.clipCount}</span>
+          </Chip>
+        ))}
+        <span style={{ width: 1, height: 18, background: "var(--line)", margin: "0 6px" }} />
+        <Chip active={!tag} onClick={() => setTag(null)}>
+          All tags
+        </Chip>
+        {tags.map(([tagName, count]) => (
+          <Chip key={tagName} active={tag === tagName} onClick={() => setTag(tag === tagName ? null : tagName)}>
+            #{tagName} <span style={{ opacity: 0.62 }}>{count}</span>
+          </Chip>
+        ))}
+        <div style={{ flex: 1 }} />
+        <SearchBox value={query} onChange={setQuery} />
+      </section>
 
-            {/* Tagline */}
-            <Text c="dimmed" size="xl" style={{ letterSpacing: "1px" }}>
-              Gaming Clips Archiver
-            </Text>
-
-            {/* Divider */}
-            <Box
-              style={{
-                width: 200,
-                height: 1,
-                background:
-                  "linear-gradient(90deg, transparent 0%, rgba(0, 212, 255, 0.4) 50%, transparent 100%)",
-                margin: "1rem 0",
-              }}
-            />
-          </Stack>
-
-          {/* Login Button */}
-          <Center>
-            <LoginButton />
-          </Center>
-        </Stack>
-      )}
-
-      {!isLoading && user && (
-        <Stack
-          justify="center"
-          h="100%"
-          align="center"
-          gap="xl"
-          style={{ position: "relative", zIndex: 1 }}
-        >
-          <Stack align="center" gap="lg">
-            {/* Logo and Title */}
-            <Group gap="md" align="center">
-              <img
-                src={logoDraft}
-                width={60}
-                height={60}
-                referrerPolicy="no-referrer"
-                alt="Clips Logo"
-                style={{
-                  filter: "drop-shadow(0 0 12px rgba(0, 212, 255, 0.5))",
-                }}
-              />
-              <Text
-                size="3.5rem"
-                fw={800}
-                style={{
-                  letterSpacing: "-2px",
-                  background:
-                    "linear-gradient(90deg, #00d4ff 0%, #a855f7 50%, #ec4899 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
-              >
-                Clips
-              </Text>
-            </Group>
-
-            {/* Tagline */}
-            <Text c="dimmed" size="lg" style={{ letterSpacing: "0.5px" }}>
-              Choose a category to get started
-            </Text>
-
-            {/* Divider */}
-            <Box
-              style={{
-                width: 150,
-                height: 1,
-                background:
-                  "linear-gradient(90deg, transparent 0%, rgba(0, 212, 255, 0.3) 50%, transparent 100%)",
-              }}
-            />
-          </Stack>
-
-          {/* Categories */}
-          <Center>
-            <Categories />
-          </Center>
-        </Stack>
-      )}
-
-    </Box>
+      <section className="rs-section">
+        <ClipGrid clips={filtered} categories={categories} variant={variant} />
+      </section>
+    </>
   );
 }

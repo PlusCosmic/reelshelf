@@ -7,6 +7,8 @@ public class GameCategory
     public string Name { get; init; } = string.Empty;
     public string Slug { get; init; } = string.Empty;
     public string? CoverUrl { get; init; }
+    public string? KeyArtUrl { get; init; }
+    public string? GameLogoUrl { get; init; }
     public bool IsCustom { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
@@ -16,7 +18,9 @@ public record CreateGameCategoryRequest(
     long? IgdbId,
     string Name,
     string Slug,
-    string? CoverUrl
+    string? CoverUrl,
+    string? KeyArtUrl = null,
+    string? GameLogoUrl = null
 );
 
 public record GameCategoryResponse(
@@ -24,6 +28,8 @@ public record GameCategoryResponse(
     string Name,
     string Slug,
     string? CoverUrl,
+    string? KeyArtUrl,
+    string? GameLogoUrl,
     bool IsCustom
 );
 
@@ -34,6 +40,8 @@ public record GameDetails(
     string Name,
     string Slug,
     string? CoverUrl,
+    string? KeyArtUrl,
+    string? GameLogoUrl,
     List<string> Genres,
     List<string> Platforms,
     string? Summary

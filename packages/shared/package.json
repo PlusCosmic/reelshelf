@@ -12,6 +12,7 @@
     "./services/categories": "./dist/services/categories.js",
     "./services/clips": "./dist/services/clips.js",
     "./services/ffmpeg": "./dist/services/ffmpeg.js",
+    "./services/playlists": "./dist/services/playlists.js",
     "./services/minecraft": "./dist/services/minecraft.js",
     "./hooks/useDebouncedValue": "./dist/hooks/useDebouncedValue.js",
     "./utils/format": "./dist/utils/format.js",

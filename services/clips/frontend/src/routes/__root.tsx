@@ -1,162 +1,140 @@
-import {
-  Link,
-  Outlet,
-  createRootRoute,
-  useRouterState,
-} from "@tanstack/react-router";
-import { ActionIcon, AppShell, Box, Group, Text, Title, Tooltip } from '@mantine/core'
-import { IconBrandGithub, IconBrandLinkedin } from '@tabler/icons-react'
-import { UserAvatar } from "@repo/ui";
-import { Notifications } from "@mantine/notifications";
-import { ModalsProvider } from '@mantine/modals';
-import { useCurrentUser, useLogout } from "../hooks/queries";
-import tempLogo from "../assets/transparent plus.png";
+import { Link, Outlet, createRootRoute, useRouterState } from "@tanstack/react-router";
+import { IconLogout, IconMoon, IconPlayerPlayFilled, IconPlus, IconSearch, IconSun } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
+import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
+import { LandingPage } from "@/components/Reelshelf/LandingPage";
+import { useCurrentUser, useLogout } from "@/hooks/queries";
+
+type ReelshelfTheme = "light" | "dark";
+
+function getInitialTheme(): ReelshelfTheme {
+  const stored = window.localStorage.getItem("reelshelf-theme");
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
 function RootComponent() {
-  const router = useRouterState();
-  const isIndexRoute = router.location.pathname === '/';
-  const { data: user, isLoading } = useCurrentUser();
-  const logoutMutation = useLogout();
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [theme, setTheme] = useState<ReelshelfTheme>(getInitialTheme);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { data: user, isLoading, isError } = useCurrentUser();
+  const logout = useLogout();
+
+  const active = (path: string) => (path === "/" ? pathname === "/" : pathname.startsWith(path));
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("reelshelf-theme", theme);
+  }, [theme]);
+
+  if (isLoading) {
+    return (
+      <div className="rs-app">
+        <div className="rs-section rs-empty">Opening the shelf...</div>
+      </div>
+    );
+  }
+
+  if (!user || isError) {
+    return <LandingPage />;
+  }
 
   return (
-    <ModalsProvider>
-      <AppShell
-        withBorder={false}
-        padding="md"
-        header={{ height: 70 }}
-        footer={{ height: 36 }}
-        className="cyber-background"
-        styles={{
-          main: {
-            background: 'transparent',
-            minHeight: '100vh',
-          },
-          header: {
-            background: 'linear-gradient(90deg, rgba(0, 212, 255, 0.03) 0%, rgba(168, 85, 247, 0.05) 50%, rgba(0, 212, 255, 0.03) 100%)',
-            backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(0, 212, 255, 0.15)',
-            boxShadow: '0 4px 30px rgba(0, 0, 0, 0.3)',
-          },
-          footer: {
-            background: 'linear-gradient(90deg, rgba(0, 212, 255, 0.02) 0%, rgba(168, 85, 247, 0.03) 50%, rgba(0, 212, 255, 0.02) 100%)',
-            backdropFilter: 'blur(10px)',
-            borderTop: '1px solid rgba(0, 212, 255, 0.1)',
-          }
-        }}
-      >
-        <AppShell.Header>
-          <Group h="100%" px="lg" justify="space-between">
-            <div>
-              {!isIndexRoute && (
-                <Link to={"/"} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <Group gap="sm" style={{ transition: 'all 0.2s ease' }}>
-                    <Box
-                      style={{
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <img
-                        src={tempLogo}
-                        width={40}
-                        height={40}
-                        referrerPolicy="no-referrer"
-                        alt="Clips Logo"
-                        style={{
-                          filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.5))',
-                        }}
-                      />
-                    </Box>
-                    <Title
-                      order={3}
-                      style={{
-                        background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontWeight: 700,
-                        letterSpacing: '-0.5px',
-                      }}
-                    >
-                      Clips
-                    </Title>
-                  </Group>
-                </Link>
-              )}
-            </div>
-            <UserAvatar
-              hideLogin={true}
-              user={user}
-              isLoading={isLoading}
-              onLogout={() => logoutMutation.mutateAsync()}
-            />
-          </Group>
-        </AppShell.Header>
+    <div className="rs-app">
+      <header className="rs-topbar">
+        <Link to="/" className="rs-brand" aria-label="Reelshelf library">
+          <span className="rs-brand-mark">
+            <IconPlayerPlayFilled size={14} />
+          </span>
+          <span className="rs-brand-name">
+            Reel<em>shelf</em>
+          </span>
+        </Link>
 
-        <AppShell.Main>
-          <Outlet />
-        </AppShell.Main>
+        <nav className="rs-nav" aria-label="Primary">
+          <Link to="/" className={active("/") ? "active" : undefined}>
+            Library
+          </Link>
+          <Link to="/playlists" className={active("/playlists") ? "active" : undefined}>
+            Collections
+          </Link>
+          <Link to="/upload" className={active("/upload") ? "active" : undefined}>
+            Upload
+          </Link>
+        </nav>
 
-        <AppShell.Footer>
-          <Group h="100%" px="lg" justify="space-between">
-            <Text size="xs" c="dimmed">
-              <span style={{ color: '#00d4ff' }}>Clips</span> by PlusCosmic
-            </Text>
-            <Group gap="md">
-              <Tooltip label="GitHub" position="top">
-                <ActionIcon
-                  component="a"
-                  href="https://github.com/PlusCosmic"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="subtle"
-                  size="sm"
-                  style={{
-                    color: '#00d4ff',
-                    transition: 'all 0.2s ease',
+        <label className="rs-search">
+          <IconSearch size={15} />
+          <input
+            value={globalSearch}
+            onChange={(event) => setGlobalSearch(event.currentTarget.value)}
+            placeholder="Search clips, games, tags..."
+          />
+        </label>
+
+        <Link to="/upload" className="rs-primary">
+          <IconPlus size={14} />
+          New clip
+        </Link>
+
+        <div className="rs-user">
+          <div
+            className="rs-profile-menu"
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setProfileMenuOpen(false);
+              }
+            }}
+          >
+            <button
+              className="rs-profile-trigger"
+              type="button"
+              onClick={() => setProfileMenuOpen((open) => !open)}
+              aria-label="Open profile menu"
+              aria-haspopup="menu"
+              aria-expanded={profileMenuOpen}
+            >
+              <Avatar name={user.globalName ?? user.username} src={user.avatar} />
+            </button>
+            {profileMenuOpen ? (
+              <div className="rs-profile-popover" role="menu">
+                <button
+                  className="rs-menu-item"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setTheme((value) => (value === "dark" ? "light" : "dark"));
+                    setProfileMenuOpen(false);
                   }}
                 >
-                  <IconBrandGithub size={18} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="LinkedIn" position="top">
-                <ActionIcon
-                  component="a"
-                  href="https://www.linkedin.com/in/harry-lovesey-leach-445075195/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="subtle"
-                  size="sm"
-                  style={{
-                    color: '#a855f7',
-                    transition: 'all 0.2s ease',
+                  {theme === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
+                  {theme === "dark" ? "Light mode" : "Dark mode"}
+                </button>
+                <button
+                  className="rs-menu-item"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    logout.mutate();
                   }}
                 >
-                  <IconBrandLinkedin size={18} />
-                </ActionIcon>
-              </Tooltip>
-              <Text size="xs" c="dimmed">
-                Powered by{' '}
-                <span
-                  style={{
-                    background: 'linear-gradient(90deg, #00d4ff 0%, #a855f7 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
-                >
-                  Nucleus
-                </span>
-              </Text>
-            </Group>
-          </Group>
-          <Notifications />
-        </AppShell.Footer>
-      </AppShell>
-    </ModalsProvider>
+                  <IconLogout size={16} />
+                  Log out
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </header>
+      <main>
+        <Outlet />
+      </main>
+    </div>
   );
 }
 
 export const Route = createRootRoute({
   component: RootComponent,
-})
+});

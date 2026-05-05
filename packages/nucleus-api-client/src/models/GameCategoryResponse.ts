@@ -45,6 +45,18 @@ export interface GameCategoryResponse {
     coverUrl: string | null;
     /**
      * 
+     * @type {string}
+     * @memberof GameCategoryResponse
+     */
+    keyArtUrl: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GameCategoryResponse
+     */
+    gameLogoUrl: string | null;
+    /**
+     * 
      * @type {boolean}
      * @memberof GameCategoryResponse
      */
@@ -59,6 +71,8 @@ export function instanceOfGameCategoryResponse(value: object): value is GameCate
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('slug' in value) || value['slug'] === undefined) return false;
     if (!('coverUrl' in value) || value['coverUrl'] === undefined) return false;
+    if (!('keyArtUrl' in value) || value['keyArtUrl'] === undefined) return false;
+    if (!('gameLogoUrl' in value) || value['gameLogoUrl'] === undefined) return false;
     if (!('isCustom' in value) || value['isCustom'] === undefined) return false;
     return true;
 }
@@ -77,6 +91,8 @@ export function GameCategoryResponseFromJSONTyped(json: any, ignoreDiscriminator
         'name': json['name'],
         'slug': json['slug'],
         'coverUrl': json['cover_url'],
+        'keyArtUrl': json['key_art_url'],
+        'gameLogoUrl': json['game_logo_url'],
         'isCustom': json['is_custom'],
     };
 }
@@ -96,7 +112,8 @@ export function GameCategoryResponseToJSONTyped(value?: GameCategoryResponse | n
         'name': value['name'],
         'slug': value['slug'],
         'cover_url': value['coverUrl'],
+        'key_art_url': value['keyArtUrl'],
+        'game_logo_url': value['gameLogoUrl'],
         'is_custom': value['isCustom'],
     };
 }
-

@@ -46,6 +46,15 @@ public partial class GameCategoryService(
         var existing = await statements.GetByIgdbIdAsync(igdbId);
         if (existing != null)
         {
+            if (existing.KeyArtUrl == null || existing.GameLogoUrl == null)
+            {
+                var existingGameDetails = await igdbService.GetGameByIdAsync(igdbId);
+                if (existingGameDetails != null)
+                {
+                    existing = await statements.UpdateIgdbAssetsAsync(existing.Id, existingGameDetails);
+                }
+            }
+
             // Just add the user subscription
             await statements.AddUserCategoryAsync(user.Id, existing.Id);
             return ToResponse(existing);
@@ -60,7 +69,9 @@ public partial class GameCategoryService(
             gameDetails.IgdbId,
             gameDetails.Name,
             gameDetails.Slug,
-            gameDetails.CoverUrl
+            gameDetails.CoverUrl,
+            gameDetails.KeyArtUrl,
+            gameDetails.GameLogoUrl
         ));
 
         // Add user subscription
@@ -108,7 +119,15 @@ public partial class GameCategoryService(
     }
 
     private static GameCategoryResponse ToResponse(GameCategory category) =>
-        new(category.Id, category.Name, category.Slug, category.CoverUrl, category.IsCustom);
+        new(
+            category.Id,
+            category.Name,
+            category.Slug,
+            category.CoverUrl,
+            category.KeyArtUrl,
+            category.GameLogoUrl,
+            category.IsCustom
+        );
 
     private static string GenerateSlug(string name)
     {

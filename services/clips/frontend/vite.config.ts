@@ -1,7 +1,7 @@
 import { URL, fileURLToPath } from 'node:url'
 import fs from 'node:fs'
 import path from 'node:path'
-import { defineConfig } from 'vite'
+import { defineConfig, type ProxyOptions } from 'vite'
 import viteReact from '@vitejs/plugin-react'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
@@ -10,9 +10,24 @@ const keyPath = path.resolve(__dirname, './local.pluscosmic.dev-key.pem')
 const certPath = path.resolve(__dirname, './local.pluscosmic.dev.pem')
 const hasLocalCerts = fs.existsSync(keyPath) && fs.existsSync(certPath)
 
+const apiProxy: ProxyOptions = {
+  target: 'http://localhost:5260',
+  changeOrigin: false,
+  xfwd: true,
+  configure(proxy) {
+    proxy.on('proxyReq', (proxyReq, req) => {
+      const forwardedProto = req.headers['x-forwarded-proto']
+      proxyReq.setHeader(
+        'X-Forwarded-Proto',
+        typeof forwardedProto === 'string' ? forwardedProto.split(',')[0] : 'https',
+      )
+    })
+  },
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  cacheDir: '../../../.cache/vite/clips',
+  cacheDir: process.env.VITE_CACHE_DIR ?? '../../../.cache/vite/clips',
   plugins: [
     tanstackRouter({
       target: 'react',
@@ -35,14 +50,8 @@ export default defineConfig({
       },
     }),
     proxy: {
-      '/api': {
-        target: 'http://localhost:5260',
-        changeOrigin: true,
-      },
-      '/auth': {
-        target: 'http://localhost:5260',
-        changeOrigin: true,
-      },
+      '/api': apiProxy,
+      '/auth': apiProxy,
     },
   },
 })
