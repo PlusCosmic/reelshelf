@@ -31,6 +31,7 @@ await connection.OpenAsync();
 bool hasMetadataTable = await HasMetadataTable(connection);
 bool hasApplicationTables = await HasApplicationTables(connection);
 bool hasBaselineVersion = hasMetadataTable && await HasSuccessfulVersion(connection, baselineVersion);
+string migrationLocation = options.Location ?? defaultMigrationLocation;
 
 if (hasApplicationTables && !hasMetadataTable && !options.AdoptExisting)
 {
@@ -42,7 +43,7 @@ if (hasApplicationTables && !hasMetadataTable && !options.AdoptExisting)
 
 Evolve evolve = new(connection, Console.WriteLine)
 {
-    Locations = [options.Location ?? defaultMigrationLocation],
+    Locations = [migrationLocation],
     IsEraseDisabled = true,
     MetadataTableName = metadataTableName
 };
@@ -55,7 +56,7 @@ if (options.AdoptExisting && hasApplicationTables && !hasMetadataTable)
 else if (hasMetadataTable && !hasBaselineVersion)
 {
     Console.WriteLine($"Existing Evolve metadata found without V{baselineVersion}; continuing from legacy history at V{baselineVersion}.");
-    evolve.StartVersion = new MigrationVersion(baselineVersion);
+    evolve.Locations = [CreateMigrationLocationWithoutBaseline(migrationLocation)];
 }
 
 evolve.Migrate();
@@ -103,6 +104,31 @@ static async Task<bool> HasSuccessfulVersion(NpgsqlConnection connection, string
         """, connection);
     command.Parameters.AddWithValue("version", version);
     return (bool)(await command.ExecuteScalarAsync() ?? false);
+}
+
+static string CreateMigrationLocationWithoutBaseline(string migrationLocation)
+{
+    if (!Directory.Exists(migrationLocation))
+    {
+        throw new DirectoryNotFoundException($"Migration folder not found: {migrationLocation}");
+    }
+
+    string temporaryLocation = Path.Combine(Path.GetTempPath(), $"nucleus-migrations-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(temporaryLocation);
+
+    foreach (string sourcePath in Directory.EnumerateFiles(migrationLocation, "*.sql"))
+    {
+        string fileName = Path.GetFileName(sourcePath);
+
+        if (fileName.StartsWith($"V{baselineVersion}__", StringComparison.OrdinalIgnoreCase))
+        {
+            continue;
+        }
+
+        File.Copy(sourcePath, Path.Combine(temporaryLocation, fileName));
+    }
+
+    return temporaryLocation;
 }
 
 internal sealed record MigrationOptions(
