@@ -1,28 +1,22 @@
 import { useEffect, useId, useState } from "react";
 import type { FormEvent } from "react";
-import { IconPhoto, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
+import { IconX } from "@tabler/icons-react";
+import { CustomCategoryPanel } from "@/components/AddCategory/CustomCategoryPanel";
+import { GameSearchPanel } from "@/components/AddCategory/GameSearchPanel";
+import {
+  type AddCategoryTab,
+  ModalTabs,
+} from "@/components/AddCategory/ModalTabs";
 import {
   useAddCustomCategory,
   useAddGameFromIgdb,
   useGameSearch,
 } from "@/hooks/queries";
+import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 
 interface AddCategoryModalProps {
   opened: boolean;
   onClose: () => void;
-}
-
-type AddCategoryTab = "search" | "custom";
-
-function useDebouncedValue(value: string, delayMs = 300) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedValue(value), delayMs);
-    return () => window.clearTimeout(timeout);
-  }, [delayMs, value]);
-
-  return debouncedValue;
 }
 
 export function AddCategoryModal({ opened, onClose }: AddCategoryModalProps) {
@@ -114,121 +108,28 @@ export function AddCategoryModal({ opened, onClose }: AddCategoryModalProps) {
           </button>
         </header>
 
-        <div
-          className="rs-modal-tabs"
-          role="tablist"
-          aria-label="Category type"
-        >
-          <button
-            className={`rs-modal-tab${activeTab === "search" ? " active" : ""}`}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "search"}
-            onClick={() => setActiveTab("search")}
-          >
-            Search games
-          </button>
-          <button
-            className={`rs-modal-tab${activeTab === "custom" ? " active" : ""}`}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "custom"}
-            onClick={() => setActiveTab("custom")}
-          >
-            Custom category
-          </button>
-        </div>
+        <ModalTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
         {activeTab === "search" ? (
-          <div className="rs-modal-panel" role="tabpanel">
-            <label className="rs-field">
-              <span>Game title</span>
-              <span className="rs-input-shell">
-                <IconSearch size={16} />
-                <input
-                  autoFocus
-                  value={search}
-                  onChange={(event) => setSearch(event.currentTarget.value)}
-                  placeholder="Search for a game..."
-                />
-                {isSearching ? (
-                  <span className="rs-spinner" aria-label="Searching" />
-                ) : null}
-              </span>
-            </label>
-
-            {debouncedSearch.length >= 2 ? (
-              <div className="rs-game-results">
-                {searchResults.map((game) => (
-                  <button
-                    className="rs-game-result"
-                    key={game.igdbId}
-                    type="button"
-                    onClick={() => handleAddFromIgdb(game.igdbId)}
-                    disabled={isSaving}
-                  >
-                    {game.coverUrl ? (
-                      <img src={game.coverUrl} alt="" loading="lazy" />
-                    ) : (
-                      <span className="rs-game-result-fallback">
-                        <IconPhoto size={20} />
-                      </span>
-                    )}
-                    <span>{game.name}</span>
-                    <IconPlus size={16} />
-                  </button>
-                ))}
-                {!isSearching && searchResults.length === 0 ? (
-                  <p className="rs-modal-note">
-                    No games found. Try another search or create a custom
-                    category.
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <p className="rs-modal-note">
-                Search IGDB to add a game-backed book to your shelf.
-              </p>
-            )}
-          </div>
+          <GameSearchPanel
+            debouncedSearch={debouncedSearch}
+            isSaving={isSaving}
+            isSearching={isSearching}
+            onAddGame={handleAddFromIgdb}
+            search={search}
+            searchResults={searchResults}
+            setSearch={setSearch}
+          />
         ) : (
-          <form
-            className="rs-modal-panel"
-            role="tabpanel"
+          <CustomCategoryPanel
+            customCoverUrl={customCoverUrl}
+            customName={customName}
+            isSaving={isSaving}
+            isSubmitting={addCustomMutation.isPending}
             onSubmit={handleAddCustom}
-          >
-            <label className="rs-field">
-              <span>Category name</span>
-              <span className="rs-input-shell">
-                <input
-                  autoFocus
-                  value={customName}
-                  onChange={(event) => setCustomName(event.currentTarget.value)}
-                  placeholder="Snowboarding, hiking, speedruns..."
-                />
-              </span>
-            </label>
-            <label className="rs-field">
-              <span>Cover image URL</span>
-              <span className="rs-input-shell">
-                <IconPhoto size={16} />
-                <input
-                  value={customCoverUrl}
-                  onChange={(event) =>
-                    setCustomCoverUrl(event.currentTarget.value)
-                  }
-                  placeholder="https://..."
-                />
-              </span>
-            </label>
-            <button
-              className="rs-primary rs-modal-submit"
-              type="submit"
-              disabled={!customName.trim() || isSaving}
-            >
-              {addCustomMutation.isPending ? "Adding..." : "Add category"}
-            </button>
-          </form>
+            setCustomCoverUrl={setCustomCoverUrl}
+            setCustomName={setCustomName}
+          />
         )}
 
         {error ? (
