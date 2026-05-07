@@ -30,7 +30,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { getServer, updateServer } from '@repo/shared/services/minecraft';
-import type { UpdateMinecraftServerRequest } from '@repo/nucleus-api-client';
+import type { UpdateMinecraftServerRequest } from '@repo/minecraft-api-client';
 
 export const Route = createFileRoute('/servers/$serverId/settings')({
   component: SettingsPage,

@@ -8,7 +8,8 @@ COPY bun.lock package.json turbo.json ./
 
 # Copy package manifests for workspace dependency resolution
 COPY apps/personal-site/package.json ./apps/personal-site/
-COPY packages/nucleus-api-client/package.json ./packages/nucleus-api-client/
+COPY packages/clips-api-client/package.json ./packages/clips-api-client/
+COPY packages/minecraft-api-client/package.json ./packages/minecraft-api-client/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/typescript-config/package.json ./packages/typescript-config/

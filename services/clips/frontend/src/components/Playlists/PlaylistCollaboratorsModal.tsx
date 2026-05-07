@@ -35,7 +35,7 @@ import {
 } from "@repo/shared";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
-import type { PlaylistCollaborator } from "@repo/nucleus-api-client";
+import type { PlaylistCollaborator } from "@repo/clips-api-client";
 import { useCurrentUser } from "@/hooks/queries.ts";
 
 type PlaylistCollaboratorsModalProps = {

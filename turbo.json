@@ -9,7 +9,17 @@
     "build:api": {
       "cache": false
     },
+    "generate:openapi": {
+      "cache": false
+    },
+    "generate:api-client": {
+      "dependsOn": ["generate:openapi"],
+      "cache": false
+    },
     "lint": {},
+    "//#format:check": {
+      "outputs": []
+    },
     "typecheck": {
       "outputs": []
     },

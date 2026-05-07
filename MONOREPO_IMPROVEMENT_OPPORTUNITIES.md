@@ -21,35 +21,9 @@ Add explicit root scripts and Turbo tasks for:
 
 The current repo has the pieces, but they are scattered. A new contributor should be able to run one command before pushing and trust the result.
 
-### Add package-level build scripts to shared TS packages
-
-`@repo/shared` and `@repo/ui` are consumed by apps but do not produce compiled output. Add build scripts that emit JS and declarations into `dist`, then export from `dist`. This makes the packages easier to test, publish, lint, and typecheck independently.
-
-### Standardize workspace naming
-
-The root package is still named `with-vite`, service frontends are named `clips` and `minecraft`, and docs reference old app names. Rename workspaces to stable names such as:
-
-- `@repo/clips-frontend`
-- `@repo/minecraft-frontend`
-- `@repo/personal-site`
-- `@repo/shared`
-- `@repo/ui`
-
-This improves Turbo logs, dependency graphs, and future package ownership.
-
-### Use one package-manager vocabulary
-
-The repo is Bun-based, but there is still a `pnpm run build` in the API client package. Replace all package-manager-specific scripts with Bun equivalents or neutral npm lifecycle commands.
-
 ### Add repo-level dependency/version policy
 
 Align React, Vite, Mantine, TanStack, TypeScript, ESLint, and Tabler versions across apps where possible. This reduces lockfile churn, duplicated install artifacts, and "works in one app but not the other" behavior.
-
-### Add CODEOWNERS or ownership notes
-
-This repo has several domains: clips, Minecraft, shared .NET auth, shared frontend packages, generated client, and personal site. Lightweight ownership docs would help future work avoid accidental cross-domain regressions.
-
-The current backend split should be documented as a shared Nucleus database plus feature APIs, not as independently owned service databases. Shared identity/auth/schema concerns should have one explicit owner even while clips and Minecraft remain separate runtime APIs.
 
 ## Backend Architecture
 
@@ -283,7 +257,7 @@ Capture decisions that will matter later:
 
 ### Document generated-code ownership
 
-Add a clear rule for `packages/nucleus-api-client`: what files are generated, what files are hand-maintained, how to regenerate, and how CI verifies it.
+Added `docs/API_CLIENT_PIPELINE.md` to document generated client ownership, regeneration commands, and drift checks for `packages/clips-api-client` and `packages/minecraft-api-client`.
 
 ## Cleanup Opportunities
 
@@ -292,7 +266,7 @@ Add a clear rule for `packages/nucleus-api-client`: what files are generated, wh
 Consider untracking IDE metadata and generated docs if not needed:
 
 - `.idea/*`
-- `packages/nucleus-api-client/src/docs/*.md`
+- generated API client docs, if re-enabled by the generator
 
 ### Remove unused or stale dependencies
 
@@ -303,10 +277,6 @@ Audit dependencies after workflow fixes. Examples to inspect:
 - frontend testing packages with no tests
 - devtools packages in production dependencies
 - `web-vitals` in Minecraft if no reporting endpoint exists
-
-### Introduce formatting check
-
-Root `format` writes files. Add `format:check` for CI and pre-commit use.
 
 ### Add local development bootstrap docs/scripts
 

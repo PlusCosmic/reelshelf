@@ -2,7 +2,7 @@ import { apiConfig } from "@repo/shared";
 import { Avatar, Badge, Box, Card, Group, Image, Skeleton, Stack, Text, Tooltip } from "@mantine/core";
 import { IconClock } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import type { Clip } from "@repo/nucleus-api-client";
+import type { Clip } from "@repo/clips-api-client";
 import { formatDate, formatDuration, getProcessingStatusMessage, isClipProcessing } from "@/utils/format.ts";
 import { useUserById } from "@/hooks/queries.ts";
 

@@ -47,7 +47,7 @@ import { modals } from "@mantine/modals";
 import { CreatePlaylistModal } from "./CreatePlaylistModal";
 import { CreateGamingSessionModal } from "./CreateGamingSessionModal";
 import { PlaylistCollaboratorsModal } from "./PlaylistCollaboratorsModal";
-import type { PlaylistSummary } from "@repo/nucleus-api-client";
+import type { PlaylistSummary } from "@repo/clips-api-client";
 
 export function PlaylistsPage() {
   const [activeTab, setActiveTab] = useState<string | null>("all");

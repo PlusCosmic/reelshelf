@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAddTag, useRemoveTag, useTopTags } from '../queries';
-import type { Clip } from '@repo/nucleus-api-client';
+import type { Clip } from '@repo/clips-api-client';
 
 export function useClipFormState(clip: Clip | null | undefined) {
   const [tagsValue, setTagsValue] = useState<Array<string>>([]);

@@ -1,5 +1,5 @@
 {
-  "name": "minecraft",
+  "name": "@repo/minecraft-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -17,7 +17,7 @@
     "@mantine/modals": "^8.3.14",
     "@mantine/notifications": "^8.3.14",
     "@monaco-editor/react": "^4.7.0",
-    "@repo/nucleus-api-client": "workspace:*",
+    "@repo/minecraft-api-client": "workspace:*",
     "@repo/shared": "workspace:*",
     "@repo/ui": "workspace:*",
     "@tabler/icons-react": "^3.36.1",

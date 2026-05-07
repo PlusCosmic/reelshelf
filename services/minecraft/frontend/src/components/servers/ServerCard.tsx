@@ -3,7 +3,7 @@ import { IconServer2, IconUsers, IconArrowRight, IconTrash, IconPower } from '@t
 import { Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { deleteServer, getServerStatus } from '@repo/shared/services/minecraft';
-import type { MinecraftServer } from '@repo/nucleus-api-client';
+import type { MinecraftServer } from '@repo/minecraft-api-client';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 

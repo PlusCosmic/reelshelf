@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getServers } from '@repo/shared/services/minecraft';
-import type { MinecraftServer } from '@repo/nucleus-api-client';
+import type { MinecraftServer } from '@repo/minecraft-api-client';
 
 interface ServerContextValue {
   /** The currently selected server ID */

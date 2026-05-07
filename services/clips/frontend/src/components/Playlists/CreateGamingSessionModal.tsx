@@ -28,7 +28,7 @@ import { notifications } from "@mantine/notifications";
 import type {
   GameCategoryResponse,
   DiscordUser,
-} from "@repo/nucleus-api-client";
+} from "@repo/clips-api-client";
 
 type CreateGamingSessionModalProps = {
   opened: boolean;

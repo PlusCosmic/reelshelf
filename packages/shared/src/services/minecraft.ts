@@ -1,6 +1,4 @@
 import {
-  MinecraftEndpointsApi,
-  Configuration,
   type ServerStatus,
   type OnlinePlayer,
   type DirectoryListing,
@@ -10,19 +8,11 @@ import {
   type ContainerActionResponse,
   type BackupListResult,
   type BackupSyncResult,
+  type CreateMinecraftServerRequest,
   type UpdateMinecraftServerRequest,
-} from "@repo/nucleus-api-client";
+} from "@repo/minecraft-api-client";
 import { apiConfig } from "../config/apiConfig";
-
-/**
- * Creates a configured instance of the MinecraftEndpointsApi
- * Uses credentials: "include" for cookie-based authentication
- */
-function createApi() {
-  return new MinecraftEndpointsApi(
-    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" })
-  );
-}
+import { createMinecraftApi as createApi } from "./apiClients";
 
 // ============================================================================
 // Server Management
@@ -45,6 +35,13 @@ export async function getServers(): Promise<MinecraftServer[]> {
 export async function getServer(serverId: string): Promise<MinecraftServer> {
   const api = createApi();
   return api.getMinecraftServer({ serverId });
+}
+
+export async function createServer(
+  request: CreateMinecraftServerRequest
+): Promise<MinecraftServer> {
+  const api = createApi();
+  return api.createMinecraftServer({ createMinecraftServerRequest: request });
 }
 
 // ============================================================================

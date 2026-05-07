@@ -7,17 +7,8 @@ import {
   type AddClipToPlaylistRequest,
   type AddCollaboratorRequest,
   type ReorderPlaylistClipsRequest,
-  PlaylistEndpointsApi,
-  Configuration,
-} from "@repo/nucleus-api-client";
-import { apiConfig } from "../config/apiConfig";
-
-// Helper to create API instance with auth
-function getPlaylistApi() {
-  return new PlaylistEndpointsApi(
-    new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
-  );
-}
+} from "@repo/clips-api-client";
+import { createPlaylistApi as getPlaylistApi } from "./apiClients";
 
 /**
  * Fetch all playlists the user has access to (created or collaborating on)

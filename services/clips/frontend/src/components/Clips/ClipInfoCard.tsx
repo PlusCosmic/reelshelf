@@ -11,7 +11,7 @@ import {
 } from '@mantine/core';
 import { IconDownload, IconTrash } from '@tabler/icons-react';
 import type { RefObject } from 'react';
-import type { Clip, DiscordUser } from '@repo/nucleus-api-client';
+import type { Clip, DiscordUser } from '@repo/clips-api-client';
 
 interface ClipInfoCardProps {
   clip: Clip | null | undefined;
