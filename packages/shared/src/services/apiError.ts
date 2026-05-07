@@ -1,5 +1,4 @@
 import { ResponseError as ClipsResponseError } from "@repo/clips-api-client";
-import { ResponseError as MinecraftResponseError } from "@repo/minecraft-api-client";
 
 export type ApiErrorKind =
   | "auth"
@@ -33,7 +32,7 @@ export async function toApiError(error: unknown): Promise<ApiError> {
     return error;
   }
 
-  if (error instanceof ClipsResponseError || error instanceof MinecraftResponseError) {
+  if (error instanceof ClipsResponseError) {
     const details = await readProblemDetails(error.response);
     return new ApiError(
       getProblemMessage(details) ?? error.message,

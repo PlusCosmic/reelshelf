@@ -40,32 +40,6 @@ export const projects: Project[] = [
       "React/TypeScript frontend with TanStack Router, C#/.NET backend API, PostgreSQL database, Bunny CDN for video storage and delivery",
   },
   {
-    title: "Game Server Panel",
-    subtitle: "Server management dashboard",
-    description:
-      "A web dashboard for managing and monitoring Minecraft servers, featuring real-time status monitoring, player management, an RCON command console, and file browsing. Built with a React/TypeScript frontend and C# .NET backend.",
-    badges: ["React", "TypeScript", "C#", ".NET", "Docker", "PostgreSQL"],
-    path: "/projects/game-server-panel",
-    githubUrl: "https://github.com/PlusCosmic/plus-cosmic-dev",
-    overview:
-      "Game Server Panel is a web-based dashboard for managing self-hosted game servers. It provides real-time server status monitoring, player management, and a full RCON command console — all from the browser. The panel also includes a file browser with an integrated Monaco editor for editing server configuration files without SSH access. Each Minecraft server runs in its own Docker container for isolation and easy lifecycle management.",
-    features: [
-      "Real-time server status monitoring",
-      "Player management and moderation tools",
-      "RCON command console in the browser",
-      "File browsing with integrated Monaco editor",
-      "Docker container management for server lifecycle",
-      "Multi-server support with isolated environments",
-    ],
-    highlights: [
-      "Real-time communication between the frontend and game servers via the RCON protocol, allowing server administration without a game client",
-      "Containerised Minecraft servers with Docker for isolation — each server gets its own container with independent resource limits",
-      "Integrated Monaco editor for editing server config files in-browser, removing the need for SSH access",
-    ],
-    architecture:
-      "React/TypeScript frontend, C#/.NET backend API, PostgreSQL database, Docker for Minecraft server containers",
-  },
-  {
     title: "Star Battles",
     subtitle: "Puzzle solver and generator",
     description:

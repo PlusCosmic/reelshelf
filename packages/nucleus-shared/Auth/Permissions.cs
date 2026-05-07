@@ -25,11 +25,6 @@ public static class Permissions
     public const string LinksRead = "links.read";
     public const string LinksManage = "links.manage";
 
-    // Minecraft permissions
-    public const string MinecraftStatus = "minecraft.status";
-    public const string MinecraftConsole = "minecraft.console";
-    public const string MinecraftFiles = "minecraft.files";
-
     // Admin permissions
     public const string AdminUsers = "admin.users";
 
@@ -43,15 +38,13 @@ public static class Permissions
         [
             ClipsRead,
             PlaylistsRead,
-            LinksRead,
-            MinecraftStatus
+            LinksRead
         ],
         [UserRole.Editor] =
         [
             ClipsRead,
             PlaylistsRead,
             LinksRead,
-            MinecraftStatus,
             ClipsCreate,
             ClipsEdit,
             PlaylistsManage,

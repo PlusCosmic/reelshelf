@@ -20,9 +20,6 @@
 # Clips runtime API, frontend, and deployment assets.
 /services/clips/ @PlusCosmic
 
-# Minecraft runtime API, frontend, and deployment assets.
-/services/minecraft/ @PlusCosmic
-
 # Shared frontend packages and generated API client.
 /packages/shared/ @PlusCosmic
 /packages/ui/ @PlusCosmic

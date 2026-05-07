@@ -7,13 +7,11 @@ A Turborepo monorepo with full-stack services using .NET APIs and React frontend
 Each service contains an `api/` (C# .NET) and `frontend/` (React + Vite).
 
 - **clips** - Video clip management with resumable uploads, Apex Legends integration, and Bunny CDN
-- **minecraft** - Minecraft server tools with Monaco editor for configuration
 
 ## Packages
 
 ### TypeScript
 - `@repo/clips-api-client` - Auto-generated TypeScript client for the Clips API
-- `@repo/minecraft-api-client` - Auto-generated TypeScript client for the Minecraft API
 - `@repo/shared` - Shared services and hooks
 - `@repo/ui` - Mantine-based UI components
 - `@repo/eslint-config` - ESLint configurations

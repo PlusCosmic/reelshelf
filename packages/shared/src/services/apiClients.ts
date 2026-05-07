@@ -4,10 +4,6 @@ import {
   GameCategoryEndpointsApi,
   PlaylistEndpointsApi,
 } from "@repo/clips-api-client";
-import {
-  Configuration as MinecraftConfiguration,
-  MinecraftEndpointsApi,
-} from "@repo/minecraft-api-client";
 import { apiConfig } from "../config/apiConfig";
 import { createApiErrorMiddleware } from "./apiError";
 
@@ -27,8 +23,4 @@ export function createGameCategoryApi() {
 
 export function createPlaylistApi() {
   return new PlaylistEndpointsApi(new ClipsConfiguration(clientOptions));
-}
-
-export function createMinecraftApi() {
-  return new MinecraftEndpointsApi(new MinecraftConfiguration(clientOptions));
 }
