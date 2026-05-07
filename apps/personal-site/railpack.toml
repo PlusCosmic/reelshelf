@@ -1,5 +1,0 @@
-[build]
-packageManager = "bun"
-
-[install]
-frozenLockfile = false
