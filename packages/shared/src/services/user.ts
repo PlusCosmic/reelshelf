@@ -9,18 +9,18 @@ export interface DiscordUser {
 }
 
 export async function fetchMe(): Promise<DiscordUser | null> {
-  return requestUser("/api/me");
+  return requestUser("/me");
 }
 
 export async function fetchUser(userId : string): Promise<DiscordUser | null> {
-  return requestUser(`/api/user/${encodeURIComponent(userId)}`);
+  return requestUser(`/user/${encodeURIComponent(userId)}`);
 }
 
 /**
  * Fetch suggested users (Discord friends) for collaborator selection
  */
 export async function fetchUserSuggestions(): Promise<DiscordUser[]> {
-  const users = await requestJson<Array<DiscordUserResponse>>("/api/users/suggestions");
+  const users = await requestJson<Array<DiscordUserResponse>>("/users/suggestions");
   return users.map(fromDiscordUserResponse);
 }
 
