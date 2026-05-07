@@ -1,41 +1,10 @@
 # Repository ownership map
-#
-# This file keeps review routing explicit while the monorepo grows. The
-# default owner currently covers every domain; domain sections below make the
-# intended ownership boundaries visible and can be narrowed to teams later.
 
-# Default fallback for all files.
 * @PlusCosmic
 
-# Monorepo workflow and CI.
-/.github/ @PlusCosmic
+/ @PlusCosmic
+/Nucleus.sln @PlusCosmic
 /package.json @PlusCosmic
 /bun.lock @PlusCosmic
-/.eslintrc.js @PlusCosmic
-/scripts/ @PlusCosmic
-
-# Personal site app.
-/apps/personal-site/ @PlusCosmic
-
-# Clips runtime API, frontend, and deployment assets.
-/services/clips/ @PlusCosmic
-
-# Shared frontend packages and generated API client.
-/packages/shared/ @PlusCosmic
-/packages/ui/ @PlusCosmic
-/packages/eslint-config/ @PlusCosmic
-/packages/typescript-config/ @PlusCosmic
-/packages/nucleus-api-client/ @PlusCosmic
-/openapitools.json @PlusCosmic
-
-# Shared Nucleus backend concerns: auth, Discord identity, games, permissions,
-# exceptions, and other code used by multiple feature APIs.
-/packages/nucleus-shared/ @PlusCosmic
-
-# Shared database migration owner for the Nucleus PostgreSQL schema.
-/tools/Nucleus.Migrations/ @PlusCosmic
-
-# Architecture and contributor-facing documentation.
-/README.md @PlusCosmic
-/MONOREPO_IMPROVEMENT_OPPORTUNITIES.md @PlusCosmic
 /docs/ @PlusCosmic
+/.github/ @PlusCosmic

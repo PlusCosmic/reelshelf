@@ -1,63 +1,22 @@
-# Ownership notes
+# Ownership Notes
 
-This monorepo contains several product domains that share a few core building blocks. Ownership is intentionally lightweight for now: `.github/CODEOWNERS` routes every area to the repository owner while this document records the boundaries future teams or maintainers should preserve.
+This repository now contains one product: Clips.
 
-## Current review routing
-
-All paths currently resolve to `@PlusCosmic` in `.github/CODEOWNERS`. The file is split by domain anyway so ownership can be narrowed later without rediscovering the repository shape.
-
-## Product domains
-
-### Personal site
-
-Path: `apps/personal-site/`
-
-The personal site is its own frontend app. Changes here should avoid coupling to Clips runtime concerns unless they are explicitly shared through packages.
-
-### Clips
+## Clips
 
 Paths:
 
-- `services/clips/api/`
-- `services/clips/frontend/`
-- `services/clips/Dockerfile`
-
-Clips owns clip upload, library, playlists, Bunny integration, game/category presentation, and its service-specific deployment assets.
-
-## Shared frontend ownership
-
-Paths:
-
-- `packages/shared/`
-- `packages/ui/`
-- `packages/eslint-config/`
-- `packages/typescript-config/`
-- `packages/clips-api-client/`
-- `openapitools.json`
-
-These packages are shared by multiple apps. Changes should be reviewed as cross-app changes even when they are motivated by one app. Generated API client changes should be paired with the OpenAPI source or documented regeneration command that produced them. See `docs/API_CLIENT_PIPELINE.md` for generation commands and drift checks.
-
-## Shared backend ownership
-
-Paths:
-
-- `packages/nucleus-shared/`
-- `tools/Nucleus.Migrations/`
+- `api/`
+- `frontend/`
+- `migrations/`
+- `Dockerfile`
 - `Nucleus.sln`
 
-The backend split is a shared Nucleus PostgreSQL database plus feature APIs, not independently owned service databases.
+Clips owns upload, library, playlists, Bunny integration, game/category metadata, auth, database migrations, and deployment assets.
 
-`packages/nucleus-shared` owns shared backend mechanics such as auth, Discord identity, permissions, game categories, exceptions, and middleware used by both feature APIs.
+## Review Checklist
 
-`tools/Nucleus.Migrations` is the single owner of schema changes for the shared Nucleus database. Do not add competing API-startup migration paths for Clips. Deployment should run one explicit migration step before starting code that depends on the schema.
-
-## Practical review checklist
-
-Before approving cross-domain work, check:
-
-- Does this change alter shared auth, roles, Discord users, permissions, or game categories?
-- Does this change require a shared database migration?
+- Does this change alter auth, roles, Discord users, permissions, or game categories?
+- Does this change require a database migration?
 - Does this change update generated API client files without updating or documenting the OpenAPI source/regeneration step?
 - Does this change affect deployment order, shared volumes, data-protection keys, or network assumptions?
-
-If the answer is yes, treat the PR as shared Nucleus ownership work rather than a single feature-app change.

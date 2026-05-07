@@ -5,14 +5,12 @@ on:
     branches:
       - main
     paths:
-      - 'services/clips/**'
-      - 'tools/Nucleus.Migrations/**'
-      - 'packages/nucleus-shared/**'
-      - 'packages/nucleus-api-client/**'
-      - 'packages/shared/**'
+      - 'api/**'
+      - 'frontend/**'
+      - 'migrations/**'
+      - 'Dockerfile'
       - 'package.json'
       - 'bun.lock'
-      - 'turbo.json'
       - '.github/workflows/publish-app-images.yml'
   workflow_dispatch:
     inputs:
@@ -74,11 +72,11 @@ jobs:
           clips=false
           migrations=false
 
-          if grep -Eq '^(services/clips/|tools/Nucleus.Migrations/|packages/nucleus-shared/|packages/nucleus-api-client/|packages/shared/|package.json|bun.lock|turbo.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
+          if grep -Eq '^(api/|frontend/|migrations/|Dockerfile|package.json|bun.lock|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
             clips=true
           fi
 
-          if grep -Eq '^(tools/Nucleus.Migrations/|package.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
+          if grep -Eq '^(migrations/|package.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
             migrations=true
           fi
 
@@ -94,12 +92,12 @@ jobs:
       matrix:
         include:
           - service: clips
-            dockerfile: services/clips/Dockerfile
+            dockerfile: Dockerfile
             image: ghcr.io/pluscosmic/clips
             compose_file: services/clips.yml
             compose_image: clips
           - service: migrations
-            dockerfile: tools/Nucleus.Migrations/Dockerfile
+            dockerfile: migrations/Dockerfile
             image: ghcr.io/pluscosmic/nucleus-migrations
             compose_file: services/clips.yml
             compose_image: nucleus-migrations

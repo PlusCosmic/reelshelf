@@ -1,0 +1,144 @@
+import {
+  Box,
+  Card,
+  Group,
+  Image,
+  Loader,
+  Stack,
+  Text,
+  ThemeIcon,
+  Title,
+  UnstyledButton,
+  Center,
+} from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { IconCategory, IconPlus } from "@tabler/icons-react";
+import { useNavigate } from "@tanstack/react-router";
+import { useCategories, useCurrentUser } from "../hooks/queries";
+import { AddCategoryModal } from "./AddCategoryModal";
+import classes from "./Categories.module.scss";
+
+export default function Categories() {
+  const navigate = useNavigate();
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
+  const { isLoading: isLoadingUser } = useCurrentUser();
+  const { data: categories, isLoading: isLoadingCategories } = useCategories();
+
+  const isLoading = isLoadingUser || isLoadingCategories;
+
+  function handleCategoryClick(slug: string) {
+    navigate({ to: "/games/$slug", params: { slug } });
+  }
+
+  if (isLoading) {
+    return (
+      <Stack align="center" gap="md" py="xl">
+        <Loader size="lg" color="cyan" />
+        <Text c="dimmed" size="sm">
+          Loading categories...
+        </Text>
+      </Stack>
+    );
+  }
+
+  return (
+    <>
+      <Group mt="md" gap="lg">
+        {categories?.map((category) => (
+          <Card
+            key={category.id}
+            className={classes.item}
+            w={220}
+            h={240}
+            p="lg"
+          >
+            <UnstyledButton
+              onClick={() => handleCategoryClick(category.slug)}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <Stack align="center" gap="md" h="100%" justify="center">
+                <Box className={classes.imageWrapper}>
+                  {category.coverUrl ? (
+                    <Image
+                      src={category.coverUrl}
+                      w={160}
+                      h={160}
+                      radius="md"
+                      fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='%2300d4ff' fill='none' stroke-width='1.5'%3E%3Cpath d='M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z'%3E%3C/path%3E%3Crect x='3' y='6' width='12' height='12' rx='2'%3E%3C/rect%3E%3C/svg%3E"
+                      style={{
+                        border: "1px solid rgba(0, 212, 255, 0.1)",
+                        borderRadius: "var(--mantine-radius-md)",
+                      }}
+                    />
+                  ) : (
+                    <Center
+                      w={160}
+                      h={160}
+                      style={{
+                        background:
+                          "linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)",
+                        border: "1px solid rgba(0, 212, 255, 0.2)",
+                        borderRadius: "var(--mantine-radius-md)",
+                      }}
+                    >
+                      <IconCategory
+                        size={48}
+                        style={{ color: "rgba(0, 212, 255, 0.5)" }}
+                      />
+                    </Center>
+                  )}
+                </Box>
+                <Title
+                  className={classes.title}
+                  order={5}
+                  maw={180}
+                  ta="center"
+                  lineClamp={2}
+                >
+                  {category.name}
+                </Title>
+              </Stack>
+            </UnstyledButton>
+          </Card>
+        ))}
+
+        {/* Add Category Card */}
+        <Card
+          className={classes.item}
+          w={220}
+          h={240}
+          p="lg"
+          style={{
+            cursor: "pointer",
+          }}
+        >
+          <UnstyledButton
+            onClick={openModal}
+            style={{ width: "100%", height: "100%" }}
+          >
+            <Stack align="center" gap="md" h="100%" justify="center">
+              <ThemeIcon
+                size={80}
+                radius="xl"
+                variant="light"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)",
+                  border: "1px solid rgba(0, 212, 255, 0.2)",
+                }}
+              >
+                <IconPlus size={40} style={{ color: "#00d4ff" }} />
+              </ThemeIcon>
+              <Title className={classes.title} order={5} ta="center">
+                Add Category
+              </Title>
+            </Stack>
+          </UnstyledButton>
+        </Card>
+      </Group>
+
+      <AddCategoryModal opened={modalOpened} onClose={closeModal} />
+    </>
+  );
+}

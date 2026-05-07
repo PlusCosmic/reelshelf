@@ -1,20 +1,17 @@
 # API Client Pipeline
 
-The repo generates a TypeScript API client for the Clips backend service.
+The Clips frontend uses a committed TypeScript client generated from the Clips API OpenAPI document.
 
-## Packages
+- OpenAPI document: `frontend/src/api-client/Nucleus.Clips.json`
+- Generated source: `frontend/src/api-client/apis`, `frontend/src/api-client/models`, `frontend/src/api-client/runtime.ts`, `frontend/src/api-client/index.ts`
+- Consumer: `frontend`
 
-- `@repo/clips-api-client`
-  - OpenAPI document: `packages/clips-api-client/Nucleus.Clips.json`
-  - Generated source: `packages/clips-api-client/apis`, `packages/clips-api-client/models`, `packages/clips-api-client/runtime.ts`, `packages/clips-api-client/index.ts`
-  - Consumer: `services/clips/frontend`
+Commands:
 
-The generated client files are committed. Do not hand-edit generated files; update the backend API and run the generation command instead.
+```sh
+bun run generate:openapi:clips
+bun run generate:api-client
+bun run check:api-client-drift
+```
 
-## Commands
-
-- Generate Clips OpenAPI: `bun run generate:openapi:clips`
-- Generate and build the client: `bun run generate:api-clients`
-- Check for stale generated output: `bun run check:api-client-drift`
-
-`@repo/shared` owns cross-service frontend helpers such as auth/user helpers, API factories, and normalized API error handling. Service-specific wrappers should import the matching generated client package.
+Do not hand-edit generated files; update the backend API and run the generation command instead.
