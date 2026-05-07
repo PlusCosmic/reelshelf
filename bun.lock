@@ -78,19 +78,6 @@
         "typescript": "^5.5.3",
       },
     },
-    "packages/nucleus-api-client": {
-      "name": "@repo/nucleus-api-client",
-      "version": "0.0.0",
-      "dependencies": {
-        "@openapitools/openapi-generator-cli": "^2.25.0",
-        "openapi-generator-cli": "^1.0.0",
-      },
-      "devDependencies": {
-        "@repo/eslint-config": "workspace:*",
-        "@repo/typescript-config": "workspace:*",
-        "typescript": "^5.5.3",
-      },
-    },
     "packages/shared": {
       "name": "@repo/shared",
       "version": "0.0.0",
@@ -487,8 +474,6 @@
     "@repo/minecraft-api-client": ["@repo/minecraft-api-client@workspace:packages/minecraft-api-client"],
 
     "@repo/minecraft-frontend": ["@repo/minecraft-frontend@workspace:services/minecraft/frontend"],
-
-    "@repo/nucleus-api-client": ["@repo/nucleus-api-client@workspace:packages/nucleus-api-client"],
 
     "@repo/personal-site": ["@repo/personal-site@workspace:apps/personal-site"],
 
