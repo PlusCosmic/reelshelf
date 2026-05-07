@@ -13,7 +13,7 @@ export interface UpdatePreferencesRequest {
  * Fetch current user's preferences
  */
 export async function fetchUserPreferences(): Promise<UserPreferences> {
-  return requestPreferences("/me/preferences").catch((error: unknown) => {
+  return requestPreferences("/api/me/preferences").catch((error: unknown) => {
     console.error('Failed to fetch user preferences:', error);
     // Return default preferences on error
     return { discordNotificationsEnabled: true };
@@ -26,7 +26,7 @@ export async function fetchUserPreferences(): Promise<UserPreferences> {
 export async function updateUserPreferences(
   request: UpdatePreferencesRequest
 ): Promise<UserPreferences> {
-  return requestPreferences("/me/preferences", {
+  return requestPreferences("/api/me/preferences", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),

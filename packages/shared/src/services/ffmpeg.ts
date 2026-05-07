@@ -6,7 +6,7 @@ import { apiConfig } from "../config/apiConfig";
  */
 export async function downloadVideo(videoId: string): Promise<void> {
   // Construct the download URL
-  const downloadUrl = `${apiConfig.baseUrl}/ffmpeg/download/${encodeURIComponent(videoId)}`;
+  const downloadUrl = `${apiConfig.baseUrl}/api/ffmpeg/download/${encodeURIComponent(videoId)}`;
 
   // Create a temporary anchor element to trigger the download
   const link = document.createElement('a');

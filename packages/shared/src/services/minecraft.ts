@@ -100,7 +100,7 @@ export async function sendCommand(serverId: string, command: string): Promise<Rc
  * @returns WebSocket URL for console streaming
  */
 export function getConsoleWebSocketUrl(serverId: string): string {
-  return createConsoleWebSocketUrl(apiConfig.baseUrl, serverId, window.location.origin);
+  return createConsoleWebSocketUrl(apiConfig.baseUrl || "/api", serverId, window.location.origin);
 }
 
 export function createConsoleWebSocketUrl(
