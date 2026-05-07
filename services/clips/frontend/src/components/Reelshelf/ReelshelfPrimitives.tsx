@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import type { Clip, GameCategoryResponse } from "@repo/nucleus-api-client";
+import type { Clip, GameCategoryResponse } from "@repo/clips-api-client";
 import {
   IconChevronLeft,
   IconClock,

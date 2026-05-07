@@ -1,0 +1,1746 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Nucleus.Minecraft | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/auth/discord/login": {
+      "get": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "Login",
+        "parameters": [
+          {
+            "name": "returnUrl",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/post-login-redirect": {
+      "get": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "PostLoginRedirect",
+        "parameters": [
+          {
+            "name": "returnUrl",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetMinecraftServers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MinecraftServer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "CreateMinecraftServer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMinecraftServerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinecraftServer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetMinecraftServer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinecraftServer"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "UpdateMinecraftServer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMinecraftServerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinecraftServer"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "DeleteMinecraftServer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/status": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetMinecraftStatus",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/players": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetMinecraftPlayers",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnlinePlayer"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/container": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetContainerState",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerStateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "DestroyContainer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "removeData",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerActionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/container/start": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "StartContainer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerActionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/container/stop": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "StopContainer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "timeout",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 120
+            }
+          },
+          {
+            "name": "announce",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerActionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/container/provision": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "ProvisionContainer",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/console/command": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "SendMinecraftCommand",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RconCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RconResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/console/history": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetCommandHistory",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CommandLogEntry"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/console/live": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "ConsoleWebSocket",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/files": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "ListMinecraftFiles",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryListing"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "DeleteMinecraftFile",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/files/content": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetMinecraftFileContent",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "SaveMinecraftFileContent",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveFileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/files/mkdir": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "CreateMinecraftDirectory",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDirectoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/backups": {
+      "get": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "GetBackupStatus",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupListResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/minecraft/servers/{serverId}/backups/sync": {
+      "post": {
+        "tags": [
+          "MinecraftEndpoints"
+        ],
+        "operationId": "TriggerBackupSync",
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupSyncResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordUser"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/{userId}": {
+      "get": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordUser"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/users/suggestions": {
+      "get": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiscordUser"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BackupFileInfo": {
+        "required": [
+          "path",
+          "size",
+          "last_modified"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "last_modified": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BackupListResult": {
+        "required": [
+          "is_configured",
+          "local_files",
+          "remote_files",
+          "pending_sync_count"
+        ],
+        "type": "object",
+        "properties": {
+          "is_configured": {
+            "type": "boolean"
+          },
+          "local_files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackupFileInfo"
+            }
+          },
+          "remote_files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackupFileInfo"
+            }
+          },
+          "pending_sync_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "BackupSyncResult": {
+        "required": [
+          "success",
+          "message",
+          "files_uploaded",
+          "files_skipped",
+          "bytes_uploaded"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "files_uploaded": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "files_skipped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bytes_uploaded": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "files_deleted": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "bytes_deleted": {
+            "type": "integer",
+            "format": "int64",
+            "default": 0
+          }
+        }
+      },
+      "CommandLogEntry": {
+        "required": [
+          "id",
+          "user_id",
+          "command",
+          "response",
+          "success",
+          "error",
+          "executed_at",
+          "server_id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "command": {
+            "type": "string"
+          },
+          "response": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "executed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "server_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "ContainerActionResponse": {
+        "required": [
+          "success",
+          "message",
+          "new_status"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          }
+        }
+      },
+      "ContainerStateResponse": {
+        "required": [
+          "exists",
+          "status",
+          "is_running",
+          "container_id",
+          "started_at",
+          "cpu_percent",
+          "memory_used_mb",
+          "memory_limit_mb",
+          "memory_percent"
+        ],
+        "type": "object",
+        "properties": {
+          "exists": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "is_running": {
+            "type": "boolean"
+          },
+          "container_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "started_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "cpu_percent": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "memory_used_mb": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "memory_limit_mb": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "memory_percent": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "CreateDirectoryRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateMinecraftServerRequest": {
+        "required": [
+          "name",
+          "persistence_location",
+          "container_name",
+          "cpu_reservation",
+          "ram_reservation",
+          "cpu_limit",
+          "ram_limit",
+          "server_type",
+          "minecraft_version"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "persistence_location": {
+            "type": "string"
+          },
+          "container_name": {
+            "type": "string"
+          },
+          "cpu_reservation": {
+            "type": "number",
+            "format": "double"
+          },
+          "ram_reservation": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cpu_limit": {
+            "type": "number",
+            "format": "double"
+          },
+          "ram_limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "server_type": {
+            "$ref": "#/components/schemas/MinecraftServerType"
+          },
+          "minecraft_version": {
+            "type": "string"
+          },
+          "modloader_version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "curseforge_page_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DirectoryListing": {
+        "required": [
+          "current_path",
+          "entries"
+        ],
+        "type": "object",
+        "properties": {
+          "current_path": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileEntry"
+            }
+          }
+        }
+      },
+      "DiscordUser": {
+        "required": [
+          "id",
+          "username",
+          "global_name",
+          "avatar"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "global_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "avatar": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "FileEntry": {
+        "required": [
+          "name",
+          "path",
+          "is_directory",
+          "size",
+          "last_modified"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "is_directory": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "last_modified": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MinecraftServer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "persistence_location": {
+            "type": "string"
+          },
+          "container_name": {
+            "type": "string"
+          },
+          "cpu_reservation": {
+            "type": "number",
+            "format": "double"
+          },
+          "ram_reservation": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cpu_limit": {
+            "type": "number",
+            "format": "double"
+          },
+          "ram_limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "server_type": {
+            "$ref": "#/components/schemas/MinecraftServerType"
+          },
+          "minecraft_version": {
+            "type": "string"
+          },
+          "modloader_version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "curseforge_page_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rcon_password": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "max_players": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "motd": {
+            "type": "string"
+          }
+        }
+      },
+      "MinecraftServerType": {
+        "type": "integer"
+      },
+      "OnlinePlayer": {
+        "required": [
+          "name",
+          "uuid"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ProvisionResponse": {
+        "required": [
+          "success",
+          "message",
+          "container_id",
+          "volume_name"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "container_id": {
+            "type": "string"
+          },
+          "volume_name": {
+            "type": "string"
+          }
+        }
+      },
+      "RconCommand": {
+        "required": [
+          "command"
+        ],
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string"
+          }
+        }
+      },
+      "RconResponse": {
+        "required": [
+          "success",
+          "response",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "response": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SaveFileRequest": {
+        "required": [
+          "path",
+          "content"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "content": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ServerStatus": {
+        "required": [
+          "is_online",
+          "online_players",
+          "max_players",
+          "motd",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "is_online": {
+            "type": "boolean"
+          },
+          "online_players": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "max_players": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "motd": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "UpdateMinecraftServerRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "persistence_location": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "container_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cpu_reservation": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "ram_reservation": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "cpu_limit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "ram_limit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "server_type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MinecraftServerType"
+              }
+            ]
+          },
+          "minecraft_version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "modloader_version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "curseforge_page_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "is_active": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "AuthEndpoints"
+    },
+    {
+      "name": "MinecraftEndpoints"
+    },
+    {
+      "name": "DiscordUserEndpoints"
+    }
+  ]
+}

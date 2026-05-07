@@ -14,9 +14,24 @@ export default defineConfig({
     viteReact(),
   ],
   resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
+    alias: [
+      {
+        find: '@',
+        replacement: fileURLToPath(new URL('./src', import.meta.url)),
+      },
+      {
+        find: /^@repo\/shared\/(.+)$/,
+        replacement: `${fileURLToPath(new URL('../../../packages/shared/src', import.meta.url))}/$1`,
+      },
+      {
+        find: '@repo/shared',
+        replacement: fileURLToPath(new URL('../../../packages/shared/src/index.ts', import.meta.url)),
+      },
+      {
+        find: '@repo/ui',
+        replacement: fileURLToPath(new URL('../../../packages/ui/index.ts', import.meta.url)),
+      },
+    ],
   },
   server: {
     port: 5174,

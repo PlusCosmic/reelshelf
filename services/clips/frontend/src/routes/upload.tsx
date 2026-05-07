@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { IconCheck, IconPlayerPause, IconPlayerPlay, IconRotateClockwise, IconUpload, IconX } from "@tabler/icons-react";
-import { ResponseError } from "@repo/nucleus-api-client";
+import { ApiError } from "@repo/shared/services/api-error";
 import type { ChangeEvent, DragEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as tus from "tus-js-client";
@@ -148,7 +148,7 @@ function UploadRoute() {
       if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
       upload.start();
     } catch (uploadError) {
-      if (uploadError instanceof ResponseError && uploadError.response.status === 409) {
+      if (uploadError instanceof ApiError && uploadError.status === 409) {
         setError("This video has already been uploaded.");
       } else {
         setError(uploadError instanceof Error ? uploadError.message : "The upload failed.");

@@ -2,7 +2,7 @@ import { ActionIcon, Card, Group, ScrollArea, Stack, Text } from '@mantine/core'
 import { IconArrowLeft } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
 import { SidebarClipCard } from './SidebarClipCard';
-import type { Clip } from '@repo/nucleus-api-client';
+import type { Clip } from '@repo/clips-api-client';
 
 interface RelatedClipsSidebarProps {
   relatedClips: Array<Clip>;

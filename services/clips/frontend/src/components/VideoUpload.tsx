@@ -24,11 +24,11 @@ import {
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
 import { useEffect, useRef, useState } from "react";
 import * as tus from "tus-js-client";
-import { ResponseError } from "@repo/nucleus-api-client";
+import { ApiError } from "@repo/shared/services/api-error";
 import { calculateFileMD5 } from "../utils/fileHash";
 import { useCreateVideo } from "../hooks/queries";
 import type { Upload } from "tus-js-client";
-import type { CreateClipResponse } from "@repo/nucleus-api-client";
+import type { CreateClipResponse } from "@repo/clips-api-client";
 
 type QueueItem = {
   file: File;
@@ -130,7 +130,7 @@ export function VideoUpload({ categoryId }: VideoUploadProps) {
       response = apiResponse;
     } catch (error) {
       // Handle duplicate file error (409 Conflict)
-      if (error instanceof ResponseError && error.response.status === 409) {
+      if (error instanceof ApiError && error.status === 409) {
         setItem(entry.id, {
           status: "error",
           error: "Duplicate file: This video has already been uploaded",

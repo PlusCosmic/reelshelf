@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import type { DirectoryListing, FileEntry } from '@repo/nucleus-api-client';
+import type { DirectoryListing, FileEntry } from '@repo/minecraft-api-client';
 import {
   listDirectory,
   getFileContent,

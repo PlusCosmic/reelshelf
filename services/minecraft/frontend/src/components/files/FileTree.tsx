@@ -29,7 +29,7 @@ import {
   IconFileCode,
 } from '@tabler/icons-react';
 import { useDirectoryListing, useDeleteFile, useCreateDirectory, isEditableFile } from '../../hooks/useFileOperations';
-import type { FileEntry } from '@repo/nucleus-api-client';
+import type { FileEntry } from '@repo/minecraft-api-client';
 
 interface FileTreeProps {
   serverId: string;

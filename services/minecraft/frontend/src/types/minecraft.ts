@@ -11,7 +11,7 @@ export type {
   CommandLogEntry,
   SaveFileRequest,
   CreateDirectoryRequest,
-} from '@repo/nucleus-api-client';
+} from '@repo/minecraft-api-client';
 
 // Additional frontend-only types for WebSocket messages
 export interface WsLogEntry {

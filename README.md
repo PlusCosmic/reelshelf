@@ -12,7 +12,8 @@ Each service contains an `api/` (C# .NET) and `frontend/` (React + Vite).
 ## Packages
 
 ### TypeScript
-- `@repo/nucleus-api-client` - Auto-generated TypeScript client for Nucleus API
+- `@repo/clips-api-client` - Auto-generated TypeScript client for the Clips API
+- `@repo/minecraft-api-client` - Auto-generated TypeScript client for the Minecraft API
 - `@repo/shared` - Shared services and hooks
 - `@repo/ui` - Mantine-based UI components
 - `@repo/eslint-config` - ESLint configurations

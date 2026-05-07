@@ -42,11 +42,11 @@ Paths:
 - `packages/ui/`
 - `packages/eslint-config/`
 - `packages/typescript-config/`
-- `packages/nucleus-api-client/`
-- `scripts/merge-openapi.mjs`
+- `packages/clips-api-client/`
+- `packages/minecraft-api-client/`
 - `openapitools.json`
 
-These packages are shared by multiple apps. Changes should be reviewed as cross-app changes even when they are motivated by one app. Generated API client changes should be paired with the OpenAPI source or documented regeneration command that produced them.
+These packages are shared by multiple apps. Changes should be reviewed as cross-app changes even when they are motivated by one app. Generated API client changes should be paired with the OpenAPI source or documented regeneration command that produced them. See `docs/API_CLIENT_PIPELINE.md` for generation commands and drift checks.
 
 ## Shared backend ownership
 

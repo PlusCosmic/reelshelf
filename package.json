@@ -4,6 +4,7 @@
   "workspaces": ["apps/*", "packages/*", "services/*/frontend"],
   "scripts": {
     "build": "turbo run build",
+    "check": "turbo run build typecheck lint test //#format:check",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
@@ -11,9 +12,16 @@
     "build:api": "dotnet build Nucleus.sln --disable-build-servers -maxcpucount:1",
     "migrate": "dotnet run --project tools/Nucleus.Migrations --",
     "migrate:adopt-existing": "dotnet run --project tools/Nucleus.Migrations -- --adopt-existing",
-    "generate:openapi": "ASPNETCORE_ENVIRONMENT=OpenApi dotnet build services/clips/api/Nucleus.Clips.csproj /p:OpenApiGenerateDocumentsOnBuild=true --disable-build-servers && ASPNETCORE_ENVIRONMENT=OpenApi dotnet build services/minecraft/api/Nucleus.Minecraft.csproj /p:OpenApiGenerateDocumentsOnBuild=true --disable-build-servers && node scripts/merge-openapi.mjs",
-    "generate:api-client": "bun run generate:openapi && bun run generate --cwd packages/nucleus-api-client && bun run build --cwd packages/nucleus-api-client",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "generate:openapi:clips": "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_CLI_HOME=/tmp DOTNET_CLI_TELEMETRY_OPTOUT=1 ASPNETCORE_ENVIRONMENT=OpenApi dotnet build services/clips/api/Nucleus.Clips.csproj /p:OpenApiGenerateDocumentsOnBuild=true /p:OpenApiDocumentsDirectory=$PWD/packages/clips-api-client --disable-build-servers",
+    "generate:openapi:minecraft": "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_CLI_HOME=/tmp DOTNET_CLI_TELEMETRY_OPTOUT=1 ASPNETCORE_ENVIRONMENT=OpenApi dotnet build services/minecraft/api/Nucleus.Minecraft.csproj /p:OpenApiGenerateDocumentsOnBuild=true /p:OpenApiDocumentsDirectory=$PWD/packages/minecraft-api-client --disable-build-servers",
+    "generate:openapi": "bun run generate:openapi:clips && bun run generate:openapi:minecraft",
+    "generate:api-client:clips": "bun run generate:openapi:clips && bun run --cwd packages/clips-api-client generate && bun run --cwd packages/clips-api-client build",
+    "generate:api-client:minecraft": "bun run generate:openapi:minecraft && bun run --cwd packages/minecraft-api-client generate && bun run --cwd packages/minecraft-api-client build",
+    "generate:api-clients": "bun run generate:api-client:clips && bun run generate:api-client:minecraft",
+    "generate:api-client": "bun run generate:api-clients",
+    "check:api-client-drift": "bun run generate:api-clients && git diff --exit-code -- packages/clips-api-client packages/minecraft-api-client",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md}\""
   },
   "dependencies": {},
   "devDependencies": {

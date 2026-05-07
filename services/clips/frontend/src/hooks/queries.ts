@@ -24,7 +24,7 @@ import type {
   Clip,
   PagedClipsResponse,
   GameCategoryResponse,
-} from "@repo/nucleus-api-client";
+} from "@repo/clips-api-client";
 
 // ============================================================================
 // Query Hooks

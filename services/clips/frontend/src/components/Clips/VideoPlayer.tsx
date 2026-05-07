@@ -1,5 +1,5 @@
 import { Card, Group } from '@mantine/core';
-import type { Clip } from '@repo/nucleus-api-client';
+import type { Clip } from '@repo/clips-api-client';
 
 interface VideoPlayerProps {
   clip: Clip | null | undefined;

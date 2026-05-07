@@ -12,6 +12,7 @@
     "./services/categories": "./dist/services/categories.js",
     "./services/clips": "./dist/services/clips.js",
     "./services/ffmpeg": "./dist/services/ffmpeg.js",
+    "./services/api-error": "./dist/services/apiError.js",
     "./services/playlists": "./dist/services/playlists.js",
     "./services/minecraft": "./dist/services/minecraft.js",
     "./hooks/useDebouncedValue": "./dist/hooks/useDebouncedValue.js",
@@ -26,7 +27,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@repo/nucleus-api-client": "workspace:*"
+    "@repo/clips-api-client": "workspace:*",
+    "@repo/minecraft-api-client": "workspace:*"
   },
   "peerDependencies": {
     "@mantine/core": ">=7",

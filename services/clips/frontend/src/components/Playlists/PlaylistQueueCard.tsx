@@ -1,7 +1,7 @@
 import { ActionIcon, Avatar, Badge, Box, Card, Group, Image, Skeleton, Stack, Text, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconCheck, IconClock, IconGripVertical, IconTrash } from "@tabler/icons-react";
 import { apiConfig } from "@repo/shared";
-import type { Clip } from "@repo/nucleus-api-client";
+import type { Clip } from "@repo/clips-api-client";
 import { formatDate, formatDuration, getProcessingStatusMessage, isClipProcessing } from "@/utils/format.ts";
 import { useUserById } from "@/hooks/queries.ts";
 

@@ -3,8 +3,7 @@ import { useForm } from '@mantine/form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { IconServer2 } from '@tabler/icons-react';
-import { MinecraftEndpointsApi, Configuration } from '@repo/nucleus-api-client';
-import { apiConfig } from '@repo/shared/api-config';
+import { createServer } from '@repo/shared/services/minecraft';
 
 interface CreateServerModalProps {
   opened: boolean;
@@ -45,23 +44,18 @@ export function CreateServerModal({ opened, onClose }: CreateServerModalProps) {
 
   const createServerMutation = useMutation({
     mutationFn: async (values: CreateServerForm) => {
-      const api = new MinecraftEndpointsApi(
-        new Configuration({ basePath: apiConfig.baseUrl, credentials: 'include' })
-      );
       // Generate container name from server name (lowercase, alphanumeric with dashes)
       const containerName = values.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'minecraft-server';
-      return api.createMinecraftServer({
-        createMinecraftServerRequest: {
-          name: values.name,
-          minecraftVersion: values.minecraftVersion,
-          serverType: parseInt(values.serverType),
-          ramReservation: values.ramReservation,
-          ramLimit: values.ramLimit,
-          cpuReservation: 1,
-          cpuLimit: 2,
-          containerName,
-          persistenceLocation: `/data/minecraft/${containerName}`
-        },
+      return createServer({
+        name: values.name,
+        minecraftVersion: values.minecraftVersion,
+        serverType: parseInt(values.serverType),
+        ramReservation: values.ramReservation,
+        ramLimit: values.ramLimit,
+        cpuReservation: 1,
+        cpuLimit: 2,
+        containerName,
+        persistenceLocation: `/data/minecraft/${containerName}`
       });
     },
     onSuccess: (data) => {

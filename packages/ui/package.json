@@ -19,13 +19,11 @@
   "peerDependencies": {
     "@mantine/core": ">=8",
     "@mantinex/dev-icons": ">=2",
-    "@repo/nucleus-api-client": "workspace:*",
     "@tabler/icons-react": ">=3",
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@repo/nucleus-api-client": "workspace:*",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/react": "^19.2.2",

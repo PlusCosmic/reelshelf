@@ -26,7 +26,7 @@ import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
 import { AddToPlaylistButton } from "../Playlists/AddToPlaylistButton";
 import { ApexMetadata } from "./ApexMetadata";
-import type { Clip } from "@repo/nucleus-api-client";
+import type { Clip } from "@repo/clips-api-client";
 import { useDeleteClip, useUserById } from "@/hooks/queries.ts";
 import {
   formatDate,

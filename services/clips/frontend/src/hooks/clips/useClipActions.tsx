@@ -5,7 +5,7 @@ import { modals } from '@mantine/modals';
 import type { NavigateOptions } from '@tanstack/react-router';
 import { Text } from '@mantine/core';
 import { useDeleteClip, useUpdateClipTitle } from '../queries';
-import type { Clip } from '@repo/nucleus-api-client';
+import type { Clip } from '@repo/clips-api-client';
 
 interface UseClipActionsParams {
   clip: Clip | null | undefined;

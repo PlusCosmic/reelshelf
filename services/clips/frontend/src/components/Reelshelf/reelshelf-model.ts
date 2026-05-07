@@ -1,4 +1,4 @@
-import type { Clip, GameCategoryResponse, PlaylistSummary } from "@repo/nucleus-api-client";
+import type { Clip, GameCategoryResponse, PlaylistSummary } from "@repo/clips-api-client";
 import { apiConfig } from "@repo/shared/api-config";
 
 export interface GameShelfItem extends GameCategoryResponse {

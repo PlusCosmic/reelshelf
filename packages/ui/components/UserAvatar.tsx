@@ -1,11 +1,14 @@
 import { Avatar, Menu, Skeleton } from "@mantine/core";
 import { IconLogout } from "@tabler/icons-react";
-import type { DiscordUser } from "@repo/nucleus-api-client";
 import LoginButton from "./LoginButton";
+
+interface UserAvatarUser {
+  avatar?: string | null;
+}
 
 interface UserAvatarProps {
   hideLogin: boolean;
-  user: DiscordUser | null | undefined;
+  user: UserAvatarUser | null | undefined;
   isLoading: boolean;
   onLogout: () => void | Promise<void>;
 }

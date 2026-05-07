@@ -1,7 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
 import { fetchClips } from "@repo/shared/services/clips";
 import { fetchPlaylists } from "@repo/shared/services/playlists";
-import type { Clip, GameCategoryResponse, PlaylistSummary } from "@repo/nucleus-api-client";
+import type { Clip, GameCategoryResponse, PlaylistSummary } from "@repo/clips-api-client";
 import { useCategories } from "@/hooks/queries";
 
 export function useLibraryData() {

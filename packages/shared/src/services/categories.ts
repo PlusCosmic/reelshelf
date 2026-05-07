@@ -1,14 +1,10 @@
 import {
   type GameCategoryResponse,
   type GameSearchResult,
-  Configuration,
-  GameCategoryEndpointsApi,
-} from "@repo/nucleus-api-client";
-import { apiConfig } from "../config/apiConfig";
+} from "@repo/clips-api-client";
+import { createGameCategoryApi } from "./apiClients";
 
-const getApi = () => new GameCategoryEndpointsApi(
-  new Configuration({ basePath: apiConfig.baseUrl, credentials: "include" }),
-);
+const getApi = createGameCategoryApi;
 
 export async function fetchCategories(): Promise<GameCategoryResponse[]> {
   return getApi().getUserGameCategories();

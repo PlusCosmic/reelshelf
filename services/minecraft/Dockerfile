@@ -12,7 +12,8 @@ COPY services/minecraft/frontend/ ./services/minecraft/frontend/
 # Install and build
 WORKDIR /build/services/minecraft/frontend
 RUN bun install --frozen-lockfile
-RUN cd /build/packages/nucleus-api-client && bun run build
+RUN cd /build/packages/clips-api-client && bun run build
+RUN cd /build/packages/minecraft-api-client && bun run build
 RUN cd /build/packages/shared && bun run build
 RUN cd /build/packages/ui && bun run build
 RUN bun run build
