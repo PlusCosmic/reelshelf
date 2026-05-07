@@ -49,7 +49,10 @@ public class IgdbService
         var game = games.FirstOrDefault();
         if (game == null) return null;
 
-        var artworkAssets = SelectArtworkAssets(await GetArtworksForGameAsync(game.Id ?? igdbId));
+        var gameId = game.Id ?? igdbId;
+        var artworkAssets = SelectArtworkAssets(
+            await GetArtworksForGameAsync(gameId),
+            await GetScreenshotsForGameAsync(gameId));
 
         return new GameDetails(
             game.Id ?? 0,
@@ -103,6 +106,18 @@ public class IgdbService
         return artworks;
     }
 
+    private async Task<List<IgdbImage>> GetScreenshotsForGameAsync(long igdbId)
+    {
+        return (await _client.QueryAsync<IgdbImage>(
+            "screenshots",
+            $"""
+            where game = {igdbId};
+            fields image_id,url,width,height;
+            limit 50;
+            """
+        )).ToList();
+    }
+
     private static string? GetCoverUrl(IgdbImage? cover)
     {
         if (cover == null) return null;
@@ -122,27 +137,37 @@ public class IgdbService
         return "https:" + url.Replace("t_thumb", "t_cover_big");
     }
 
-    private static (string? KeyArtUrl, string? GameLogoUrl) SelectArtworkAssets(List<IgdbArtwork> artworks)
+    private static (string? KeyArtUrl, string? GameLogoUrl) SelectArtworkAssets(
+        List<IgdbArtwork> artworks,
+        List<IgdbImage> screenshots)
     {
         var orderedArtwork = artworks
             .Where(a => GetImageId(a) != null)
-            .OrderByDescending(a => ArtworkScore(a))
+            .OrderByDescending(ImageScore)
             .ToList();
 
         var gameLogo = orderedArtwork.FirstOrDefault(IsGameLogo);
         var keyArt = orderedArtwork.FirstOrDefault(IsKeyArtWithoutLogo)
             ?? orderedArtwork.FirstOrDefault(a => !IsGameLogo(a));
+        var screenshot = screenshots
+            .Where(s => GetImageId(s) != null)
+            .OrderByDescending(ImageScore)
+            .FirstOrDefault();
 
         return (
-            keyArt != null ? BuildIgdbImageUrl(GetImageId(keyArt)!, "1080p") : null,
+            keyArt != null
+                ? BuildIgdbImageUrl(GetImageId(keyArt)!, "1080p")
+                : screenshot != null
+                    ? BuildIgdbImageUrl(GetImageId(screenshot)!, "1080p")
+                    : null,
             gameLogo != null ? BuildIgdbImageUrl(GetImageId(gameLogo)!, "1080p", "png") : null
         );
     }
 
-    private static int ArtworkScore(IgdbArtwork artwork)
+    private static int ImageScore(IgdbImage image)
     {
-        var width = artwork.Width ?? 0;
-        var height = artwork.Height ?? 0;
+        var width = image.Width ?? 0;
+        var height = image.Height ?? 0;
         var landscapeBonus = width > height ? 1_000_000 : 0;
         return landscapeBonus + width * height;
     }
@@ -169,10 +194,10 @@ public class IgdbService
         yield return NormalizeArtworkType(artwork.ArtworkType?.Slug);
     }
 
-    private static string? GetImageId(IgdbArtwork artwork) =>
-        !string.IsNullOrWhiteSpace(artwork.ImageId)
-            ? artwork.ImageId
-            : artwork.Url?.Split('/').LastOrDefault()?.Split('.').FirstOrDefault();
+    private static string? GetImageId(IgdbImage image) =>
+        !string.IsNullOrWhiteSpace(image.ImageId)
+            ? image.ImageId
+            : image.Url?.Split('/').LastOrDefault()?.Split('.').FirstOrDefault();
 
     private static string BuildIgdbImageUrl(string imageId, string size, string extension = "jpg") =>
         $"https://images.igdb.com/igdb/image/upload/t_{size}/{imageId}.{extension}";
