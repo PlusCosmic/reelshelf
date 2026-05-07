@@ -18,8 +18,8 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: oklch(0.18 0.012 60);
-  --bg-soft: oklch(0.22 0.014 60);
+  --bg: oklch(0.18 0.012 80);
+  --bg-soft: oklch(0.22 0.014 80);
   --fg: oklch(0.94 0.012 80);
   --fg-soft: oklch(0.68 0.018 70);
   --line: oklch(0.30 0.014 60);

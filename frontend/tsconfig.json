@@ -27,7 +27,6 @@
     "inlineSources": false,
     "isolatedModules": true,
     "preserveWatchOutput": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
