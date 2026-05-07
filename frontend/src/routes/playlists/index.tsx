@@ -57,15 +57,7 @@ function CollectionsRoute() {
                     { "--game-a": colorA, "--game-b": colorB } as CSSProperties
                   }
                 >
-                  <div
-                    className="rs-thumb"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 2,
-                      padding: 2,
-                    }}
-                  >
+                  <div className="rs-thumb rs-collection-cover">
                     {cover.length > 0 ? (
                       cover.map((clip) => (
                         <ClipThumb
@@ -78,22 +70,13 @@ function CollectionsRoute() {
                         />
                       ))
                     ) : (
-                      <div
-                        className="rs-player-gradient"
-                        style={{ position: "absolute", inset: 0 }}
-                      />
+                      <div className="rs-player-gradient rs-absolute-fill" />
                     )}
                   </div>
-                  <h2 className="rs-card-title" style={{ fontSize: 18 }}>
+                  <h2 className="rs-card-title rs-collection-title">
                     {playlist.name}
                   </h2>
-                  <p
-                    style={{
-                      margin: "0 0 10px",
-                      color: "var(--fg-soft)",
-                      fontSize: 13,
-                    }}
-                  >
+                  <p className="rs-card-description">
                     {playlist.description ?? "No description"}
                   </p>
                   <div className="rs-meta">
@@ -104,13 +87,13 @@ function CollectionsRoute() {
                     <span className="rs-dot" />
                     <span>Updated {formatDate(playlist.updatedAt)}</span>
                   </div>
-                  <div style={{ display: "flex", marginTop: 12 }}>
+                  <div className="rs-avatar-stack">
                     {Array.from({
                       length: Math.min(playlist.collaboratorCount || 1, 4),
                     }).map((_, index) => (
                       <span
                         key={index}
-                        style={{ marginLeft: index === 0 ? 0 : -6 }}
+                        className={index === 0 ? undefined : "rs-avatar-offset"}
                       >
                         <Avatar
                           name={index === 0 ? "You" : `Guest ${index}`}

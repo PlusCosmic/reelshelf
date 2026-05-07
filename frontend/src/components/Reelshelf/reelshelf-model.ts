@@ -30,10 +30,15 @@ export function makeGameShelf(
   categories: GameCategoryResponse[] = [],
   clips: Clip[] = [],
 ): GameShelfItem[] {
+  const clipsByCategory = new Map<string, Clip[]>();
+  for (const clip of clips) {
+    const categoryClips = clipsByCategory.get(clip.gameCategoryId) ?? [];
+    categoryClips.push(clip);
+    clipsByCategory.set(clip.gameCategoryId, categoryClips);
+  }
+
   return categories.map((category) => {
-    const categoryClips = clips.filter(
-      (clip) => clip.gameCategoryId === category.id,
-    );
+    const categoryClips = clipsByCategory.get(category.id) ?? [];
     const [colorA, colorB] = getGameColors(category.id);
     return {
       ...category,

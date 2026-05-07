@@ -38,7 +38,7 @@ function SettingsRoute() {
         </div>
         <aside className="rs-sidebar-panel">
           <h2 className="rs-eyebrow">Preference storage</h2>
-          <p style={{ color: "var(--fg-soft)", fontSize: 14, marginTop: 0 }}>
+          <p className="rs-sidebar-copy">
             The UI design includes theme and density preferences. The backend
             preference API can store simple settings, but this migration leaves
             these controls presentational until product defaults are confirmed.

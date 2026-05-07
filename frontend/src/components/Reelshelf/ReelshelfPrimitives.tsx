@@ -221,17 +221,12 @@ export function ClipGrid({
               to="/games/$slug/$clipId"
               params={{ slug: clip.categorySlug, clipId: clip.clipId }}
             >
-              <span
-                className="rs-display"
-                style={{ color: "var(--fg-soft)", fontSize: 25 }}
-              >
+              <span className="rs-display rs-row-index">
                 {String(index + 1).padStart(2, "0")}
               </span>
               <ClipThumb clip={clip} category={category} compact />
               <span>
-                <strong style={{ display: "block", fontSize: 14 }}>
-                  {clip.video.title}
-                </strong>
+                <strong className="rs-row-title">{clip.video.title}</strong>
                 <span className="rs-meta">
                   {clip.tags
                     .slice(0, 3)
@@ -268,7 +263,7 @@ export function ClipGrid({
 
 export function PlayerActions() {
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div className="rs-action-row">
       <button className="rs-small-button" type="button">
         <IconShare3 size={13} />
         Share
@@ -287,7 +282,7 @@ export function PlayerActions() {
 
 export function BackToLibrary({ to = "/" }: { to?: string }) {
   return (
-    <Link to={to} className="rs-small-button" style={{ marginBottom: 16 }}>
+    <Link to={to} className="rs-small-button rs-back-link">
       <IconChevronLeft size={14} />
       Library
     </Link>

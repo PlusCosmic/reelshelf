@@ -1,4 +1,5 @@
-import { useQueries } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { fetchClips } from "@/shared/.";
 import { fetchPlaylists } from "@/shared/services/playlists";
 import type { Clip, GameCategoryResponse, PlaylistSummary } from "@/api-client";
@@ -22,7 +23,10 @@ export function useLibraryData() {
     })),
   });
 
-  const clips = clipQueries.flatMap((query) => query.data?.clips ?? []);
+  const clips = useMemo(
+    () => clipQueries.flatMap((query) => query.data?.clips ?? []),
+    [clipQueries],
+  );
   const isLoading =
     categoriesQuery.isLoading || clipQueries.some((query) => query.isLoading);
   const isError =
@@ -37,15 +41,11 @@ export function useLibraryData() {
 }
 
 export function usePlaylistsData() {
-  const playlistsQuery = useQueries({
-    queries: [
-      {
-        queryKey: ["playlists"],
-        queryFn: fetchPlaylists,
-        staleTime: 30_000,
-      },
-    ],
-  })[0];
+  const playlistsQuery = useQuery({
+    queryKey: ["playlists"],
+    queryFn: fetchPlaylists,
+    staleTime: 30_000,
+  });
 
   return {
     playlists: (playlistsQuery.data ?? []) as PlaylistSummary[],

@@ -61,16 +61,14 @@ function GameCategoryRoute() {
         }
       >
         <BackToLibrary />
-        <div className="rs-eyebrow" style={{ color: "rgba(255,255,255,.76)" }}>
+        <div className="rs-eyebrow rs-over-media">
           {category.isCustom ? "Custom category" : "Game category"} -{" "}
           <StatLine clips={gameClips} />
         </div>
-        <h1 className="rs-display rs-h1" style={{ color: "white" }}>
+        <h1 className="rs-display rs-h1 rs-over-media-title">
           {category.name}
         </h1>
-        <div
-          style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 24 }}
-        >
+        <div className="rs-game-filter-row">
           <Chip active={!tag} onClick={() => setTag(null)}>
             All clips
           </Chip>
@@ -87,7 +85,7 @@ function GameCategoryRoute() {
       </section>
 
       <section className="rs-section">
-        <div style={{ marginBottom: 24 }}>
+        <div className="rs-section-heading">
           <h2 className="rs-display rs-h2">All clips</h2>
         </div>
         <ClipGrid

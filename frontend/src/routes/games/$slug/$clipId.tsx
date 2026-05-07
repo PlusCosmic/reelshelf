@@ -61,13 +61,7 @@ function ClipDetailRoute() {
           src={playerUrl(clip)}
           loading="lazy"
           title={clip.video.title}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            border: 0,
-          }}
+          className="rs-player-frame"
           allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
           allowFullScreen
         />
@@ -76,22 +70,18 @@ function ClipDetailRoute() {
       <div className="rs-player-grid">
         <section>
           <h1 className="rs-display rs-h2">{clip.video.title}</h1>
-          <div className="rs-meta" style={{ marginTop: 12 }}>
-            <strong style={{ color: "var(--fg)" }}>
-              {category?.name ?? clip.video.category}
-            </strong>
+          <div className="rs-meta rs-player-meta">
+            <strong>{category?.name ?? clip.video.category}</strong>
             <span>{formatDate(clip.createdAt)}</span>
             <span>{formatSize(clip.video.storageSize)}</span>
             <span>{clip.isViewed ? "Viewed" : "New"}</span>
           </div>
-          <div
-            style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}
-          >
+          <div className="rs-chip-row">
             {clip.tags.map((tag) => (
               <Chip key={tag}>#{tag}</Chip>
             ))}
           </div>
-          <div style={{ marginTop: 18 }}>
+          <div className="rs-player-actions">
             <PlayerActions />
           </div>
         </section>

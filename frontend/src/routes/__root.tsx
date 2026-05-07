@@ -5,9 +5,9 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import {
+  IconMovie,
   IconLogout,
   IconMoon,
-  IconPlayerPlayFilled,
   IconSun,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -59,7 +59,7 @@ function RootComponent() {
       <header className="rs-topbar">
         <Link to="/" className="rs-brand" aria-label="Reelshelf library">
           <span className="rs-brand-mark">
-            <IconPlayerPlayFilled size={14} />
+            <IconMovie size={16} stroke={2.2} />
           </span>
           <span className="rs-brand-name">
             Reel<em>shelf</em>

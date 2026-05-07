@@ -50,22 +50,13 @@ function PlaylistRoute() {
         </div>
         <h1 className="rs-display rs-h1">{playlist.name}</h1>
         {playlist.description ? (
-          <p style={{ maxWidth: 680, color: "var(--fg-soft)", fontSize: 15 }}>
-            {playlist.description}
-          </p>
+          <p className="rs-hero-description">{playlist.description}</p>
         ) : null}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginTop: 20,
-          }}
-        >
+        <div className="rs-collaborator-row">
           {playlist.collaborators.slice(0, 5).map((collaborator, index) => (
             <span
               key={collaborator.userId}
-              style={{ marginLeft: index === 0 ? 0 : -6 }}
+              className={index === 0 ? undefined : "rs-avatar-offset"}
             >
               <Avatar name={collaborator.userId} />
             </span>

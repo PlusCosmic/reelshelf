@@ -119,9 +119,7 @@ function LibraryRoute() {
       </section>
 
       <section className="rs-filterbar">
-        <span className="rs-eyebrow" style={{ margin: "0 6px 0 0" }}>
-          Filter
-        </span>
+        <span className="rs-eyebrow rs-filter-label">Filter</span>
         <Chip active={!gameId} onClick={() => setGameId(null)}>
           All games
         </Chip>
@@ -131,17 +129,10 @@ function LibraryRoute() {
             active={gameId === game.id}
             onClick={() => setGameId(gameId === game.id ? null : game.id)}
           >
-            {game.name} <span style={{ opacity: 0.62 }}>{game.clipCount}</span>
+            {game.name} <span className="rs-muted-count">{game.clipCount}</span>
           </Chip>
         ))}
-        <span
-          style={{
-            width: 1,
-            height: 18,
-            background: "var(--line)",
-            margin: "0 6px",
-          }}
-        />
+        <span className="rs-filter-divider" />
         <Chip active={!tag} onClick={() => setTag(null)}>
           All tags
         </Chip>
@@ -151,10 +142,10 @@ function LibraryRoute() {
             active={tag === tagName}
             onClick={() => setTag(tag === tagName ? null : tagName)}
           >
-            #{tagName} <span style={{ opacity: 0.62 }}>{count}</span>
+            #{tagName} <span className="rs-muted-count">{count}</span>
           </Chip>
         ))}
-        <div style={{ flex: 1 }} />
+        <div className="rs-filter-spacer" />
         <SearchBox value={query} onChange={setQuery} />
       </section>
 
