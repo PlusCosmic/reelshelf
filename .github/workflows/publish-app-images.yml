@@ -93,12 +93,12 @@ jobs:
         include:
           - service: clips
             dockerfile: Dockerfile
-            image: ghcr.io/pluscosmic/clips
+            image: ghcr.io/pluscosmic/reelshelf
             compose_file: services/clips.yml
             compose_image: clips
           - service: migrations
             dockerfile: migrations/Dockerfile
-            image: ghcr.io/pluscosmic/nucleus-migrations
+            image: ghcr.io/pluscosmic/reelshelf-migrations
             compose_file: services/clips.yml
             compose_image: nucleus-migrations
     steps:
@@ -177,21 +177,22 @@ jobs:
           bumps = []
 
           if os.environ["BUMP_CLIPS"] == "true":
-              bumps.append(("services/clips.yml", "clips", f"ghcr.io/pluscosmic/clips:sha-{sha}"))
+              bumps.append(("services/clips.yml", ("clips", "reelshelf"), f"ghcr.io/pluscosmic/reelshelf:sha-{sha}"))
 
           if os.environ["BUMP_MIGRATIONS"] == "true":
-              bumps.append(("services/clips.yml", "nucleus-migrations", f"ghcr.io/pluscosmic/nucleus-migrations:sha-{sha}"))
+              bumps.append(("services/clips.yml", ("nucleus-migrations", "reelshelf-migrations"), f"ghcr.io/pluscosmic/reelshelf-migrations:sha-{sha}"))
 
-          for compose_file_name, image_name, image in bumps:
+          for compose_file_name, image_names, image in bumps:
               compose_file = Path(compose_file_name)
               text = compose_file.read_text()
+              image_pattern = "|".join(re.escape(image_name) for image_name in image_names)
               pattern = re.compile(
-                  rf"(image:\s*['\"]?)ghcr\.io/pluscosmic/{re.escape(image_name)}:[^'\"\s]+(['\"]?)"
+                  rf"(image:\s*['\"]?)ghcr\.io/pluscosmic/(?:{image_pattern}):[^'\"\s]+(['\"]?)"
               )
               updated, count = pattern.subn(rf"\1{image}\2", text, count=1)
 
               if count != 1:
-                  raise SystemExit(f"Expected to update one {image_name} image reference in {compose_file}, updated {count}")
+                  raise SystemExit(f"Expected to update one of {image_names} in {compose_file}, updated {count}")
 
               compose_file.write_text(updated)
           PY

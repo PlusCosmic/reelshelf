@@ -5,7 +5,7 @@ This project owns database migrations for the Reelshelf services.
 Migrations use Evolve and live in `db/migrations` with Evolve names such as `V16__baseline_schema.sql`.
 The runner is intentionally separate from the APIs so deployments can migrate the database as an explicit step before starting new application code.
 
-The infrastructure repository's `services/reelshelf.yml` compose file runs this project as a one-shot `reelshelf-migrations` container and makes the Reelshelf API service depend on successful completion. Keep a single migration owner per database.
+The infrastructure repository's `services/clips.yml` compose file runs this project as a one-shot `reelshelf-migrations` container and makes the Reelshelf API service depend on successful completion. Keep a single migration owner per database.
 
 The consolidated baseline starts at `V16` because the legacy combined backend already used Evolve migrations `V1` through `V15`. That avoids checksum conflicts on databases that already have the legacy `changelog` table.
 
