@@ -1,12 +1,12 @@
-# Clips
+# Reelshelf
 
-Single application repository for the Plus Cosmic clips app.
+Single application repository for the Plus Cosmic Reelshelf app.
 
 ## Layout
 
 - `api` - .NET API for clips, playlists, auth, game metadata, Bunny, and Apex integrations
 - `frontend` - React, Vite, TanStack Router, TanStack Query, and Mantine frontend
-- `frontend/src/api-client` - committed generated TypeScript client for the Clips API
+- `frontend/src/api-client` - committed generated TypeScript client for the Reelshelf API
 - `migrations` - explicit Evolve database migration runner
 - `Dockerfile` - production image that builds the frontend and serves it from the API
 

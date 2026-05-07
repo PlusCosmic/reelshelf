@@ -29,7 +29,7 @@ const apiProxy: ProxyOptions = {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  cacheDir: process.env.VITE_CACHE_DIR ?? "../.cache/vite/clips",
+  cacheDir: process.env.VITE_CACHE_DIR ?? "../.cache/vite/reelshelf",
   plugins: [
     tanstackRouter({
       target: "react",

@@ -1,8 +1,8 @@
 # Ownership Notes
 
-This repository now contains one product: Clips.
+This repository now contains one product: Reelshelf.
 
-## Clips
+## Reelshelf
 
 Paths:
 
@@ -10,9 +10,9 @@ Paths:
 - `frontend/`
 - `migrations/`
 - `Dockerfile`
-- `Nucleus.sln`
+- `Reelshelf.sln`
 
-Clips owns upload, library, playlists, Bunny integration, game/category metadata, auth, database migrations, and deployment assets.
+Reelshelf owns upload, library, playlists, Bunny integration, game/category metadata, auth, database migrations, and deployment assets.
 
 ## Review Checklist
 

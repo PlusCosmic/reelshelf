@@ -1,7 +1,7 @@
 using Dapper;
 using Npgsql;
 
-namespace Nucleus.Clips.Core;
+namespace Reelshelf.Core;
 
 public class ClipsBackfillStatements(NpgsqlConnection connection)
 {

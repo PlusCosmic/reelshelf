@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 
-namespace Nucleus.Shared.Auth;
+namespace Reelshelf.Shared.Auth;
 
 /// <summary>
 /// Represents the currently authenticated user, resolved from the database.
@@ -16,7 +16,7 @@ public record AuthenticatedUser(
     UserRole Role,
     HashSet<string> AdditionalPermissions)
 {
-    internal const string HttpContextKey = "Nucleus.AuthenticatedUser";
+    internal const string HttpContextKey = "Reelshelf.AuthenticatedUser";
 
     /// <summary>
     /// Checks if the user has a specific permission.

@@ -1,3 +1,3 @@
-namespace Nucleus.Clips.Core.Models;
+namespace Reelshelf.Core.Models;
 
 public record TopTag(string Name, int Count);

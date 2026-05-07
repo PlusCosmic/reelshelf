@@ -12,19 +12,19 @@ using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using Npgsql;
-using Nucleus.Clips.ApexLegends;
-using Nucleus.Clips.ApexLegends.LegendDetection;
-using Nucleus.Clips.Bunny;
-using Nucleus.Clips.Core;
-using Nucleus.Clips.FFmpeg;
-using Nucleus.Clips.Games;
-using Nucleus.Clips.Playlists;
-using Nucleus.Clips.Auth;
-using Nucleus.Clips.Discord;
-using Nucleus.Shared.Auth;
-using Nucleus.Shared.Discord;
-using Nucleus.Shared.Exceptions;
-using Nucleus.Shared.Games;
+using Reelshelf.ApexLegends;
+using Reelshelf.ApexLegends.LegendDetection;
+using Reelshelf.Bunny;
+using Reelshelf.Core;
+using Reelshelf.FFmpeg;
+using Reelshelf.Games;
+using Reelshelf.Playlists;
+using Reelshelf.Auth;
+using Reelshelf.Discord;
+using Reelshelf.Shared.Auth;
+using Reelshelf.Shared.Discord;
+using Reelshelf.Shared.Exceptions;
+using Reelshelf.Shared.Games;
 using StackExchange.Redis;
 
 DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -197,7 +197,7 @@ internal static class BuilderExtensions
                                         ?? "localhost:6379";
 
         NpgsqlDataSourceBuilder dataSourceBuilder = new(connectionString ??
-            "Host=localhost;Database=nucleus_db;Username=nucleus_user;Password=dummy");
+            "Host=localhost;Database=reelshelf_db;Username=reelshelf_user;Password=dummy");
         NpgsqlDataSource dataSource = dataSourceBuilder.Build();
 
         builder.Services.AddSingleton(dataSource);
@@ -223,7 +223,7 @@ internal static class BuilderExtensions
         string keysPath = builder.Configuration["DataProtection:KeysPath"]
                           ?? Path.Combine(builder.Environment.ContentRootPath, "keys");
         builder.Services.AddDataProtection()
-            .SetApplicationName("Nucleus.Clips")
+            .SetApplicationName("Reelshelf")
             .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
         builder.Services.AddAuthentication(options =>

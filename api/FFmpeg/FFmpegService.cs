@@ -1,6 +1,6 @@
 using FFMpegCore;
 
-namespace Nucleus.Clips.FFmpeg;
+namespace Reelshelf.FFmpeg;
 
 public class FFmpegService
 {

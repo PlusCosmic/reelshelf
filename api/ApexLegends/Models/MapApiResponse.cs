@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Nucleus.Clips.ApexLegends.Models;
+namespace Reelshelf.ApexLegends.Models;
 
 public record MapRotationResponse(
     [property: JsonPropertyName("battle_royale")]

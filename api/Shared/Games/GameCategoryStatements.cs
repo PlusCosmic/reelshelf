@@ -1,7 +1,7 @@
 using Dapper;
 using Npgsql;
 
-namespace Nucleus.Shared.Games;
+namespace Reelshelf.Shared.Games;
 
 public class GameCategoryStatements(NpgsqlConnection connection)
 {

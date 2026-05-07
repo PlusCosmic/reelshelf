@@ -1,6 +1,6 @@
-using Nucleus.Clips.ApexLegends.Models;
+using Reelshelf.ApexLegends.Models;
 
-namespace Nucleus.Clips.ApexLegends.LegendDetection;
+namespace Reelshelf.ApexLegends.LegendDetection;
 
 public class ApexDetectionBackgroundService(IServiceScopeFactory scopeFactory, ILogger<ApexDetectionBackgroundService> logger) : BackgroundService
 {

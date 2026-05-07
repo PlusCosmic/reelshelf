@@ -8,17 +8,17 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 # Copy project files for restore (leverages Docker layer caching)
-COPY ["api/Nucleus.Clips.csproj", "api/"]
-RUN dotnet restore "api/Nucleus.Clips.csproj"
+COPY ["api/Reelshelf.csproj", "api/"]
+RUN dotnet restore "api/Reelshelf.csproj"
 # Copy all source code
 COPY ["api/", "api/"]
 # Build
 WORKDIR "/src/api"
-RUN dotnet build "Nucleus.Clips.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "Reelshelf.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "Nucleus.Clips.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "Reelshelf.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 USER root
@@ -29,4 +29,4 @@ RUN apt-get update && \
 USER $APP_UID
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Nucleus.Clips.dll"]
+ENTRYPOINT ["dotnet", "Reelshelf.dll"]

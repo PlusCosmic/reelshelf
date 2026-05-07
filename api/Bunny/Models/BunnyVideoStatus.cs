@@ -1,4 +1,4 @@
-namespace Nucleus.Clips.Bunny.Models;
+namespace Reelshelf.Bunny.Models;
 
 /// <summary>
 /// Video encoding status codes from Bunny CDN Stream API.

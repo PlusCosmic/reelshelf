@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Nucleus.Shared.Exceptions;
+namespace Reelshelf.Shared.Exceptions;
 
 public class GlobalExceptionHandler : IExceptionHandler
 {

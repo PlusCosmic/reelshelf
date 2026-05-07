@@ -1,9 +1,9 @@
 using System.Text;
 using Dapper;
 using Npgsql;
-using Nucleus.Clips.Bunny.Models;
+using Reelshelf.Bunny.Models;
 
-namespace Nucleus.Clips.Core;
+namespace Reelshelf.Core;
 
 public class ClipsStatements(NpgsqlConnection connection)
 {

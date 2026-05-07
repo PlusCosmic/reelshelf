@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Nucleus.Clips.Playlists.Models;
-using Nucleus.Shared.Auth;
-using Nucleus.Shared.Exceptions;
-using Nucleus.Shared.Games;
+using Reelshelf.Playlists.Models;
+using Reelshelf.Shared.Auth;
+using Reelshelf.Shared.Exceptions;
+using Reelshelf.Shared.Games;
 
-namespace Nucleus.Clips.Playlists;
+namespace Reelshelf.Playlists;
 
 public static class PlaylistEndpoints
 {

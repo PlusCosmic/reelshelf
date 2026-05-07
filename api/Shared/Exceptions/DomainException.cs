@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 
-namespace Nucleus.Shared.Exceptions;
+namespace Reelshelf.Shared.Exceptions;
 
 public abstract class DomainException : Exception
 {

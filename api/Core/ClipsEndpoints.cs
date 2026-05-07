@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Nucleus.Clips.Core.Models;
-using Nucleus.Shared.Auth;
+using Reelshelf.Core.Models;
+using Reelshelf.Shared.Auth;
 
-namespace Nucleus.Clips.Core;
+namespace Reelshelf.Core;
 
 public static class ClipsEndpoints
 {

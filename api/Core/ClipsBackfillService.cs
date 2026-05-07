@@ -1,9 +1,9 @@
-using Nucleus.Clips.Bunny;
-using Nucleus.Clips.Bunny.Models;
-using Nucleus.Clips.Core.Models;
-using Nucleus.Shared.Games;
+using Reelshelf.Bunny;
+using Reelshelf.Bunny.Models;
+using Reelshelf.Core.Models;
+using Reelshelf.Shared.Games;
 
-namespace Nucleus.Clips.Core;
+namespace Reelshelf.Core;
 
 public class ClipsBackfillService(
     ClipsBackfillStatements backfillStatements,

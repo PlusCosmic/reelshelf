@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Nucleus.Clips.Bunny.Models;
-using Nucleus.Clips.Core;
+using Reelshelf.Bunny.Models;
+using Reelshelf.Core;
 
-namespace Nucleus.Clips.Bunny;
+namespace Reelshelf.Bunny;
 
 public static class BunnyWebhookEndpoints
 {
@@ -21,7 +21,7 @@ public static class BunnyWebhookEndpoints
         HttpContext context,
         ILoggerFactory loggerFactory)
     {
-        ILogger logger = loggerFactory.CreateLogger("Nucleus.Clips.Bunny.BunnyWebhookEndpoints");
+        ILogger logger = loggerFactory.CreateLogger("Reelshelf.Bunny.BunnyWebhookEndpoints");
 
         logger.LogInformation(
             "[WEBHOOK] Received Bunny webhook - VideoLibraryId: {LibraryId}, VideoGuid: {VideoGuid}, Status: {Status}, IP: {RemoteIp}, ContentType: {ContentType}",

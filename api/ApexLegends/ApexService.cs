@@ -1,4 +1,4 @@
-namespace Nucleus.Clips.ApexLegends;
+namespace Reelshelf.ApexLegends;
 
 public class ApexService
 {

@@ -1,9 +1,9 @@
 using IGDB;
 using IGDB.Models;
 using Newtonsoft.Json;
-using Nucleus.Shared.Games;
+using Reelshelf.Shared.Games;
 
-namespace Nucleus.Clips.Games;
+namespace Reelshelf.Games;
 
 public class IgdbService
 {

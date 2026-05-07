@@ -1,7 +1,7 @@
-using Nucleus.Clips.ApexLegends.Models;
-using Nucleus.Shared.Exceptions;
+using Reelshelf.ApexLegends.Models;
+using Reelshelf.Shared.Exceptions;
 
-namespace Nucleus.Clips.ApexLegends;
+namespace Reelshelf.ApexLegends;
 
 public class MapService(IApexMapCacheService cacheService, IConfiguration configuration)
 {

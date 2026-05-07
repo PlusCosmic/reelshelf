@@ -17,8 +17,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS dotnet-build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-COPY ["api/Nucleus.Clips.csproj", "api/"]
-RUN dotnet restore "api/Nucleus.Clips.csproj"
+COPY ["api/Reelshelf.csproj", "api/"]
+RUN dotnet restore "api/Reelshelf.csproj"
 
 COPY ["api/", "api/"]
 COPY ["migrations/", "migrations/"]
@@ -37,4 +37,4 @@ COPY --from=dotnet-build /app/publish .
 COPY --from=frontend-build /build/frontend/dist ./wwwroot
 
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "Nucleus.Clips.dll"]
+ENTRYPOINT ["dotnet", "Reelshelf.dll"]

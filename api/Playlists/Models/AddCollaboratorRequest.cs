@@ -1,3 +1,3 @@
-namespace Nucleus.Clips.Playlists.Models;
+namespace Reelshelf.Playlists.Models;
 
 public record AddCollaboratorRequest(Guid? UserId = null, string? Username = null);

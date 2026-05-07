@@ -1,7 +1,7 @@
-using Nucleus.Clips.Bunny;
-using Nucleus.Clips.Bunny.Models;
+using Reelshelf.Bunny;
+using Reelshelf.Bunny.Models;
 
-namespace Nucleus.Clips.Core;
+namespace Reelshelf.Core;
 
 public class ClipStatusRefreshService(
     ILogger<ClipStatusRefreshService> logger,

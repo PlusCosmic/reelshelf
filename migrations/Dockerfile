@@ -2,8 +2,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-COPY ["migrations/Nucleus.Migrations.csproj", "migrations/"]
-RUN dotnet restore "migrations/Nucleus.Migrations.csproj"
+COPY ["migrations/Reelshelf.Migrations.csproj", "migrations/"]
+RUN dotnet restore "migrations/Reelshelf.Migrations.csproj"
 
 COPY ["migrations/", "migrations/"]
 
@@ -15,4 +15,4 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
-ENTRYPOINT ["dotnet", "Nucleus.Migrations.dll"]
+ENTRYPOINT ["dotnet", "Reelshelf.Migrations.dll"]

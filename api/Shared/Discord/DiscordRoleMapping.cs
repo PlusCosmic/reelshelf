@@ -1,11 +1,11 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Nucleus.Shared.Auth;
+using Reelshelf.Shared.Auth;
 
-namespace Nucleus.Shared.Discord;
+namespace Reelshelf.Shared.Discord;
 
 /// <summary>
-/// Manages the mapping between Discord role IDs and Nucleus UserRoles.
+/// Manages the mapping between Discord role IDs and Reelshelf UserRoles.
 /// Configured via environment variables:
 /// - DISCORD_ADMIN_ROLE_ID: Discord role ID that maps to Admin
 /// - DISCORD_EDITOR_ROLE_ID: Discord role ID that maps to Editor
@@ -44,7 +44,7 @@ public class DiscordRoleMapping
     }
 
     /// <summary>
-    /// Gets the Nucleus UserRole for a set of Discord role IDs.
+    /// Gets the Reelshelf UserRole for a set of Discord role IDs.
     /// Returns the highest privilege role if multiple match.
     /// Returns null if no roles match (will use whitelist or default to Viewer).
     /// </summary>

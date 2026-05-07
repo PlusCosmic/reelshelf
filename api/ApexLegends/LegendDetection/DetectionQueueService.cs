@@ -1,8 +1,8 @@
 using Newtonsoft.Json;
-using Nucleus.Clips.ApexLegends.Models;
+using Reelshelf.ApexLegends.Models;
 using StackExchange.Redis;
 
-namespace Nucleus.Clips.ApexLegends.LegendDetection;
+namespace Reelshelf.ApexLegends.LegendDetection;
 
 public interface IApexDetectionQueueService
 {

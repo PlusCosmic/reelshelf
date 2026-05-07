@@ -1,4 +1,4 @@
-namespace Nucleus.Clips.Bunny.Models;
+namespace Reelshelf.Bunny.Models;
 
 public record CreateCollectionRequest(string Name)
 {

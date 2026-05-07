@@ -1,6 +1,6 @@
-using Nucleus.Shared.Games;
+using Reelshelf.Shared.Games;
 
-namespace Nucleus.Clips.Games;
+namespace Reelshelf.Games;
 
 public class GameCategoryAssetRefreshService(
     ILogger<GameCategoryAssetRefreshService> logger,

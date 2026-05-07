@@ -1,4 +1,4 @@
-# Clips
+# Reelshelf
 
 A video/media clip management application built with React, TanStack Router, and Mantine UI.
 

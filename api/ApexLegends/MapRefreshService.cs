@@ -1,6 +1,6 @@
-using Nucleus.Clips.ApexLegends.Models;
+using Reelshelf.ApexLegends.Models;
 
-namespace Nucleus.Clips.ApexLegends;
+namespace Reelshelf.ApexLegends;
 
 public class MapRefreshService(
     ILogger<MapRefreshService> logger,

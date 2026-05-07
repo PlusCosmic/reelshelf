@@ -1,4 +1,4 @@
-namespace Nucleus.Shared.Auth;
+namespace Reelshelf.Shared.Auth;
 
 /// <summary>
 /// Base permission definitions shared across all applications.

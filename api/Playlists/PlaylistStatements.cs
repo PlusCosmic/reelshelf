@@ -1,7 +1,7 @@
 using Dapper;
 using Npgsql;
 
-namespace Nucleus.Clips.Playlists;
+namespace Reelshelf.Playlists;
 
 public class PlaylistStatements(NpgsqlConnection connection)
 {

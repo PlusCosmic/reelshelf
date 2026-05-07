@@ -1,6 +1,6 @@
-using Nucleus.Clips.Bunny.Models;
+using Reelshelf.Bunny.Models;
 
-namespace Nucleus.Clips.Core.Models;
+namespace Reelshelf.Core.Models;
 
 public record Clip(
     Guid ClipId,

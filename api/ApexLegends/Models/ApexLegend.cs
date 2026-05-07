@@ -1,4 +1,4 @@
-namespace Nucleus.Clips.ApexLegends.Models;
+namespace Reelshelf.ApexLegends.Models;
 
 public enum ApexLegend
 {

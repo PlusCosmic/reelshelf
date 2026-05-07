@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 
-namespace Nucleus.Clips.ApexLegends;
+namespace Reelshelf.ApexLegends;
 
 public static class ApexEndpoints
 {

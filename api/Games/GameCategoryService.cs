@@ -1,11 +1,11 @@
 using System.Text.RegularExpressions;
-using Nucleus.Shared.Discord;
-using Nucleus.Shared.Games;
+using Reelshelf.Shared.Discord;
+using Reelshelf.Shared.Games;
 
-namespace Nucleus.Clips.Games;
+namespace Reelshelf.Games;
 
 public partial class GameCategoryService(
-    Nucleus.Shared.Games.GameCategoryStatements statements,
+    Reelshelf.Shared.Games.GameCategoryStatements statements,
     IgdbService igdbService,
     DiscordStatements discordStatements)
 {

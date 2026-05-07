@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Nucleus.Shared.Auth;
-using Nucleus.Shared.Games;
+using Reelshelf.Shared.Auth;
+using Reelshelf.Shared.Games;
 
-namespace Nucleus.Clips.Games;
+namespace Reelshelf.Games;
 
 public static class GameCategoryEndpoints
 {

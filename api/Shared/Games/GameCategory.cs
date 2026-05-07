@@ -1,4 +1,4 @@
-namespace Nucleus.Shared.Games;
+namespace Reelshelf.Shared.Games;
 
 public class GameCategory
 {

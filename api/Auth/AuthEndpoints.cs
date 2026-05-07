@@ -3,9 +3,9 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Nucleus.Shared.Discord;
+using Reelshelf.Shared.Discord;
 
-namespace Nucleus.Clips.Auth;
+namespace Reelshelf.Auth;
 
 public static class AuthEndpoints
 {

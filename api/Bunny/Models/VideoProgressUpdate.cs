@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Nucleus.Clips.Bunny.Models;
+namespace Reelshelf.Bunny.Models;
 
 public record VideoProgressUpdate(
     [property: JsonPropertyName("VideoLibraryId")] int VideoLibraryId,

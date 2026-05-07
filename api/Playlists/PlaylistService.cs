@@ -1,10 +1,10 @@
-using Nucleus.Clips.Core;
-using Nucleus.Clips.Core.Models;
-using Nucleus.Clips.Playlists.Models;
-using Nucleus.Shared.Discord;
-using Nucleus.Shared.Exceptions;
+using Reelshelf.Core;
+using Reelshelf.Core.Models;
+using Reelshelf.Playlists.Models;
+using Reelshelf.Shared.Discord;
+using Reelshelf.Shared.Exceptions;
 
-namespace Nucleus.Clips.Playlists;
+namespace Reelshelf.Playlists;
 
 public class PlaylistService(
     PlaylistStatements playlistStatements,

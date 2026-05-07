@@ -1,6 +1,6 @@
-using Nucleus.Clips.Core.Models;
+using Reelshelf.Core.Models;
 
-namespace Nucleus.Clips.Playlists.Models;
+namespace Reelshelf.Playlists.Models;
 
 public record Playlist(
     Guid Id,

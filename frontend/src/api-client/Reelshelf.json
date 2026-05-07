@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "Nucleus.Clips | v1",
+    "title": "Reelshelf | v1",
     "version": "1.0.0"
   },
   "paths": {
@@ -1223,7 +1223,7 @@
     "/api/apex-legends/map-rotation": {
       "get": {
         "tags": [
-          "Nucleus.Clips"
+          "Reelshelf"
         ],
         "operationId": "GetApexMapRotation",
         "responses": {
@@ -2281,7 +2281,7 @@
       "name": "GameCategoryEndpoints"
     },
     {
-      "name": "Nucleus.Clips"
+      "name": "Reelshelf"
     },
     {
       "name": "DiscordUserEndpoints"

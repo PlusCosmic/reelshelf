@@ -1,6 +1,6 @@
-using Nucleus.Clips.Bunny.Models;
+using Reelshelf.Bunny.Models;
 
-namespace Nucleus.Clips.Bunny;
+namespace Reelshelf.Bunny;
 
 public class BunnyService
 {

@@ -1,8 +1,8 @@
 using System.Text.Json;
-using Nucleus.Clips.ApexLegends.Models;
+using Reelshelf.ApexLegends.Models;
 using StackExchange.Redis;
 
-namespace Nucleus.Clips.ApexLegends;
+namespace Reelshelf.ApexLegends;
 
 public interface IApexMapCacheService
 {

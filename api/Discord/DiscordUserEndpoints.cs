@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Nucleus.Shared.Auth;
-using Nucleus.Shared.Discord;
+using Reelshelf.Shared.Auth;
+using Reelshelf.Shared.Discord;
 
-namespace Nucleus.Clips.Discord;
+namespace Reelshelf.Discord;
 
 public static class DiscordUserEndpoints
 {

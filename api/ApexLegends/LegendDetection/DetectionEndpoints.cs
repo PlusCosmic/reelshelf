@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Nucleus.Clips.ApexLegends.Models;
-using Nucleus.Shared.Games;
+using Reelshelf.ApexLegends.Models;
+using Reelshelf.Shared.Games;
 
-namespace Nucleus.Clips.ApexLegends.LegendDetection;
+namespace Reelshelf.ApexLegends.LegendDetection;
 
 public static class ApexDetectionEndpoints
 {

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Nucleus.Shared.Auth;
+using Reelshelf.Shared.Auth;
 
-namespace Nucleus.Clips.FFmpeg;
+namespace Reelshelf.FFmpeg;
 
 public static class FFmpegEndpoints
 {

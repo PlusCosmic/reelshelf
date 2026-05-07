@@ -1,13 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
-using Nucleus.Clips.Bunny;
-using Nucleus.Clips.Bunny.Models;
-using Nucleus.Clips.Core.Models;
-using Nucleus.Shared.Discord;
-using Nucleus.Shared.Exceptions;
-using Nucleus.Shared.Games;
+using Reelshelf.Bunny;
+using Reelshelf.Bunny.Models;
+using Reelshelf.Core.Models;
+using Reelshelf.Shared.Discord;
+using Reelshelf.Shared.Exceptions;
+using Reelshelf.Shared.Games;
 
-namespace Nucleus.Clips.Core;
+namespace Reelshelf.Core;
 
 public class ClipService(
     BunnyService bunnyService,

@@ -113,7 +113,7 @@ static string CreateMigrationLocationWithoutBaseline(string migrationLocation)
         throw new DirectoryNotFoundException($"Migration folder not found: {migrationLocation}");
     }
 
-    string temporaryLocation = Path.Combine(Path.GetTempPath(), $"nucleus-migrations-{Guid.NewGuid():N}");
+    string temporaryLocation = Path.Combine(Path.GetTempPath(), $"reelshelf-migrations-{Guid.NewGuid():N}");
     Directory.CreateDirectory(temporaryLocation);
 
     foreach (string sourcePath in Directory.EnumerateFiles(migrationLocation, "*.sql"))
@@ -174,7 +174,7 @@ internal sealed record MigrationOptions(
     public static void PrintHelp()
     {
         Console.WriteLine("""
-            Nucleus database migration runner
+            Reelshelf database migration runner
 
             Usage:
               dotnet run --project migrations -- [options]

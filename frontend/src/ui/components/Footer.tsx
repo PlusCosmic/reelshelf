@@ -26,7 +26,7 @@ export default function Footer() {
           },
         }}
       >
-        <IconHome size={20} color={"var(--mantine-color-nucleusColour-3)"} />
+        <IconHome size={20} color={"var(--mantine-color-reelshelfColour-3)"} />
       </ActionIcon>
       <ActionIcon
         component="a"
@@ -45,7 +45,7 @@ export default function Footer() {
           },
         }}
       >
-        <IconMovie size={20} color={"var(--mantine-color-nucleusColour-3)"} />
+        <IconMovie size={20} color={"var(--mantine-color-reelshelfColour-3)"} />
       </ActionIcon>
       <Divider orientation="vertical" opacity={0.3} />
       <Text size="xs" c="dimmed" fw={500}>

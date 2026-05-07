@@ -1,4 +1,4 @@
-namespace Nucleus.Shared.Auth;
+namespace Reelshelf.Shared.Auth;
 
 /// <summary>
 /// Defines the available user roles in the system.
