@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import { IconBrandDiscord, IconPlayerPlayFilled } from "@tabler/icons-react";
 
@@ -56,18 +56,6 @@ function loginWithDiscord() {
 
 export function LandingPage() {
   const [hover, setHover] = useState(false);
-  const [seconds, setSeconds] = useState(0);
-
-  useEffect(() => {
-    let frame = 0;
-    const start = performance.now();
-    const tick = () => {
-      setSeconds((performance.now() - start) / 1000);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   return (
     <div className="rs-landing">
@@ -87,7 +75,6 @@ export function LandingPage() {
       <main className="rs-landing-main">
         <div className="rs-landing-previews" aria-hidden="true">
           {previewClips.map((clip, index) => {
-            const drift = Math.sin(seconds * 0.4 + index * 1.7) * 4;
             return (
               <div
                 className="rs-landing-polaroid"
@@ -97,7 +84,8 @@ export function LandingPage() {
                     "--game-a": clip.colorA,
                     "--game-b": clip.colorB,
                     "--preview-width": `${clip.width}px`,
-                    "--preview-transform": `translate(${clip.x}px, ${clip.y + drift}px) rotate(${clip.rot}deg)`,
+                    "--preview-transform": `translate(${clip.x}px, ${clip.y}px) rotate(${clip.rot}deg)`,
+                    "--preview-drift-delay": `${index * -1.7}s`,
                   } as CSSProperties
                 }
               >

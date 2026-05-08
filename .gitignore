@@ -1,12 +1,22 @@
 .DS_Store
+.agents/
+.codex
+.idea/
+.vs/
+.vscode/
 node_modules
 node_modules.stale-nobody/
 .turbo
+.tanstack/
+.vite/
+.vitest/
 *.log
 core.*
+coverage/
 dist/
 dist.stale-nobody/
 dist-ssr
+out/
 *.local
 
 # Environment files
@@ -16,11 +26,6 @@ dist-ssr
 .cache
 server/dist
 public/dist
-.idea
-
-# Auto-generated route tree files
-**/routeTree.gen.ts
-**/routeTree.gen.js
 
 # Compiled config files
 **/vite.config.js
@@ -38,11 +43,15 @@ public/dist
 # .NET build outputs
 bin/
 obj/
+TestResults/
 *.dll
 *.pdb
 *.exe
+*.user
+*.suo
 *.cache
 *.deps.json
+api/wwwroot/
 
 # ASP.NET Core Data Protection keys generated for local auth cookies
 api/keys/

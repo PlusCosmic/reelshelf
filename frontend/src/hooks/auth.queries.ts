@@ -6,6 +6,7 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: ["user", "me"],
     queryFn: fetchMe,
+    retry: false,
     staleTime: 5 * 60_000,
   });
 }

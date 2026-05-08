@@ -42,15 +42,7 @@ function RootComponent() {
     window.localStorage.setItem("reelshelf-theme", theme);
   }, [theme]);
 
-  if (isLoading) {
-    return (
-      <div className="rs-app">
-        <div className="rs-section rs-empty">Opening the shelf...</div>
-      </div>
-    );
-  }
-
-  if (!user || isError) {
+  if (!user || isLoading || isError) {
     return <LandingPage />;
   }
 

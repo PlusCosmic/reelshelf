@@ -229,7 +229,7 @@ internal static class BuilderExtensions
         builder.Services.AddAuthentication(options =>
             {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = "Discord";
+                options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             })
             .AddCookie(options =>
             {
@@ -274,6 +274,17 @@ internal static class BuilderExtensions
 
                 options.Events = new OAuthEvents
                 {
+                    OnRedirectToAuthorizationEndpoint = context =>
+                    {
+                        if (context.Request.Path.StartsWithSegments("/api"))
+                        {
+                            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                            return Task.CompletedTask;
+                        }
+
+                        context.Response.Redirect(context.RedirectUri);
+                        return Task.CompletedTask;
+                    },
                     OnCreatingTicket = async context =>
                     {
                         HttpRequestMessage request = new(HttpMethod.Get, context.Options.UserInformationEndpoint);
