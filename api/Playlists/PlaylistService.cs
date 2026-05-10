@@ -9,6 +9,7 @@ namespace Reelshelf.Playlists;
 public class PlaylistService(
     PlaylistStatements playlistStatements,
     DiscordStatements discordStatements,
+    PlaylistAccess playlistAccess,
     ClipsStatements clipsStatements,
     ClipService clipService)
 {
@@ -24,8 +25,7 @@ public class PlaylistService(
             throw new BadRequestException("Playlist name cannot exceed 255 characters");
         }
 
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
+        DiscordStatements.DiscordUserRow discordUser = await playlistAccess.GetUser(discordUserId);
         Guid userId = discordUser.Id;
 
         PlaylistStatements.PlaylistRow playlistRow = await playlistStatements.InsertPlaylist(name, description, userId);
@@ -44,8 +44,7 @@ public class PlaylistService(
 
     public async Task<List<PlaylistSummary>> GetPlaylistsForUser(string discordUserId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
+        DiscordStatements.DiscordUserRow discordUser = await playlistAccess.GetUser(discordUserId);
         Guid userId = discordUser.Id;
 
         List<PlaylistStatements.PlaylistSummaryRow> playlistRows = await playlistStatements.GetPlaylistsByUserId(userId);
@@ -64,12 +63,8 @@ public class PlaylistService(
 
     public async Task<PlaylistWithDetails?> GetPlaylistById(Guid playlistId, string discordUserId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, userId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return null;
         }
@@ -124,12 +119,8 @@ public class PlaylistService(
             throw new BadRequestException("Playlist name cannot exceed 255 characters");
         }
 
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, userId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return null;
         }
@@ -154,12 +145,8 @@ public class PlaylistService(
 
     public async Task<bool> DeletePlaylist(Guid playlistId, string discordUserId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, userId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return false;
         }
@@ -170,12 +157,8 @@ public class PlaylistService(
 
     public async Task<PlaylistWithDetails?> AddClipToPlaylist(Guid playlistId, Guid clipId, string discordUserId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, userId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return null;
         }
@@ -195,7 +178,7 @@ public class PlaylistService(
         int maxPosition = await playlistStatements.GetMaxPosition(playlistId);
         int newPosition = maxPosition + 1;
 
-        await playlistStatements.AddClipToPlaylist(playlistId, clipId, userId, newPosition);
+        await playlistStatements.AddClipToPlaylist(playlistId, clipId, actor.UserId, newPosition);
 
         await playlistStatements.TouchPlaylistUpdatedAt(playlistId);
 
@@ -204,12 +187,8 @@ public class PlaylistService(
 
     public async Task<PlaylistWithDetails?> AddClipsToPlaylist(Guid playlistId, List<Guid> clipIds, string discordUserId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, userId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return null;
         }
@@ -228,7 +207,7 @@ public class PlaylistService(
             bool exists = await playlistStatements.ClipExistsInPlaylist(playlistId, clipId);
             if (!exists)
             {
-                await playlistStatements.AddClipToPlaylist(playlistId, clipId, userId, currentPosition);
+                await playlistStatements.AddClipToPlaylist(playlistId, clipId, actor.UserId, currentPosition);
                 currentPosition++;
             }
         }
@@ -240,12 +219,8 @@ public class PlaylistService(
 
     public async Task<bool> RemoveClipFromPlaylist(Guid playlistId, Guid clipId, string discordUserId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, userId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return false;
         }
@@ -265,12 +240,8 @@ public class PlaylistService(
 
     public async Task<PlaylistWithDetails?> ReorderPlaylistClips(Guid playlistId, List<Guid> clipOrdering, string discordUserId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, userId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return null;
         }
@@ -284,12 +255,8 @@ public class PlaylistService(
 
     public async Task<List<PlaylistCollaborator>?> AddCollaborator(Guid playlistId, string discordUserId, Guid? userId, string? username)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid currentUserId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, currentUserId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return null;
         }
@@ -310,7 +277,7 @@ public class PlaylistService(
             throw new BadRequestException("User not found");
         }
 
-        await playlistStatements.AddCollaborator(playlistId, userToAdd.Id, currentUserId);
+        await playlistStatements.AddCollaborator(playlistId, userToAdd.Id, actor.UserId);
 
         List<PlaylistStatements.PlaylistCollaboratorRow> collaboratorRows =
             await playlistStatements.GetPlaylistCollaborators(playlistId);
@@ -326,12 +293,8 @@ public class PlaylistService(
 
     public async Task<bool> RemoveCollaborator(Guid playlistId, Guid collaboratorUserId, string discordUserId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid currentUserId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, currentUserId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return false;
         }
@@ -355,12 +318,8 @@ public class PlaylistService(
 
     public async Task<List<PlaylistCollaborator>?> GetCollaborators(Guid playlistId, string discordUserId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
-        bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, userId);
-        if (!isCollaborator)
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        if (actor is null)
         {
             return null;
         }
@@ -383,8 +342,7 @@ public class PlaylistService(
         string discordUserId,
         string categoryName)
     {
-        DiscordStatements.DiscordUserRow currentUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
+        DiscordStatements.DiscordUserRow currentUser = await playlistAccess.GetUser(discordUserId);
 
         List<Guid> participants = participantIds.ToList();
         if (!participants.Contains(currentUser.Id))

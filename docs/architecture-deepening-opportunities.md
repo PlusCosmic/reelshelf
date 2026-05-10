@@ -2,25 +2,7 @@
 
 Captured on 2026-05-10 from an `improve-codebase-architecture` review. These are candidates for future exploration, not accepted design decisions.
 
-## 1. Playlist Collaboration Module
-
-**Files**
-
-- `api/Playlists/PlaylistService.cs`
-
-**Problem**
-
-Resolving the Discord user, checking playlist collaboration, then proceeding is repeated across nearly every playlist operation. The playlist interface makes each operation carry collaborator authorization knowledge.
-
-**Solution**
-
-Create a deeper Playlist Access module that resolves the acting user and playlist membership once, then exposes playlist operations through that context.
-
-**Benefits**
-
-This improves locality for collaboration rules, reduces repeated error modes, and lets tests cover playlist access once instead of restating it per operation.
-
-## 2. Gaming Session Playlist Module
+## 1. Gaming Session Playlist Module
 
 **Files**
 
@@ -38,7 +20,7 @@ Pull gaming session playlist creation into its own deeper module with an explici
 
 This improves locality for session semantics, clarifies tests for participant inclusion and time-window behavior, and reduces accidental coupling to paged clip browsing.
 
-## 3. Apex Detection Module
+## 2. Apex Detection Module
 
 **Files**
 
