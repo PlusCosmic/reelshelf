@@ -6,6 +6,7 @@ import {
   Chip,
   ClipGrid,
   PlayerActions,
+  SharedIndicator,
 } from "@/components/Reelshelf/ReelshelfPrimitives";
 import {
   categoryForClip,
@@ -75,6 +76,7 @@ function ClipDetailRoute() {
             <span>{formatDate(clip.createdAt)}</span>
             <span>{formatSize(clip.video.storageSize)}</span>
             <span>{clip.isViewed ? "Viewed" : "New"}</span>
+            {clip.share.shared ? <SharedIndicator /> : null}
           </div>
           <div className="rs-chip-row">
             {clip.tags.map((tag) => (
@@ -82,7 +84,7 @@ function ClipDetailRoute() {
             ))}
           </div>
           <div className="rs-player-actions">
-            <PlayerActions />
+            <PlayerActions clip={clip} />
           </div>
         </section>
 

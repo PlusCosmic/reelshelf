@@ -55,6 +55,7 @@ app.MapAuthEndpoints(builder.Configuration);
 // Create API group with /api prefix for all other endpoints
 RouteGroupBuilder apiGroup = app.MapGroup("/api");
 apiGroup.MapClipsEndpoints();
+apiGroup.MapSharedClipsEndpoints();
 apiGroup.MapPlaylistEndpoints();
 apiGroup.MapFFmpegEndpoints();
 apiGroup.MapBunnyWebhookEndpoints();

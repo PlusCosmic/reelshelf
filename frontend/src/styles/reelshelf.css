@@ -462,6 +462,13 @@ a {
   font-size: 12px;
 }
 
+.rs-small-button:disabled,
+.rs-primary:disabled,
+.rs-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .rs-section {
   padding: 32px;
 }
@@ -886,6 +893,32 @@ a {
   color: color-mix(in oklch, red 68%, var(--fg));
 }
 
+.rs-modal-error-inline {
+  margin: 0;
+}
+
+.rs-inline-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.rs-share-copy-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.rs-share-url {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--fg);
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
 .rs-modal-submit {
   width: fit-content;
   margin-top: 2px;
@@ -1105,6 +1138,34 @@ a {
   gap: 8px;
 }
 
+.rs-shared-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.rs-shared-indicator.compact {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  justify-content: center;
+  border: 1px solid color-mix(in oklch, white 28%, transparent);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.48);
+  color: white;
+  backdrop-filter: blur(8px);
+}
+
+.rs-row-shared {
+  display: block;
+  margin-top: 5px;
+}
+
 .rs-section-heading {
   margin-bottom: 24px;
 }
@@ -1147,6 +1208,67 @@ a {
 
 .rs-player-actions {
   margin-top: 18px;
+}
+
+.rs-public-app {
+  min-height: 100vh;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--bg-soft) 72%, transparent),
+      transparent 360px
+    ),
+    var(--bg);
+}
+
+.rs-public-theme-toggle {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 60;
+}
+
+.rs-public-page {
+  width: min(1120px, 100%);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 28px 32px 80px;
+}
+
+.rs-public-header {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  margin-bottom: 28px;
+  padding-right: 48px;
+}
+
+.rs-public-player-wrap {
+  display: grid;
+  gap: 24px;
+}
+
+.rs-public-player {
+  border-radius: 8px;
+}
+
+.rs-public-details {
+  display: grid;
+  gap: 10px;
+}
+
+.rs-public-details h1 {
+  margin: 0;
+}
+
+.rs-public-state {
+  min-height: 52vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  color: var(--fg-soft);
+  text-align: center;
 }
 
 .rs-player-grid {
@@ -1474,9 +1596,14 @@ a {
   .rs-section,
   .rs-filterbar,
   .rs-game-hero,
-  .rs-player-page {
+  .rs-player-page,
+  .rs-public-page {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .rs-share-copy-row {
+    grid-template-columns: 1fr;
   }
 
   .rs-player-grid,

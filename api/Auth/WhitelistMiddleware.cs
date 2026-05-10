@@ -19,7 +19,7 @@ public class WhitelistMiddleware
         _whitelistService = whitelistService;
         _logger = logger;
 
-        string[] defaultBypassPaths = ["/health", "/auth", "/webhooks", "/apex-legends", "/index.html", "/assets", "/manifest.json", "/favicon"];
+        string[] defaultBypassPaths = ["/health", "/auth", "/webhooks", "/apex-legends", "/api/shared-clips", "/share", "/index.html", "/assets", "/manifest.json", "/favicon"];
         _bypassPaths = new HashSet<string>(
             bypassPaths?.Any() == true ? bypassPaths : defaultBypassPaths,
             StringComparer.OrdinalIgnoreCase);

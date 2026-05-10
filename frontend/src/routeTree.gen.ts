@@ -13,6 +13,7 @@ import { Route as UploadRouteImport } from './routes/upload'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlaylistsIndexRouteImport } from './routes/playlists/index'
+import { Route as ShareTokenRouteImport } from './routes/share/$token'
 import { Route as PlaylistsPlaylistIdRouteImport } from './routes/playlists/$playlistId'
 import { Route as GamesSlugIndexRouteImport } from './routes/games/$slug/index'
 import { Route as GamesSlugClipIdRouteImport } from './routes/games/$slug/$clipId'
@@ -37,6 +38,11 @@ const PlaylistsIndexRoute = PlaylistsIndexRouteImport.update({
   path: '/playlists/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlaylistsPlaylistIdRoute = PlaylistsPlaylistIdRouteImport.update({
   id: '/playlists/$playlistId',
   path: '/playlists/$playlistId',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/upload': typeof UploadRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
+  '/share/$token': typeof ShareTokenRoute
   '/playlists/': typeof PlaylistsIndexRoute
   '/games/$slug/$clipId': typeof GamesSlugClipIdRoute
   '/games/$slug/': typeof GamesSlugIndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/upload': typeof UploadRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
+  '/share/$token': typeof ShareTokenRoute
   '/playlists': typeof PlaylistsIndexRoute
   '/games/$slug/$clipId': typeof GamesSlugClipIdRoute
   '/games/$slug': typeof GamesSlugIndexRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/upload': typeof UploadRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
+  '/share/$token': typeof ShareTokenRoute
   '/playlists/': typeof PlaylistsIndexRoute
   '/games/$slug/$clipId': typeof GamesSlugClipIdRoute
   '/games/$slug/': typeof GamesSlugIndexRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upload'
     | '/playlists/$playlistId'
+    | '/share/$token'
     | '/playlists/'
     | '/games/$slug/$clipId'
     | '/games/$slug/'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upload'
     | '/playlists/$playlistId'
+    | '/share/$token'
     | '/playlists'
     | '/games/$slug/$clipId'
     | '/games/$slug'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upload'
     | '/playlists/$playlistId'
+    | '/share/$token'
     | '/playlists/'
     | '/games/$slug/$clipId'
     | '/games/$slug/'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   UploadRoute: typeof UploadRoute
   PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
+  ShareTokenRoute: typeof ShareTokenRoute
   PlaylistsIndexRoute: typeof PlaylistsIndexRoute
   GamesSlugClipIdRoute: typeof GamesSlugClipIdRoute
   GamesSlugIndexRoute: typeof GamesSlugIndexRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlaylistsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/playlists/$playlistId': {
       id: '/playlists/$playlistId'
       path: '/playlists/$playlistId'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   UploadRoute: UploadRoute,
   PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,
+  ShareTokenRoute: ShareTokenRoute,
   PlaylistsIndexRoute: PlaylistsIndexRoute,
   GamesSlugClipIdRoute: GamesSlugClipIdRoute,
   GamesSlugIndexRoute: GamesSlugIndexRoute,

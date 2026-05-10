@@ -5,10 +5,12 @@ import {
   createVideoRequest,
   deleteVideo,
   fetchClips,
+  getSharedClip,
   getTopTags,
   getVideo,
   markClipAsViewed,
   removeTagFromVideo,
+  shareVideo,
   updateVideoTitle,
 } from "@/shared/services/clips";
 
@@ -281,5 +283,30 @@ export function useMarkAsViewed() {
     onSuccess: (_data, clipId) => {
       queryClient.invalidateQueries({ queryKey: ["clips", clipId] });
     },
+  });
+}
+
+export function useShareClip() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (clipId: string) => shareVideo(clipId),
+    onSuccess: (_data, clipId) => {
+      queryClient.invalidateQueries({ queryKey: ["clips", clipId] });
+      queryClient.invalidateQueries({ queryKey: ["clips"], exact: false });
+    },
+  });
+}
+
+export function useSharedClip(token: string | undefined | null) {
+  return useQuery({
+    queryKey: ["shared-clips", token],
+    queryFn: () => {
+      if (!token) throw new Error("Share token is required");
+      return getSharedClip(token);
+    },
+    enabled: !!token,
+    staleTime: 60_000,
+    retry: false,
   });
 }

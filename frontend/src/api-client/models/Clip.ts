@@ -20,6 +20,13 @@ import {
   BunnyVideoToJSON,
   BunnyVideoToJSONTyped,
 } from "./BunnyVideo";
+import type { ClipShareSummary } from "./ClipShareSummary";
+import {
+  ClipShareSummaryFromJSON,
+  ClipShareSummaryFromJSONTyped,
+  ClipShareSummaryToJSON,
+  ClipShareSummaryToJSONTyped,
+} from "./ClipShareSummary";
 
 /**
  *
@@ -83,6 +90,12 @@ export interface Clip {
   isViewed: boolean;
   /**
    *
+   * @type {ClipShareSummary}
+   * @memberof Clip
+   */
+  share: ClipShareSummary;
+  /**
+   *
    * @type {any}
    * @memberof Clip
    */
@@ -104,6 +117,7 @@ export function instanceOfClip(value: object): value is Clip {
   if (!("video" in value) || value["video"] === undefined) return false;
   if (!("tags" in value) || value["tags"] === undefined) return false;
   if (!("isViewed" in value) || value["isViewed"] === undefined) return false;
+  if (!("share" in value) || value["share"] === undefined) return false;
   if (!("gameMetadata" in value) || value["gameMetadata"] === undefined)
     return false;
   return true;
@@ -130,6 +144,7 @@ export function ClipFromJSONTyped(
     video: BunnyVideoFromJSON(json["video"]),
     tags: json["tags"],
     isViewed: json["is_viewed"],
+    share: ClipShareSummaryFromJSON(json["share"]),
     gameMetadata: json["game_metadata"],
   };
 }
@@ -156,6 +171,7 @@ export function ClipToJSONTyped(
     video: BunnyVideoToJSON(value["video"]),
     tags: value["tags"],
     is_viewed: value["isViewed"],
+    share: ClipShareSummaryToJSON(value["share"]),
     game_metadata: value["gameMetadata"],
   };
 }

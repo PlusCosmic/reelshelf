@@ -169,6 +169,22 @@ public class ClipsStatements(NpgsqlConnection connection)
         return (await connection.QueryAsync<Guid>(sql, new { userId, clipIds = clipIds.ToArray() })).ToHashSet();
     }
 
+    public async Task<HashSet<Guid>> GetSharedClipIds(List<Guid> clipIds)
+    {
+        if (!clipIds.Any())
+        {
+            return new HashSet<Guid>();
+        }
+
+        const string sql = """
+            SELECT clip_id
+            FROM clip_share
+            WHERE revoked_at IS NULL AND clip_id = ANY(@clipIds)
+            """;
+
+        return (await connection.QueryAsync<Guid>(sql, new { clipIds = clipIds.ToArray() })).ToHashSet();
+    }
+
     public async Task<bool> ClipExistsByMd5Hash(Guid ownerId, Guid gameCategoryId, string md5Hash)
     {
         const string sql = """
@@ -329,6 +345,55 @@ public class ClipsStatements(NpgsqlConnection connection)
         return await connection.QuerySingleOrDefaultAsync<ClipRow>(sql, new { videoId });
     }
 
+    public async Task<ClipShareRow?> GetActiveShareByClipId(Guid clipId)
+    {
+        const string sql = """
+            SELECT id, token, clip_id, owner_id, created_at, revoked_at
+            FROM clip_share
+            WHERE clip_id = @clipId AND revoked_at IS NULL
+            LIMIT 1
+            """;
+
+        return await connection.QuerySingleOrDefaultAsync<ClipShareRow>(sql, new { clipId });
+    }
+
+    public async Task<ClipShareRow> InsertClipShare(string token, Guid clipId, Guid ownerId)
+    {
+        const string sql = """
+            INSERT INTO clip_share (token, clip_id, owner_id)
+            VALUES (@token, @clipId, @ownerId)
+            RETURNING id, token, clip_id, owner_id, created_at, revoked_at
+            """;
+
+        return await connection.QuerySingleAsync<ClipShareRow>(sql, new { token, clipId, ownerId });
+    }
+
+    public async Task<SharedClipRow?> GetSharedClipByToken(string token)
+    {
+        const string sql = """
+            SELECT
+                cs.id as share_id,
+                cs.token,
+                cs.clip_id,
+                c.owner_id,
+                c.video_id,
+                c.game_category_id,
+                c.created_at,
+                c.title,
+                c.length,
+                c.date_uploaded,
+                c.video_status,
+                gc.name as game_name
+            FROM clip_share cs
+            INNER JOIN clip c ON c.id = cs.clip_id
+            INNER JOIN game_category gc ON gc.id = c.game_category_id
+            WHERE cs.token = @token AND cs.revoked_at IS NULL
+            LIMIT 1
+            """;
+
+        return await connection.QuerySingleOrDefaultAsync<SharedClipRow>(sql, new { token });
+    }
+
     public async Task<ClipWithTagsRow?> GetClipWithTagsByIdAndOwner(Guid clipId, Guid ownerId)
     {
         const string sql = """
@@ -480,6 +545,32 @@ public class ClipsStatements(NpgsqlConnection connection)
         public Guid UserId { get; set; }
         public Guid ClipId { get; set; }
         public DateTime ViewedAt { get; set; }
+    }
+
+    public class ClipShareRow
+    {
+        public Guid Id { get; set; }
+        public string Token { get; set; } = string.Empty;
+        public Guid ClipId { get; set; }
+        public Guid OwnerId { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset? RevokedAt { get; set; }
+    }
+
+    public class SharedClipRow
+    {
+        public Guid ShareId { get; set; }
+        public string Token { get; set; } = string.Empty;
+        public Guid ClipId { get; set; }
+        public Guid OwnerId { get; set; }
+        public Guid VideoId { get; set; }
+        public Guid GameCategoryId { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public string? Title { get; set; }
+        public int? Length { get; set; }
+        public DateTimeOffset? DateUploaded { get; set; }
+        public int? VideoStatus { get; set; }
+        public string GameName { get; set; } = string.Empty;
     }
 
     public class ClipWithTagsRow

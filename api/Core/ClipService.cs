@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.WebUtilities;
+using Npgsql;
 using Reelshelf.Bunny;
 using Reelshelf.Bunny.Models;
 using Reelshelf.Core.Models;
@@ -14,11 +16,33 @@ public class ClipService(
     ClipsStatements clipsStatements,
     DiscordStatements discordStatements,
     GameCategoryStatements gameCategoryStatements,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    ILogger<ClipService> logger)
 {
+    private const int ShareTokenByteLength = 32;
+    private const int MaxShareTokenAttempts = 3;
+
     private static string NormalizeTag(string tag)
     {
         return tag.Trim().ToLowerInvariant();
+    }
+
+    private string BuildEmbedUrl(Guid videoId)
+    {
+        string libraryId = configuration["BunnyLibraryId"]
+                           ?? throw new InvalidOperationException("Bunny API library ID not configured");
+        return $"https://player.mediadelivery.net/embed/{libraryId}/{videoId}?autoplay=false";
+    }
+
+    private static bool IsPlayable(int? videoStatus)
+    {
+        return videoStatus is (int)BunnyVideoStatus.Finished or (int)BunnyVideoStatus.ResolutionFinished;
+    }
+
+    private static string GenerateShareToken()
+    {
+        byte[] bytes = RandomNumberGenerator.GetBytes(ShareTokenByteLength);
+        return WebEncoders.Base64UrlEncode(bytes);
     }
 
     public async Task<CreateClipResponse?> CreateClip(Guid gameCategoryId, string videoTitle,
@@ -143,8 +167,11 @@ public class ClipService(
             ? clipWithTags.TagNames.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
             : [];
 
+        ClipsStatements.ClipShareRow? share = await clipsStatements.GetActiveShareByClipId(clipId);
+
         return new Clip(clipWithTags.Id, clipWithTags.OwnerId, clipWithTags.VideoId,
-            clipWithTags.GameCategoryId, gameCategory.Slug, clipWithTags.CreatedAt, video, tags, isViewed, null);
+            clipWithTags.GameCategoryId, gameCategory.Slug, clipWithTags.CreatedAt, video, tags, isViewed,
+            new ClipShareSummary(share != null), null);
     }
 
     public async Task<Clip?> AddTagToClip(Guid clipId, string discordUserId, string tag)
@@ -322,6 +349,7 @@ public class ClipService(
         List<ClipsStatements.ClipWithTagsRow> pagedClips = clipsPage.Rows;
         List<Guid> clipIds = pagedClips.Select(c => c.Id).ToList();
         HashSet<Guid> viewedClipIds = await clipsStatements.GetViewedClipIds(userId, clipIds);
+        HashSet<Guid> sharedClipIds = await clipsStatements.GetSharedClipIds(clipIds);
 
         int totalPages = (int)Math.Ceiling((double)clipsPage.TotalCount / pageSize);
 
@@ -353,7 +381,7 @@ public class ClipService(
 
             return new Clip(c.Id, c.OwnerId, c.VideoId, gameCategoryId, gameCategory.Slug, c.CreatedAt, video,
                 c.TagNames?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() ?? [],
-                viewedClipIds.Contains(c.Id), null);
+                viewedClipIds.Contains(c.Id), new ClipShareSummary(sharedClipIds.Contains(c.Id)), null);
         }).ToList();
 
         PagedClipsResponse pagedClipsResponse = new(finalClips, clipsPage.TotalCount, totalPages);
@@ -374,5 +402,71 @@ public class ClipService(
         await bunnyService.DeleteVideoAsync(clip.VideoId);
         await clipsStatements.DeleteClip(clipId);
         return true;
+    }
+
+    public async Task<ClipShareResponse?> CreateOrGetShare(Guid clipId, string discordUserId)
+    {
+        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
+                                                       ?? throw new UnauthorizedException("User not found");
+
+        ClipsStatements.ClipWithTagsRow? clip =
+            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, discordUser.Id);
+        if (clip == null)
+        {
+            return null;
+        }
+
+        if (!IsPlayable(clip.VideoStatus))
+        {
+            throw new ConflictException("This clip is still processing and cannot be shared yet");
+        }
+
+        ClipsStatements.ClipShareRow? existing = await clipsStatements.GetActiveShareByClipId(clipId);
+        if (existing != null)
+        {
+            return new ClipShareResponse($"/share/{existing.Token}", true);
+        }
+
+        for (int attempt = 1; attempt <= MaxShareTokenAttempts; attempt++)
+        {
+            string token = GenerateShareToken();
+
+            try
+            {
+                ClipsStatements.ClipShareRow share = await clipsStatements.InsertClipShare(token, clipId, discordUser.Id);
+                logger.LogInformation("Created clip share {ShareId} for clip {ClipId}", share.Id, clipId);
+                return new ClipShareResponse($"/share/{share.Token}", true);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+            {
+                ClipsStatements.ClipShareRow? racedShare = await clipsStatements.GetActiveShareByClipId(clipId);
+                if (racedShare != null)
+                {
+                    return new ClipShareResponse($"/share/{racedShare.Token}", true);
+                }
+
+                logger.LogWarning(ex, "Share token collision while creating share for clip {ClipId}; attempt {Attempt}", clipId, attempt);
+            }
+        }
+
+        throw new InvalidOperationException("Failed to generate a unique share token");
+    }
+
+    public async Task<SharedClipResponse?> GetSharedClip(string token)
+    {
+        ClipsStatements.SharedClipRow? sharedClip = await clipsStatements.GetSharedClipByToken(token);
+        if (sharedClip == null || !IsPlayable(sharedClip.VideoStatus))
+        {
+            return null;
+        }
+
+        logger.LogInformation("Resolved clip share {ShareId} for clip {ClipId}", sharedClip.ShareId, sharedClip.ClipId);
+
+        return new SharedClipResponse(
+            sharedClip.Title ?? "Untitled",
+            sharedClip.GameName,
+            sharedClip.Length ?? 0,
+            sharedClip.DateUploaded ?? sharedClip.CreatedAt,
+            BuildEmbedUrl(sharedClip.VideoId));
     }
 }

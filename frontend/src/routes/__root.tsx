@@ -4,13 +4,8 @@ import {
   createRootRoute,
   useRouterState,
 } from "@tanstack/react-router";
-import {
-  IconMovie,
-  IconLogout,
-  IconMoon,
-  IconSun,
-} from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { IconMovie, IconLogout, IconMoon, IconSun } from "@tabler/icons-react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
 import { useCurrentUser, useLogout } from "@/hooks/queries";
@@ -27,6 +22,29 @@ function getInitialTheme(): ReelshelfTheme {
 
 function RootComponent() {
   const [theme, setTheme] = useState<ReelshelfTheme>(getInitialTheme);
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("reelshelf-theme", theme);
+  }, [theme]);
+
+  if (pathname.startsWith("/share/")) {
+    return <PublicShell theme={theme} setTheme={setTheme} />;
+  }
+
+  return <AuthenticatedShell theme={theme} setTheme={setTheme} />;
+}
+
+function AuthenticatedShell({
+  theme,
+  setTheme,
+}: {
+  theme: ReelshelfTheme;
+  setTheme: Dispatch<SetStateAction<ReelshelfTheme>>;
+}) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -36,11 +54,6 @@ function RootComponent() {
 
   const active = (path: string) =>
     path === "/" ? pathname === "/" : pathname.startsWith(path);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem("reelshelf-theme", theme);
-  }, [theme]);
 
   if (!user || isLoading || isError) {
     return <LandingPage />;
@@ -136,6 +149,31 @@ function RootComponent() {
       <main>
         <Outlet />
       </main>
+    </div>
+  );
+}
+
+function PublicShell({
+  theme,
+  setTheme,
+}: {
+  theme: ReelshelfTheme;
+  setTheme: Dispatch<SetStateAction<ReelshelfTheme>>;
+}) {
+  const nextTheme = theme === "dark" ? "light" : "dark";
+
+  return (
+    <div className="rs-public-app">
+      <button
+        className="rs-icon-button rs-public-theme-toggle"
+        type="button"
+        onClick={() => setTheme(nextTheme)}
+        aria-label={`Switch to ${nextTheme} mode`}
+        title={`Switch to ${nextTheme} mode`}
+      >
+        {theme === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
+      </button>
+      <Outlet />
     </div>
   );
 }

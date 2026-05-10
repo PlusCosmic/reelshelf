@@ -17,6 +17,7 @@ import type {
   AddTagRequest,
   BackfillResult,
   Clip,
+  ClipShareResponse,
   CreateClipResponse,
   PagedClipsResponse,
   TopTag,
@@ -29,6 +30,8 @@ import {
   BackfillResultToJSON,
   ClipFromJSON,
   ClipToJSON,
+  ClipShareResponseFromJSON,
+  ClipShareResponseToJSON,
   CreateClipResponseFromJSON,
   CreateClipResponseToJSON,
   PagedClipsResponseFromJSON,
@@ -78,6 +81,10 @@ export interface MarkVideoAsViewedRequest {
 export interface RemoveTagFromClipRequest {
   clipId: string;
   tag: string;
+}
+
+export interface ShareVideoRequest {
+  clipId: string;
 }
 
 export interface UpdateClipTitleRequest {
@@ -587,6 +594,54 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
       requestParameters,
       initOverrides,
     );
+    return await response.value();
+  }
+
+  /**
+   */
+  async shareVideoRaw(
+    requestParameters: ShareVideoRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClipShareResponse>> {
+    if (requestParameters["clipId"] == null) {
+      throw new runtime.RequiredError(
+        "clipId",
+        'Required parameter "clipId" was null or undefined when calling shareVideo().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clips/videos/{clipId}/share`;
+    urlPath = urlPath.replace(
+      `{${"clipId"}}`,
+      encodeURIComponent(String(requestParameters["clipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClipShareResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async shareVideo(
+    requestParameters: ShareVideoRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClipShareResponse> {
+    const response = await this.shareVideoRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

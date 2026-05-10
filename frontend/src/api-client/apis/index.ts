@@ -8,5 +8,6 @@ export * from "./ClipsEndpointsApi";
 export * from "./DiscordUserEndpointsApi";
 export * from "./FFmpegEndpointsApi";
 export * from "./GameCategoryEndpointsApi";
-export * from "./ReelshelfApi";
 export * from "./PlaylistEndpointsApi";
+export * from "./ReelshelfApi";
+export * from "./SharedClipsEndpointsApi";

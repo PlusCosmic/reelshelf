@@ -15,6 +15,7 @@ public static class ClipsEndpoints
         group.MapPost("categories/{categoryId:guid}/videos", CreateVideo).WithName("CreateVideo")
             .RequirePermission(Permissions.ClipsCreate);
         group.MapGet("videos/{clipId:guid}", GetVideoById).WithName("GetVideoById");
+        group.MapPost("videos/{clipId:guid}/share", ShareVideo).WithName("ShareVideo");
         group.MapPost("videos/{clipId:guid}/view", MarkVideoAsViewed).WithName("MarkVideoAsViewed");
         group.MapPost("videos/{clipId:guid}/tags", AddTagToClip).WithName("AddTagToClip")
             .RequirePermission(Permissions.ClipsEdit);
@@ -86,6 +87,20 @@ public static class ClipsEndpoints
         }
 
         return TypedResults.Ok(clip);
+    }
+
+    private static async Task<Results<Ok<ClipShareResponse>, NotFound>> ShareVideo(
+        ClipService clipService,
+        AuthenticatedUser user,
+        Guid clipId)
+    {
+        ClipShareResponse? response = await clipService.CreateOrGetShare(clipId, user.DiscordId);
+        if (response is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(response);
     }
 
     private static async Task<Results<Ok<Clip>, NotFound>> AddTagToClip(

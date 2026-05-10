@@ -1,10 +1,12 @@
 import {
   type Clip,
+  type ClipShareResponse,
   type CreateClipResponse,
   type PagedClipsResponse,
+  type SharedClipResponse,
   type TopTag,
 } from "@/api-client";
-import { createClipsApi } from "./apiClients";
+import { createClipsApi, createSharedClipsApi } from "./apiClients";
 
 export interface FetchClipsParams {
   categoryId: string;
@@ -107,4 +109,16 @@ export async function deleteVideo(clipId: string): Promise<void> {
 export async function markClipAsViewed(clipId: string): Promise<void> {
   const api = createClipsApi();
   await api.markVideoAsViewed({ clipId: clipId });
+}
+
+export async function shareVideo(clipId: string): Promise<ClipShareResponse> {
+  const api = createClipsApi();
+  return api.shareVideo({ clipId });
+}
+
+export async function getSharedClip(
+  token: string,
+): Promise<SharedClipResponse> {
+  const api = createSharedClipsApi();
+  return api.getSharedClip({ token });
 }

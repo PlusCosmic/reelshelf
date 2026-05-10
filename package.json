@@ -17,7 +17,7 @@
     "generate:api-client:reelshelf": "bun run generate:openapi:reelshelf && bun run --cwd frontend generate:api-client",
     "generate:api-clients": "bun run generate:api-client:reelshelf",
     "generate:api-client": "bun run generate:api-clients",
-    "check:api-client-drift": "bun run generate:api-clients && git diff --exit-code -- frontend/src/api-client",
+    "check:api-client-drift": "bun run generate:api-clients && prettier --write \"frontend/src/api-client/**/*.ts\" && git diff --exit-code -- frontend/src/api-client",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\""
   },

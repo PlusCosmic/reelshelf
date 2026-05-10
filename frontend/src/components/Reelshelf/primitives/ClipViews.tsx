@@ -10,6 +10,7 @@ import {
   getGameColors,
   thumbnailUrl,
 } from "../reelshelf-model";
+import { SharedIndicator } from "./Navigation";
 
 export function ClipThumb({
   clip,
@@ -48,6 +49,7 @@ export function ClipThumb({
       {!compact && firstTag ? (
         <span className="rs-tag-badge">{firstTag}</span>
       ) : null}
+      {compact && clip.share.shared ? <SharedIndicator compact /> : null}
       {clip.video.length > 0 ? (
         <span className="rs-duration">{formatDuration(clip.video.length)}</span>
       ) : null}
@@ -91,6 +93,12 @@ export function ClipCard({
             <span>New</span>
           </>
         ) : null}
+        {clip.share.shared ? (
+          <>
+            <span className="rs-dot" />
+            <SharedIndicator />
+          </>
+        ) : null}
       </div>
     </article>
   );
@@ -132,6 +140,11 @@ export function ClipGrid({
                     .slice(0, 3)
                     .map((tag) => `#${tag}`)
                     .join(" ")}
+                  {clip.share.shared ? (
+                    <span className="rs-row-shared">
+                      <SharedIndicator />
+                    </span>
+                  ) : null}
                 </span>
               </span>
               <span className="wide-only rs-meta">

@@ -277,6 +277,40 @@
         }
       }
     },
+    "/api/clips/videos/{clipId}/share": {
+      "post": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "ShareVideo",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipShareResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/clips/videos/{clipId}/view": {
       "post": {
         "tags": [
@@ -470,6 +504,114 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BackfillResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shared-clips/{token}": {
+      "get": {
+        "tags": [
+          "SharedClipsEndpoints"
+        ],
+        "operationId": "GetSharedClip",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedClipResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/apex-legends/map-rotation": {
+      "get": {
+        "tags": [
+          "Reelshelf"
+        ],
+        "operationId": "GetApexMapRotation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentMapRotation"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/{userId}": {
+      "get": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordUser"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/users/suggestions": {
+      "get": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiscordUser"
+                  }
                 }
               }
             }
@@ -1220,81 +1362,6 @@
         }
       }
     },
-    "/api/apex-legends/map-rotation": {
-      "get": {
-        "tags": [
-          "Reelshelf"
-        ],
-        "operationId": "GetApexMapRotation",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CurrentMapRotation"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/user/{userId}": {
-      "get": {
-        "tags": [
-          "DiscordUserEndpoints"
-        ],
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DiscordUser"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
-    "/api/users/suggestions": {
-      "get": {
-        "tags": [
-          "DiscordUserEndpoints"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/DiscordUser"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/apex-legends/assign-account": {
       "post": {
         "tags": [
@@ -1608,6 +1675,7 @@
           "video",
           "tags",
           "is_viewed",
+          "share",
           "game_metadata"
         ],
         "type": "object",
@@ -1647,7 +1715,36 @@
           "is_viewed": {
             "type": "boolean"
           },
+          "share": {
+            "$ref": "#/components/schemas/ClipShareSummary"
+          },
           "game_metadata": { }
+        }
+      },
+      "ClipShareResponse": {
+        "required": [
+          "share_path",
+          "shared"
+        ],
+        "type": "object",
+        "properties": {
+          "share_path": {
+            "type": "string"
+          },
+          "shared": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ClipShareSummary": {
+        "required": [
+          "shared"
+        ],
+        "type": "object",
+        "properties": {
+          "shared": {
+            "type": "boolean"
+          }
         }
       },
       "ClipSortOrder": {
@@ -2174,6 +2271,35 @@
           }
         }
       },
+      "SharedClipResponse": {
+        "required": [
+          "title",
+          "game",
+          "duration_seconds",
+          "uploaded_at",
+          "embed_url"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "game": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "embed_url": {
+            "type": "string"
+          }
+        }
+      },
       "TopTag": {
         "required": [
           "name",
@@ -2269,6 +2395,15 @@
       "name": "ClipsEndpoints"
     },
     {
+      "name": "SharedClipsEndpoints"
+    },
+    {
+      "name": "Reelshelf"
+    },
+    {
+      "name": "DiscordUserEndpoints"
+    },
+    {
       "name": "PlaylistEndpoints"
     },
     {
@@ -2279,12 +2414,6 @@
     },
     {
       "name": "GameCategoryEndpoints"
-    },
-    {
-      "name": "Reelshelf"
-    },
-    {
-      "name": "DiscordUserEndpoints"
     },
     {
       "name": "ApexEndpoints"
