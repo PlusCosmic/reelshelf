@@ -288,6 +288,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<PlaylistStatements>();
         builder.Services.AddScoped<ClipProjection>();
         builder.Services.AddScoped<ClipService>();
+        builder.Services.AddScoped<ClipLibraryService>();
         builder.Services.AddScoped<ClipsBackfillService>();
         builder.Services.AddScoped<PlaylistService>();
         builder.Services.AddScoped<BunnyService>();

@@ -49,6 +49,26 @@
         }
       }
     },
+    "/api/clips/library": {
+      "get": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "GetClipLibrary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipLibraryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clips/categories/{categoryId}/videos": {
       "get": {
         "tags": [
@@ -1719,6 +1739,27 @@
             "$ref": "#/components/schemas/ClipShareSummary"
           },
           "game_metadata": { }
+        }
+      },
+      "ClipLibraryResponse": {
+        "required": [
+          "categories",
+          "clips"
+        ],
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameCategoryResponse"
+            }
+          },
+          "clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Clip"
+            }
+          }
         }
       },
       "ClipShareResponse": {

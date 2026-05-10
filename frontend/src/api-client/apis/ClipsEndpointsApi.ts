@@ -17,6 +17,7 @@ import type {
   AddTagRequest,
   BackfillResult,
   Clip,
+  ClipLibraryResponse,
   ClipShareResponse,
   CreateClipResponse,
   PagedClipsResponse,
@@ -30,6 +31,8 @@ import {
   BackfillResultToJSON,
   ClipFromJSON,
   ClipToJSON,
+  ClipLibraryResponseFromJSON,
+  ClipLibraryResponseToJSON,
   ClipShareResponseFromJSON,
   ClipShareResponseToJSON,
   CreateClipResponseFromJSON,
@@ -305,6 +308,41 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteClipRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   */
+  async getClipLibraryRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClipLibraryResponse>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clips/library`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClipLibraryResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async getClipLibrary(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClipLibraryResponse> {
+    const response = await this.getClipLibraryRaw(initOverrides);
+    return await response.value();
   }
 
   /**

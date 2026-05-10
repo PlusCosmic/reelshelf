@@ -8,6 +8,7 @@ export * from "./AddTagRequest";
 export * from "./BackfillResult";
 export * from "./BunnyVideo";
 export * from "./Clip";
+export * from "./ClipLibraryResponse";
 export * from "./ClipShareResponse";
 export * from "./ClipShareSummary";
 export * from "./CreateClipResponse";

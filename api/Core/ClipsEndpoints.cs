@@ -11,6 +11,7 @@ public static class ClipsEndpoints
         RouteGroupBuilder group = app.MapGroup("clips")
             .RequireAuthorization();
 
+        group.MapGet("library", GetLibrary).WithName("GetClipLibrary");
         group.MapGet("categories/{categoryId:guid}/videos", GetVideosByCategory).WithName("GetVideosByCategory");
         group.MapPost("categories/{categoryId:guid}/videos", CreateVideo).WithName("CreateVideo")
             .RequirePermission(Permissions.ClipsCreate);
@@ -28,6 +29,13 @@ public static class ClipsEndpoints
             .RequirePermission(Permissions.ClipsDelete);
         group.MapPost("backfill-metadata", BackfillClipMetadata).WithName("BackfillClipMetadata")
             .RequirePermission(Permissions.AdminUsers);
+    }
+
+    private static async Task<Ok<ClipLibraryResponse>> GetLibrary(
+        ClipLibraryService libraryService,
+        AuthenticatedUser user)
+    {
+        return TypedResults.Ok(await libraryService.GetLibrary(user.DiscordId));
     }
 
     private static async Task<Results<Ok<PagedClipsResponse>, BadRequest<string>>> GetVideosByCategory(

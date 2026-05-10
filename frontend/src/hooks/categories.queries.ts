@@ -46,6 +46,7 @@ export function useAddGameFromIgdb() {
     mutationFn: (igdbId: number) => addGameCategoryFromIgdb(igdbId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
     },
   });
 }
@@ -58,6 +59,7 @@ export function useAddCustomCategory() {
       addCustomCategory(name, coverUrl),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
     },
   });
 }
@@ -90,6 +92,7 @@ export function useRemoveCategory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
     },
   });
 }

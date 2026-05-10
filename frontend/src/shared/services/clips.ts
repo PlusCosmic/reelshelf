@@ -1,5 +1,6 @@
 import {
   type Clip,
+  type ClipLibraryResponse,
   type ClipShareResponse,
   type CreateClipResponse,
   type PagedClipsResponse,
@@ -18,6 +19,11 @@ export interface FetchClipsParams {
   sortOrder?: number;
   startDate?: Date;
   endDate?: Date;
+}
+
+export async function fetchClipLibrary(): Promise<ClipLibraryResponse> {
+  const api = createClipsApi();
+  return api.getClipLibrary();
 }
 
 export async function fetchClips(

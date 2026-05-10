@@ -1,42 +1,20 @@
-import { useMemo } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
-import { fetchClips } from "@/shared/.";
+import { useQuery } from "@tanstack/react-query";
 import { fetchPlaylists } from "@/shared/services/playlists";
 import type { Clip, GameCategoryResponse, PlaylistSummary } from "@/api-client";
-import { useCategories } from "@/hooks/queries";
+import { fetchClipLibrary } from "@/shared/services/clips";
 
 export function useLibraryData() {
-  const categoriesQuery = useCategories();
-  const categories = categoriesQuery.data ?? [];
-  const clipQueries = useQueries({
-    queries: categories.map((category) => ({
-      queryKey: ["clips", category.id, "library-preview"],
-      queryFn: () =>
-        fetchClips({
-          categoryId: category.id,
-          page: 1,
-          pageSize: 96,
-          sortOrder: 0,
-        }),
-      enabled: categories.length > 0,
-      staleTime: 30_000,
-    })),
+  const libraryQuery = useQuery({
+    queryKey: ["clips", "library"],
+    queryFn: fetchClipLibrary,
+    staleTime: 30_000,
   });
 
-  const clips = useMemo(
-    () => clipQueries.flatMap((query) => query.data?.clips ?? []),
-    [clipQueries],
-  );
-  const isLoading =
-    categoriesQuery.isLoading || clipQueries.some((query) => query.isLoading);
-  const isError =
-    categoriesQuery.isError || clipQueries.some((query) => query.isError);
-
   return {
-    categories,
-    clips,
-    isLoading,
-    isError,
+    categories: libraryQuery.data?.categories ?? [],
+    clips: libraryQuery.data?.clips ?? [],
+    isLoading: libraryQuery.isLoading,
+    isError: libraryQuery.isError,
   };
 }
 

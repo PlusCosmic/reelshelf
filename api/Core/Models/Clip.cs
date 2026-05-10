@@ -1,4 +1,5 @@
 using Reelshelf.Bunny.Models;
+using Reelshelf.Games;
 
 namespace Reelshelf.Core.Models;
 
@@ -18,6 +19,8 @@ public record Clip(
 }
 
 public record PagedClipsResponse(List<Clip> Clips, long TotalClips, long TotalPages);
+
+public record ClipLibraryResponse(List<GameCategoryResponse> Categories, List<Clip> Clips);
 
 public record ClipShareSummary(bool Shared);
 
