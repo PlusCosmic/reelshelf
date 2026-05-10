@@ -292,6 +292,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<ClipLibraryService>();
         builder.Services.AddScoped<ClipsBackfillService>();
         builder.Services.AddScoped<PlaylistService>();
+        builder.Services.AddScoped<GamingSessionPlaylistService>();
         builder.Services.AddScoped<BunnyService>();
         builder.Services.AddScoped<FFmpegService>();
 
@@ -302,6 +303,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<MapService>();
         builder.Services.AddScoped<IApexMapCacheService, ApexMapCacheService>();
         builder.Services.AddScoped<IApexDetectionQueueService, ApexDetectionQueueService>();
+        builder.Services.AddScoped<ApexDetectionWorkflow>();
 
         // Background services should not run during explicit OpenAPI document generation.
         if (!builder.Environment.IsEnvironment("OpenApi"))

@@ -57,7 +57,7 @@ public static class PlaylistEndpoints
     }
 
     private static async Task<Results<Created<PlaylistWithDetails>, BadRequest<string>>> CreateGamingSessionPlaylist(
-        PlaylistService playlistService,
+        GamingSessionPlaylistService gamingSessionPlaylistService,
         GameCategoryStatements gameCategoryStatements,
         CreateGamingSessionPlaylistRequest request,
         AuthenticatedUser user)
@@ -70,7 +70,7 @@ public static class PlaylistEndpoints
                 return TypedResults.BadRequest("Category not found");
             }
 
-            PlaylistWithDetails playlist = await playlistService.CreateGamingSessionPlaylist(
+            PlaylistWithDetails playlist = await gamingSessionPlaylistService.CreateGamingSessionPlaylist(
                 request.Participants,
                 request.CategoryId,
                 user.DiscordId,

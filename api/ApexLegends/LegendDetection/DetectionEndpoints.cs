@@ -1,13 +1,10 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Reelshelf.ApexLegends.Models;
-using Reelshelf.Games;
+using Reelshelf.Exceptions;
 
 namespace Reelshelf.ApexLegends.LegendDetection;
 
 public static class ApexDetectionEndpoints
 {
-    private const string ApexLegendsSlug = "apex-legends";
-
     public static void MapApexDetectionEndpoints(this IEndpointRouteBuilder app)
     {
         RouteGroupBuilder group = app.MapGroup("apexdetection");
@@ -17,77 +14,32 @@ public static class ApexDetectionEndpoints
     }
 
     public static async Task<Results<Ok, BadRequest<string>>> QueueDetection(
-        IApexDetectionQueueService queueService,
+        ApexDetectionWorkflow workflow,
         VideoDetectionRequest request)
     {
-        if (request.ScreenshotUrls?.Any() != true)
+        try
         {
-            return TypedResults.BadRequest("No screenshot URLs provided");
+            await workflow.QueueDetection(request.ClipId, request.ScreenshotUrls);
+            return TypedResults.Ok();
         }
-
-        if (request.ScreenshotUrls.Count > 10)
+        catch (BadRequestException ex)
         {
-            return TypedResults.BadRequest("Maximum 10 screenshots allowed per request");
+            return TypedResults.BadRequest(ex.Message);
         }
-
-        await queueService.QueueDetectionAsync(
-            request.ClipId,
-            request.ScreenshotUrls);
-
-        return TypedResults.Ok();
     }
 
     public static async Task<Results<Ok, BadRequest<string>>> QueueAllUnprocessedItems(
-        IApexDetectionQueueService queueService,
-        ApexStatements apexStatements,
-        GameCategoryStatements gameCategoryStatements)
+        ApexDetectionWorkflow workflow)
     {
-        GameCategory? apexCategory = await gameCategoryStatements.GetBySlugAsync(ApexLegendsSlug);
-        if (apexCategory is null)
+        try
         {
-            return TypedResults.BadRequest("Apex Legends category not found");
+            await workflow.QueueAllUnprocessedItems();
+            return TypedResults.Ok();
         }
-
-        List<ApexStatements.ApexClipDetectionRow> allDetections = await apexStatements.GetAllApexClipDetections();
-        List<ApexStatements.ClipForDetectionRow> allClips = await apexStatements.GetClipsForCategory(apexCategory.Id);
-        List<Guid> allClipIds = allClips.Select(c => c.Id).ToList();
-        List<Guid> allDetectionIds = allDetections.Select(d => d.ClipId).ToList();
-        List<Guid> unprocessedClipIds = allClipIds.Except(allDetectionIds).ToList();
-
-        List<Guid> noneDetectionClipIds = allDetections
-            .Where(d => d.PrimaryDetection == 27)
-            .Where(d => d.Status == (int)ClipDetectionStatus.Completed)
-            .Select(d => d.ClipId)
-            .ToList();
-
-        foreach (Guid clipId in noneDetectionClipIds)
+        catch (BadRequestException ex)
         {
-            await apexStatements.DeleteApexClipDetection(clipId);
+            return TypedResults.BadRequest(ex.Message);
         }
-
-        List<Guid> clipsToProcess = unprocessedClipIds.Concat(noneDetectionClipIds).ToList();
-
-        foreach (Guid clipId in clipsToProcess)
-        {
-            ApexStatements.ClipForDetectionRow clipRow = allClips.First(c => c.Id == clipId);
-            await apexStatements.InsertApexClipDetection(clipId, 0);
-            await queueService.QueueDetectionAsync(clipId, GetScreenshotUrlsForVideo(clipRow.VideoId));
-        }
-
-        return TypedResults.Ok();
-    }
-
-    private static List<string> GetScreenshotUrlsForVideo(Guid videoId)
-    {
-        return
-        [
-            $"https://vz-cd8f9809-39a.b-cdn.net/{videoId.ToString()}/thumbnail.jpg",
-            $"https://vz-cd8f9809-39a.b-cdn.net/{videoId.ToString()}/thumbnail_1.jpg",
-            $"https://vz-cd8f9809-39a.b-cdn.net/{videoId.ToString()}/thumbnail_2.jpg",
-            $"https://vz-cd8f9809-39a.b-cdn.net/{videoId.ToString()}/thumbnail_3.jpg",
-            $"https://vz-cd8f9809-39a.b-cdn.net/{videoId.ToString()}/thumbnail_4.jpg",
-            $"https://vz-cd8f9809-39a.b-cdn.net/{videoId.ToString()}/thumbnail_5.jpg"
-        ];
     }
 }
 
