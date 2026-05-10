@@ -47,3 +47,17 @@
 
 - `.github/workflows/publish-app-images.yml` builds GHCR images on `main` changes touching `api/`, `frontend/`, `migrations/`, `Dockerfile`, `package.json`, or `bun.lock`.
 - The workflow also opens an infrastructure PR bumping image tags in `PlusCosmic/infrastructure`; migration-only changes build the migrations image, and app-impacting changes build the app image.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues for `PlusCosmic/reelshelf` using the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the default five-label vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repo uses a single-context domain documentation layout with root `CONTEXT.md` and root `docs/adr/` when present. See `docs/agents/domain.md`.

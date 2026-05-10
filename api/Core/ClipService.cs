@@ -16,6 +16,7 @@ public class ClipService(
     ClipsStatements clipsStatements,
     DiscordStatements discordStatements,
     GameCategoryStatements gameCategoryStatements,
+    ClipProjection clipProjection,
     IConfiguration configuration,
     ILogger<ClipService> logger)
 {
@@ -137,41 +138,10 @@ public class ClipService(
             return null;
         }
 
-        string libraryId = configuration["BunnyLibraryId"]
-                           ?? throw new InvalidOperationException("Bunny API library ID not configured");
-        int videoLibraryId = int.Parse(libraryId);
-
-        // Create BunnyVideo from database metadata (no need to fetch from Bunny CDN)
-        BunnyVideo video = new(
-            videoLibraryId,
-            clipWithTags.VideoId,
-            clipWithTags.Title ?? "Untitled",
-            clipWithTags.DateUploaded ?? DateTimeOffset.UtcNow,
-            clipWithTags.Length ?? 0,
-            clipWithTags.VideoStatus ?? 0,
-            0,
-            0,
-            clipWithTags.EncodeProgress ?? 0,
-            clipWithTags.StorageSize ?? 0,
-            clipCollection.CollectionId,
-            clipWithTags.ThumbnailFileName ?? string.Empty,
-            string.Empty,
-            gameCategory.Slug,
-            [],
-            []
-        );
-
         bool isViewed = await clipsStatements.IsClipViewed(userId, clipId);
-
-        List<string> tags = !string.IsNullOrEmpty(clipWithTags.TagNames)
-            ? clipWithTags.TagNames.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
-            : [];
-
         ClipsStatements.ClipShareRow? share = await clipsStatements.GetActiveShareByClipId(clipId);
 
-        return new Clip(clipWithTags.Id, clipWithTags.OwnerId, clipWithTags.VideoId,
-            clipWithTags.GameCategoryId, gameCategory.Slug, clipWithTags.CreatedAt, video, tags, isViewed,
-            new ClipShareSummary(share != null), null);
+        return clipProjection.ProjectClip(clipWithTags, gameCategory, clipCollection, isViewed, share != null);
     }
 
     public async Task<Clip?> AddTagToClip(Guid clipId, string discordUserId, string tag)
@@ -353,36 +323,12 @@ public class ClipService(
 
         int totalPages = (int)Math.Ceiling((double)clipsPage.TotalCount / pageSize);
 
-        string libraryId = configuration["BunnyLibraryId"]
-                           ?? throw new InvalidOperationException("Bunny API library ID not configured");
-        int videoLibraryId = int.Parse(libraryId);
-
-        List<Clip> finalClips = pagedClips.Select(c =>
-        {
-            // Create BunnyVideo from database metadata (no need to fetch from Bunny CDN)
-            BunnyVideo video = new(
-                videoLibraryId,
-                c.VideoId,
-                c.Title ?? "Untitled",
-                c.DateUploaded ?? DateTimeOffset.UtcNow,
-                c.Length ?? 0,
-                c.VideoStatus ?? 0,
-                0, // Not stored in DB, not critical for display
-                0, // Not stored in DB, not critical for display
-                c.EncodeProgress ?? 0,
-                c.StorageSize ?? 0,
-                clipCollection.CollectionId,
-                c.ThumbnailFileName ?? string.Empty,
-                string.Empty, // Not stored in DB
-                gameCategory.Slug,
-                [],
-                []
-            );
-
-            return new Clip(c.Id, c.OwnerId, c.VideoId, gameCategoryId, gameCategory.Slug, c.CreatedAt, video,
-                c.TagNames?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() ?? [],
-                viewedClipIds.Contains(c.Id), new ClipShareSummary(sharedClipIds.Contains(c.Id)), null);
-        }).ToList();
+        List<Clip> finalClips = clipProjection.ProjectClips(
+            pagedClips,
+            gameCategory,
+            clipCollection,
+            viewedClipIds,
+            sharedClipIds);
 
         PagedClipsResponse pagedClipsResponse = new(finalClips, clipsPage.TotalCount, totalPages);
         return pagedClipsResponse;
