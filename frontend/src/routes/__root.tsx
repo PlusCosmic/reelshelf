@@ -4,8 +4,9 @@ import {
   createRootRoute,
   useRouterState,
 } from "@tanstack/react-router";
-import { IconMovie, IconLogout, IconMoon, IconSun } from "@tabler/icons-react";
+import { IconLogout, IconMoon, IconSun } from "@tabler/icons-react";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
 import { useCurrentUser, useLogout } from "@/hooks/queries";
@@ -63,12 +64,7 @@ function AuthenticatedShell({
     <div className="rs-app">
       <header className="rs-topbar">
         <Link to="/" className="rs-brand" aria-label="Reelshelf library">
-          <span className="rs-brand-mark">
-            <IconMovie size={16} stroke={2.2} />
-          </span>
-          <span className="rs-brand-name">
-            Reel<em>shelf</em>
-          </span>
+          <BrandLogo />
         </Link>
 
         <nav className="rs-nav" aria-label="Primary">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { IconBrandDiscord, IconPlayerPlayFilled } from "@tabler/icons-react";
+import { IconBrandDiscord } from "@tabler/icons-react";
+import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 
 const previewClips = [
   {
@@ -63,12 +64,7 @@ export function LandingPage() {
 
       <header className="rs-landing-header">
         <div className="rs-brand" aria-label="Reelshelf">
-          <span className="rs-brand-mark">
-            <IconPlayerPlayFilled size={13} />
-          </span>
-          <span className="rs-brand-name">
-            Reel<em>shelf</em>
-          </span>
+          <BrandLogo />
         </div>
       </header>
 

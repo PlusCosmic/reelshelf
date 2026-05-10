@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { IconMovie } from "@tabler/icons-react";
 import { useEffect } from "react";
+import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { useSharedClip } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 import {
@@ -34,12 +34,7 @@ function SharedClipRoute() {
     <main className="rs-public-page">
       <header className="rs-public-header">
         <Link to="/" className="rs-brand" aria-label="Reelshelf">
-          <span className="rs-brand-mark">
-            <IconMovie size={16} stroke={2.2} />
-          </span>
-          <span className="rs-brand-name">
-            Reel<em>shelf</em>
-          </span>
+          <BrandLogo />
         </Link>
       </header>
 
@@ -60,7 +55,7 @@ function SharedClipRoute() {
               loading="lazy"
               title={clip.title}
               className="rs-player-frame"
-              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen;"
               allowFullScreen
             />
           </div>

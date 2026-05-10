@@ -63,7 +63,7 @@ function ClipDetailRoute() {
           loading="lazy"
           title={clip.video.title}
           className="rs-player-frame"
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen;"
           allowFullScreen
         />
       </div>

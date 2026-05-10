@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 82" role="img" aria-labelledby="title desc">
+  <title id="title">Reelshelf concept play logo v6</title>
+  <desc id="desc">A concept-matched stack of portrait clip cards with green, rust, orange, and black layers, subtle warm borders, a centered play triangle, and the Reelshelf wordmark.</desc>
+  <defs>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.8" flood-color="#211914" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <style>
+    :root {
+      --rs-green: oklch(0.58 0.09 145);
+      --rs-rust: #a84231;
+      --rs-orange: #c87f3d;
+      --rs-black: #211914;
+      --rs-paper: #f4eee5;
+      --rs-ink: #211914;
+      --rs-accent: oklch(0.58 0.09 145);
+    }
+    .word-main { fill: var(--rs-ink); font: 400 45px Georgia, "Times New Roman", serif; letter-spacing: 0; }
+    .word-accent { fill: var(--rs-accent); font: italic 400 45px Georgia, "Times New Roman", serif; letter-spacing: 0; }
+    .card { stroke: var(--rs-paper); stroke-width: 2.4; stroke-linejoin: round; }
+  </style>
+  <g transform="translate(8 7)" filter="url(#soft-shadow)">
+    <rect class="card" x="24" y="4" width="39" height="59" rx="8.5" fill="var(--rs-black)" transform="rotate(3 43.5 33.5)"/>
+    <rect class="card" x="15" y="7" width="40" height="60" rx="8.5" fill="var(--rs-rust)" transform="rotate(1 35 37)"/>
+    <rect class="card" x="3" y="12" width="43" height="60" rx="9" fill="var(--rs-green)"/>
+    <path d="M17.2 32.8v19.4c0 1.5 1.63 2.43 2.91 1.65l15.95-9.7c1.22-.74 1.22-2.56 0-3.3l-15.95-9.7a1.94 1.94 0 0 0-2.91 1.65Z" fill="var(--rs-paper)"/>
+  </g>
+  <text x="92" y="56" class="word-main">Reel</text>
+  <text x="181" y="56" class="word-accent">shelf</text>
+</svg>
