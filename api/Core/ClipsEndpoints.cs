@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Core.Models;
-using Reelshelf.Shared.Auth;
+using Reelshelf.Auth;
 
 namespace Reelshelf.Core;
 

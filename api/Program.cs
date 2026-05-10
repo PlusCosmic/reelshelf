@@ -21,10 +21,7 @@ using Reelshelf.Games;
 using Reelshelf.Playlists;
 using Reelshelf.Auth;
 using Reelshelf.Discord;
-using Reelshelf.Shared.Auth;
-using Reelshelf.Shared.Discord;
-using Reelshelf.Shared.Exceptions;
-using Reelshelf.Shared.Games;
+using Reelshelf.Exceptions;
 using StackExchange.Redis;
 
 DefaultTypeMap.MatchNamesWithUnderscores = true;

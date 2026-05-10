@@ -3,9 +3,9 @@ using System.Text;
 using Reelshelf.Bunny;
 using Reelshelf.Bunny.Models;
 using Reelshelf.Core.Models;
-using Reelshelf.Shared.Discord;
-using Reelshelf.Shared.Exceptions;
-using Reelshelf.Shared.Games;
+using Reelshelf.Discord;
+using Reelshelf.Exceptions;
+using Reelshelf.Games;
 
 namespace Reelshelf.Core;
 

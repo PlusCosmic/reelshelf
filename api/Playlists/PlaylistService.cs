@@ -1,8 +1,8 @@
 using Reelshelf.Core;
 using Reelshelf.Core.Models;
 using Reelshelf.Playlists.Models;
-using Reelshelf.Shared.Discord;
-using Reelshelf.Shared.Exceptions;
+using Reelshelf.Discord;
+using Reelshelf.Exceptions;
 
 namespace Reelshelf.Playlists;
 

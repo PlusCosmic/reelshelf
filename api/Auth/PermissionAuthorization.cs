@@ -1,8 +1,6 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 
-namespace Reelshelf.Shared.Auth;
+namespace Reelshelf.Auth;
 
 /// <summary>
 /// Endpoint filter that checks if the authenticated user has the required permission.

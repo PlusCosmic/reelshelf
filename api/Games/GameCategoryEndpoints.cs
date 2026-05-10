@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Reelshelf.Shared.Auth;
-using Reelshelf.Shared.Games;
+using Reelshelf.Auth;
 
 namespace Reelshelf.Games;
 

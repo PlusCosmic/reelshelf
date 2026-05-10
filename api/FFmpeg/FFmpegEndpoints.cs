@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Reelshelf.Shared.Auth;
+using Reelshelf.Auth;
 
 namespace Reelshelf.FFmpeg;
 

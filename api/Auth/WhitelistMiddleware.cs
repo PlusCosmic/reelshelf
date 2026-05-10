@@ -1,8 +1,6 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
-namespace Reelshelf.Shared.Auth;
+namespace Reelshelf.Auth;
 
 public class WhitelistMiddleware
 {

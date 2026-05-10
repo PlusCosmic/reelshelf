@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Reelshelf.Shared.Discord;
+using Reelshelf.Discord;
 
 namespace Reelshelf.Auth;
 

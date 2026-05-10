@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Playlists.Models;
-using Reelshelf.Shared.Auth;
-using Reelshelf.Shared.Exceptions;
-using Reelshelf.Shared.Games;
+using Reelshelf.Auth;
+using Reelshelf.Exceptions;
+using Reelshelf.Games;
 
 namespace Reelshelf.Playlists;
 

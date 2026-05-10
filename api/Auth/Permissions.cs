@@ -1,4 +1,4 @@
-namespace Reelshelf.Shared.Auth;
+namespace Reelshelf.Auth;
 
 /// <summary>
 /// Base permission definitions shared across all applications.

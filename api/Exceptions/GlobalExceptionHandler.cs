@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
-namespace Reelshelf.Shared.Exceptions;
+namespace Reelshelf.Exceptions;
 
 public class GlobalExceptionHandler : IExceptionHandler
 {

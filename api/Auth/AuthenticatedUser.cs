@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Http;
-
-namespace Reelshelf.Shared.Auth;
+namespace Reelshelf.Auth;
 
 /// <summary>
 /// Represents the currently authenticated user, resolved from the database.

@@ -1,7 +1,6 @@
 using Reelshelf.Bunny;
 using Reelshelf.Bunny.Models;
-using Reelshelf.Core.Models;
-using Reelshelf.Shared.Games;
+using Reelshelf.Games;
 
 namespace Reelshelf.Core;
 

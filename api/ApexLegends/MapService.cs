@@ -1,5 +1,5 @@
 using Reelshelf.ApexLegends.Models;
-using Reelshelf.Shared.Exceptions;
+using Reelshelf.Exceptions;
 
 namespace Reelshelf.ApexLegends;
 

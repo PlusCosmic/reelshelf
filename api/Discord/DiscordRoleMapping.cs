@@ -1,8 +1,6 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Reelshelf.Shared.Auth;
+using Reelshelf.Auth;
 
-namespace Reelshelf.Shared.Discord;
+namespace Reelshelf.Discord;
 
 /// <summary>
 /// Manages the mapping between Discord role IDs and Reelshelf UserRoles.

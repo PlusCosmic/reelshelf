@@ -1,10 +1,7 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Reelshelf.Shared.Discord;
+using Reelshelf.Discord;
 
-namespace Reelshelf.Shared.Auth;
+namespace Reelshelf.Auth;
 
 /// <summary>
 /// Middleware that resolves the authenticated user from the database and stores it in HttpContext.Items.

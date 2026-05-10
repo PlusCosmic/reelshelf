@@ -1,5 +1,3 @@
-using Reelshelf.Shared.Games;
-
 namespace Reelshelf.Games;
 
 public class GameCategoryAssetRefreshService(

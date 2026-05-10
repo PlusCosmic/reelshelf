@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.ApexLegends.Models;
-using Reelshelf.Shared.Games;
+using Reelshelf.Games;
 
 namespace Reelshelf.ApexLegends.LegendDetection;
 

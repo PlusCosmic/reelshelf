@@ -1,7 +1,6 @@
 using IGDB;
 using IGDB.Models;
 using Newtonsoft.Json;
-using Reelshelf.Shared.Games;
 
 namespace Reelshelf.Games;
 

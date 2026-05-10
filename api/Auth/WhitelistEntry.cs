@@ -1,4 +1,4 @@
-namespace Reelshelf.Shared.Auth;
+namespace Reelshelf.Auth;
 
 /// <summary>
 /// Represents a single entry in the whitelist configuration.

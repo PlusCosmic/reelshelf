@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Http;
-
-namespace Reelshelf.Shared.Exceptions;
+namespace Reelshelf.Exceptions;
 
 public abstract class DomainException : Exception
 {

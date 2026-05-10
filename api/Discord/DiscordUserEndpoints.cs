@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Reelshelf.Shared.Auth;
-using Reelshelf.Shared.Discord;
+using Reelshelf.Auth;
 
 namespace Reelshelf.Discord;
 

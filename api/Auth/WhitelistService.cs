@@ -1,7 +1,6 @@
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 
-namespace Reelshelf.Shared.Auth;
+namespace Reelshelf.Auth;
 
 /// <summary>
 /// Service that manages the whitelist configuration.

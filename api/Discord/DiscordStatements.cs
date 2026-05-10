@@ -1,7 +1,7 @@
 using Dapper;
 using Npgsql;
 
-namespace Reelshelf.Shared.Discord;
+namespace Reelshelf.Discord;
 
 public class DiscordStatements(NpgsqlConnection connection)
 {
