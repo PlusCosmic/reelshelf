@@ -197,6 +197,25 @@ jobs:
               compose_file.write_text(updated)
           PY
 
+      - name: Close previous infrastructure image bump PRs
+        working-directory: infrastructure
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.INFRASTRUCTURE_PR_TOKEN }}
+        run: |
+          gh pr list \
+            --repo PlusCosmic/infrastructure \
+            --state open \
+            --json number,headRefName,title \
+            --jq '.[] | select(.headRefName | startswith("automation/app-images-")) | .number' \
+          | while read -r pr_number; do
+              [[ -n "$pr_number" ]] || continue
+              gh pr close "$pr_number" \
+                --repo PlusCosmic/infrastructure \
+                --delete-branch \
+                --comment "Closing because a newer application image bump PR is being opened."
+            done
+
       - name: Create infrastructure PR
         uses: peter-evans/create-pull-request@v8
         with:
