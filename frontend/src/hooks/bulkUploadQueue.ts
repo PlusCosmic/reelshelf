@@ -12,6 +12,7 @@ export type BulkUploadStatus =
   | "saved"
   | "filing_error"
   | "duplicate"
+  | "cancelled"
   | "error";
 
 export type GameAssignmentSource = "source_path" | "fallback_context";
@@ -29,6 +30,9 @@ export type BulkUploadRow = {
   playlistId: string | null;
   progress: number;
   bytesUploaded: number;
+  md5Hash: string | null;
+  uploadedClipId: string | null;
+  uploadedVideoId: string | null;
   error: string | null;
   status: BulkUploadStatus;
   selected: boolean;
@@ -125,6 +129,9 @@ export function buildBulkUploadQueue(
       playlistId: null,
       progress: 0,
       bytesUploaded: 0,
+      md5Hash: null,
+      uploadedClipId: null,
+      uploadedVideoId: null,
       error: null,
       status: assignment.categoryId ? "ready" : "needs_game",
       selected: true,

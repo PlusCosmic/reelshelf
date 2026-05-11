@@ -11,6 +11,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameCategoryResponse, PlaylistSummary } from "@/api-client";
 import { BulkUploadQueue } from "./BulkUploadQueue";
 
+const clipUploadMocks = vi.hoisted(() => ({
+  calculateClipUploadMd5: vi.fn(),
+  createPreparedClipUpload: vi.fn(),
+  createTusClipUpload: vi.fn(),
+  prepareClipUpload: vi.fn(),
+  uploadErrorMessage: vi.fn((error: unknown) =>
+    error instanceof Error ? error.message : "The upload failed.",
+  ),
+}));
+
 const categories: GameCategoryResponse[] = [
   {
     id: "apex",
@@ -60,9 +70,35 @@ vi.mock("@/shared/services/playlists", () => ({
   fetchPlaylists: vi.fn(async () => playlists),
 }));
 
+vi.mock("@/utils/clipUpload", () => clipUploadMocks);
+
 describe("BulkUploadQueue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clipUploadMocks.calculateClipUploadMd5.mockImplementation(
+      async (file: File) => `hash-${file.name}`,
+    );
+    clipUploadMocks.createPreparedClipUpload.mockImplementation(
+      async ({ md5Hash }: { md5Hash: string }) => ({
+        clipId: `clip-${md5Hash}`,
+        collectionId: "bunny-collection",
+        expiration: 1,
+        libraryId: "library",
+        signature: "signature",
+        videoId: `video-${md5Hash}`,
+      }),
+    );
+    clipUploadMocks.createTusClipUpload.mockImplementation(
+      (options: {
+        onError: (error: Error) => void;
+        onProgress: (uploaded: number, total: number) => void;
+        onSuccess: () => void;
+      }) => ({
+        abort: vi.fn(),
+        findPreviousUploads: vi.fn(async () => []),
+        start: vi.fn(() => options.onProgress(1, 4)),
+      }),
+    );
   });
 
   afterEach(() => {
@@ -121,6 +157,60 @@ describe("BulkUploadQueue", () => {
     expect(screen.getByText("#ranked")).toBeTruthy();
     expect(screen.getByText("#clutch")).toBeTruthy();
     expect(screen.getAllByText("Best of 2026").length).toBeGreaterThan(1);
+  });
+
+  it("starts selected ready uploads with a three-row concurrency limit", async () => {
+    renderQueue();
+
+    fireEvent.change(screen.getByLabelText("Choose video files"), {
+      target: {
+        files: [
+          videoFile("Apex Legends/clip-1.mp4"),
+          videoFile("Apex Legends/clip-2.mp4"),
+          videoFile("Apex Legends/clip-3.mp4"),
+          videoFile("Apex Legends/clip-4.mp4"),
+        ],
+      },
+    });
+
+    await screen.findByDisplayValue("clip-1");
+    fireEvent.click(screen.getByRole("button", { name: /add 4 to library/i }));
+
+    await waitFor(() =>
+      expect(clipUploadMocks.createTusClipUpload).toHaveBeenCalledTimes(3),
+    );
+
+    const firstCall = clipUploadMocks.createTusClipUpload.mock.calls[0]?.[0] as
+      | { onSuccess: () => void }
+      | undefined;
+    firstCall?.onSuccess();
+
+    await waitFor(() =>
+      expect(clipUploadMocks.createTusClipUpload).toHaveBeenCalledTimes(4),
+    );
+    expect(screen.getByText("uploaded")).toBeTruthy();
+  });
+
+  it("marks same-game duplicate hashes before creating a second backend clip", async () => {
+    clipUploadMocks.calculateClipUploadMd5.mockResolvedValue("same-hash");
+    renderQueue();
+
+    fireEvent.change(screen.getByLabelText("Choose video files"), {
+      target: {
+        files: [
+          videoFile("Apex Legends/duplicate-a.mp4"),
+          videoFile("Apex Legends/duplicate-b.mp4"),
+        ],
+      },
+    });
+
+    await screen.findByDisplayValue("duplicate-a");
+    fireEvent.click(screen.getByRole("button", { name: /add 2 to library/i }));
+
+    await waitFor(() =>
+      expect(clipUploadMocks.createPreparedClipUpload).toHaveBeenCalledTimes(1),
+    );
+    expect(await screen.findByText("duplicate")).toBeTruthy();
   });
 });
 

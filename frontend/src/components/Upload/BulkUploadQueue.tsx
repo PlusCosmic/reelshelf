@@ -1,5 +1,5 @@
 import type { ChangeEvent, DragEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   IconAlertTriangle,
   IconChevronDown,
@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { useBlocker } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import type * as tus from "tus-js-client";
 import type {
   BulkUploadRejectedFile,
   BulkUploadRow,
@@ -26,20 +27,34 @@ import {
   toggleRowSelection,
 } from "@/hooks/bulkUploadQueue";
 import { useCategories } from "@/hooks/queries";
+import { ApiError } from "@/shared/services/api-error";
 import { fetchPlaylists } from "@/shared/services/playlists";
 import { formatFileSize } from "@/shared/utils/format";
+import {
+  calculateClipUploadMd5,
+  createPreparedClipUpload,
+  createTusClipUpload,
+  uploadErrorMessage,
+} from "@/utils/clipUpload";
 
 const directoryInputProps = {
   directory: "",
   webkitdirectory: "",
 } as Record<string, string>;
 
+const MAX_ACTIVE_UPLOADS = 3;
+
 export function BulkUploadQueue() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const activeUploadIdsRef = useRef<Set<string>>(new Set());
+  const requestedUploadIdsRef = useRef<Set<string>>(new Set());
+  const uploadRefs = useRef<Map<string, tus.Upload>>(new Map());
+  const duplicateKeysRef = useRef<Map<string, string>>(new Map());
   const [rows, setRows] = useState<BulkUploadRow[]>([]);
   const [rejected, setRejected] = useState<BulkUploadRejectedFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [globalPaused, setGlobalPaused] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [collapsedSessions, setCollapsedSessions] = useState<Set<string>>(
     () => new Set(),
@@ -64,6 +79,12 @@ export function BulkUploadQueue() {
   const allSelected = rows.length > 0 && selectedRows.length === rows.length;
   const totalBytes = rows.reduce((total, row) => total + row.file.size, 0);
   const readyCount = rows.filter((row) => row.status === "ready").length;
+  const activeCount = rows.filter((row) =>
+    ["hashing", "creating", "uploading"].includes(row.status),
+  ).length;
+  const selectedReadyRows = selectedRows.filter(
+    (row) => row.status === "ready" && row.categoryId && row.title.trim(),
+  );
   const needsGameCount = rows.filter(
     (row) => row.status === "needs_game",
   ).length;
@@ -78,6 +99,174 @@ export function BulkUploadQueue() {
     ].includes(row.status),
   ).length;
   const shouldWarnOnLeave = rows.length > 0 && pendingCount > 0;
+
+  const startRowUpload = useCallback((row: BulkUploadRow) => {
+    if (!row.categoryId || !row.title.trim()) return;
+    if (activeUploadIdsRef.current.has(row.id)) return;
+
+    activeUploadIdsRef.current.add(row.id);
+    setRows((current) =>
+      current.map((item) =>
+        item.id === row.id
+          ? {
+              ...item,
+              bytesUploaded: 0,
+              error: null,
+              progress: 0,
+              status: "hashing",
+            }
+          : item,
+      ),
+    );
+
+    void (async () => {
+      try {
+        const md5Hash = await calculateClipUploadMd5(row.file);
+        const duplicateKey = `${row.categoryId}:${md5Hash}`;
+        const existingRowId = duplicateKeysRef.current.get(duplicateKey);
+
+        if (existingRowId && existingRowId !== row.id) {
+          activeUploadIdsRef.current.delete(row.id);
+          requestedUploadIdsRef.current.delete(row.id);
+          setRows((current) =>
+            current.map((item) =>
+              item.id === row.id
+                ? {
+                    ...item,
+                    error: "This video is already queued for this game.",
+                    md5Hash,
+                    status: "duplicate",
+                  }
+                : item,
+            ),
+          );
+          return;
+        }
+
+        duplicateKeysRef.current.set(duplicateKey, row.id);
+        setRows((current) =>
+          current.map((item) =>
+            item.id === row.id
+              ? {
+                  ...item,
+                  md5Hash,
+                  status: "creating",
+                }
+              : item,
+          ),
+        );
+        const response = await createPreparedClipUpload({
+          categoryId: row.categoryId!,
+          createdAt: row.createdAt,
+          md5Hash,
+          title: row.title.trim(),
+        });
+
+        const upload = createTusClipUpload({
+          file: row.file,
+          response,
+          title: row.title.trim(),
+          onProgress: (uploaded, total) => {
+            setRows((current) =>
+              current.map((item) =>
+                item.id === row.id
+                  ? {
+                      ...item,
+                      bytesUploaded: uploaded,
+                      progress:
+                        total > 0 ? Math.round((uploaded / total) * 100) : 0,
+                    }
+                  : item,
+              ),
+            );
+          },
+          onSuccess: () => {
+            activeUploadIdsRef.current.delete(row.id);
+            requestedUploadIdsRef.current.delete(row.id);
+            setRows((current) =>
+              current.map((item) =>
+                item.id === row.id
+                  ? {
+                      ...item,
+                      bytesUploaded: row.file.size,
+                      error: null,
+                      progress: 100,
+                      status: "uploaded",
+                      uploadedClipId: response.clipId,
+                      uploadedVideoId: response.videoId,
+                    }
+                  : item,
+              ),
+            );
+          },
+          onError: (uploadError) => {
+            activeUploadIdsRef.current.delete(row.id);
+            requestedUploadIdsRef.current.delete(row.id);
+            setRows((current) =>
+              current.map((item) =>
+                item.id === row.id
+                  ? {
+                      ...item,
+                      error: uploadErrorMessage(uploadError),
+                      status: "error",
+                    }
+                  : item,
+              ),
+            );
+          },
+        });
+
+        uploadRefs.current.set(row.id, upload);
+        const previousUploads = await upload.findPreviousUploads();
+        if (previousUploads.length) {
+          upload.resumeFromPreviousUpload(previousUploads[0]);
+        }
+
+        setRows((current) =>
+          current.map((item) =>
+            item.id === row.id ? { ...item, status: "uploading" } : item,
+          ),
+        );
+        upload.start();
+      } catch (error) {
+        activeUploadIdsRef.current.delete(row.id);
+        requestedUploadIdsRef.current.delete(row.id);
+        setRows((current) =>
+          current.map((item) =>
+            item.id === row.id
+              ? {
+                  ...item,
+                  error: uploadErrorMessage(error),
+                  status:
+                    error instanceof ApiError && error.status === 409
+                      ? "duplicate"
+                      : "error",
+                }
+              : item,
+          ),
+        );
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (globalPaused) return;
+
+    const active = activeUploadIdsRef.current.size;
+    if (active >= MAX_ACTIVE_UPLOADS) return;
+
+    rows
+      .filter(
+        (row) =>
+          requestedUploadIdsRef.current.has(row.id) &&
+          row.status === "ready" &&
+          row.selected &&
+          row.categoryId &&
+          row.title.trim(),
+      )
+      .slice(0, MAX_ACTIVE_UPLOADS - active)
+      .forEach((row) => startRowUpload(row));
+  }, [globalPaused, rows, startRowUpload]);
 
   useBlocker({
     shouldBlockFn: () => {
@@ -122,6 +311,102 @@ export function BulkUploadQueue() {
     setTagInput("");
   }
 
+  function startSelectedUploads() {
+    selectedReadyRows.forEach((row) =>
+      requestedUploadIdsRef.current.add(row.id),
+    );
+    setGlobalPaused(false);
+    setRows((current) => [...current]);
+  }
+
+  function pauseRow(rowId: string) {
+    uploadRefs.current.get(rowId)?.abort();
+    activeUploadIdsRef.current.delete(rowId);
+    setRows((current) =>
+      current.map((row) =>
+        row.id === rowId ? { ...row, status: "paused" } : row,
+      ),
+    );
+  }
+
+  function resumeRow(rowId: string) {
+    const upload = uploadRefs.current.get(rowId);
+    if (!upload || activeUploadIdsRef.current.size >= MAX_ACTIVE_UPLOADS)
+      return;
+
+    activeUploadIdsRef.current.add(rowId);
+    requestedUploadIdsRef.current.add(rowId);
+    setRows((current) =>
+      current.map((row) =>
+        row.id === rowId ? { ...row, error: null, status: "uploading" } : row,
+      ),
+    );
+    upload.start();
+  }
+
+  function pauseAllUploads() {
+    setGlobalPaused(true);
+    rows
+      .filter((row) => row.status === "uploading")
+      .forEach((row) => pauseRow(row.id));
+  }
+
+  function resumeAllUploads() {
+    setGlobalPaused(false);
+    rows
+      .filter((row) => row.status === "paused")
+      .slice(0, MAX_ACTIVE_UPLOADS)
+      .forEach((row) => resumeRow(row.id));
+  }
+
+  function cancelRow(row: BulkUploadRow) {
+    uploadRefs.current.get(row.id)?.abort(true);
+    uploadRefs.current.delete(row.id);
+    activeUploadIdsRef.current.delete(row.id);
+    requestedUploadIdsRef.current.delete(row.id);
+    if (row.categoryId && row.md5Hash) {
+      duplicateKeysRef.current.delete(`${row.categoryId}:${row.md5Hash}`);
+    }
+    setRows((current) =>
+      current.map((item) =>
+        item.id === row.id
+          ? {
+              ...item,
+              error: "Upload cancelled.",
+              progress: 0,
+              status: "cancelled",
+            }
+          : item,
+      ),
+    );
+  }
+
+  function retryRow(row: BulkUploadRow) {
+    uploadRefs.current.delete(row.id);
+    activeUploadIdsRef.current.delete(row.id);
+    if (row.categoryId && row.md5Hash) {
+      duplicateKeysRef.current.delete(`${row.categoryId}:${row.md5Hash}`);
+    }
+    requestedUploadIdsRef.current.add(row.id);
+    setGlobalPaused(false);
+    setRows((current) =>
+      current.map((item) =>
+        item.id === row.id
+          ? {
+              ...item,
+              bytesUploaded: 0,
+              error: null,
+              md5Hash: null,
+              progress: 0,
+              status: item.categoryId ? "ready" : "needs_game",
+              uploadedClipId: null,
+              uploadedVideoId: null,
+            }
+          : item,
+      ),
+    );
+  }
+
   function toggleSession(sessionKey: string) {
     setCollapsedSessions((current) => {
       const next = new Set(current);
@@ -164,6 +449,7 @@ export function BulkUploadQueue() {
           <span>{rows.length} clips</span>
           <span>{formatFileSize(totalBytes)}</span>
           <span>{readyCount} ready</span>
+          {activeCount > 0 ? <span>{activeCount} uploading</span> : null}
           {needsGameCount > 0 ? <span>{needsGameCount} need game</span> : null}
         </div>
       </div>
@@ -264,8 +550,21 @@ export function BulkUploadQueue() {
               </select>
             </label>
 
-            <button className="rs-button primary" type="button" disabled>
-              Add selected to library
+            <button
+              className="rs-button"
+              type="button"
+              disabled={activeCount === 0}
+              onClick={globalPaused ? resumeAllUploads : pauseAllUploads}
+            >
+              {globalPaused ? "Resume all" : "Pause all"}
+            </button>
+            <button
+              className="rs-button primary"
+              type="button"
+              disabled={selectedReadyRows.length === 0}
+              onClick={startSelectedUploads}
+            >
+              Add {selectedReadyRows.length || selectedRows.length} to library
             </button>
           </div>
 
@@ -357,6 +656,10 @@ export function BulkUploadQueue() {
                               ? playlistById.get(row.playlistId)?.name
                               : null
                           }
+                          onCancel={cancelRow}
+                          onPause={pauseRow}
+                          onResume={resumeRow}
+                          onRetry={retryRow}
                           row={row}
                           setRows={setRows}
                         />
@@ -382,6 +685,10 @@ function QueueRow({
   categoriesLoading,
   categoryName,
   collectionName,
+  onCancel,
+  onPause,
+  onResume,
+  onRetry,
   row,
   setRows,
 }: {
@@ -389,6 +696,10 @@ function QueueRow({
   categoriesLoading: boolean;
   categoryName: string | null | undefined;
   collectionName: string | null | undefined;
+  onCancel: (row: BulkUploadRow) => void;
+  onPause: (rowId: string) => void;
+  onResume: (rowId: string) => void;
+  onRetry: (row: BulkUploadRow) => void;
   row: BulkUploadRow;
   setRows: React.Dispatch<React.SetStateAction<BulkUploadRow[]>>;
 }) {
@@ -457,6 +768,17 @@ function QueueRow({
 
       <div className="rs-bulk-row-status">
         <StatusBadge status={row.status} />
+        {row.status === "uploading" || row.status === "paused" ? (
+          <span className="rs-bulk-row-progress">{row.progress}%</span>
+        ) : null}
+        {row.error ? <small>{row.error}</small> : null}
+        <RowUploadActions
+          onCancel={() => onCancel(row)}
+          onPause={() => onPause(row.id)}
+          onResume={() => onResume(row.id)}
+          onRetry={() => onRetry(row)}
+          row={row}
+        />
       </div>
 
       <div className="rs-bulk-card-meta">
@@ -470,4 +792,56 @@ function QueueRow({
 function StatusBadge({ status }: { status: BulkUploadRow["status"] }) {
   const label = status.replaceAll("_", " ");
   return <span className={`rs-bulk-status ${status}`}>{label}</span>;
+}
+
+function RowUploadActions({
+  onCancel,
+  onPause,
+  onResume,
+  onRetry,
+  row,
+}: {
+  onCancel: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  onRetry: () => void;
+  row: BulkUploadRow;
+}) {
+  if (row.status === "uploading") {
+    return (
+      <span className="rs-bulk-row-actions">
+        <button type="button" onClick={onPause}>
+          Pause
+        </button>
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </span>
+    );
+  }
+
+  if (row.status === "paused") {
+    return (
+      <span className="rs-bulk-row-actions">
+        <button type="button" onClick={onResume}>
+          Resume
+        </button>
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </span>
+    );
+  }
+
+  if (["error", "duplicate", "cancelled"].includes(row.status)) {
+    return (
+      <span className="rs-bulk-row-actions">
+        <button type="button" onClick={onRetry}>
+          Retry
+        </button>
+      </span>
+    );
+  }
+
+  return null;
 }

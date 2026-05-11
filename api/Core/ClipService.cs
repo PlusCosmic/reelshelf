@@ -81,7 +81,7 @@ public class ClipService(
 
         BunnyVideo video = await bunnyService.CreateVideoAsync(clipCollection.CollectionId, videoTitle);
 
-        await clipsStatements.InsertClip(
+        ClipsStatements.ClipRow clip = await clipsStatements.InsertClip(
             userId,
             video.Guid,
             gameCategoryId,
@@ -104,6 +104,7 @@ public class ClipService(
         byte[] hash = SHA256.HashData(signature);
         string? hashString = Convert.ToHexString(hash);
         return new CreateClipResponse(
+            clip.Id,
             hashString ?? throw new InvalidOperationException("Hash computation failed"),
             expiration,
             libraryId,

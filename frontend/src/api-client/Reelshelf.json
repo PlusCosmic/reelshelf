@@ -1834,6 +1834,7 @@
       },
       "CreateClipResponse": {
         "required": [
+          "clip_id",
           "signature",
           "expiration",
           "library_id",
@@ -1842,6 +1843,10 @@
         ],
         "type": "object",
         "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
           "signature": {
             "type": "string"
           },

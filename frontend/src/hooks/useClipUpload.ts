@@ -2,8 +2,11 @@ import type { ChangeEvent, DragEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as tus from "tus-js-client";
 import { useCreateVideo } from "@/hooks/clips.queries";
-import { ApiError } from "@/shared/services/api-error";
-import { calculateFileMD5 } from "@/utils/fileHash";
+import {
+  createTusClipUpload,
+  prepareClipUpload,
+  uploadErrorMessage,
+} from "@/utils/clipUpload";
 
 export type UploadStatus =
   | "idle"
@@ -103,40 +106,25 @@ export function useClipUpload(selectedCategoryId: string) {
       setBytesUploaded(0);
       setSpeed(0);
       setStatus("hashing");
-      const md5Hash = await calculateFileMD5(file);
 
       setStatus("creating");
-      const response = await createVideo.mutateAsync({
+      const { response } = await prepareClipUpload({
         categoryId: selectedCategoryId,
+        createVideo: createVideo.mutateAsync,
+        file,
         title: title.trim(),
-        md5Hash,
         createdAt: createdAt
           ? new Date(createdAt)
           : new Date(file.lastModified),
       });
 
-      if (!response?.signature) {
-        throw new Error("The upload could not be prepared.");
-      }
-
       startedAtRef.current = Date.now();
       setStatus("uploading");
 
-      const upload = new tus.Upload(file, {
-        endpoint: "https://video.bunnycdn.com/tusupload",
-        retryDelays: [0, 1000, 3000, 5000, 10000],
-        metadata: {
-          filename: file.name,
-          filetype: file.type || "video/mp4",
-          title: title.trim(),
-          collection: response.collectionId,
-        },
-        headers: {
-          AuthorizationSignature: response.signature,
-          AuthorizationExpire: response.expiration.toString(),
-          VideoId: response.videoId,
-          LibraryId: response.libraryId,
-        },
+      const upload = createTusClipUpload({
+        file,
+        response,
+        title: title.trim(),
         onProgress: (uploaded, total) => {
           const elapsedSeconds = startedAtRef.current
             ? (Date.now() - startedAtRef.current) / 1000
@@ -259,13 +247,4 @@ function stripExtension(name: string) {
 function toLocalDateTimeInput(date: Date) {
   const offset = date.getTimezoneOffset();
   return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
-}
-
-function uploadErrorMessage(uploadError: unknown) {
-  if (uploadError instanceof ApiError && uploadError.status === 409) {
-    return "This video has already been uploaded.";
-  }
-  return uploadError instanceof Error
-    ? uploadError.message
-    : "The upload failed.";
 }

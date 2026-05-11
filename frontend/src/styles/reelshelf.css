@@ -1651,6 +1651,35 @@ a {
   font-size: 12px;
 }
 
+.rs-bulk-row-status {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.rs-bulk-row-status small,
+.rs-bulk-row-progress {
+  color: var(--fg-soft);
+  font-size: 11px;
+}
+
+.rs-bulk-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rs-bulk-row-actions button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  padding: 4px 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .rs-bulk-status {
   border-color: transparent;
   background: color-mix(in oklch, var(--accent) 11%, var(--bg-soft));
@@ -1661,7 +1690,9 @@ a {
 
 .rs-bulk-status.needs_game,
 .rs-bulk-status.error,
-.rs-bulk-status.filing_error {
+.rs-bulk-status.filing_error,
+.rs-bulk-status.duplicate,
+.rs-bulk-status.cancelled {
   background: color-mix(in oklch, #c65333 12%, var(--bg-soft));
   color: color-mix(in oklch, #c65333 72%, var(--fg));
 }

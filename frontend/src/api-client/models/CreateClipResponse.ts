@@ -24,6 +24,12 @@ export interface CreateClipResponse {
    * @type {string}
    * @memberof CreateClipResponse
    */
+  clipId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof CreateClipResponse
+   */
   signature: string;
   /**
    *
@@ -57,6 +63,7 @@ export interface CreateClipResponse {
 export function instanceOfCreateClipResponse(
   value: object,
 ): value is CreateClipResponse {
+  if (!("clipId" in value) || value["clipId"] === undefined) return false;
   if (!("signature" in value) || value["signature"] === undefined) return false;
   if (!("expiration" in value) || value["expiration"] === undefined)
     return false;
@@ -79,6 +86,7 @@ export function CreateClipResponseFromJSONTyped(
     return json;
   }
   return {
+    clipId: json["clip_id"],
     signature: json["signature"],
     expiration: json["expiration"],
     libraryId: json["library_id"],
@@ -100,6 +108,7 @@ export function CreateClipResponseToJSONTyped(
   }
 
   return {
+    clip_id: value["clipId"],
     signature: value["signature"],
     expiration: value["expiration"],
     library_id: value["libraryId"],
