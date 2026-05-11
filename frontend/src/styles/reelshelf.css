@@ -552,6 +552,26 @@ a {
   flex: 1;
 }
 
+.rs-library-route {
+  min-height: 100%;
+}
+
+.rs-library-drop-overlay {
+  position: fixed;
+  z-index: 30;
+  inset: 88px 24px 24px;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  background: color-mix(in oklch, var(--bg) 88%, var(--accent));
+  color: var(--fg);
+  pointer-events: none;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+}
+
 .rs-muted-count {
   opacity: 0.62;
 }
@@ -570,6 +590,13 @@ a {
   border-color: var(--accent);
   background: color-mix(in oklch, var(--accent) 12%, var(--bg));
   color: var(--accent-ink);
+}
+
+.rs-game-upload-action {
+  border-color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 16%, var(--bg));
+  color: var(--accent-ink);
+  font-weight: 750;
 }
 
 .rs-shelf {

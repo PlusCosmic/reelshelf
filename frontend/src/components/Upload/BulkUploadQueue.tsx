@@ -12,6 +12,7 @@ import { Link, useBlocker } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type * as tus from "tus-js-client";
 import type {
+  BulkUploadFileInput,
   BulkUploadRejectedFile,
   BulkUploadRow,
 } from "@/hooks/bulkUploadQueue";
@@ -41,6 +42,7 @@ import {
   createTusClipUpload,
   uploadErrorMessage,
 } from "@/utils/clipUpload";
+import { bulkUploadInputsFromDataTransfer } from "@/utils/bulkUploadDrop";
 
 const directoryInputProps = {
   directory: "",
@@ -49,9 +51,18 @@ const directoryInputProps = {
 
 const MAX_ACTIVE_UPLOADS = 3;
 
-export function BulkUploadQueue() {
+export type BulkUploadQueueProps = {
+  fallbackCategoryId?: string | null;
+  initialFiles?: BulkUploadFileInput[];
+};
+
+export function BulkUploadQueue({
+  fallbackCategoryId = null,
+  initialFiles = [],
+}: BulkUploadQueueProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const initialFilesAppliedRef = useRef(false);
   const activeUploadIdsRef = useRef<Set<string>>(new Set());
   const requestedUploadIdsRef = useRef<Set<string>>(new Set());
   const uploadRefs = useRef<Map<string, tus.Upload>>(new Map());
@@ -105,6 +116,12 @@ export function BulkUploadQueue() {
     ].includes(row.status),
   ).length;
   const shouldWarnOnLeave = rows.length > 0 && pendingCount > 0;
+
+  useEffect(() => {
+    if (initialFilesAppliedRef.current || categoriesLoading) return;
+    initialFilesAppliedRef.current = true;
+    addFileInputs(initialFiles);
+  }, [categoriesLoading, initialFiles]);
 
   const startRowUpload = useCallback((row: BulkUploadRow) => {
     if (!row.categoryId || !row.title.trim()) return;
@@ -308,11 +325,12 @@ export function BulkUploadQueue() {
     enableBeforeUnload: shouldWarnOnLeave,
   });
 
-  function addFiles(files: FileList | File[]) {
-    const nextFiles = Array.from(files);
-    if (!nextFiles.length) return;
+  function addFileInputs(inputs: BulkUploadFileInput[]) {
+    if (!inputs.length) return;
 
-    const result = buildBulkUploadQueue(nextFiles, categories);
+    const result = buildBulkUploadQueue(inputs, categories, {
+      fallbackCategoryId,
+    });
     const batchId = `${Date.now()}:${rows.length}`;
     setRows((current) => [
       ...current,
@@ -324,15 +342,19 @@ export function BulkUploadQueue() {
     setRejected((current) => [...result.rejected, ...current].slice(0, 6));
   }
 
+  function addFiles(files: FileList | File[]) {
+    addFileInputs(Array.from(files));
+  }
+
   function onInputChange(event: ChangeEvent<HTMLInputElement>) {
     if (event.currentTarget.files) addFiles(event.currentTarget.files);
     event.currentTarget.value = "";
   }
 
-  function onDrop(event: DragEvent<HTMLElement>) {
+  async function onDrop(event: DragEvent<HTMLElement>) {
     event.preventDefault();
     setDragOver(false);
-    addFiles(event.dataTransfer.files);
+    addFileInputs(await bulkUploadInputsFromDataTransfer(event.dataTransfer));
   }
 
   function applyTags() {

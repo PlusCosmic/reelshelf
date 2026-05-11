@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import type { CSSProperties, DragEvent } from "react";
+import { useMemo, useRef, useState } from "react";
 import { IconPlus } from "@tabler/icons-react";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
 import {
@@ -15,6 +15,11 @@ import {
   topTags,
 } from "@/components/Reelshelf/reelshelf-model";
 import { useLibraryData } from "@/components/Reelshelf/useLibraryData";
+import { setPendingBulkUploadEntry } from "@/utils/bulkUploadEntry";
+import {
+  bulkUploadInputsFromDataTransfer,
+  dataTransferHasFiles,
+} from "@/utils/bulkUploadDrop";
 
 export const Route = createFileRoute("/")({
   component: LibraryRoute,
@@ -27,6 +32,8 @@ function LibraryRoute() {
   const [tag, setTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [addCategoryOpen, setAddCategoryOpen] = useState(false);
+  const [draggingUpload, setDraggingUpload] = useState(false);
+  const dragDepthRef = useRef(0);
   const shelf = useMemo(
     () => makeGameShelf(categories, clips),
     [categories, clips],
@@ -61,8 +68,60 @@ function LibraryRoute() {
       </div>
     );
 
+  function onDragEnter(event: DragEvent<HTMLElement>) {
+    if (!dataTransferHasFiles(event.dataTransfer)) return;
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    setDraggingUpload(true);
+  }
+
+  function onDragOver(event: DragEvent<HTMLElement>) {
+    if (!dataTransferHasFiles(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDraggingUpload(true);
+  }
+
+  function onDragLeave(event: DragEvent<HTMLElement>) {
+    if (!dataTransferHasFiles(event.dataTransfer)) return;
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setDraggingUpload(false);
+  }
+
+  async function onDrop(event: DragEvent<HTMLElement>) {
+    if (!dataTransferHasFiles(event.dataTransfer)) return;
+    event.preventDefault();
+    dragDepthRef.current = 0;
+    setDraggingUpload(false);
+
+    const files = await bulkUploadInputsFromDataTransfer(event.dataTransfer);
+    if (!files.length) return;
+
+    setPendingBulkUploadEntry({
+      files,
+      fallbackCategoryId: null,
+      source: "library",
+    });
+    await navigate({ to: "/upload" });
+  }
+
   return (
-    <>
+    <main
+      className="rs-library-route"
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
+      {draggingUpload ? (
+        <div className="rs-library-drop-overlay" role="status">
+          <span className="rs-upload-drop-title">Drop clips to upload</span>
+          <span className="rs-upload-drop-copy">
+            Files and recorder folders will open in the bulk upload queue.
+          </span>
+        </div>
+      ) : null}
+
       <section className="rs-hero">
         <div>
           <div>
@@ -161,6 +220,6 @@ function LibraryRoute() {
         opened={addCategoryOpen}
         onClose={() => setAddCategoryOpen(false)}
       />
-    </>
+    </main>
   );
 }

@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
+import { IconUpload } from "@tabler/icons-react";
 import {
   BackToLibrary,
   Chip,
@@ -13,6 +14,7 @@ import {
   topTags,
 } from "@/components/Reelshelf/reelshelf-model";
 import { useLibraryData } from "@/components/Reelshelf/useLibraryData";
+import { setPendingBulkUploadEntry } from "@/utils/bulkUploadEntry";
 
 export const Route = createFileRoute("/games/$slug/")({
   component: GameCategoryRoute,
@@ -20,6 +22,7 @@ export const Route = createFileRoute("/games/$slug/")({
 
 function GameCategoryRoute() {
   const { slug } = Route.useParams();
+  const navigate = useNavigate();
   const { categories, clips, isLoading, isError } = useLibraryData();
   const [tag, setTag] = useState<string | null>(null);
   const category = categories.find((item) => item.slug === slug);
@@ -46,6 +49,17 @@ function GameCategoryRoute() {
       <div className="rs-section rs-empty">This game could not be found.</div>
     );
 
+  const categoryId = category.id;
+
+  async function openGameUpload() {
+    setPendingBulkUploadEntry({
+      files: [],
+      fallbackCategoryId: categoryId,
+      source: "game",
+    });
+    await navigate({ to: "/upload" });
+  }
+
   return (
     <>
       <section
@@ -69,6 +83,13 @@ function GameCategoryRoute() {
           {category.name}
         </h1>
         <div className="rs-game-filter-row">
+          <button
+            className="rs-chip rs-game-upload-action"
+            type="button"
+            onClick={openGameUpload}
+          >
+            <IconUpload size={14} /> Upload clips
+          </button>
           <Chip active={!tag} onClick={() => setTag(null)}>
             All clips
           </Chip>

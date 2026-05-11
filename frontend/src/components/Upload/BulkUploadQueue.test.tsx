@@ -326,9 +326,24 @@ describe("BulkUploadQueue", () => {
     expect(serviceMocks.ensureGamingSessionPlaylist).toHaveBeenCalledTimes(2);
     expect(clipUploadMocks.createTusClipUpload).toHaveBeenCalledTimes(1);
   });
+
+  it("uses route fallback context only when source path game matching fails", async () => {
+    renderQueue({
+      fallbackCategoryId: "valorant",
+      initialFiles: [
+        videoFile("Apex Legends/path-wins.mp4"),
+        videoFile("unknown-folder/fallback-used.mp4"),
+      ],
+    });
+
+    await screen.findByDisplayValue("path-wins");
+    expect(screen.getByDisplayValue("Apex Legends")).toBeTruthy();
+    expect(screen.getByDisplayValue("fallback-used")).toBeTruthy();
+    expect(screen.getByDisplayValue("Valorant")).toBeTruthy();
+  });
 });
 
-function renderQueue() {
+function renderQueue(props: Parameters<typeof BulkUploadQueue>[0] = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -337,7 +352,7 @@ function renderQueue() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <BulkUploadQueue />
+      <BulkUploadQueue {...props} />
     </QueryClientProvider>,
   );
 }
