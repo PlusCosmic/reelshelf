@@ -294,7 +294,7 @@ export function setRowCategory(
   rows: BulkUploadRow[],
   rowId: string,
   categoryId: string | null,
-) {
+): BulkUploadRow[] {
   return rows.map((row) =>
     row.id === rowId
       ? {
