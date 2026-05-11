@@ -87,7 +87,12 @@ public class PlaylistStatements(NpgsqlConnection connection)
               AND session_date = @sessionDate
             LIMIT 1";
 
-        return await connection.QuerySingleOrDefaultAsync<GamingSessionPlaylistRow>(sql, new { ownerId, categoryId, sessionDate });
+        return await connection.QuerySingleOrDefaultAsync<GamingSessionPlaylistRow>(sql, new
+        {
+            ownerId,
+            categoryId,
+            sessionDate = ToDatabaseDate(sessionDate)
+        });
     }
 
     public async Task<Guid> UpsertGamingSessionPlaylist(
@@ -104,7 +109,19 @@ public class PlaylistStatements(NpgsqlConnection connection)
             DO UPDATE SET timezone = EXCLUDED.timezone, updated_at = NOW()
             RETURNING playlist_id";
 
-        return await connection.QuerySingleAsync<Guid>(sql, new { playlistId, ownerId, categoryId, sessionDate, timezone });
+        return await connection.QuerySingleAsync<Guid>(sql, new
+        {
+            playlistId,
+            ownerId,
+            categoryId,
+            sessionDate = ToDatabaseDate(sessionDate),
+            timezone
+        });
+    }
+
+    internal static DateTime ToDatabaseDate(DateOnly date)
+    {
+        return date.ToDateTime(TimeOnly.MinValue);
     }
 
     public async Task UpdateGamingSessionTimezone(Guid playlistId, string timezone)
