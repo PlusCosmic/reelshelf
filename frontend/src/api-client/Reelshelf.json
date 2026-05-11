@@ -740,6 +740,46 @@
         }
       }
     },
+    "/api/playlists/gaming-sessions": {
+      "post": {
+        "tags": [
+          "PlaylistEndpoints"
+        ],
+        "operationId": "EnsureGamingSessionPlaylist",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnsureGamingSessionPlaylistRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistWithDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/playlists/{id}": {
       "get": {
         "tags": [
@@ -1914,6 +1954,35 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "EnsureGamingSessionPlaylistRequest": {
+        "required": [
+          "category_id",
+          "session_date",
+          "clip_ids",
+          "timezone"
+        ],
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "session_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "clip_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "timezone": {
+            "type": "string"
           }
         }
       },

@@ -77,6 +77,46 @@ public class PlaylistStatements(NpgsqlConnection connection)
         return await connection.QuerySingleOrDefaultAsync<PlaylistRow>(sql, new { playlistId });
     }
 
+    public async Task<GamingSessionPlaylistRow?> GetGamingSessionPlaylist(Guid ownerId, Guid categoryId, DateOnly sessionDate)
+    {
+        const string sql = @"
+            SELECT playlist_id, owner_id, game_category_id, session_date, timezone
+            FROM playlist_gaming_sessions
+            WHERE owner_id = @ownerId
+              AND game_category_id = @categoryId
+              AND session_date = @sessionDate
+            LIMIT 1";
+
+        return await connection.QuerySingleOrDefaultAsync<GamingSessionPlaylistRow>(sql, new { ownerId, categoryId, sessionDate });
+    }
+
+    public async Task<Guid> UpsertGamingSessionPlaylist(
+        Guid playlistId,
+        Guid ownerId,
+        Guid categoryId,
+        DateOnly sessionDate,
+        string timezone)
+    {
+        const string sql = @"
+            INSERT INTO playlist_gaming_sessions (playlist_id, owner_id, game_category_id, session_date, timezone)
+            VALUES (@playlistId, @ownerId, @categoryId, @sessionDate, @timezone)
+            ON CONFLICT (owner_id, game_category_id, session_date)
+            DO UPDATE SET timezone = EXCLUDED.timezone, updated_at = NOW()
+            RETURNING playlist_id";
+
+        return await connection.QuerySingleAsync<Guid>(sql, new { playlistId, ownerId, categoryId, sessionDate, timezone });
+    }
+
+    public async Task UpdateGamingSessionTimezone(Guid playlistId, string timezone)
+    {
+        const string sql = @"
+            UPDATE playlist_gaming_sessions
+            SET timezone = @timezone, updated_at = NOW()
+            WHERE playlist_id = @playlistId";
+
+        await connection.ExecuteAsync(sql, new { playlistId, timezone });
+    }
+
     public async Task<List<PlaylistCollaboratorRow>> GetPlaylistCollaborators(Guid playlistId)
     {
         const string sql = @"
@@ -280,5 +320,14 @@ public class PlaylistStatements(NpgsqlConnection connection)
         public int Position { get; set; }
         public Guid AddedByUserId { get; set; }
         public DateTimeOffset AddedAt { get; set; }
+    }
+
+    public class GamingSessionPlaylistRow
+    {
+        public Guid PlaylistId { get; set; }
+        public Guid OwnerId { get; set; }
+        public Guid GameCategoryId { get; set; }
+        public DateOnly SessionDate { get; set; }
+        public string Timezone { get; set; } = string.Empty;
     }
 }

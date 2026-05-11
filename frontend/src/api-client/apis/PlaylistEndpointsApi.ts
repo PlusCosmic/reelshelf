@@ -18,6 +18,7 @@ import type {
   AddCollaboratorRequest,
   CreateGamingSessionPlaylistRequest,
   CreatePlaylistRequest,
+  EnsureGamingSessionPlaylistRequest,
   Playlist,
   PlaylistCollaborator,
   PlaylistSummary,
@@ -34,6 +35,8 @@ import {
   CreateGamingSessionPlaylistRequestToJSON,
   CreatePlaylistRequestFromJSON,
   CreatePlaylistRequestToJSON,
+  EnsureGamingSessionPlaylistRequestFromJSON,
+  EnsureGamingSessionPlaylistRequestToJSON,
   PlaylistFromJSON,
   PlaylistToJSON,
   PlaylistCollaboratorFromJSON,
@@ -68,6 +71,10 @@ export interface CreatePlaylistOperationRequest {
 
 export interface DeletePlaylistRequest {
   id: string;
+}
+
+export interface EnsureGamingSessionPlaylistOperationRequest {
+  ensureGamingSessionPlaylistRequest: EnsureGamingSessionPlaylistRequest;
 }
 
 export interface GetCollaboratorsRequest {
@@ -375,6 +382,58 @@ export class PlaylistEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deletePlaylistRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   */
+  async ensureGamingSessionPlaylistRaw(
+    requestParameters: EnsureGamingSessionPlaylistOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<PlaylistWithDetails>> {
+    if (requestParameters["ensureGamingSessionPlaylistRequest"] == null) {
+      throw new runtime.RequiredError(
+        "ensureGamingSessionPlaylistRequest",
+        'Required parameter "ensureGamingSessionPlaylistRequest" was null or undefined when calling ensureGamingSessionPlaylist().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/playlists/gaming-sessions`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: EnsureGamingSessionPlaylistRequestToJSON(
+          requestParameters["ensureGamingSessionPlaylistRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      PlaylistWithDetailsFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async ensureGamingSessionPlaylist(
+    requestParameters: EnsureGamingSessionPlaylistOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<PlaylistWithDetails> {
+    const response = await this.ensureGamingSessionPlaylistRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
   }
 
   /**

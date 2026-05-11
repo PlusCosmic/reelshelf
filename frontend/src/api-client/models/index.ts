@@ -16,6 +16,7 @@ export * from "./CreateGamingSessionPlaylistRequest";
 export * from "./CreatePlaylistRequest";
 export * from "./CurrentMapRotation";
 export * from "./DiscordUser";
+export * from "./EnsureGamingSessionPlaylistRequest";
 export * from "./GameCategoryResponse";
 export * from "./GameSearchResult";
 export * from "./MapInfo";
