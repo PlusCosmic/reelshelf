@@ -31,6 +31,7 @@ export type BulkUploadRow = {
   progress: number;
   bytesUploaded: number;
   md5Hash: string | null;
+  sessionPlaylistId: string | null;
   uploadedClipId: string | null;
   uploadedVideoId: string | null;
   error: string | null;
@@ -130,6 +131,7 @@ export function buildBulkUploadQueue(
       progress: 0,
       bytesUploaded: 0,
       md5Hash: null,
+      sessionPlaylistId: null,
       uploadedClipId: null,
       uploadedVideoId: null,
       error: null,

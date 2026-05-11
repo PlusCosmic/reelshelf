@@ -4,6 +4,7 @@ import {
   type Playlist,
   type PlaylistCollaborator,
   type CreatePlaylistRequest,
+  type EnsureGamingSessionPlaylistRequest,
   type CreateGamingSessionPlaylistRequest,
   type UpdatePlaylistRequest,
   type AddClipToPlaylistRequest,
@@ -50,6 +51,15 @@ export async function createGamingSessionPlaylist(
   const api = getPlaylistApi();
   return api.createGamingSessionPlaylist({
     createGamingSessionPlaylistRequest: request,
+  });
+}
+
+export async function ensureGamingSessionPlaylist(
+  request: EnsureGamingSessionPlaylistRequest,
+): Promise<PlaylistWithDetails> {
+  const api = getPlaylistApi();
+  return api.ensureGamingSessionPlaylist({
+    ensureGamingSessionPlaylistRequest: request,
   });
 }
 

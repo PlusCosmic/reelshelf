@@ -63,6 +63,7 @@ describe("bulk upload queue foundations", () => {
       progress: 0,
       bytesUploaded: 0,
       md5Hash: null,
+      sessionPlaylistId: null,
       uploadedClipId: null,
       uploadedVideoId: null,
       error: null,

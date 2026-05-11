@@ -1555,6 +1555,16 @@ a {
   color: color-mix(in oklch, #c65333 72%, var(--fg));
 }
 
+.rs-bulk-session-link {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--accent-ink);
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .rs-bulk-session-header svg:last-child {
   margin-left: auto;
   color: var(--fg-soft);

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
@@ -19,6 +20,13 @@ const clipUploadMocks = vi.hoisted(() => ({
   uploadErrorMessage: vi.fn((error: unknown) =>
     error instanceof Error ? error.message : "The upload failed.",
   ),
+}));
+
+const serviceMocks = vi.hoisted(() => ({
+  addClipsToPlaylist: vi.fn(),
+  addTagToVideo: vi.fn(),
+  ensureGamingSessionPlaylist: vi.fn(),
+  fetchPlaylists: vi.fn(),
 }));
 
 const categories: GameCategoryResponse[] = [
@@ -56,6 +64,7 @@ const playlists: PlaylistSummary[] = [
 ];
 
 vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
   useBlocker: vi.fn(),
 }));
 
@@ -66,8 +75,14 @@ vi.mock("@/hooks/queries", () => ({
   }),
 }));
 
+vi.mock("@/shared/services/clips", () => ({
+  addTagToVideo: serviceMocks.addTagToVideo,
+}));
+
 vi.mock("@/shared/services/playlists", () => ({
-  fetchPlaylists: vi.fn(async () => playlists),
+  addClipsToPlaylist: serviceMocks.addClipsToPlaylist,
+  ensureGamingSessionPlaylist: serviceMocks.ensureGamingSessionPlaylist,
+  fetchPlaylists: serviceMocks.fetchPlaylists,
 }));
 
 vi.mock("@/utils/clipUpload", () => clipUploadMocks);
@@ -99,6 +114,20 @@ describe("BulkUploadQueue", () => {
         start: vi.fn(() => options.onProgress(1, 4)),
       }),
     );
+    serviceMocks.addClipsToPlaylist.mockResolvedValue({});
+    serviceMocks.addTagToVideo.mockResolvedValue(undefined);
+    serviceMocks.ensureGamingSessionPlaylist.mockResolvedValue({
+      id: "session-playlist",
+      clips: [],
+      collaboratorCount: 0,
+      collaborators: [],
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      creatorUserId: "user-1",
+      description: null,
+      name: "Apex Legends - 2026-05-04",
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
+    });
+    serviceMocks.fetchPlaylists.mockResolvedValue(playlists);
   });
 
   afterEach(() => {
@@ -211,6 +240,91 @@ describe("BulkUploadQueue", () => {
       expect(clipUploadMocks.createPreparedClipUpload).toHaveBeenCalledTimes(1),
     );
     expect(await screen.findByText("duplicate")).toBeTruthy();
+  });
+
+  it("files uploaded rows with tags, user collection, and a session collection", async () => {
+    renderQueue();
+
+    fireEvent.change(screen.getByLabelText("Choose video files"), {
+      target: {
+        files: [videoFile("Apex Legends/session-filed.mp4")],
+      },
+    });
+
+    await screen.findByDisplayValue("session-filed");
+    await waitFor(() => expect(screen.getByText("Best of 2026")).toBeTruthy());
+    fireEvent.change(screen.getByPlaceholderText("ranked, clutch"), {
+      target: { value: "ranked" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /apply/i }));
+    fireEvent.change(screen.getByLabelText(/collection/i), {
+      target: { value: "best-of" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /add 1 to library/i }));
+
+    await waitFor(() =>
+      expect(clipUploadMocks.createTusClipUpload).toHaveBeenCalledTimes(1),
+    );
+    const uploadCall = clipUploadMocks.createTusClipUpload.mock
+      .calls[0]?.[0] as { onSuccess: () => void } | undefined;
+    uploadCall?.onSuccess();
+
+    await waitFor(() =>
+      expect(serviceMocks.addTagToVideo).toHaveBeenCalledWith(
+        "clip-hash-session-filed.mp4",
+        "ranked",
+      ),
+    );
+    expect(serviceMocks.addClipsToPlaylist).toHaveBeenCalledWith("best-of", {
+      clipIds: ["clip-hash-session-filed.mp4"],
+    });
+    expect(serviceMocks.ensureGamingSessionPlaylist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        categoryId: "apex",
+        clipIds: ["clip-hash-session-filed.mp4"],
+      }),
+    );
+    expect(await screen.findByText("Open collection")).toBeTruthy();
+    expect(screen.queryByDisplayValue("session-filed")).toBeNull();
+  });
+
+  it("retries filing errors without re-uploading the clip", async () => {
+    serviceMocks.ensureGamingSessionPlaylist
+      .mockRejectedValueOnce(new Error("session unavailable"))
+      .mockResolvedValueOnce({
+        id: "session-playlist",
+        clips: [],
+        collaboratorCount: 0,
+        collaborators: [],
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+        creatorUserId: "user-1",
+        description: null,
+        name: "Apex Legends - 2026-05-04",
+        updatedAt: new Date("2026-01-01T00:00:00Z"),
+      });
+    renderQueue();
+
+    fireEvent.change(screen.getByLabelText("Choose video files"), {
+      target: {
+        files: [videoFile("Apex Legends/session-retry.mp4")],
+      },
+    });
+    await screen.findByDisplayValue("session-retry");
+    fireEvent.click(screen.getByRole("button", { name: /add 1 to library/i }));
+
+    await waitFor(() =>
+      expect(clipUploadMocks.createTusClipUpload).toHaveBeenCalledTimes(1),
+    );
+    const uploadCall = clipUploadMocks.createTusClipUpload.mock
+      .calls[0]?.[0] as { onSuccess: () => void } | undefined;
+    uploadCall?.onSuccess();
+
+    expect(await screen.findByText("filing error")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+
+    expect(await screen.findByText("Open collection")).toBeTruthy();
+    expect(serviceMocks.ensureGamingSessionPlaylist).toHaveBeenCalledTimes(2);
+    expect(clipUploadMocks.createTusClipUpload).toHaveBeenCalledTimes(1);
   });
 });
 

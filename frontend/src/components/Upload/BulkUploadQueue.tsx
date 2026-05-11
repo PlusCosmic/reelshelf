@@ -8,7 +8,7 @@ import {
   IconTag,
   IconUpload,
 } from "@tabler/icons-react";
-import { useBlocker } from "@tanstack/react-router";
+import { Link, useBlocker } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type * as tus from "tus-js-client";
 import type {
@@ -28,7 +28,12 @@ import {
 } from "@/hooks/bulkUploadQueue";
 import { useCategories } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/api-error";
-import { fetchPlaylists } from "@/shared/services/playlists";
+import { addTagToVideo } from "@/shared/services/clips";
+import {
+  addClipsToPlaylist,
+  ensureGamingSessionPlaylist,
+  fetchPlaylists,
+} from "@/shared/services/playlists";
 import { formatFileSize } from "@/shared/utils/format";
 import {
   calculateClipUploadMd5,
@@ -51,6 +56,7 @@ export function BulkUploadQueue() {
   const requestedUploadIdsRef = useRef<Set<string>>(new Set());
   const uploadRefs = useRef<Map<string, tus.Upload>>(new Map());
   const duplicateKeysRef = useRef<Map<string, string>>(new Map());
+  const filingSessionKeysRef = useRef<Set<string>>(new Set());
   const [rows, setRows] = useState<BulkUploadRow[]>([]);
   const [rejected, setRejected] = useState<BulkUploadRejectedFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -268,6 +274,30 @@ export function BulkUploadQueue() {
       .forEach((row) => startRowUpload(row));
   }, [globalPaused, rows, startRowUpload]);
 
+  useEffect(() => {
+    sessions.forEach((session) => {
+      if (!session.categoryId || !session.sessionDate) return;
+      if (filingSessionKeysRef.current.has(session.key)) return;
+
+      const uploadedRows = session.rows.filter(
+        (row) => row.status === "uploaded" && row.uploadedClipId,
+      );
+      if (!uploadedRows.length) return;
+
+      const hasUnfinishedRequestedRows = session.rows.some(
+        (row) =>
+          requestedUploadIdsRef.current.has(row.id) &&
+          ["ready", "hashing", "creating", "uploading", "paused"].includes(
+            row.status,
+          ),
+      );
+      if (hasUnfinishedRequestedRows) return;
+
+      filingSessionKeysRef.current.add(session.key);
+      void fileSessionRows(session.key, uploadedRows);
+    });
+  }, [sessions]);
+
   useBlocker({
     shouldBlockFn: () => {
       if (!shouldWarnOnLeave) return false;
@@ -382,6 +412,17 @@ export function BulkUploadQueue() {
   }
 
   function retryRow(row: BulkUploadRow) {
+    if (row.status === "filing_error" && row.uploadedClipId) {
+      setRows((current) =>
+        current.map((item) =>
+          item.id === row.id
+            ? { ...item, error: null, status: "uploaded" }
+            : item,
+        ),
+      );
+      return;
+    }
+
     uploadRefs.current.delete(row.id);
     activeUploadIdsRef.current.delete(row.id);
     if (row.categoryId && row.md5Hash) {
@@ -399,6 +440,7 @@ export function BulkUploadQueue() {
               md5Hash: null,
               progress: 0,
               status: item.categoryId ? "ready" : "needs_game",
+              sessionPlaylistId: null,
               uploadedClipId: null,
               uploadedVideoId: null,
             }
@@ -414,6 +456,88 @@ export function BulkUploadQueue() {
       else next.add(sessionKey);
       return next;
     });
+  }
+
+  async function fileSessionRows(
+    sessionKey: string,
+    uploadedRows: BulkUploadRow[],
+  ) {
+    const clipIds = uploadedRows
+      .map((row) => row.uploadedClipId)
+      .filter((clipId): clipId is string => Boolean(clipId));
+    const firstRow = uploadedRows[0];
+    if (!firstRow?.categoryId || !firstRow.sessionDate || !clipIds.length) {
+      filingSessionKeysRef.current.delete(sessionKey);
+      return;
+    }
+
+    setRows((current) =>
+      current.map((row) =>
+        clipIds.includes(row.uploadedClipId ?? "")
+          ? { ...row, error: null, status: "filing" }
+          : row,
+      ),
+    );
+
+    try {
+      await Promise.all(
+        uploadedRows.flatMap((row) =>
+          row.tags
+            .slice(0, 5)
+            .map((tag) => addTagToVideo(row.uploadedClipId!, tag)),
+        ),
+      );
+
+      const playlistClipIds = new Map<string, string[]>();
+      for (const row of uploadedRows) {
+        if (!row.playlistId || !row.uploadedClipId) continue;
+        playlistClipIds.set(row.playlistId, [
+          ...(playlistClipIds.get(row.playlistId) ?? []),
+          row.uploadedClipId,
+        ]);
+      }
+
+      await Promise.all(
+        [...playlistClipIds.entries()].map(([playlistId, clipIds]) =>
+          addClipsToPlaylist(playlistId, { clipIds }),
+        ),
+      );
+
+      const sessionPlaylist = await ensureGamingSessionPlaylist({
+        categoryId: firstRow.categoryId,
+        clipIds,
+        sessionDate: new Date(`${firstRow.sessionDate}T00:00:00`),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      });
+
+      setRows((current) =>
+        current.map((row) =>
+          clipIds.includes(row.uploadedClipId ?? "")
+            ? {
+                ...row,
+                error: null,
+                sessionPlaylistId: sessionPlaylist.id,
+                status: "saved",
+              }
+            : row,
+        ),
+      );
+      setCollapsedSessions((current) => new Set(current).add(sessionKey));
+    } catch (error) {
+      setRows((current) =>
+        current.map((row) =>
+          clipIds.includes(row.uploadedClipId ?? "")
+            ? {
+                ...row,
+                error: uploadErrorMessage(error),
+                status: "filing_error",
+              }
+            : row,
+        ),
+      );
+    } finally {
+      filingSessionKeysRef.current.delete(sessionKey);
+    }
   }
 
   return (
@@ -588,6 +712,12 @@ export function BulkUploadQueue() {
                 ? categoryById.get(session.categoryId)
                 : null;
               const collapsed = collapsedSessions.has(session.key);
+              const savedSessionPlaylistId = session.rows.find(
+                (row) => row.status === "saved" && row.sessionPlaylistId,
+              )?.sessionPlaylistId;
+              const fullySaved = session.rows.every(
+                (row) => row.status === "saved",
+              );
 
               return (
                 <div className="rs-bulk-session" key={session.key}>
@@ -632,6 +762,16 @@ export function BulkUploadQueue() {
                       <span className="rs-bulk-session-warning">
                         <IconAlertTriangle size={13} /> Assign a game
                       </span>
+                    ) : null}
+                    {fullySaved && savedSessionPlaylistId ? (
+                      <Link
+                        className="rs-bulk-session-link"
+                        to="/playlists/$playlistId"
+                        params={{ playlistId: savedSessionPlaylistId }}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        Open collection
+                      </Link>
                     ) : null}
                     <IconChevronDown
                       className={collapsed ? "collapsed" : undefined}
@@ -833,7 +973,9 @@ function RowUploadActions({
     );
   }
 
-  if (["error", "duplicate", "cancelled"].includes(row.status)) {
+  if (
+    ["error", "filing_error", "duplicate", "cancelled"].includes(row.status)
+  ) {
     return (
       <span className="rs-bulk-row-actions">
         <button type="button" onClick={onRetry}>
