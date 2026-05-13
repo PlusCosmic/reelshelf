@@ -64,7 +64,7 @@ const playlists: PlaylistSummary[] = [
 ];
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+  Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
   useBlocker: vi.fn(),
 }));
 
@@ -155,12 +155,13 @@ describe("BulkUploadQueue", () => {
     fireEvent.change(screen.getByDisplayValue("screen_recording_001"), {
       target: { value: "Ranked finish" },
     });
-    fireEvent.change(screen.getAllByDisplayValue("Choose game")[0], {
-      target: { value: "valorant" },
-    });
+    await chooseSelect(
+      screen.getAllByRole("button", { name: /game for/i })[0],
+      "Valorant",
+    );
 
     expect(screen.getByDisplayValue("Ranked finish")).toBeTruthy();
-    expect(screen.getByDisplayValue("Valorant")).toBeTruthy();
+    expect(screen.getAllByText("Valorant").length).toBeGreaterThan(0);
   });
 
   it("applies bulk tag and collection metadata to selected rows", async () => {
@@ -173,19 +174,20 @@ describe("BulkUploadQueue", () => {
     });
 
     await screen.findByDisplayValue("session_2026-05-04_2147");
-    await waitFor(() => expect(screen.getByText("Best of 2026")).toBeTruthy());
+    await waitFor(() => expect(serviceMocks.fetchPlaylists).toHaveBeenCalled());
 
     fireEvent.change(screen.getByPlaceholderText("ranked, clutch"), {
       target: { value: "ranked, clutch" },
     });
     fireEvent.click(screen.getByRole("button", { name: /apply/i }));
-    fireEvent.change(screen.getByLabelText(/collection/i), {
-      target: { value: "best-of" },
-    });
+    await chooseSelect(
+      screen.getByRole("button", { name: /collection for selected clips/i }),
+      "Best of 2026",
+    );
 
     expect(screen.getByText("#ranked")).toBeTruthy();
     expect(screen.getByText("#clutch")).toBeTruthy();
-    expect(screen.getAllByText("Best of 2026").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Best of 2026").length).toBeGreaterThan(0);
   });
 
   it("starts selected ready uploads with a three-row concurrency limit", async () => {
@@ -252,14 +254,15 @@ describe("BulkUploadQueue", () => {
     });
 
     await screen.findByDisplayValue("session-filed");
-    await waitFor(() => expect(screen.getByText("Best of 2026")).toBeTruthy());
+    await waitFor(() => expect(serviceMocks.fetchPlaylists).toHaveBeenCalled());
     fireEvent.change(screen.getByPlaceholderText("ranked, clutch"), {
       target: { value: "ranked" },
     });
     fireEvent.click(screen.getByRole("button", { name: /apply/i }));
-    fireEvent.change(screen.getByLabelText(/collection/i), {
-      target: { value: "best-of" },
-    });
+    await chooseSelect(
+      screen.getByRole("button", { name: /collection for selected clips/i }),
+      "Best of 2026",
+    );
     fireEvent.click(screen.getByRole("button", { name: /add 1 to library/i }));
 
     await waitFor(() =>
@@ -320,7 +323,7 @@ describe("BulkUploadQueue", () => {
     uploadCall?.onSuccess();
 
     expect(await screen.findByText("filing error")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^retry$/i }));
 
     expect(await screen.findByText("Open collection")).toBeTruthy();
     expect(serviceMocks.ensureGamingSessionPlaylist).toHaveBeenCalledTimes(2);
@@ -337,11 +340,16 @@ describe("BulkUploadQueue", () => {
     });
 
     await screen.findByDisplayValue("path-wins");
-    expect(screen.getByDisplayValue("Apex Legends")).toBeTruthy();
+    expect(screen.getAllByText("Apex Legends").length).toBeGreaterThan(0);
     expect(screen.getByDisplayValue("fallback-used")).toBeTruthy();
-    expect(screen.getByDisplayValue("Valorant")).toBeTruthy();
+    expect(screen.getAllByText("Valorant").length).toBeGreaterThan(0);
   });
 });
+
+async function chooseSelect(trigger: HTMLElement, optionName: string) {
+  fireEvent.click(trigger);
+  fireEvent.click(await screen.findByRole("option", { name: optionName }));
+}
 
 function renderQueue(props: Parameters<typeof BulkUploadQueue>[0] = {}) {
   const queryClient = new QueryClient({

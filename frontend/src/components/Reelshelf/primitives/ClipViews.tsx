@@ -25,13 +25,14 @@ export function ClipThumb({
 }) {
   const [colorA, colorB] = getGameColors(category?.id ?? clip.gameCategoryId);
   const firstTag = clip.tags[0];
+  const Tag = onClick ? "button" : "span";
   return (
-    <button
-      type="button"
+    <Tag
+      {...(onClick ? { type: "button" as const } : {})}
       className="rs-thumb"
       onClick={onClick}
       style={{ "--game-a": colorA, "--game-b": colorB } as CSSProperties}
-      aria-label={`Open ${clip.video.title}`}
+      aria-label={onClick ? `Open ${clip.video.title}` : undefined}
     >
       <img
         src={thumbnailUrl(clip)}
@@ -53,11 +54,11 @@ export function ClipThumb({
       {clip.video.length > 0 ? (
         <span className="rs-duration">{formatDuration(clip.video.length)}</span>
       ) : null}
-    </button>
+    </Tag>
   );
 }
 
-export function ClipCard({
+function ClipCard({
   clip,
   categories,
   compact = false,

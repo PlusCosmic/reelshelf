@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useEffectEvent, useId, useState } from "react";
 import type { FormEvent } from "react";
 import { IconX } from "@tabler/icons-react";
 import { CustomCategoryPanel } from "@/components/AddCategory/CustomCategoryPanel";
@@ -33,17 +33,20 @@ export function AddCategoryModal({ opened, onClose }: AddCategoryModalProps) {
   const addCustomMutation = useAddCustomCategory();
   const isSaving = addFromIgdbMutation.isPending || addCustomMutation.isPending;
   const error = addFromIgdbMutation.error ?? addCustomMutation.error;
+  const closeOnEscape = useEffectEvent(() => {
+    if (!isSaving) onClose();
+  });
 
   useEffect(() => {
     if (!opened) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !isSaving) onClose();
+      if (event.key === "Escape") closeOnEscape();
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSaving, onClose, opened]);
+  }, [opened]);
 
   if (!opened) return null;
 

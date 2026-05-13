@@ -36,6 +36,10 @@ public/dist
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+/.playwright-mcp/
+/.cache/playwright-artifacts/
+/collections-*.png
+/discord-qr-login.png
 
 # Local SSL certificates
 *.pem
@@ -67,3 +71,5 @@ project.nuget.cache
 
 # Claude docs
 CLAUDE-DOCS/
+
+docs/UI Design

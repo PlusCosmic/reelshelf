@@ -12,20 +12,6 @@ export async function fetchMe(): Promise<DiscordUser | null> {
   return requestUser("/api/me");
 }
 
-export async function fetchUser(userId: string): Promise<DiscordUser | null> {
-  return requestUser(`/api/user/${encodeURIComponent(userId)}`);
-}
-
-/**
- * Fetch suggested users (Discord friends) for collaborator selection
- */
-export async function fetchUserSuggestions(): Promise<DiscordUser[]> {
-  const users = await requestJson<Array<DiscordUserResponse>>(
-    "/api/users/suggestions",
-  );
-  return users.map(fromDiscordUserResponse);
-}
-
 interface DiscordUserResponse {
   id: string;
   username: string;

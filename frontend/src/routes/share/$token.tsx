@@ -41,7 +41,7 @@ function SharedClipRoute() {
       {isLoading ? (
         <section className="rs-public-state" aria-live="polite">
           <span className="rs-spinner" aria-hidden="true" />
-          <p>Loading shared clip...</p>
+          <p>Loading shared clip…</p>
         </section>
       ) : null}
 

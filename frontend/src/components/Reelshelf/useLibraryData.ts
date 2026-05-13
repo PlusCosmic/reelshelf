@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchPlaylists } from "@/shared/services/playlists";
-import type { Clip, GameCategoryResponse, PlaylistSummary } from "@/api-client";
+import type { PlaylistSummary } from "@/api-client";
 import { fetchClipLibrary } from "@/shared/services/clips";
 
 export function useLibraryData() {
@@ -31,10 +31,3 @@ export function usePlaylistsData() {
     isError: playlistsQuery.isError,
   };
 }
-
-export type LibraryData = {
-  categories: GameCategoryResponse[];
-  clips: Clip[];
-  isLoading: boolean;
-  isError: boolean;
-};

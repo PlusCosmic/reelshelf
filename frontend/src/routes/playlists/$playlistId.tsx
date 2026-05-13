@@ -26,7 +26,7 @@ function PlaylistRoute() {
   });
 
   if (isLoading)
-    return <div className="rs-section rs-empty">Loading collection...</div>;
+    return <div className="rs-section rs-empty">Loading collection…</div>;
   if (isError || !playlist)
     return (
       <div className="rs-section rs-empty">
@@ -35,10 +35,13 @@ function PlaylistRoute() {
     );
 
   const clips = playlist.clips
-    .slice()
-    .sort((a, b) => a.position - b.position)
-    .map((item) => item.clipDetails)
-    .filter((clip): clip is NonNullable<typeof clip> => Boolean(clip));
+    .flatMap((item) =>
+      item.clipDetails
+        ? [{ position: item.position, clip: item.clipDetails }]
+        : [],
+    )
+    .toSorted((a, b) => a.position - b.position)
+    .map((item) => item.clip);
 
   return (
     <>
@@ -58,7 +61,10 @@ function PlaylistRoute() {
               key={collaborator.userId}
               className={index === 0 ? undefined : "rs-avatar-offset"}
             >
-              <Avatar name={collaborator.userId} />
+              <Avatar
+                name={collaborator.username}
+                src={collaborator.avatarUrl}
+              />
             </span>
           ))}
           <span className="rs-meta">

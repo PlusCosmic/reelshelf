@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -40,6 +41,7 @@ public static class AuthEndpoints
 
         group.MapGet("discord/login", Login).WithName("Login");
         group.MapGet("post-login-redirect", PostLoginRedirect).WithName("PostLoginRedirect");
+        group.MapPost("dev-login", DevLogin).WithName("DevLogin");
         group.MapPost("logout", Logout).WithName("Logout");
     }
 
@@ -98,6 +100,63 @@ public static class AuthEndpoints
         await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     }
 
+    public static async Task<Results<Ok<DevLoginResponse>, NotFound, UnauthorizedHttpResult>> DevLogin(
+        HttpContext ctx,
+        IConfiguration configuration,
+        DiscordStatements discordStatements,
+        DevLoginRequest request)
+    {
+        DevLoginOptions? options = GetDevLoginOptions(configuration);
+        if (options is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (!ApiKeysMatch(options.ApiKey, request.ApiKey))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        DiscordStatements.DiscordUserRow? existingUser = await discordStatements.GetUserByDiscordId(options.DiscordId);
+        if (existingUser is null)
+        {
+            await discordStatements.UpsertUser(options.DiscordId, options.Username, options.GlobalName, options.Avatar);
+        }
+
+        List<Claim> claims =
+        [
+            new(ClaimTypes.NameIdentifier, options.DiscordId),
+            new(ClaimTypes.Name, options.Username)
+        ];
+
+        if (!string.IsNullOrWhiteSpace(options.GlobalName))
+        {
+            claims.Add(new Claim("urn:discord:global_name", options.GlobalName));
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.Avatar))
+        {
+            claims.Add(new Claim("urn:discord:avatar", options.Avatar));
+        }
+
+        ClaimsPrincipal principal = new(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
+        AuthenticationProperties properties = new()
+        {
+            IsPersistent = true,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
+        };
+
+        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, properties);
+
+        string redirectUrl = _frontendOrigin;
+        if (!string.IsNullOrEmpty(request.ReturnUrl) && IsValidReturnUrl(request.ReturnUrl))
+        {
+            redirectUrl = request.ReturnUrl;
+        }
+
+        return TypedResults.Ok(new DevLoginResponse(redirectUrl));
+    }
+
     private static bool IsValidReturnUrl(string url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri))
@@ -113,4 +172,55 @@ public static class AuthEndpoints
         byte[] randomBytes = RandomNumberGenerator.GetBytes(32);
         return Convert.ToHexString(randomBytes).ToLowerInvariant();
     }
+
+    private static DevLoginOptions? GetDevLoginOptions(IConfiguration configuration)
+    {
+        if (!configuration.GetValue<bool>("Auth:DevLogin:Enabled"))
+        {
+            return null;
+        }
+
+        string apiKey = configuration["Auth:DevLogin:ApiKey"] ?? "";
+        string discordId = configuration["Auth:DevLogin:DiscordId"] ?? "";
+        string username = configuration["Auth:DevLogin:Username"] ?? "dev-user";
+
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(discordId))
+        {
+            return null;
+        }
+
+        return new DevLoginOptions(
+            apiKey,
+            discordId,
+            username,
+            configuration["Auth:DevLogin:GlobalName"],
+            configuration["Auth:DevLogin:Avatar"]);
+    }
+
+    private static bool ApiKeysMatch(string configuredApiKey, string? providedApiKey)
+    {
+        if (string.IsNullOrEmpty(providedApiKey))
+        {
+            return false;
+        }
+
+        byte[] configured = Encoding.UTF8.GetBytes(configuredApiKey);
+        byte[] provided = Encoding.UTF8.GetBytes(providedApiKey);
+
+        return provided.Length == configured.Length &&
+               CryptographicOperations.FixedTimeEquals(provided, configured);
+    }
+
+    private sealed record DevLoginOptions(
+        string ApiKey,
+        string DiscordId,
+        string Username,
+        string? GlobalName,
+        string? Avatar);
 }
+
+public sealed record DevLoginRequest(
+    string? ApiKey,
+    string? ReturnUrl = null);
+
+public sealed record DevLoginResponse(string RedirectUrl);

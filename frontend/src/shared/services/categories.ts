@@ -7,12 +7,6 @@ export async function fetchCategories(): Promise<GameCategoryResponse[]> {
   return getApi().getUserGameCategories();
 }
 
-export async function fetchCategoryById(
-  categoryId: string,
-): Promise<GameCategoryResponse> {
-  return getApi().getGameCategoryById({ categoryId });
-}
-
 export async function searchGames(query: string): Promise<GameSearchResult[]> {
   return getApi().searchGames({ query });
 }
@@ -32,8 +26,4 @@ export async function addCustomCategory(
   return getApi().addCustomCategory({
     addCustomCategoryRequest: { name, coverUrl: coverUrl ?? null },
   });
-}
-
-export async function removeCategory(categoryId: string): Promise<void> {
-  await getApi().removeGameCategory({ categoryId });
 }

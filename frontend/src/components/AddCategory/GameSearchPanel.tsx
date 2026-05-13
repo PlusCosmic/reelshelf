@@ -25,10 +25,9 @@ export function GameSearchPanel({
         <span className="rs-input-shell">
           <IconSearch size={16} />
           <input
-            autoFocus
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}
-            placeholder="Search for a game..."
+            placeholder="Search for a game…"
           />
           {isSearching ? (
             <span className="rs-spinner" aria-label="Searching" />

@@ -1,12 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import {
   IconChevronLeft,
-  IconClock,
   IconCopy,
   IconDownload,
-  IconEye,
   IconFolderPlus,
-  IconPlus,
   IconShare3,
   IconX,
 } from "@tabler/icons-react";
@@ -121,7 +118,7 @@ function ShareClipDialog({
           {shareClip.isPending ? (
             <p className="rs-modal-note rs-inline-status">
               <span className="rs-spinner" aria-hidden="true" />
-              Creating share link...
+              Creating share link…
             </p>
           ) : null}
 
@@ -203,9 +200,3 @@ export function BackToLibrary({ to = "/" }: { to?: string }) {
     </Link>
   );
 }
-
-export const Icons = {
-  eye: IconEye,
-  clock: IconClock,
-  plus: IconPlus,
-};

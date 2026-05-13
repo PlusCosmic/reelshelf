@@ -1,4 +1,4 @@
-import type { Clip, GameCategoryResponse, PlaylistSummary } from "@/api-client";
+import type { Clip, GameCategoryResponse } from "@/api-client";
 import { apiConfig } from "@/shared/config/apiConfig";
 
 export interface GameShelfItem extends GameCategoryResponse {
@@ -19,6 +19,12 @@ const palette: Array<[string, string]> = [
   ["oklch(0.55 0.11 245)", "oklch(0.28 0.07 260)"],
   ["oklch(0.59 0.12 116)", "oklch(0.32 0.07 92)"],
 ];
+
+const shortDateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
 
 export function getGameColors(id: string): [string, string] {
   let hash = 0;
@@ -72,10 +78,6 @@ export function thumbnailUrl(clip: Clip) {
   return `${apiConfig.bunnyBaseUrl}/${clip.video.guid}/thumbnail.jpg`;
 }
 
-export function previewUrl(clip: Clip) {
-  return `${apiConfig.bunnyBaseUrl}/${clip.video.guid}/preview.webp`;
-}
-
 export function playerUrl(clip: Clip) {
   return `https://player.mediadelivery.net/embed/${clip.video.videoLibraryId}/${clip.video.guid}?autoplay=false`;
 }
@@ -92,11 +94,7 @@ export function formatDuration(seconds = 0) {
 
 export function formatDate(date: Date | string | undefined) {
   if (!date) return "Unknown";
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(date));
+  return shortDateFormatter.format(new Date(date));
 }
 
 export function formatSize(bytes = 0) {
@@ -112,7 +110,7 @@ export function formatSize(bytes = 0) {
 }
 
 export function newestClips(clips: Clip[]) {
-  return [...clips].sort(
+  return clips.toSorted(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
@@ -122,12 +120,5 @@ export function topTags(clips: Clip[], limit = 8) {
   for (const clip of clips) {
     for (const tag of clip.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
   }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
-}
-
-export function collectionCoverClips(playlist: PlaylistSummary, clips: Clip[]) {
-  const seeded = [...clips].sort((a, b) =>
-    `${playlist.id}:${a.clipId}`.localeCompare(`${playlist.id}:${b.clipId}`),
-  );
-  return seeded.slice(0, 4);
+  return [...counts.entries()].toSorted((a, b) => b[1] - a[1]).slice(0, limit);
 }

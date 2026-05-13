@@ -11,11 +11,6 @@ export type CreateVideoForUpload = (request: {
   createdAt?: Date;
 }) => Promise<CreateClipResponse | null>;
 
-export type PreparedClipUpload = {
-  md5Hash: string;
-  response: CreateClipResponse;
-};
-
 export type TusClipUploadOptions = {
   file: File;
   title: string;
@@ -24,32 +19,6 @@ export type TusClipUploadOptions = {
   onSuccess: () => void;
   onError: (error: Error) => void;
 };
-
-export async function prepareClipUpload({
-  categoryId,
-  createdAt,
-  createVideo = ({ categoryId, title, md5Hash, createdAt }) =>
-    createVideoRequest(categoryId, title, md5Hash, createdAt),
-  file,
-  title,
-}: {
-  categoryId: string;
-  createdAt?: Date;
-  createVideo?: CreateVideoForUpload;
-  file: File;
-  title: string;
-}): Promise<PreparedClipUpload> {
-  const md5Hash = await calculateClipUploadMd5(file);
-  const response = await createPreparedClipUpload({
-    categoryId,
-    createVideo,
-    createdAt,
-    md5Hash,
-    title,
-  });
-
-  return { md5Hash, response };
-}
 
 export function calculateClipUploadMd5(file: File) {
   return calculateFileMD5(file);

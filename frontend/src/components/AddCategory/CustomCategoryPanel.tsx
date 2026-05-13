@@ -24,10 +24,9 @@ export function CustomCategoryPanel({
         <span>Category name</span>
         <span className="rs-input-shell">
           <input
-            autoFocus
             value={customName}
             onChange={(event) => setCustomName(event.currentTarget.value)}
-            placeholder="Snowboarding, hiking, speedruns..."
+            placeholder="Snowboarding, hiking, speedruns…"
           />
         </span>
       </label>
@@ -38,7 +37,7 @@ export function CustomCategoryPanel({
           <input
             value={customCoverUrl}
             onChange={(event) => setCustomCoverUrl(event.currentTarget.value)}
-            placeholder="https://..."
+            placeholder="https://…"
           />
         </span>
       </label>
@@ -47,7 +46,7 @@ export function CustomCategoryPanel({
         type="submit"
         disabled={!customName.trim() || isSaving}
       >
-        {isSubmitting ? "Adding..." : "Add category"}
+        {isSubmitting ? "Adding…" : "Add category"}
       </button>
     </form>
   );

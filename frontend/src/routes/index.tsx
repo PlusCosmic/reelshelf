@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { CSSProperties, DragEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useReducer, useRef } from "react";
 import { IconPlus } from "@tabler/icons-react";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
 import {
@@ -25,14 +25,49 @@ export const Route = createFileRoute("/")({
   component: LibraryRoute,
 });
 
+type LibraryRouteState = {
+  addCategoryOpen: boolean;
+  draggingUpload: boolean;
+  gameId: string | null;
+  query: string;
+  tag: string | null;
+};
+
+type LibraryRouteAction =
+  | { type: "setAddCategoryOpen"; value: boolean }
+  | { type: "setDraggingUpload"; value: boolean }
+  | { type: "setGameId"; value: string | null }
+  | { type: "setQuery"; value: string }
+  | { type: "setTag"; value: string | null };
+
+function libraryRouteReducer(
+  state: LibraryRouteState,
+  action: LibraryRouteAction,
+): LibraryRouteState {
+  switch (action.type) {
+    case "setAddCategoryOpen":
+      return { ...state, addCategoryOpen: action.value };
+    case "setDraggingUpload":
+      return { ...state, draggingUpload: action.value };
+    case "setGameId":
+      return { ...state, gameId: action.value };
+    case "setQuery":
+      return { ...state, query: action.value };
+    case "setTag":
+      return { ...state, tag: action.value };
+  }
+}
+
 function LibraryRoute() {
   const navigate = useNavigate();
   const { categories, clips, isLoading, isError } = useLibraryData();
-  const [gameId, setGameId] = useState<string | null>(null);
-  const [tag, setTag] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
-  const [draggingUpload, setDraggingUpload] = useState(false);
+  const [state, dispatch] = useReducer(libraryRouteReducer, {
+    addCategoryOpen: false,
+    draggingUpload: false,
+    gameId: null,
+    query: "",
+    tag: null,
+  });
   const dragDepthRef = useRef(0);
   const shelf = useMemo(
     () => makeGameShelf(categories, clips),
@@ -41,13 +76,13 @@ function LibraryRoute() {
   const tags = useMemo(() => topTags(clips, 8), [clips]);
 
   const filtered = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = state.query.trim().toLowerCase();
     return newestClips(clips).filter((clip) => {
       const category = categories.find(
         (item) => item.id === clip.gameCategoryId,
       );
-      if (gameId && clip.gameCategoryId !== gameId) return false;
-      if (tag && !clip.tags.includes(tag)) return false;
+      if (state.gameId && clip.gameCategoryId !== state.gameId) return false;
+      if (state.tag && !clip.tags.includes(state.tag)) return false;
       if (!normalizedQuery) return true;
       return (
         clip.video.title.toLowerCase().includes(normalizedQuery) ||
@@ -57,10 +92,10 @@ function LibraryRoute() {
         category?.name.toLowerCase().includes(normalizedQuery)
       );
     });
-  }, [categories, clips, gameId, query, tag]);
+  }, [categories, clips, state.gameId, state.query, state.tag]);
 
   if (isLoading)
-    return <div className="rs-section rs-empty">Loading your archive...</div>;
+    return <div className="rs-section rs-empty">Loading your archive…</div>;
   if (isError)
     return (
       <div className="rs-section rs-empty">
@@ -72,27 +107,29 @@ function LibraryRoute() {
     if (!dataTransferHasFiles(event.dataTransfer)) return;
     event.preventDefault();
     dragDepthRef.current += 1;
-    setDraggingUpload(true);
+    dispatch({ type: "setDraggingUpload", value: true });
   }
 
   function onDragOver(event: DragEvent<HTMLElement>) {
     if (!dataTransferHasFiles(event.dataTransfer)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "copy";
-    setDraggingUpload(true);
+    dispatch({ type: "setDraggingUpload", value: true });
   }
 
   function onDragLeave(event: DragEvent<HTMLElement>) {
     if (!dataTransferHasFiles(event.dataTransfer)) return;
     dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
-    if (dragDepthRef.current === 0) setDraggingUpload(false);
+    if (dragDepthRef.current === 0) {
+      dispatch({ type: "setDraggingUpload", value: false });
+    }
   }
 
   async function onDrop(event: DragEvent<HTMLElement>) {
     if (!dataTransferHasFiles(event.dataTransfer)) return;
     event.preventDefault();
     dragDepthRef.current = 0;
-    setDraggingUpload(false);
+    dispatch({ type: "setDraggingUpload", value: false });
 
     const files = await bulkUploadInputsFromDataTransfer(event.dataTransfer);
     if (!files.length) return;
@@ -113,7 +150,7 @@ function LibraryRoute() {
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      {draggingUpload ? (
+      {state.draggingUpload ? (
         <div className="rs-library-drop-overlay" role="status">
           <span className="rs-upload-drop-title">Drop clips to upload</span>
           <span className="rs-upload-drop-copy">
@@ -144,7 +181,7 @@ function LibraryRoute() {
             {shelf.map((game) => (
               <button
                 key={game.id}
-                className={`rs-spine${gameId === game.id ? " active" : ""}`}
+                className={`rs-spine${state.gameId === game.id ? " active" : ""}`}
                 type="button"
                 style={
                   {
@@ -168,7 +205,9 @@ function LibraryRoute() {
               className="rs-spine rs-spine-add"
               type="button"
               title="Add a new book"
-              onClick={() => setAddCategoryOpen(true)}
+              onClick={() =>
+                dispatch({ type: "setAddCategoryOpen", value: true })
+              }
               aria-label="Add a new book"
             >
               <IconPlus size={18} aria-hidden="true" />
@@ -179,33 +218,52 @@ function LibraryRoute() {
 
       <section className="rs-filterbar">
         <span className="rs-eyebrow rs-filter-label">Filter</span>
-        <Chip active={!gameId} onClick={() => setGameId(null)}>
+        <Chip
+          active={!state.gameId}
+          onClick={() => dispatch({ type: "setGameId", value: null })}
+        >
           All games
         </Chip>
         {shelf.slice(0, 6).map((game) => (
           <Chip
             key={game.id}
-            active={gameId === game.id}
-            onClick={() => setGameId(gameId === game.id ? null : game.id)}
+            active={state.gameId === game.id}
+            onClick={() =>
+              dispatch({
+                type: "setGameId",
+                value: state.gameId === game.id ? null : game.id,
+              })
+            }
           >
             {game.name} <span className="rs-muted-count">{game.clipCount}</span>
           </Chip>
         ))}
         <span className="rs-filter-divider" />
-        <Chip active={!tag} onClick={() => setTag(null)}>
+        <Chip
+          active={!state.tag}
+          onClick={() => dispatch({ type: "setTag", value: null })}
+        >
           All tags
         </Chip>
         {tags.map(([tagName, count]) => (
           <Chip
             key={tagName}
-            active={tag === tagName}
-            onClick={() => setTag(tag === tagName ? null : tagName)}
+            active={state.tag === tagName}
+            onClick={() =>
+              dispatch({
+                type: "setTag",
+                value: state.tag === tagName ? null : tagName,
+              })
+            }
           >
             #{tagName} <span className="rs-muted-count">{count}</span>
           </Chip>
         ))}
         <div className="rs-filter-spacer" />
-        <SearchBox value={query} onChange={setQuery} />
+        <SearchBox
+          value={state.query}
+          onChange={(value) => dispatch({ type: "setQuery", value })}
+        />
       </section>
 
       <section className="rs-section">
@@ -217,8 +275,8 @@ function LibraryRoute() {
       </section>
 
       <AddCategoryModal
-        opened={addCategoryOpen}
-        onClose={() => setAddCategoryOpen(false)}
+        opened={state.addCategoryOpen}
+        onClose={() => dispatch({ type: "setAddCategoryOpen", value: false })}
       />
     </main>
   );

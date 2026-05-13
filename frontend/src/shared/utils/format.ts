@@ -10,14 +10,3 @@ export function formatFileSize(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
-
-/**
- * Extracts the file extension from a filename or path
- * @param filename - The filename or path to extract extension from
- * @returns The extension including the dot (e.g., ".json") or empty string if none
- */
-export function getFileExtension(filename: string): string {
-  const basename = filename.split("/").pop() || filename;
-  const lastDot = basename.lastIndexOf(".");
-  return lastDot > 0 ? basename.substring(lastDot) : "";
-}

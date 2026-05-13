@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import {
   BackToLibrary,
   Chip,
@@ -39,12 +39,8 @@ function ClipDetailRoute() {
     [clipId, clips, slug],
   );
 
-  useEffect(() => {
-    if (clipId) markViewed.mutate(clipId);
-  }, [clipId]);
-
   if (isLoading)
-    return <div className="rs-section rs-empty">Loading player...</div>;
+    return <div className="rs-section rs-empty">Loading player…</div>;
   if (isError || !clip)
     return (
       <div className="rs-section rs-empty">This clip could not be found.</div>
@@ -65,6 +61,11 @@ function ClipDetailRoute() {
           className="rs-player-frame"
           allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen;"
           allowFullScreen
+          onLoad={() => {
+            if (!clip.isViewed && !markViewed.isPending) {
+              markViewed.mutate(clipId);
+            }
+          }}
         />
       </div>
 

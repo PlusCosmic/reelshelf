@@ -1,6 +1,6 @@
 import type { GameCategoryResponse } from "@/api-client";
 
-export type BulkUploadStatus =
+type BulkUploadStatus =
   | "ready"
   | "needs_game"
   | "hashing"
@@ -70,7 +70,7 @@ export type BulkUploadSession = {
   rows: BulkUploadRow[];
 };
 
-export const BULK_UPLOAD_MAX_FILE_SIZE = 4 * 1024 ** 3;
+const BULK_UPLOAD_MAX_FILE_SIZE = 4 * 1024 ** 3;
 
 const VIDEO_TYPES = new Set([
   "video/mp4",
@@ -149,7 +149,7 @@ export function sourcePathForFile(file: File, explicitSourcePath?: string) {
   return explicitSourcePath || browserRelativePath || file.name;
 }
 
-export function isSupportedVideoFile(file: File) {
+function isSupportedVideoFile(file: File) {
   return VIDEO_TYPES.has(file.type) || /\.(mp4|mov|webm|mkv)$/i.test(file.name);
 }
 
@@ -161,25 +161,27 @@ export function assignGame(
   const normalizedPath = normalizeForMatch(sourcePath);
   const pathCompact = compactForMatch(sourcePath);
 
-  const matches = categories
-    .map((category) => {
-      const names = [category.name, category.slug].filter(Boolean);
-      const score = names.reduce((best, value) => {
-        const normalizedValue = normalizeForMatch(value);
-        const compactValue = compactForMatch(value);
-        const matched =
-          containsPhrase(normalizedPath, normalizedValue) ||
-          (compactValue.length > 0 && pathCompact.includes(compactValue));
-        return matched ? Math.max(best, compactValue.length) : best;
-      }, 0);
+  let bestMatch: { category: GameCategoryResponse; score: number } | null =
+    null;
 
-      return { category, score };
-    })
-    .filter((match) => match.score > 0)
-    .sort((a, b) => b.score - a.score);
+  for (const category of categories) {
+    const score = [category.name, category.slug].reduce((best, value) => {
+      if (!value) return best;
+      const normalizedValue = normalizeForMatch(value);
+      const compactValue = compactForMatch(value);
+      const matched =
+        containsPhrase(normalizedPath, normalizedValue) ||
+        containsCompactPath(pathCompact, compactValue);
+      return matched ? Math.max(best, compactValue.length) : best;
+    }, 0);
 
-  if (matches[0]) {
-    return { categoryId: matches[0].category.id, source: "source_path" };
+    if (score > 0 && (!bestMatch || score > bestMatch.score)) {
+      bestMatch = { category, score };
+    }
+  }
+
+  if (bestMatch) {
+    return { categoryId: bestMatch.category.id, source: "source_path" };
   }
 
   return options.fallbackCategoryId
@@ -195,7 +197,7 @@ export function deriveCreatedAt(file: File, sourcePath?: string) {
   return parseTimestampFromSourcePath(sourcePath ?? file.name) ?? new Date(0);
 }
 
-export function parseTimestampFromSourcePath(sourcePath: string) {
+function parseTimestampFromSourcePath(sourcePath: string) {
   const patterns: RegExp[] = [
     /(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})[_\-\s](?<hour>\d{2})(?<minute>\d{2})/,
     /(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})[_\-\s](?<hour>\d{2})-(?<minute>\d{2})/,
@@ -239,7 +241,7 @@ export function gamingSessionDate(date: Date) {
 }
 
 export function groupRowsIntoSessions(rows: BulkUploadRow[]) {
-  const sorted = [...rows].sort(
+  const sorted = rows.toSorted(
     (a, b) =>
       a.createdAt.getTime() - b.createdAt.getTime() ||
       a.sourcePath.localeCompare(b.sourcePath),
@@ -335,14 +337,13 @@ export function setSelectedRowsPlaylist(
   return rows.map((row) => (row.selected ? { ...row, playlistId } : row));
 }
 
-export function normalizeTags(tags: string[]) {
-  return [
-    ...new Set(
-      tags
-        .map((tag) => tag.trim().replace(/^#/, "").toLowerCase())
-        .filter(Boolean),
-    ),
-  ];
+function normalizeTags(tags: string[]) {
+  const normalizedTags = new Set<string>();
+  for (const tag of tags) {
+    const normalized = tag.trim().replace(/^#/, "").toLowerCase();
+    if (normalized) normalizedTags.add(normalized);
+  }
+  return [...normalizedTags];
 }
 
 function normalizeInput(input: BulkUploadFileInput) {
@@ -380,6 +381,16 @@ function containsPhrase(normalizedPath: string, normalizedValue: string) {
     normalizedValue.trim().length > 0 &&
     normalizedPath.includes(normalizedValue)
   );
+}
+
+function containsCompactPath(path: string, value: string) {
+  if (!value) return false;
+
+  for (let index = 0; index <= path.length - value.length; index += 1) {
+    if (path.startsWith(value, index)) return true;
+  }
+
+  return false;
 }
 
 function formatLocalDate(date: Date) {

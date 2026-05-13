@@ -49,10 +49,6 @@ export async function toApiError(error: unknown): Promise<ApiError> {
   return new ApiError("Unexpected API error", 0, "unexpected", error);
 }
 
-export async function throwApiError(error: unknown): Promise<never> {
-  throw await toApiError(error);
-}
-
 export function createApiErrorMiddleware() {
   return {
     post: async ({ response }: { response: Response }) => {

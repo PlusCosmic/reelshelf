@@ -1,7 +1,5 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { IconSearch } from "@tabler/icons-react";
-import type { GameCategoryResponse } from "@/api-client";
-import { getGameColors } from "../reelshelf-model";
 
 export function Chip({
   children,
@@ -26,7 +24,7 @@ export function Chip({
 export function SearchBox({
   value,
   onChange,
-  placeholder = "Search clips, games, tags...",
+  placeholder = "Search clips, games, tags…",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -41,20 +39,5 @@ export function SearchBox({
         placeholder={placeholder}
       />
     </label>
-  );
-}
-
-export function GameVars({
-  category,
-  children,
-}: {
-  category?: GameCategoryResponse | null;
-  children: ReactNode;
-}) {
-  const [colorA, colorB] = getGameColors(category?.id ?? "fallback");
-  return (
-    <div style={{ "--game-a": colorA, "--game-b": colorB } as CSSProperties}>
-      {children}
-    </div>
   );
 }

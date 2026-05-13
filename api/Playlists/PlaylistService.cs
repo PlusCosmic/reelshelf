@@ -2,6 +2,7 @@ using Reelshelf.Core;
 using Reelshelf.Playlists.Models;
 using Reelshelf.Discord;
 using Reelshelf.Exceptions;
+using Reelshelf.Games;
 
 namespace Reelshelf.Playlists;
 
@@ -9,7 +10,9 @@ public class PlaylistService(
     PlaylistStatements playlistStatements,
     DiscordStatements discordStatements,
     PlaylistAccess playlistAccess,
-    ClipsStatements clipsStatements)
+    ClipsStatements clipsStatements,
+    GameCategoryStatements gameCategoryStatements,
+    ClipProjection clipProjection)
 {
     public async Task<Playlist> CreatePlaylist(string name, string? description, string discordUserId)
     {
@@ -78,20 +81,39 @@ public class PlaylistService(
         List<PlaylistCollaborator> collaborators = collaboratorRows.Select(c => new PlaylistCollaborator(
             c.UserId,
             c.Username,
-            c.AvatarUrl,
+            GetDiscordAvatarUrl(c.DiscordId, c.AvatarUrl),
             c.AddedAt,
             c.AddedByUserId
         )).ToList();
 
         List<PlaylistStatements.PlaylistClipRow> clipRows = await playlistStatements.GetPlaylistClips(playlistId);
-        List<PlaylistClip> clips = clipRows.Select(c => new PlaylistClip(
-            c.Id,
-            c.ClipId,
-            c.Position,
-            c.AddedByUserId,
-            c.AddedAt,
-            null
-        )).ToList();
+        List<PlaylistClip> clips = [];
+        foreach (PlaylistStatements.PlaylistClipRow clipRow in clipRows)
+        {
+            ClipsStatements.ClipWithTagsRow? clipWithTags = await clipsStatements.GetClipWithTagsById(clipRow.ClipId);
+            Core.Models.Clip? clipDetails = null;
+            if (clipWithTags is not null)
+            {
+                GameCategory? gameCategory = await gameCategoryStatements.GetByIdAsync(clipWithTags.GameCategoryId);
+                ClipsStatements.ClipCollectionRow? clipCollection =
+                    await clipsStatements.GetCollectionByOwnerAndCategory(clipWithTags.OwnerId, clipWithTags.GameCategoryId);
+                if (gameCategory is not null && clipCollection is not null)
+                {
+                    bool isViewed = await clipsStatements.IsClipViewed(actor.UserId, clipRow.ClipId);
+                    ClipsStatements.ClipShareRow? share = await clipsStatements.GetActiveShareByClipId(clipRow.ClipId);
+                    clipDetails = clipProjection.ProjectClip(clipWithTags, gameCategory, clipCollection, isViewed, share is not null);
+                }
+            }
+
+            clips.Add(new PlaylistClip(
+                clipRow.Id,
+                clipRow.ClipId,
+                clipRow.Position,
+                clipRow.AddedByUserId,
+                clipRow.AddedAt,
+                clipDetails
+            ));
+        }
 
         return new PlaylistWithDetails(
             playlistRow.Id,
@@ -283,7 +305,7 @@ public class PlaylistService(
         return collaboratorRows.Select(c => new PlaylistCollaborator(
             c.UserId,
             c.Username,
-            c.AvatarUrl,
+            GetDiscordAvatarUrl(c.DiscordId, c.AvatarUrl),
             c.AddedAt,
             c.AddedByUserId
         )).ToList();
@@ -328,10 +350,16 @@ public class PlaylistService(
         return collaboratorRows.Select(c => new PlaylistCollaborator(
             c.UserId,
             c.Username,
-            c.AvatarUrl,
+            GetDiscordAvatarUrl(c.DiscordId, c.AvatarUrl),
             c.AddedAt,
             c.AddedByUserId
         )).ToList();
     }
 
+    private static string? GetDiscordAvatarUrl(string discordId, string? avatar)
+    {
+        return string.IsNullOrWhiteSpace(avatar)
+            ? null
+            : $"https://cdn.discordapp.com/avatars/{discordId}/{avatar}";
+    }
 }

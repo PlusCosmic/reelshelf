@@ -43,7 +43,7 @@ function GameCategoryRoute() {
     : gameClips;
 
   if (isLoading)
-    return <div className="rs-section rs-empty">Loading game shelf...</div>;
+    return <div className="rs-section rs-empty">Loading game shelf…</div>;
   if (isError || !category)
     return (
       <div className="rs-section rs-empty">This game could not be found.</div>

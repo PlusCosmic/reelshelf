@@ -83,21 +83,25 @@ function fileFromEntry(entry: DroppedFileSystemFileEntry) {
   });
 }
 
-async function readDirectoryEntries(entry: DroppedFileSystemDirectoryEntry) {
+function readDirectoryEntries(entry: DroppedFileSystemDirectoryEntry) {
   const reader = entry.createReader();
   const entries: DroppedFileSystemEntry[] = [];
 
-  while (true) {
-    const batch = await new Promise<DroppedFileSystemEntry[]>(
-      (resolve, reject) => {
-        reader.readEntries(resolve, reject);
-      },
-    );
-    if (!batch.length) break;
-    entries.push(...batch);
-  }
+  return new Promise<DroppedFileSystemEntry[]>((resolve, reject) => {
+    function readNextBatch() {
+      reader.readEntries((batch) => {
+        if (!batch.length) {
+          resolve(entries);
+          return;
+        }
 
-  return entries;
+        entries.push(...batch);
+        readNextBatch();
+      }, reject);
+    }
+
+    readNextBatch();
+  });
 }
 
 function trimEntryPath(path: string) {
