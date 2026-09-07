@@ -13,8 +13,13 @@
  */
 
 import * as runtime from "../runtime";
-import type { DiscordUser } from "../models/index";
-import { DiscordUserFromJSON, DiscordUserToJSON } from "../models/index";
+import type { DiscordUser, StorageUsageResponse } from "../models/index";
+import {
+  DiscordUserFromJSON,
+  DiscordUserToJSON,
+  StorageUsageResponseFromJSON,
+  StorageUsageResponseToJSON,
+} from "../models/index";
 
 export interface ApiUserUserIdGetRequest {
   userId: string;
@@ -142,6 +147,41 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<DiscordUser>> {
     const response = await this.apiUsersSuggestionsGetRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async getMyStorageUsageRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<StorageUsageResponse>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/me/storage`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      StorageUsageResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async getMyStorageUsage(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<StorageUsageResponse> {
+    const response = await this.getMyStorageUsageRaw(initOverrides);
     return await response.value();
   }
 }

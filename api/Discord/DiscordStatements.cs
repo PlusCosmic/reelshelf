@@ -73,15 +73,34 @@ public class DiscordStatements(NpgsqlConnection connection)
         return await connection.QuerySingleAsync<DiscordUserRow>(sql, new { discordId, username, globalName, avatar });
     }
 
-    public async Task<List<DiscordUserRow>> GetAllUsersExcept(string excludeDiscordId)
+    /// <summary>
+    /// Users who already share a playlist with <paramref name="userId"/>: collaborators on playlists they own,
+    /// and owners plus fellow collaborators of playlists they collaborate on. Never lists strangers.
+    /// </summary>
+    public async Task<List<DiscordUserRow>> GetPlaylistPeers(Guid userId)
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
-            FROM discord_user
-            WHERE discord_id != @excludeDiscordId
-            ORDER BY global_name, username";
+            WITH my_playlists AS (
+                SELECT id FROM playlists WHERE creator_user_id = @userId
+                UNION
+                SELECT playlist_id FROM playlist_collaborators WHERE user_id = @userId
+            ),
+            peer_ids AS (
+                SELECT p.creator_user_id AS user_id
+                FROM playlists p
+                JOIN my_playlists mp ON mp.id = p.id
+                UNION
+                SELECT pc.user_id
+                FROM playlist_collaborators pc
+                JOIN my_playlists mp ON mp.id = pc.playlist_id
+            )
+            SELECT u.id, u.discord_id, u.username, u.global_name, u.avatar, u.role
+            FROM discord_user u
+            JOIN peer_ids pi ON pi.user_id = u.id
+            WHERE u.id != @userId
+            ORDER BY u.global_name, u.username";
 
-        var result = await connection.QueryAsync<DiscordUserRow>(sql, new { excludeDiscordId });
+        var result = await connection.QueryAsync<DiscordUserRow>(sql, new { userId });
         return result.ToList();
     }
 

@@ -199,15 +199,32 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     public async Task<ClipRow> InsertClip(Guid ownerId, Guid videoId, Guid gameCategoryId, string? md5Hash,
         DateTimeOffset createdAt, string? title = null, int? length = null, string? thumbnailFileName = null,
-        DateTimeOffset? dateUploaded = null, long? storageSize = null, int? videoStatus = null, int? encodeProgress = null)
+        DateTimeOffset? dateUploaded = null, long? storageSize = null, int? videoStatus = null, int? encodeProgress = null,
+        long? fileSize = null)
     {
         const string sql = """
-            INSERT INTO clip (owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress)
-            VALUES (@ownerId, @videoId, @gameCategoryId, @md5Hash, @createdAt, @title, @length, @thumbnailFileName, @dateUploaded, @storageSize, @videoStatus, @encodeProgress)
-            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress
+            INSERT INTO clip (owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size)
+            VALUES (@ownerId, @videoId, @gameCategoryId, @md5Hash, @createdAt, @title, @length, @thumbnailFileName, @dateUploaded, @storageSize, @videoStatus, @encodeProgress, @fileSize)
+            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size
             """;
 
-        return await connection.QuerySingleAsync<ClipRow>(sql, new { ownerId, videoId, gameCategoryId, md5Hash, createdAt, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress });
+        return await connection.QuerySingleAsync<ClipRow>(sql, new { ownerId, videoId, gameCategoryId, md5Hash, createdAt, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress, fileSize });
+    }
+
+    /// <summary>
+    /// Total bytes of clip storage attributed to an owner.
+    /// Uses the client-declared file size when known (set at creation, before Bunny has encoded anything),
+    /// falling back to Bunny's reported storage size for clips created before file sizes were recorded.
+    /// </summary>
+    public async Task<long> GetStorageUsedBytesByOwner(Guid ownerId)
+    {
+        const string sql = """
+            SELECT COALESCE(SUM(COALESCE(file_size, storage_size, 0)), 0)
+            FROM clip
+            WHERE owner_id = @ownerId
+            """;
+
+        return await connection.QuerySingleAsync<long>(sql, new { ownerId });
     }
 
     public async Task<ClipWithTagsRow?> GetClipWithTagsById(Guid clipId)
@@ -518,6 +535,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         public long? StorageSize { get; set; }
         public int? VideoStatus { get; set; }
         public int? EncodeProgress { get; set; }
+        public long? FileSize { get; set; }
     }
 
     public class TagRow

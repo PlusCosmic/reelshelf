@@ -66,15 +66,21 @@ public static class ClipsEndpoints
             await clipService.GetClipsForCategory(categoryId, user.DiscordId, page, pageSize, tagList, titleSearch, unviewedOnly, sortOrder, startDate, endDate));
     }
 
-    private static async Task<Results<Ok<CreateClipResponse>, Conflict<string>>> CreateVideo(
+    private static async Task<Results<Ok<CreateClipResponse>, Conflict<string>, BadRequest<string>>> CreateVideo(
         ClipService clipService,
         Guid categoryId,
         AuthenticatedUser user,
         string videoTitle,
+        long fileSize,
         DateTimeOffset? createdAt = null,
         string? md5Hash = null)
     {
-        CreateClipResponse? result = await clipService.CreateClip(categoryId, videoTitle, user.DiscordId, createdAt ?? DateTimeOffset.UtcNow, md5Hash);
+        if (fileSize <= 0)
+        {
+            return TypedResults.BadRequest("File size must be greater than zero");
+        }
+
+        CreateClipResponse? result = await clipService.CreateClip(categoryId, videoTitle, user.DiscordId, createdAt ?? DateTimeOffset.UtcNow, fileSize, md5Hash);
         if (result is null)
         {
             return TypedResults.Conflict("A video with this MD5 hash already exists");

@@ -37,6 +37,9 @@ import {
   Select,
   type SelectOption,
 } from "@/components/ui";
+import { StorageMeter } from "@/components/Reelshelf/StorageMeter";
+import { useStorageUsage } from "@/hooks/queries";
+import type { StorageUsage } from "@/shared/services/user";
 import { formatFileSize } from "@/shared/utils/format";
 import { useBulkUploadController } from "./useBulkUploadController";
 import type { GameCategoryResponse, PlaylistSummary } from "@/api-client";
@@ -53,6 +56,7 @@ export type BulkUploadQueueProps = {
 
 export function BulkUploadQueue(props: BulkUploadQueueProps) {
   const controller = useBulkUploadController(props);
+  const storage = useStorageUsage();
 
   return (
     <section className="rs-upload-page rs-bulk-upload-page">
@@ -67,6 +71,7 @@ export function BulkUploadQueue(props: BulkUploadQueueProps) {
         needsGameCount={controller.needsGameCount}
         readyCount={controller.readyCount}
         rowCount={controller.rows.length}
+        storage={storage.data}
         totalBytes={controller.totalBytes}
       />
 
@@ -186,12 +191,14 @@ function QueueHeader({
   needsGameCount,
   readyCount,
   rowCount,
+  storage,
   totalBytes,
 }: {
   activeCount: number;
   needsGameCount: number;
   readyCount: number;
   rowCount: number;
+  storage: StorageUsage | undefined;
   totalBytes: number;
 }) {
   return (
@@ -202,12 +209,15 @@ function QueueHeader({
           Review clips before they hit the shelf.
         </h1>
       </div>
-      <div className="rs-bulk-upload-summary" aria-label="Queue summary">
-        <span>{rowCount} clips</span>
-        <span>{formatFileSize(totalBytes)}</span>
-        <span>{readyCount} ready</span>
-        {activeCount > 0 ? <span>{activeCount} uploading</span> : null}
-        {needsGameCount > 0 ? <span>{needsGameCount} need game</span> : null}
+      <div className="rs-bulk-upload-meta">
+        <div className="rs-bulk-upload-summary" aria-label="Queue summary">
+          <span>{rowCount} clips</span>
+          <span>{formatFileSize(totalBytes)}</span>
+          <span>{readyCount} ready</span>
+          {activeCount > 0 ? <span>{activeCount} uploading</span> : null}
+          {needsGameCount > 0 ? <span>{needsGameCount} need game</span> : null}
+        </div>
+        <StorageMeter usage={storage} />
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ namespace Reelshelf.Auth;
 
 /// <summary>
 /// Middleware that resolves the authenticated user from the database and stores it in HttpContext.Items.
-/// This middleware runs after WhitelistMiddleware and before endpoint execution.
+/// This middleware runs after authentication and before endpoint execution.
 /// The user is then available via AuthenticatedUser.BindAsync for parameter binding.
 /// Also syncs roles from whitelist.json to the database (whitelist is source of truth for base roles).
 /// </summary>

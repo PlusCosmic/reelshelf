@@ -199,6 +199,15 @@
             }
           },
           {
+            "name": "fileSize",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
             "name": "createdAt",
             "in": "query",
             "schema": {
@@ -227,6 +236,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -1530,6 +1549,26 @@
           }
         }
       }
+    },
+    "/api/me/storage": {
+      "get": {
+        "tags": [
+          "DiscordUserEndpoints"
+        ],
+        "operationId": "GetMyStorageUsage",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageUsageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2412,6 +2451,30 @@
           },
           "embed_url": {
             "type": "string"
+          }
+        }
+      },
+      "StorageUsageResponse": {
+        "required": [
+          "used_bytes",
+          "limit_bytes",
+          "is_unlimited"
+        ],
+        "type": "object",
+        "properties": {
+          "used_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "limit_bytes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "is_unlimited": {
+            "type": "boolean"
           }
         }
       },

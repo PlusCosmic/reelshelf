@@ -9,7 +9,8 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
-import { useCurrentUser, useLogout } from "@/hooks/queries";
+import { StorageMeter } from "@/components/Reelshelf/StorageMeter";
+import { useCurrentUser, useLogout, useStorageUsage } from "@/hooks/queries";
 
 type ReelshelfTheme = "light" | "dark";
 
@@ -51,6 +52,7 @@ function AuthenticatedShell({
     select: (state) => state.location.pathname,
   });
   const { data: user, isLoading, isError } = useCurrentUser();
+  const storage = useStorageUsage(!!user && profileMenuOpen);
   const logout = useLogout();
 
   const active = (path: string) =>
@@ -109,6 +111,11 @@ function AuthenticatedShell({
             </button>
             {profileMenuOpen ? (
               <div className="rs-profile-popover" role="menu">
+                {storage.data ? (
+                  <div className="rs-menu-storage">
+                    <StorageMeter usage={storage.data} compact />
+                  </div>
+                ) : null}
                 <button
                   className="rs-menu-item"
                   type="button"

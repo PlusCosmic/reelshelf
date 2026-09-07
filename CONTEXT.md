@@ -30,10 +30,19 @@ The best available browser-provided path for a local file, used only for upload 
 **Gaming Session**:
 A group of clips from the same game within the same 5am-to-5am gaming day, represented after upload as an auto-generated **Playlist**.
 
+**Storage Tier**:
+How much clip storage a user may keep. Everyone who signs in with Discord gets the free tier (25 GB); users listed in `whitelist.json` get the unlimited tier.
+_Avoid_: Treating the whitelist as an access gate; it no longer blocks sign-in.
+
+**Storage Usage**:
+The sum of a user's clip sizes, counted from the client-declared file size at upload time (falling back to Bunny's reported storage size for older clips).
+
 ## Relationships
 
 - A **Bulk Upload Queue** contains one or more local files that may become **Clips**.
 - A **Clip** belongs to the **Library**.
+- A **Clip** counts toward its owner's **Storage Usage** as soon as the clip row is created, before the video finishes uploading.
+- Creating a **Clip** is refused when it would push **Storage Usage** past the owner's **Storage Tier** limit; deleting a **Clip** frees its space.
 - A **Clip** may belong to zero or more **Playlists**.
 - A **Bunny Collection** stores uploaded video assets but is not the same as a **Playlist**.
 - A **Gaming Session** is represented as an auto-generated **Playlist** after queued clips are saved.
@@ -84,6 +93,9 @@ A group of clips from the same game within the same 5am-to-5am gaming day, repre
 >
 > **Dev:** "Should upload have an explicit folder picker?"
 > **Domain expert:** "Yes, where the browser supports it; normal multi-file selection remains the fallback."
+>
+> **Dev:** "Does a user need to be on the whitelist to use Reelshelf?"
+> **Domain expert:** "No. Anyone can sign in and gets the free **Storage Tier**. The whitelist only marks who has unlimited storage (and optional role overrides)."
 >
 > **Dev:** "Can users configure bulk upload concurrency?"
 > **Domain expert:** "No. Start with a fixed limit of three active uploads."

@@ -1,6 +1,6 @@
 import type { ChangeEvent, DragEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBlocker } from "@tanstack/react-router";
 import type * as tus from "tus-js-client";
 import type {
@@ -14,6 +14,7 @@ import {
   groupRowsIntoSessions,
 } from "@/hooks/bulkUploadQueue";
 import { useCategories } from "@/hooks/queries";
+import { storageUsageQueryKey } from "@/hooks/auth.queries";
 import { ApiError } from "@/shared/services/api-error";
 import { addTagToVideo } from "@/shared/services/clips";
 import {
@@ -42,6 +43,7 @@ export function useBulkUploadController({
   fallbackCategoryId = null,
   initialFiles = EMPTY_INITIAL_FILES,
 }: BulkUploadControllerOptions) {
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const initialFilesAppliedRef = useRef(false);
@@ -142,32 +144,141 @@ export function useBulkUploadController({
     addFileInputs(initialFiles);
   }, [categoriesLoading, initialFiles]);
 
-  const startRowUpload = useCallback((row: BulkUploadRow) => {
-    if (!row.categoryId || !row.title.trim()) return;
-    if (activeUploadIdsRef.current.has(row.id)) return;
+  const startRowUpload = useCallback(
+    (row: BulkUploadRow) => {
+      if (!row.categoryId || !row.title.trim()) return;
+      if (activeUploadIdsRef.current.has(row.id)) return;
 
-    activeUploadIdsRef.current.add(row.id);
-    setRows((current) =>
-      current.map((item) =>
-        item.id === row.id
-          ? {
-              ...item,
-              bytesUploaded: 0,
-              error: null,
-              progress: 0,
-              status: "hashing",
-            }
-          : item,
-      ),
-    );
+      activeUploadIdsRef.current.add(row.id);
+      setRows((current) =>
+        current.map((item) =>
+          item.id === row.id
+            ? {
+                ...item,
+                bytesUploaded: 0,
+                error: null,
+                progress: 0,
+                status: "hashing",
+              }
+            : item,
+        ),
+      );
 
-    void (async () => {
-      try {
-        const md5Hash = await calculateClipUploadMd5(row.file);
-        const duplicateKey = `${row.categoryId}:${md5Hash}`;
-        const existingRowId = duplicateKeysRef.current.get(duplicateKey);
+      void (async () => {
+        try {
+          const md5Hash = await calculateClipUploadMd5(row.file);
+          const duplicateKey = `${row.categoryId}:${md5Hash}`;
+          const existingRowId = duplicateKeysRef.current.get(duplicateKey);
 
-        if (existingRowId && existingRowId !== row.id) {
+          if (existingRowId && existingRowId !== row.id) {
+            activeUploadIdsRef.current.delete(row.id);
+            requestedUploadIdsRef.current.delete(row.id);
+            setRows((current) =>
+              current.map((item) =>
+                item.id === row.id
+                  ? {
+                      ...item,
+                      error: "This video is already queued for this game.",
+                      md5Hash,
+                      status: "duplicate",
+                    }
+                  : item,
+              ),
+            );
+            return;
+          }
+
+          duplicateKeysRef.current.set(duplicateKey, row.id);
+          setRows((current) =>
+            current.map((item) =>
+              item.id === row.id
+                ? {
+                    ...item,
+                    md5Hash,
+                    status: "creating",
+                  }
+                : item,
+            ),
+          );
+          const response = await createPreparedClipUpload({
+            categoryId: row.categoryId!,
+            createdAt: row.createdAt,
+            fileSize: row.file.size,
+            md5Hash,
+            title: row.title.trim(),
+          });
+          // The clip counts toward storage as soon as it is created, not when the upload finishes.
+          void queryClient.invalidateQueries({
+            queryKey: storageUsageQueryKey,
+          });
+
+          const upload = createTusClipUpload({
+            file: row.file,
+            response,
+            title: row.title.trim(),
+            onProgress: (uploaded, total) => {
+              setRows((current) =>
+                current.map((item) =>
+                  item.id === row.id
+                    ? {
+                        ...item,
+                        bytesUploaded: uploaded,
+                        progress:
+                          total > 0 ? Math.round((uploaded / total) * 100) : 0,
+                      }
+                    : item,
+                ),
+              );
+            },
+            onSuccess: () => {
+              activeUploadIdsRef.current.delete(row.id);
+              requestedUploadIdsRef.current.delete(row.id);
+              setRows((current) =>
+                current.map((item) =>
+                  item.id === row.id
+                    ? {
+                        ...item,
+                        bytesUploaded: row.file.size,
+                        error: null,
+                        progress: 100,
+                        status: "uploaded",
+                        uploadedClipId: response.clipId,
+                        uploadedVideoId: response.videoId,
+                      }
+                    : item,
+                ),
+              );
+            },
+            onError: (uploadError) => {
+              activeUploadIdsRef.current.delete(row.id);
+              requestedUploadIdsRef.current.delete(row.id);
+              setRows((current) =>
+                current.map((item) =>
+                  item.id === row.id
+                    ? {
+                        ...item,
+                        error: uploadErrorMessage(uploadError),
+                        status: "error",
+                      }
+                    : item,
+                ),
+              );
+            },
+          });
+
+          uploadRefs.current.set(row.id, upload);
+          const previousUploads = await upload.findPreviousUploads();
+          if (previousUploads.length) {
+            upload.resumeFromPreviousUpload(previousUploads[0]);
+          }
+
+          setRows((current) =>
+            current.map((item) =>
+              item.id === row.id ? { ...item, status: "uploading" } : item,
+            ),
+          );
+          upload.start();
+        } catch (error) {
           activeUploadIdsRef.current.delete(row.id);
           requestedUploadIdsRef.current.delete(row.id);
           setRows((current) =>
@@ -175,121 +286,20 @@ export function useBulkUploadController({
               item.id === row.id
                 ? {
                     ...item,
-                    error: "This video is already queued for this game.",
-                    md5Hash,
-                    status: "duplicate",
+                    error: uploadErrorMessage(error),
+                    status:
+                      error instanceof ApiError && error.status === 409
+                        ? "duplicate"
+                        : "error",
                   }
                 : item,
             ),
           );
-          return;
         }
-
-        duplicateKeysRef.current.set(duplicateKey, row.id);
-        setRows((current) =>
-          current.map((item) =>
-            item.id === row.id
-              ? {
-                  ...item,
-                  md5Hash,
-                  status: "creating",
-                }
-              : item,
-          ),
-        );
-        const response = await createPreparedClipUpload({
-          categoryId: row.categoryId!,
-          createdAt: row.createdAt,
-          md5Hash,
-          title: row.title.trim(),
-        });
-
-        const upload = createTusClipUpload({
-          file: row.file,
-          response,
-          title: row.title.trim(),
-          onProgress: (uploaded, total) => {
-            setRows((current) =>
-              current.map((item) =>
-                item.id === row.id
-                  ? {
-                      ...item,
-                      bytesUploaded: uploaded,
-                      progress:
-                        total > 0 ? Math.round((uploaded / total) * 100) : 0,
-                    }
-                  : item,
-              ),
-            );
-          },
-          onSuccess: () => {
-            activeUploadIdsRef.current.delete(row.id);
-            requestedUploadIdsRef.current.delete(row.id);
-            setRows((current) =>
-              current.map((item) =>
-                item.id === row.id
-                  ? {
-                      ...item,
-                      bytesUploaded: row.file.size,
-                      error: null,
-                      progress: 100,
-                      status: "uploaded",
-                      uploadedClipId: response.clipId,
-                      uploadedVideoId: response.videoId,
-                    }
-                  : item,
-              ),
-            );
-          },
-          onError: (uploadError) => {
-            activeUploadIdsRef.current.delete(row.id);
-            requestedUploadIdsRef.current.delete(row.id);
-            setRows((current) =>
-              current.map((item) =>
-                item.id === row.id
-                  ? {
-                      ...item,
-                      error: uploadErrorMessage(uploadError),
-                      status: "error",
-                    }
-                  : item,
-              ),
-            );
-          },
-        });
-
-        uploadRefs.current.set(row.id, upload);
-        const previousUploads = await upload.findPreviousUploads();
-        if (previousUploads.length) {
-          upload.resumeFromPreviousUpload(previousUploads[0]);
-        }
-
-        setRows((current) =>
-          current.map((item) =>
-            item.id === row.id ? { ...item, status: "uploading" } : item,
-          ),
-        );
-        upload.start();
-      } catch (error) {
-        activeUploadIdsRef.current.delete(row.id);
-        requestedUploadIdsRef.current.delete(row.id);
-        setRows((current) =>
-          current.map((item) =>
-            item.id === row.id
-              ? {
-                  ...item,
-                  error: uploadErrorMessage(error),
-                  status:
-                    error instanceof ApiError && error.status === 409
-                      ? "duplicate"
-                      : "error",
-                }
-              : item,
-          ),
-        );
-      }
-    })();
-  }, []);
+      })();
+    },
+    [queryClient],
+  );
 
   async function fileSessionRows(
     sessionKey: string,

@@ -8,6 +8,7 @@ using Reelshelf.Core.Models;
 using Reelshelf.Discord;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
+using Reelshelf.Storage;
 
 namespace Reelshelf.Core;
 
@@ -17,6 +18,7 @@ public class ClipService(
     DiscordStatements discordStatements,
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection,
+    StorageQuotaService storageQuotaService,
     IConfiguration configuration,
     ILogger<ClipService> logger)
 {
@@ -47,8 +49,13 @@ public class ClipService(
     }
 
     public async Task<CreateClipResponse?> CreateClip(Guid gameCategoryId, string videoTitle,
-        string discordUserId, DateTimeOffset createdAt, string? md5Hash = null)
+        string discordUserId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null)
     {
+        if (fileSize <= 0)
+        {
+            throw new BadRequestException("File size must be greater than zero");
+        }
+
         DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
                                                        ?? throw new UnauthorizedException("User not found");
         Guid userId = discordUser.Id;
@@ -69,6 +76,9 @@ public class ClipService(
                 return null; // Duplicate detected
             }
         }
+
+        // Enforce the owner's storage tier before anything is created at Bunny.
+        await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
 
         // Get or create collection
         ClipsStatements.ClipCollectionRow? clipCollection =
@@ -93,7 +103,8 @@ public class ClipService(
             video.DateUploaded,
             video.StorageSize,
             video.Status,
-            video.EncodeProgress);
+            video.EncodeProgress,
+            fileSize);
 
         long expiration = DateTimeOffset.Now.AddHours(1).ToUnixTimeSeconds();
         string libraryId = configuration["BunnyLibraryId"]

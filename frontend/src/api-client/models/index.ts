@@ -30,6 +30,7 @@ export * from "./PlaylistSummary";
 export * from "./PlaylistWithDetails";
 export * from "./ReorderPlaylistClipsRequest";
 export * from "./SharedClipResponse";
+export * from "./StorageUsageResponse";
 export * from "./TopTag";
 export * from "./UpdatePlaylistRequest";
 export * from "./UpdateTitleRequest";

@@ -22,6 +22,7 @@ using Reelshelf.Exceptions;
 using Reelshelf.FFmpeg;
 using Reelshelf.Games;
 using Reelshelf.Playlists;
+using Reelshelf.Storage;
 using StackExchange.Redis;
 
 namespace Reelshelf;
@@ -53,7 +54,6 @@ internal static class ReelshelfApiConfiguration
         app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
-        app.UseMiddleware<WhitelistMiddleware>();
         app.UseAuthenticatedUserResolution();
     }
 
@@ -278,7 +278,9 @@ internal static class ReelshelfApiConfiguration
 
     private static void AddApplicationModules(this WebApplicationBuilder builder)
     {
+        // whitelist.json no longer gates access; it marks users with unlimited storage and role overrides.
         builder.Services.AddSingleton<WhitelistService>();
+        builder.Services.AddScoped<StorageQuotaService>();
         builder.Services.AddSingleton<DiscordRoleMapping>();
         builder.Services.AddScoped<DiscordStatements>();
         builder.Services.AddScoped<GameCategoryStatements>();

@@ -73,6 +73,13 @@ vi.mock("@/hooks/queries", () => ({
     data: categories,
     isLoading: false,
   }),
+  useStorageUsage: () => ({
+    data: {
+      usedBytes: 5 * 1024 ** 3,
+      limitBytes: 25 * 1024 ** 3,
+      isUnlimited: false,
+    },
+  }),
 }));
 
 vi.mock("@/shared/services/clips", () => ({
@@ -242,6 +249,27 @@ describe("BulkUploadQueue", () => {
       expect(clipUploadMocks.createPreparedClipUpload).toHaveBeenCalledTimes(1),
     );
     expect(await screen.findByText("duplicate")).toBeTruthy();
+  });
+
+  it("shows storage usage and sends the file size when preparing an upload", async () => {
+    renderQueue();
+
+    expect(
+      screen.getByRole("meter", { name: "Clip storage" }).textContent,
+    ).toBe("5 GB of 25 GB used");
+
+    fireEvent.change(screen.getByLabelText("Choose video files"), {
+      target: { files: [videoFile("Apex Legends/sized.mp4")] },
+    });
+
+    await screen.findByDisplayValue("sized");
+    fireEvent.click(screen.getByRole("button", { name: /add 1 to library/i }));
+
+    await waitFor(() =>
+      expect(clipUploadMocks.createPreparedClipUpload).toHaveBeenCalledWith(
+        expect.objectContaining({ fileSize: 4, title: "sized" }),
+      ),
+    );
   });
 
   it("files uploaded rows with tags, user collection, and a session collection", async () => {
