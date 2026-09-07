@@ -10,13 +10,16 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Clip } from "@/api-client";
-import { useDeleteClip, useShareClip } from "@/hooks/queries";
+import { useCurrentUser, useDeleteClip, useShareClip } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 
 export function PlayerActions({ clip }: { clip: Clip }) {
   const [shareOpen, setShareOpen] = useState(false);
   const navigate = useNavigate();
   const deleteClip = useDeleteClip();
+  const { data: currentUser } = useCurrentUser();
+  // Only the owner can delete; collaborators and share viewers see the clip but not this action.
+  const canDelete = currentUser?.id === clip.ownerId;
 
   function handleDelete() {
     if (deleteClip.isPending) return;
@@ -54,15 +57,17 @@ export function PlayerActions({ clip }: { clip: Clip }) {
           <IconDownload size={13} />
           Download
         </button>
-        <button
-          className="rs-small-button rs-small-button-danger"
-          type="button"
-          onClick={handleDelete}
-          disabled={deleteClip.isPending}
-        >
-          <IconTrash size={13} />
-          {deleteClip.isPending ? "Deleting…" : "Delete"}
-        </button>
+        {canDelete ? (
+          <button
+            className="rs-small-button rs-small-button-danger"
+            type="button"
+            onClick={handleDelete}
+            disabled={deleteClip.isPending}
+          >
+            <IconTrash size={13} />
+            {deleteClip.isPending ? "Deleting…" : "Delete"}
+          </button>
+        ) : null}
       </div>
       {deleteClip.isError ? (
         <div className="rs-upload-error" role="alert">

@@ -257,7 +257,7 @@ export function useBulkUploadController({
             onError: (uploadError) => {
               activeUploadIdsRef.current.delete(row.id);
               requestedUploadIdsRef.current.delete(row.id);
-              releasePreparedClip(row.id);
+              void releasePreparedClip(row.id);
               setRows((current) =>
                 current.map((item) =>
                   item.id === row.id
@@ -287,7 +287,7 @@ export function useBulkUploadController({
         } catch (error) {
           activeUploadIdsRef.current.delete(row.id);
           requestedUploadIdsRef.current.delete(row.id);
-          releasePreparedClip(row.id);
+          void releasePreparedClip(row.id);
           setRows((current) =>
             current.map((item) =>
               item.id === row.id
@@ -517,7 +517,7 @@ export function useBulkUploadController({
     uploadRefs.current.delete(row.id);
     activeUploadIdsRef.current.delete(row.id);
     requestedUploadIdsRef.current.delete(row.id);
-    releasePreparedClip(row.id);
+    void releasePreparedClip(row.id);
     if (row.categoryId && row.md5Hash) {
       duplicateKeysRef.current.delete(`${row.categoryId}:${row.md5Hash}`);
     }
@@ -535,7 +535,7 @@ export function useBulkUploadController({
     );
   }
 
-  function retryRow(row: BulkUploadRow) {
+  async function retryRow(row: BulkUploadRow) {
     if (row.status === "filing_error" && row.uploadedClipId) {
       setRows((current) =>
         current.map((item) =>
@@ -549,7 +549,23 @@ export function useBulkUploadController({
 
     uploadRefs.current.delete(row.id);
     activeUploadIdsRef.current.delete(row.id);
-    releasePreparedClip(row.id);
+    // The previous attempt's clip row shares this file's MD5; it must be gone before we create another.
+    const released = await releasePreparedClip(row.id);
+    if (!released) {
+      setRows((current) =>
+        current.map((item) =>
+          item.id === row.id
+            ? {
+                ...item,
+                error:
+                  "Could not clear the previous attempt. Try again in a moment.",
+                status: "error",
+              }
+            : item,
+        ),
+      );
+      return;
+    }
     if (row.categoryId && row.md5Hash) {
       duplicateKeysRef.current.delete(`${row.categoryId}:${row.md5Hash}`);
     }
@@ -574,16 +590,28 @@ export function useBulkUploadController({
     );
   }
 
-  function releasePreparedClip(rowId: string) {
+  /**
+   * Deletes the clip row reserved for a row whose upload did not complete.
+   * Resolves false (and keeps the id for a later attempt) if the delete fails;
+   * the server also purges never-uploaded clips after a day.
+   */
+  async function releasePreparedClip(rowId: string): Promise<boolean> {
     const clipId = preparedClipIdsRef.current.get(rowId);
-    if (!clipId) return;
-    preparedClipIdsRef.current.delete(rowId);
-    // Best effort: the server also purges never-uploaded clips after a day.
-    void deleteClip(clipId)
-      .catch(() => undefined)
-      .finally(() => {
-        void queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
-      });
+    if (!clipId) return true;
+    try {
+      await deleteClip(clipId);
+      preparedClipIdsRef.current.delete(rowId);
+      return true;
+    } catch (error) {
+      // A 404 means it is already gone (purged, or deleted elsewhere).
+      if (error instanceof ApiError && error.status === 404) {
+        preparedClipIdsRef.current.delete(rowId);
+        return true;
+      }
+      return false;
+    } finally {
+      void queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
+    }
   }
 
   function toggleSession(sessionKey: string) {

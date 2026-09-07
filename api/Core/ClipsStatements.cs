@@ -365,18 +365,20 @@ public class ClipsStatements(NpgsqlConnection connection)
         await connection.ExecuteAsync(sql, new { clipId, tagId });
     }
 
-    public async Task<List<TopTagRow>> GetAllTagsOrderedByUsage()
+    /// <summary>Tags used on the owner's own clips, most used first. Other users' tags are private to them.</summary>
+    public async Task<List<TopTagRow>> GetTagsOrderedByUsageForOwner(Guid ownerId)
     {
         const string sql = """
+            SELECT t.name, COUNT(ct.clip_id)::int AS count
+            FROM tag t
+            JOIN clip_tag ct ON ct.tag_id = t.id
+            JOIN clip c ON c.id = ct.clip_id
+            WHERE c.owner_id = @ownerId
+            GROUP BY t.name
+            ORDER BY count DESC, t.name ASC
+            """;
 
-                                       SELECT t.name, COUNT(ct.clip_id)::int as count
-                                       FROM tag t
-                                       LEFT JOIN clip_tag ct ON ct.tag_id = t.id
-                                       GROUP BY t.name
-                                       ORDER BY count DESC, t.name ASC
-                           """;
-
-        return (await connection.QueryAsync<TopTagRow>(sql)).ToList();
+        return (await connection.QueryAsync<TopTagRow>(sql, new { ownerId })).ToList();
     }
 
     public async Task<ClipViewRow> InsertClipView(Guid userId, Guid clipId)

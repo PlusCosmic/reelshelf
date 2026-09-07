@@ -162,9 +162,9 @@ public static class ClipsEndpoints
         return TypedResults.Ok(updated);
     }
 
-    private static async Task<Ok<List<TopTag>>> GetTopTags(ClipService clipService)
+    private static async Task<Ok<List<TopTag>>> GetTopTags(ClipService clipService, AuthenticatedUser user)
     {
-        return TypedResults.Ok(await clipService.GetTopTags());
+        return TypedResults.Ok(await clipService.GetTopTags(user.DiscordId));
     }
 
     private static async Task<Results<Ok, NotFound>> MarkVideoAsViewed(

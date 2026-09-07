@@ -270,9 +270,12 @@ public class ClipService(
         return await GetClipById(clipId, discordUserId);
     }
 
-    public async Task<List<TopTag>> GetTopTags()
+    public async Task<List<TopTag>> GetTopTags(string discordUserId)
     {
-        List<ClipsStatements.TopTagRow> topTagRows = await clipsStatements.GetAllTagsOrderedByUsage();
+        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
+                                                       ?? throw new UnauthorizedException("User not found");
+
+        List<ClipsStatements.TopTagRow> topTagRows = await clipsStatements.GetTagsOrderedByUsageForOwner(discordUser.Id);
         return topTagRows.Select(t => new TopTag(t.Name, t.Count)).ToList();
     }
 

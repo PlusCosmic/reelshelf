@@ -42,8 +42,8 @@ public class GameCategoryStatements(NpgsqlConnection connection)
             FROM game_category gc
             WHERE EXISTS (SELECT 1 FROM user_game_category ugc
                           WHERE ugc.game_category_id = gc.id AND ugc.user_id = @UserId)
-               OR EXISTS (SELECT 1 FROM clip_collection cc
-                          WHERE cc.game_category_id = gc.id AND cc.owner_id = @UserId)
+               OR EXISTS (SELECT 1 FROM clip c
+                          WHERE c.game_category_id = gc.id AND c.owner_id = @UserId)
             ORDER BY gc.name
             """;
         var results = await connection.QueryAsync<GameCategory>(sql, new { UserId = userId });
