@@ -23,6 +23,15 @@ public partial class GameCategoryService(
         return categories.Select(ToResponse).ToList();
     }
 
+    public async Task<List<GameCategoryResponse>> GetLibraryCategoriesAsync(string discordUserId)
+    {
+        var user = await discordStatements.GetUserByDiscordId(discordUserId);
+        if (user == null) return [];
+
+        var categories = await statements.GetLibraryCategoriesAsync(user.Id);
+        return categories.Select(ToResponse).ToList();
+    }
+
     public async Task<GameCategoryResponse?> GetCategoryByIdAsync(Guid categoryId)
     {
         var category = await statements.GetByIdAsync(categoryId);

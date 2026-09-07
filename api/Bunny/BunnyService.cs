@@ -68,6 +68,11 @@ public class BunnyService
     {
         var url = _videosUrl + $"/{videoId}";
         var videoResponse = await _httpClient.GetAsync(url);
+        if (videoResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
         videoResponse.EnsureSuccessStatusCode();
         var response = await videoResponse.Content.ReadFromJsonAsync<BunnyVideo>();
         return response;

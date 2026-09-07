@@ -249,20 +249,21 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     /// <summary>
     /// Clips whose video was never uploaded: still in a pre-upload Bunny status with nothing stored,
-    /// created before <paramref name="createdBefore"/>. These hold quota for their owner until removed.
+    /// reserved at the API before <paramref name="reservedBefore"/>. These hold quota for their owner until removed.
+    /// (created_at is the client-supplied capture time and says nothing about when the upload started.)
     /// </summary>
-    public async Task<List<ClipRow>> GetAbandonedClips(DateTimeOffset createdBefore)
+    public async Task<List<ClipRow>> GetAbandonedClips(DateTimeOffset reservedBefore)
     {
         const string sql = """
             SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size
             FROM clip
-            WHERE created_at < @createdBefore
+            WHERE reserved_at < @reservedBefore
               AND COALESCE(storage_size, 0) = 0
               AND (video_status IS NULL OR video_status IN (@Queued, @PresignedUploadStarted, @PresignedUploadFailed))
             """;
         return (await connection.QueryAsync<ClipRow>(sql, new
         {
-            createdBefore,
+            reservedBefore,
             Queued = (int)BunnyVideoStatus.Queued,
             PresignedUploadStarted = (int)BunnyVideoStatus.PresignedUploadStarted,
             PresignedUploadFailed = (int)BunnyVideoStatus.PresignedUploadFailed
@@ -402,6 +403,31 @@ public class ClipsStatements(NpgsqlConnection connection)
         const string sql =
             "SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress FROM clip WHERE video_id = @videoId LIMIT 1";
         return await connection.QuerySingleOrDefaultAsync<ClipRow>(sql, new { videoId });
+    }
+
+    /// <summary>
+    /// Whether <paramref name="userId"/> may view a clip: they own it, it is in a playlist they created or
+    /// collaborate on, or it has an active public share.
+    /// </summary>
+    public async Task<bool> UserCanAccessClip(Guid clipId, Guid userId)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1 FROM clip c WHERE c.id = @clipId AND c.owner_id = @userId
+            ) OR EXISTS (
+                SELECT 1
+                FROM playlist_clips pc
+                JOIN playlists p ON p.id = pc.playlist_id
+                WHERE pc.clip_id = @clipId
+                  AND (p.creator_user_id = @userId
+                       OR EXISTS (SELECT 1 FROM playlist_collaborators col
+                                  WHERE col.playlist_id = p.id AND col.user_id = @userId))
+            ) OR EXISTS (
+                SELECT 1 FROM clip_share s WHERE s.clip_id = @clipId AND s.revoked_at IS NULL
+            )
+            """;
+
+        return await connection.QuerySingleAsync<bool>(sql, new { clipId, userId });
     }
 
     public async Task<ClipShareRow?> GetActiveShareByClipId(Guid clipId)

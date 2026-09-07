@@ -13,11 +13,12 @@ export function StorageMeter({
   const used = formatFileSize(usage.usedBytes);
   const limit = usage.limitBytes ?? null;
   const fraction =
-    limit && limit > 0 ? Math.min(1, usage.usedBytes / limit) : 0;
-  const nearLimit = limit !== null && fraction >= 0.9;
-  const label = limit
-    ? `${used} of ${formatFileSize(limit)} used`
-    : `${used} used · Unlimited storage`;
+    limit !== null && limit > 0 ? Math.min(1, usage.usedBytes / limit) : 0;
+  const nearLimit = limit !== null && (limit === 0 || fraction >= 0.9);
+  const label =
+    limit !== null
+      ? `${used} of ${formatFileSize(limit)} used`
+      : `${used} used · Unlimited storage`;
 
   return (
     <div
@@ -32,7 +33,7 @@ export function StorageMeter({
       aria-valuetext={label}
     >
       <span className="rs-storage-meter-label">{label}</span>
-      {limit ? (
+      {limit !== null ? (
         <span className="rs-storage-meter-track" aria-hidden="true">
           <span
             className="rs-storage-meter-fill"

@@ -4,6 +4,10 @@
 -- Bunny reports storage_size only after encoding, so file_size is what the quota counts first.
 ALTER TABLE clip ADD COLUMN IF NOT EXISTS file_size bigint;
 
+-- When the clip row was created at the API. created_at is the recording's capture time supplied by the
+-- client, so it cannot be used to decide whether an upload has been abandoned.
+ALTER TABLE clip ADD COLUMN IF NOT EXISTS reserved_at timestamptz NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS idx_clip_owner_id ON clip(owner_id);
 
 -- Viewer cannot create clips. Now that anyone may sign in and use their free storage tier,

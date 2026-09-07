@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
+using Reelshelf.Core;
 
 namespace Reelshelf.FFmpeg;
 
@@ -15,10 +16,18 @@ public static class FFmpegEndpoints
 
     private static async Task<Results<FileStreamHttpResult, NotFound<string>, ProblemHttpResult>> DownloadVideo(
         FFmpegService ffmpegService,
+        ClipsStatements clipsStatements,
         AuthenticatedUser user,
         Guid videoId,
         CancellationToken cancellationToken)
     {
+        // Only videos the caller may view can be downloaded; a video id alone is not an entitlement.
+        ClipsStatements.ClipRow? clip = await clipsStatements.GetClipByVideoId(videoId);
+        if (clip is null || (clip.OwnerId != user.Id && !await clipsStatements.UserCanAccessClip(clip.Id, user.Id)))
+        {
+            return TypedResults.NotFound("Video not found");
+        }
+
         try
         {
             string filePath = await ffmpegService.DownloadHlsVideoAsync(videoId, cancellationToken);

@@ -30,6 +30,26 @@ public class GameCategoryStatements(NpgsqlConnection connection)
         return results.ToList();
     }
 
+    /// <summary>
+    /// Categories that belong in a user's library: the ones they added, plus any they already have clips in.
+    /// Never the global list, so one account's custom categories do not appear in (or slow down) everyone's library.
+    /// </summary>
+    public async Task<List<GameCategory>> GetLibraryCategoriesAsync(Guid userId)
+    {
+        const string sql = """
+            SELECT gc.id, gc.igdb_id, gc.name, gc.slug, gc.cover_url, gc.key_art_url, gc.game_logo_url, gc.is_custom,
+                   gc.created_at, gc.updated_at
+            FROM game_category gc
+            WHERE EXISTS (SELECT 1 FROM user_game_category ugc
+                          WHERE ugc.game_category_id = gc.id AND ugc.user_id = @UserId)
+               OR EXISTS (SELECT 1 FROM clip_collection cc
+                          WHERE cc.game_category_id = gc.id AND cc.owner_id = @UserId)
+            ORDER BY gc.name
+            """;
+        var results = await connection.QueryAsync<GameCategory>(sql, new { UserId = userId });
+        return results.ToList();
+    }
+
     public async Task<GameCategory?> GetByIdAsync(Guid id)
     {
         const string sql = """

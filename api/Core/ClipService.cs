@@ -51,9 +51,9 @@ public class ClipService(
     public async Task<CreateClipResponse?> CreateClip(Guid gameCategoryId, string videoTitle,
         string discordUserId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null)
     {
-        if (fileSize <= 0)
+        if (fileSize <= 0 || fileSize > StorageQuota.MaxDeclaredFileSizeBytes)
         {
-            throw new BadRequestException("File size must be greater than zero");
+            throw new BadRequestException("File size must be between 1 byte and 1 TiB");
         }
 
         DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
@@ -137,6 +137,12 @@ public class ClipService(
 
         ClipsStatements.ClipWithTagsRow? clipWithTags = await clipsStatements.GetClipWithTagsById(clipId);
         if (clipWithTags == null)
+        {
+            return null;
+        }
+
+        // Sign-up is open: only the owner, playlist members, or a clip with an active share may be read by id.
+        if (clipWithTags.OwnerId != userId && !await clipsStatements.UserCanAccessClip(clipId, userId))
         {
             return null;
         }
@@ -277,7 +283,7 @@ public class ClipService(
         Guid userId = discordUser.Id;
 
         ClipsStatements.ClipRow? clip = await clipsStatements.GetClipById(clipId);
-        if (clip == null)
+        if (clip == null || (clip.OwnerId != userId && !await clipsStatements.UserCanAccessClip(clipId, userId)))
         {
             return false;
         }

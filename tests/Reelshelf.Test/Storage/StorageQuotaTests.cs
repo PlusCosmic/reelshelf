@@ -36,6 +36,19 @@ public class StorageQuotaTests
         Assert.Equal(expected, quota.CanStore(fileGib * OneGib));
     }
 
+    [Theory]
+    [InlineData(long.MaxValue)]
+    [InlineData(StorageQuota.MaxDeclaredFileSizeBytes + 1)]
+    [InlineData(-1)]
+    public void CanStore_RejectsSizesThatCouldOverflow(long fileSize)
+    {
+        StorageQuota limited = new(UsedBytes: OneGib, LimitBytes: StorageQuota.DefaultLimitBytes);
+        StorageQuota unlimited = new(UsedBytes: OneGib, LimitBytes: null);
+
+        Assert.False(limited.CanStore(fileSize));
+        Assert.False(unlimited.CanStore(fileSize));
+    }
+
     [Fact]
     public void RemainingBytes_NeverGoesNegative()
     {
