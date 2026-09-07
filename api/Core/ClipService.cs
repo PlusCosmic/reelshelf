@@ -77,11 +77,7 @@ public class ClipService(
             }
         }
 
-        // Hold a per-owner lock from the storage check through the insert so concurrent uploads
-        // cannot all pass the check on the same stale usage figure.
-        await using NpgsqlTransaction reservation = await clipsStatements.BeginOwnerStorageLock(userId);
-
-        // Enforce the owner's storage tier before anything is created at Bunny.
+        // Cheap unlocked check first so a plainly over-limit request never touches Bunny.
         await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
 
         // Get or create collection
@@ -93,24 +89,49 @@ public class ClipService(
             clipCollection = await clipsStatements.InsertCollection(userId, bunnyCollection.Guid, gameCategoryId);
         }
 
+        // All external I/O happens before the lock; the locked section below is two local queries.
         BunnyVideo video = await bunnyService.CreateVideoAsync(clipCollection.CollectionId, videoTitle);
 
-        ClipsStatements.ClipRow clip = await clipsStatements.InsertClip(
-            userId,
-            video.Guid,
-            gameCategoryId,
-            md5Hash,
-            createdAt,
-            video.Title,
-            video.Length,
-            video.ThumbnailFileName,
-            video.DateUploaded,
-            video.StorageSize,
-            video.Status,
-            video.EncodeProgress,
-            fileSize);
+        ClipsStatements.ClipRow clip;
+        try
+        {
+            // Hold a per-owner lock across the authoritative check and the insert so concurrent
+            // uploads cannot all pass on the same stale usage figure. No network calls inside.
+            await using NpgsqlTransaction reservation = await clipsStatements.BeginOwnerStorageLock(userId);
 
-        await reservation.CommitAsync();
+            await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
+
+            clip = await clipsStatements.InsertClip(
+                userId,
+                video.Guid,
+                gameCategoryId,
+                md5Hash,
+                createdAt,
+                video.Title,
+                video.Length,
+                video.ThumbnailFileName,
+                video.DateUploaded,
+                video.StorageSize,
+                video.Status,
+                video.EncodeProgress,
+                fileSize);
+
+            await reservation.CommitAsync();
+        }
+        catch
+        {
+            // The reservation failed (quota raced, duplicate, DB error): do not leave an orphan video at Bunny.
+            try
+            {
+                await bunnyService.DeleteVideoAsync(video.Guid);
+            }
+            catch (Exception cleanupError)
+            {
+                logger.LogWarning(cleanupError, "Failed to delete Bunny video {VideoId} after clip reservation failed", video.Guid);
+            }
+
+            throw;
+        }
 
         long expiration = DateTimeOffset.Now.AddHours(1).ToUnixTimeSeconds();
         string libraryId = configuration["BunnyLibraryId"]

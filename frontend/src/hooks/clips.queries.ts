@@ -71,6 +71,8 @@ export function useDeleteClip() {
     onSuccess: (_data, clipId) => {
       queryClient.removeQueries({ queryKey: ["clips", clipId] });
       queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
+      // Playlist summaries and details embed clips; drop the deleted one from them too.
+      queryClient.invalidateQueries({ queryKey: ["playlists"] });
       queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
     },
   });
