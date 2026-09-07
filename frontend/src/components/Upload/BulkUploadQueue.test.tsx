@@ -25,6 +25,7 @@ const clipUploadMocks = vi.hoisted(() => ({
 const serviceMocks = vi.hoisted(() => ({
   addClipsToPlaylist: vi.fn(),
   addTagToVideo: vi.fn(),
+  deleteClip: vi.fn(),
   ensureGamingSessionPlaylist: vi.fn(),
   fetchPlaylists: vi.fn(),
 }));
@@ -84,6 +85,7 @@ vi.mock("@/hooks/queries", () => ({
 
 vi.mock("@/shared/services/clips", () => ({
   addTagToVideo: serviceMocks.addTagToVideo,
+  deleteClip: serviceMocks.deleteClip,
 }));
 
 vi.mock("@/shared/services/playlists", () => ({
@@ -270,6 +272,33 @@ describe("BulkUploadQueue", () => {
         expect.objectContaining({ fileSize: 4, title: "sized" }),
       ),
     );
+  });
+
+  it("deletes the prepared clip when its upload fails so it stops holding storage", async () => {
+    serviceMocks.deleteClip.mockResolvedValue(undefined);
+    clipUploadMocks.createTusClipUpload.mockImplementation(
+      (options: { onError: (error: Error) => void }) => ({
+        abort: vi.fn(),
+        findPreviousUploads: vi.fn().mockResolvedValue([]),
+        resumeFromPreviousUpload: vi.fn(),
+        start: () => options.onError(new Error("network down")),
+      }),
+    );
+    renderQueue();
+
+    fireEvent.change(screen.getByLabelText("Choose video files"), {
+      target: { files: [videoFile("Apex Legends/failing.mp4")] },
+    });
+
+    await screen.findByDisplayValue("failing");
+    fireEvent.click(screen.getByRole("button", { name: /add 1 to library/i }));
+
+    await waitFor(() =>
+      expect(serviceMocks.deleteClip).toHaveBeenCalledWith(
+        "clip-hash-failing.mp4",
+      ),
+    );
+    expect(await screen.findByText("network down")).toBeTruthy();
   });
 
   it("files uploaded rows with tags, user collection, and a session collection", async () => {

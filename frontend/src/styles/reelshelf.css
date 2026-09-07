@@ -1808,6 +1808,12 @@ a {
   font-size: 12px;
 }
 
+.rs-small-button-danger:hover:not(:disabled),
+.rs-small-button-danger:focus-visible {
+  color: oklch(0.55 0.18 30);
+  border-color: oklch(0.55 0.18 30);
+}
+
 .rs-storage-meter {
   display: flex;
   flex-direction: column;

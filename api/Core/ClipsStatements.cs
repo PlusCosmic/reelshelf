@@ -213,18 +213,60 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     /// <summary>
     /// Total bytes of clip storage attributed to an owner.
-    /// Uses the client-declared file size when known (set at creation, before Bunny has encoded anything),
-    /// falling back to Bunny's reported storage size for clips created before file sizes were recorded.
+    /// Counts the larger of the client-declared file size (known at creation, before anything is uploaded)
+    /// and Bunny's reported storage size (trusted, but only available after encoding), so an under-declared
+    /// size stops mattering once Bunny reports the real one.
     /// </summary>
     public async Task<long> GetStorageUsedBytesByOwner(Guid ownerId)
     {
         const string sql = """
-            SELECT COALESCE(SUM(COALESCE(file_size, storage_size, 0)), 0)
+            SELECT COALESCE(SUM(GREATEST(COALESCE(file_size, 0), COALESCE(storage_size, 0))), 0)
             FROM clip
             WHERE owner_id = @ownerId
             """;
 
         return await connection.QuerySingleAsync<long>(sql, new { ownerId });
+    }
+
+    /// <summary>
+    /// Opens a transaction holding a per-owner advisory lock so a storage check and the clip insert that
+    /// follows it cannot interleave with another request for the same owner. Dispose without committing to roll back.
+    /// </summary>
+    public async Task<NpgsqlTransaction> BeginOwnerStorageLock(Guid ownerId)
+    {
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+        }
+
+        NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync(
+            "SELECT pg_advisory_xact_lock(hashtext(@key))",
+            new { key = $"clip-storage:{ownerId}" },
+            transaction);
+        return transaction;
+    }
+
+    /// <summary>
+    /// Clips whose video was never uploaded: still in a pre-upload Bunny status with nothing stored,
+    /// created before <paramref name="createdBefore"/>. These hold quota for their owner until removed.
+    /// </summary>
+    public async Task<List<ClipRow>> GetAbandonedClips(DateTimeOffset createdBefore)
+    {
+        const string sql = """
+            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size
+            FROM clip
+            WHERE created_at < @createdBefore
+              AND COALESCE(storage_size, 0) = 0
+              AND (video_status IS NULL OR video_status IN (@Queued, @PresignedUploadStarted, @PresignedUploadFailed))
+            """;
+        return (await connection.QueryAsync<ClipRow>(sql, new
+        {
+            createdBefore,
+            Queued = (int)BunnyVideoStatus.Queued,
+            PresignedUploadStarted = (int)BunnyVideoStatus.PresignedUploadStarted,
+            PresignedUploadFailed = (int)BunnyVideoStatus.PresignedUploadFailed
+        })).ToList();
     }
 
     public async Task<ClipWithTagsRow?> GetClipWithTagsById(Guid clipId)

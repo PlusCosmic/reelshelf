@@ -18,5 +18,7 @@ Reelshelf gated every request behind `whitelist.json`: only listed Discord IDs c
 
 - Endpoints can no longer rely on a global gate for authentication; each must require authorization itself. The Apex detection endpoints, which had none, are now admin-only.
 - The user suggestion endpoint no longer lists every account; it returns only people who already share a playlist with the caller. Adding a collaborator still works by exact Discord username.
-- Concurrent uploads that each pass the check can overshoot the limit by at most a few clips; the check is per request, not transactional.
-- Size is client-declared. A modified client could lie; Bunny's `storage_size` still lands on the row later and can be reconciled against `file_size` if that becomes a problem.
+- The check and insert run under a per-owner Postgres advisory lock (`pg_advisory_xact_lock`), so concurrent uploads cannot pass the check on the same stale usage figure. The lock is held across the Bunny create calls, which bounds one owner's clip creations to run serially.
+- Size is client-declared at creation, but usage counts the larger of `file_size` and Bunny's reported `storage_size`, so an under-declared size stops mattering once encoding finishes.
+- A clip whose upload is abandoned still holds its reserved storage. The uploader deletes prepared clips on cancel, error, and retry, and the status refresh service purges never-uploaded clips older than 24 hours.
+- Editors can delete their own clips; without that, a default-tier user who hit the limit could never free space.

@@ -1,19 +1,39 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   IconChevronLeft,
   IconCopy,
   IconDownload,
   IconFolderPlus,
   IconShare3,
+  IconTrash,
   IconX,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Clip } from "@/api-client";
-import { useShareClip } from "@/hooks/queries";
+import { useDeleteClip, useShareClip } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 
 export function PlayerActions({ clip }: { clip: Clip }) {
   const [shareOpen, setShareOpen] = useState(false);
+  const navigate = useNavigate();
+  const deleteClip = useDeleteClip();
+
+  function handleDelete() {
+    if (deleteClip.isPending) return;
+    const confirmed = window.confirm(
+      `Delete "${clip.video.title}"? This removes the video and frees its storage.`,
+    );
+    if (!confirmed) return;
+
+    deleteClip.mutate(clip.clipId, {
+      onSuccess: () => {
+        void navigate({
+          to: "/games/$slug",
+          params: { slug: clip.categorySlug },
+        });
+      },
+    });
+  }
 
   return (
     <>
@@ -34,7 +54,23 @@ export function PlayerActions({ clip }: { clip: Clip }) {
           <IconDownload size={13} />
           Download
         </button>
+        <button
+          className="rs-small-button rs-small-button-danger"
+          type="button"
+          onClick={handleDelete}
+          disabled={deleteClip.isPending}
+        >
+          <IconTrash size={13} />
+          {deleteClip.isPending ? "Deleting…" : "Delete"}
+        </button>
       </div>
+      {deleteClip.isError ? (
+        <div className="rs-upload-error" role="alert">
+          {deleteClip.error instanceof Error
+            ? deleteClip.error.message
+            : "The clip could not be deleted."}
+        </div>
+      ) : null}
       {shareOpen ? (
         <ShareClipDialog clip={clip} onClose={() => setShareOpen(false)} />
       ) : null}

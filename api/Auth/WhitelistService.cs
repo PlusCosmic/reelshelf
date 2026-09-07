@@ -88,10 +88,12 @@ public class WhitelistService
             var legacyConfig = JsonSerializer.Deserialize<LegacyWhitelistConfig>(json, options);
             if (legacyConfig?.WhitelistedDiscordUserIds is { Count: > 0 })
             {
+                // Legacy entries grant the unlimited tier only; they must not pin a role,
+                // or the role sync would demote these users back to Viewer (who cannot upload).
                 var entries = legacyConfig.WhitelistedDiscordUserIds
                     .ToDictionary(
                         id => id,
-                        id => new WhitelistEntry { DiscordId = id, Role = nameof(UserRole.Viewer) });
+                        id => new WhitelistEntry { DiscordId = id });
                 _logger.LogInformation("Loaded {Count} whitelisted users (legacy format)", entries.Count);
                 return entries;
             }

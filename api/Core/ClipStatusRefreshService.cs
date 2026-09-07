@@ -18,8 +18,16 @@ public class ClipStatusRefreshService(
         }
     }
 
+    /// <summary>
+    /// A clip created this long ago whose video was never uploaded is treated as abandoned and removed,
+    /// releasing the storage it reserved for its owner.
+    /// </summary>
+    private static readonly TimeSpan AbandonedUploadAge = TimeSpan.FromHours(24);
+
     private async Task RefreshClipStatusesAsync()
     {
+        await PurgeAbandonedUploadsAsync();
+
         logger.LogInformation("Refreshing clip statuses");
 
         try
@@ -79,5 +87,55 @@ public class ClipStatusRefreshService(
         {
             logger.LogError(e, "Failed to refresh clip statuses");
         }
+    }
+
+    private async Task PurgeAbandonedUploadsAsync()
+    {
+        try
+        {
+            using IServiceScope scope = scopeFactory.CreateScope();
+            ClipsStatements clipsStatements = scope.ServiceProvider.GetRequiredService<ClipsStatements>();
+            BunnyService bunnyService = scope.ServiceProvider.GetRequiredService<BunnyService>();
+
+            List<ClipsStatements.ClipRow> candidates =
+                await clipsStatements.GetAbandonedClips(DateTimeOffset.UtcNow - AbandonedUploadAge);
+
+            foreach (ClipsStatements.ClipRow clip in candidates)
+            {
+                try
+                {
+                    // Re-check with Bunny so a clip whose webhook was missed is refreshed rather than deleted.
+                    BunnyVideo? video = await bunnyService.GetVideoByIdAsync(clip.VideoId);
+                    if (video is not null && (video.StorageSize > 0 || IsUploaded(video.Status)))
+                    {
+                        continue;
+                    }
+
+                    if (video is not null)
+                    {
+                        await bunnyService.DeleteVideoAsync(clip.VideoId);
+                    }
+
+                    await clipsStatements.DeleteClip(clip.Id);
+                    logger.LogInformation("Removed abandoned upload {ClipId} (video {VideoId}) for owner {OwnerId}",
+                        clip.Id, clip.VideoId, clip.OwnerId);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to purge abandoned upload {ClipId}", clip.Id);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Failed to purge abandoned uploads");
+        }
+    }
+
+    private static bool IsUploaded(int status)
+    {
+        return status is not ((int)BunnyVideoStatus.Queued
+            or (int)BunnyVideoStatus.PresignedUploadStarted
+            or (int)BunnyVideoStatus.PresignedUploadFailed);
     }
 }

@@ -77,6 +77,10 @@ public class ClipService(
             }
         }
 
+        // Hold a per-owner lock from the storage check through the insert so concurrent uploads
+        // cannot all pass the check on the same stale usage figure.
+        await using NpgsqlTransaction reservation = await clipsStatements.BeginOwnerStorageLock(userId);
+
         // Enforce the owner's storage tier before anything is created at Bunny.
         await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
 
@@ -105,6 +109,8 @@ public class ClipService(
             video.Status,
             video.EncodeProgress,
             fileSize);
+
+        await reservation.CommitAsync();
 
         long expiration = DateTimeOffset.Now.AddHours(1).ToUnixTimeSeconds();
         string libraryId = configuration["BunnyLibraryId"]

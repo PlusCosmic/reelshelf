@@ -44,6 +44,11 @@ export async function addTagToVideo(
   await api.addTagToClip({ clipId: clipId, addTagRequest: { tag: tag } });
 }
 
+export async function deleteClip(clipId: string): Promise<void> {
+  const api = createClipsApi();
+  await api.deleteClip({ clipId });
+}
+
 export async function markClipAsViewed(clipId: string): Promise<void> {
   const api = createClipsApi();
   await api.markVideoAsViewed({ clipId: clipId });

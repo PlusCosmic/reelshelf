@@ -16,7 +16,7 @@ import {
 import { useCategories } from "@/hooks/queries";
 import { storageUsageQueryKey } from "@/hooks/auth.queries";
 import { ApiError } from "@/shared/services/api-error";
-import { addTagToVideo } from "@/shared/services/clips";
+import { addTagToVideo, deleteClip } from "@/shared/services/clips";
 import {
   addClipsToPlaylist,
   ensureGamingSessionPlaylist,
@@ -51,6 +51,9 @@ export function useBulkUploadController({
   const requestedUploadIdsRef = useRef<Set<string>>(new Set());
   const uploadRefs = useRef<Map<string, tus.Upload>>(new Map());
   const duplicateKeysRef = useRef<Map<string, string>>(new Map());
+  // Clip rows created at the API for uploads that have not finished. They hold storage
+  // until the upload succeeds, so abandoning the upload must delete them.
+  const preparedClipIdsRef = useRef<Map<string, string>>(new Map());
   const filingSessionKeysRef = useRef<Set<string>>(new Set());
   const [rows, setRows] = useState<BulkUploadRow[]>([]);
   const [rejected, setRejected] = useState<BulkUploadRejectedFile[]>([]);
@@ -208,6 +211,7 @@ export function useBulkUploadController({
             title: row.title.trim(),
           });
           // The clip counts toward storage as soon as it is created, not when the upload finishes.
+          preparedClipIdsRef.current.set(row.id, response.clipId);
           void queryClient.invalidateQueries({
             queryKey: storageUsageQueryKey,
           });
@@ -233,6 +237,7 @@ export function useBulkUploadController({
             onSuccess: () => {
               activeUploadIdsRef.current.delete(row.id);
               requestedUploadIdsRef.current.delete(row.id);
+              preparedClipIdsRef.current.delete(row.id);
               setRows((current) =>
                 current.map((item) =>
                   item.id === row.id
@@ -252,6 +257,7 @@ export function useBulkUploadController({
             onError: (uploadError) => {
               activeUploadIdsRef.current.delete(row.id);
               requestedUploadIdsRef.current.delete(row.id);
+              releasePreparedClip(row.id);
               setRows((current) =>
                 current.map((item) =>
                   item.id === row.id
@@ -281,6 +287,7 @@ export function useBulkUploadController({
         } catch (error) {
           activeUploadIdsRef.current.delete(row.id);
           requestedUploadIdsRef.current.delete(row.id);
+          releasePreparedClip(row.id);
           setRows((current) =>
             current.map((item) =>
               item.id === row.id
@@ -510,6 +517,7 @@ export function useBulkUploadController({
     uploadRefs.current.delete(row.id);
     activeUploadIdsRef.current.delete(row.id);
     requestedUploadIdsRef.current.delete(row.id);
+    releasePreparedClip(row.id);
     if (row.categoryId && row.md5Hash) {
       duplicateKeysRef.current.delete(`${row.categoryId}:${row.md5Hash}`);
     }
@@ -541,6 +549,7 @@ export function useBulkUploadController({
 
     uploadRefs.current.delete(row.id);
     activeUploadIdsRef.current.delete(row.id);
+    releasePreparedClip(row.id);
     if (row.categoryId && row.md5Hash) {
       duplicateKeysRef.current.delete(`${row.categoryId}:${row.md5Hash}`);
     }
@@ -563,6 +572,18 @@ export function useBulkUploadController({
           : item,
       ),
     );
+  }
+
+  function releasePreparedClip(rowId: string) {
+    const clipId = preparedClipIdsRef.current.get(rowId);
+    if (!clipId) return;
+    preparedClipIdsRef.current.delete(rowId);
+    // Best effort: the server also purges never-uploaded clips after a day.
+    void deleteClip(clipId)
+      .catch(() => undefined)
+      .finally(() => {
+        void queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
+      });
   }
 
   function toggleSession(sessionKey: string) {
