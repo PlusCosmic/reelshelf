@@ -8,7 +8,7 @@ public class DiscordStatements(NpgsqlConnection connection)
     public async Task<DiscordUserRow?> GetUserByDiscordId(string discordId)
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
+            SELECT id, discord_id, username, global_name, avatar, role, role_from_whitelist
             FROM discord_user
             WHERE discord_id = @discordId
             LIMIT 1";
@@ -19,7 +19,7 @@ public class DiscordStatements(NpgsqlConnection connection)
     public async Task<DiscordUserRow?> GetUserById(Guid id)
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
+            SELECT id, discord_id, username, global_name, avatar, role, role_from_whitelist
             FROM discord_user
             WHERE id = @id
             LIMIT 1";
@@ -30,7 +30,7 @@ public class DiscordStatements(NpgsqlConnection connection)
     public async Task<DiscordUserRow?> GetUserByUsername(string username)
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
+            SELECT id, discord_id, username, global_name, avatar, role, role_from_whitelist
             FROM discord_user
             WHERE username = @username
             LIMIT 1";
@@ -43,7 +43,7 @@ public class DiscordStatements(NpgsqlConnection connection)
         const string sql = @"
             INSERT INTO discord_user (discord_id, username, global_name, avatar)
             VALUES (@discordId, @username, @globalName, @avatar)
-            RETURNING id, discord_id, username, global_name, avatar, role";
+            RETURNING id, discord_id, username, global_name, avatar, role, role_from_whitelist";
 
         return await connection.QuerySingleAsync<DiscordUserRow>(sql, new { discordId, username, globalName, avatar });
     }
@@ -68,7 +68,7 @@ public class DiscordStatements(NpgsqlConnection connection)
                 username = EXCLUDED.username,
                 global_name = EXCLUDED.global_name,
                 avatar = EXCLUDED.avatar
-            RETURNING id, discord_id, username, global_name, avatar, role";
+            RETURNING id, discord_id, username, global_name, avatar, role, role_from_whitelist";
 
         return await connection.QuerySingleAsync<DiscordUserRow>(sql, new { discordId, username, globalName, avatar });
     }
@@ -107,7 +107,7 @@ public class DiscordStatements(NpgsqlConnection connection)
     public async Task<List<DiscordUserRow>> GetAllUsers()
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
+            SELECT id, discord_id, username, global_name, avatar, role, role_from_whitelist
             FROM discord_user
             ORDER BY role DESC, global_name, username";
 
@@ -126,14 +126,15 @@ public class DiscordStatements(NpgsqlConnection connection)
         return permissions.ToList();
     }
 
-    public async Task UpdateUserRole(Guid userId, string role)
+    public async Task UpdateUserRole(Guid userId, string role, bool roleFromWhitelist)
     {
         const string sql = @"
             UPDATE discord_user
-            SET role = @role
+            SET role = @role,
+                role_from_whitelist = @roleFromWhitelist
             WHERE id = @userId";
 
-        await connection.ExecuteAsync(sql, new { userId, role });
+        await connection.ExecuteAsync(sql, new { userId, role, roleFromWhitelist });
     }
 
     public async Task GrantPermission(Guid userId, string permission, Guid? grantedBy = null)
@@ -162,6 +163,7 @@ public class DiscordStatements(NpgsqlConnection connection)
         public string Username { get; set; } = string.Empty;
         public string? GlobalName { get; set; }
         public string? Avatar { get; set; }
-        public string Role { get; set; } = "Viewer";
+        public string Role { get; set; } = "Editor";
+        public bool RoleFromWhitelist { get; set; }
     }
 }

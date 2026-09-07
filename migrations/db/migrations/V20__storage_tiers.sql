@@ -14,3 +14,9 @@ CREATE INDEX IF NOT EXISTS idx_clip_owner_id ON clip(owner_id);
 -- new accounts default to Editor and existing Viewer accounts are promoted.
 ALTER TABLE discord_user ALTER COLUMN role SET DEFAULT 'Editor';
 UPDATE discord_user SET role = 'Editor' WHERE role = 'Viewer';
+
+-- Whether the stored role was pinned by a whitelist.json entry. When that entry disappears the role is
+-- reset to the default, so removing an override actually revokes it. Only the whitelist has ever set
+-- Admin, so existing Admin rows are marked as whitelist-driven.
+ALTER TABLE discord_user ADD COLUMN IF NOT EXISTS role_from_whitelist boolean NOT NULL DEFAULT false;
+UPDATE discord_user SET role_from_whitelist = true WHERE role = 'Admin';

@@ -1,6 +1,7 @@
 using Reelshelf.Core;
 using Reelshelf.Core.Models;
 using Reelshelf.Discord;
+using Reelshelf.Exceptions;
 using Reelshelf.Playlists.Models;
 
 namespace Reelshelf.Playlists;
@@ -23,6 +24,17 @@ public class GamingSessionPlaylistService(
     {
         DiscordStatements.DiscordUserRow currentUser = await playlistAccess.GetUser(discordUserId);
         List<Guid> participants = IncludeCurrentUser(participantIds, currentUser.Id);
+
+        // A session pulls each participant's recent clips into a shared playlist, so participants are
+        // limited to people who already share a playlist with the caller (add them by username first).
+        HashSet<Guid> allowedParticipants = (await discordStatements.GetPlaylistPeers(currentUser.Id))
+            .Select(peer => peer.Id)
+            .ToHashSet();
+        allowedParticipants.Add(currentUser.Id);
+        if (participants.Any(participantId => !allowedParticipants.Contains(participantId)))
+        {
+            throw new BadRequestException("Participants must already share a collection with you");
+        }
 
         string playlistName = $"{categoryName} Session - {DateTimeOffset.UtcNow:MMMM dd}";
         Playlist playlist = await playlistService.CreatePlaylist(playlistName, string.Empty, discordUserId);

@@ -183,8 +183,10 @@ public class PlaylistService(
             return null;
         }
 
+        // Adding a clip to a playlist grants every member access to it, so the actor must already be
+        // allowed to view the clip. Answer "not found" either way to avoid confirming a foreign clip id.
         ClipsStatements.ClipRow? clip = await clipsStatements.GetClipById(clipId);
-        if (clip == null)
+        if (clip == null || !await CanActorUseClip(actor, clip))
         {
             throw new BadRequestException("Clip not found");
         }
@@ -219,7 +221,7 @@ public class PlaylistService(
         foreach (Guid clipId in clipIds)
         {
             ClipsStatements.ClipRow? clip = await clipsStatements.GetClipById(clipId);
-            if (clip == null)
+            if (clip == null || !await CanActorUseClip(actor, clip))
             {
                 throw new BadRequestException($"Clip {clipId} not found");
             }
@@ -235,6 +237,11 @@ public class PlaylistService(
         await playlistStatements.TouchPlaylistUpdatedAt(playlistId);
 
         return await GetPlaylistById(playlistId, discordUserId);
+    }
+
+    private async Task<bool> CanActorUseClip(PlaylistActor actor, ClipsStatements.ClipRow clip)
+    {
+        return clip.OwnerId == actor.UserId || await clipsStatements.UserCanAccessClip(clip.Id, actor.UserId);
     }
 
     public async Task<bool> RemoveClipFromPlaylist(Guid playlistId, Guid clipId, string discordUserId)

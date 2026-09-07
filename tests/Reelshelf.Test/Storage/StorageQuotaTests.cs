@@ -20,7 +20,8 @@ public class StorageQuotaTests
 
         Assert.True(quota.IsUnlimited);
         Assert.Null(quota.RemainingBytes);
-        Assert.True(quota.CanStore(long.MaxValue / 2));
+        Assert.True(quota.CanStore(500 * OneGib));
+        Assert.True(quota.CanStore(StorageQuota.MaxDeclaredFileSizeBytes));
     }
 
     [Theory]
