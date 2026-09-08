@@ -54,6 +54,8 @@ export function useBulkUploadController({
   // Clip rows created at the API for uploads that have not finished. They hold storage
   // until the upload succeeds, so abandoning the upload must delete them.
   const preparedClipIdsRef = useRef<Map<string, string>>(new Map());
+  // In-flight cleanup per row, so an error-path release and a Retry share one delete call.
+  const releaseInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map());
   // Rows whose previous prepared clip (and its Bunny video) was deleted. Their next attempt must not
   // resume the stale TUS upload URL tus-js-client remembered for the file.
   const freshUploadRowIdsRef = useRef<Set<string>>(new Set());
@@ -606,25 +608,34 @@ export function useBulkUploadController({
    * Resolves false (and keeps the id for a later attempt) if the delete fails;
    * the server also purges never-uploaded clips after a day.
    */
-  async function releasePreparedClip(rowId: string): Promise<boolean> {
+  function releasePreparedClip(rowId: string): Promise<boolean> {
+    // Retry can be clicked while the error path's release is still running; reuse that call rather than
+    // issuing a second delete that would race it and misreport the reservation as still held.
+    const inFlight = releaseInFlightRef.current.get(rowId);
+    if (inFlight) return inFlight;
     const clipId = preparedClipIdsRef.current.get(rowId);
-    if (!clipId) return true;
-    try {
-      await deleteClip(clipId);
-      preparedClipIdsRef.current.delete(rowId);
-      freshUploadRowIdsRef.current.add(rowId);
-      return true;
-    } catch (error) {
-      // A 404 means it is already gone (purged, or deleted elsewhere).
-      if (error instanceof ApiError && error.status === 404) {
+    if (!clipId) return Promise.resolve(true);
+    const release = (async () => {
+      try {
+        await deleteClip(clipId);
         preparedClipIdsRef.current.delete(rowId);
         freshUploadRowIdsRef.current.add(rowId);
         return true;
+      } catch (error) {
+        // A 404 means it is already gone (purged, or deleted elsewhere).
+        if (error instanceof ApiError && error.status === 404) {
+          preparedClipIdsRef.current.delete(rowId);
+          freshUploadRowIdsRef.current.add(rowId);
+          return true;
+        }
+        return false;
+      } finally {
+        releaseInFlightRef.current.delete(rowId);
+        void queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
       }
-      return false;
-    } finally {
-      void queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
-    }
+    })();
+    releaseInFlightRef.current.set(rowId, release);
+    return release;
   }
 
   function toggleSession(sessionKey: string) {

@@ -1,14 +1,27 @@
 using IGDB;
 using IGDB.Models;
+using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
 
 namespace Reelshelf.Games;
 
+/// <summary>
+/// Wraps the shared IGDB credentials. Registered as a singleton so the client's access token is reused
+/// across requests, repeated lookups are served from memory, and the number of in-flight upstream calls
+/// is capped process-wide. IGDB enforces a small per-application rate limit, so without this one account
+/// could exhaust it for everyone now that sign-up is open.
+/// </summary>
 public class IgdbService
 {
-    private readonly IGDBClient _client;
+    private const int DefaultMaxConcurrentUpstreamCalls = 4;
+    private static readonly TimeSpan SearchCacheDuration = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan GameCacheDuration = TimeSpan.FromHours(6);
 
-    public IgdbService(IConfiguration configuration)
+    private readonly IGDBClient _client;
+    private readonly IMemoryCache _cache;
+    private readonly SemaphoreSlim _upstreamCalls;
+
+    public IgdbService(IConfiguration configuration, IMemoryCache cache)
     {
         var clientId = configuration["IgdbClientId"]
             ?? throw new InvalidOperationException("IgdbClientId not configured");
@@ -16,16 +29,26 @@ public class IgdbService
             ?? throw new InvalidOperationException("IgdbClientSecret not configured");
 
         _client = new IGDBClient(clientId, clientSecret);
+        _cache = cache;
+
+        int maxConcurrent = configuration.GetValue<int?>("Igdb:MaxConcurrentUpstreamCalls") ?? DefaultMaxConcurrentUpstreamCalls;
+        _upstreamCalls = new SemaphoreSlim(Math.Max(1, maxConcurrent), Math.Max(1, maxConcurrent));
     }
 
     public async Task<List<GameSearchResult>> SearchGamesAsync(string query, int limit = 10)
     {
-        var games = await _client.QueryAsync<Game>(
+        string cacheKey = $"igdb:search:{limit}:{query.Trim().ToLowerInvariant()}";
+        if (_cache.TryGetValue(cacheKey, out List<GameSearchResult>? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var games = await QueryUpstreamAsync<Game>(
             IGDBClient.Endpoints.Games,
             $"search \"{EscapeQuery(query)}\"; fields name,slug,cover.url; limit {limit};"
         );
 
-        return games.Select(g => new GameSearchResult(
+        List<GameSearchResult> results = games.Select(g => new GameSearchResult(
             g.Id ?? 0,
             g.Name ?? "",
             g.Slug ?? "",
@@ -33,11 +56,47 @@ public class IgdbService
                 ? ConvertToHighResCover(g.Cover.Value.Url)
                 : null
         )).ToList();
+
+        _cache.Set(cacheKey, results, SearchCacheDuration);
+        return results;
     }
 
     public async Task<GameDetails?> GetGameByIdAsync(long igdbId)
     {
-        var games = await _client.QueryAsync<IgdbGameDetails>(
+        string cacheKey = $"igdb:game:{igdbId}";
+        if (_cache.TryGetValue(cacheKey, out GameDetails? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        GameDetails? details = await FetchGameByIdAsync(igdbId);
+        if (details is not null)
+        {
+            _cache.Set(cacheKey, details, GameCacheDuration);
+        }
+
+        return details;
+    }
+
+    /// <summary>
+    /// Every call to IGDB goes through here so the process-wide concurrency cap applies uniformly.
+    /// </summary>
+    private async Task<T[]> QueryUpstreamAsync<T>(string endpoint, string query)
+    {
+        await _upstreamCalls.WaitAsync();
+        try
+        {
+            return await _client.QueryAsync<T>(endpoint, query);
+        }
+        finally
+        {
+            _upstreamCalls.Release();
+        }
+    }
+
+    private async Task<GameDetails?> FetchGameByIdAsync(long igdbId)
+    {
+        var games = await QueryUpstreamAsync<IgdbGameDetails>(
             IGDBClient.Endpoints.Games,
             $"""
             where id = {igdbId};
@@ -68,7 +127,7 @@ public class IgdbService
 
     private async Task<List<IgdbArtwork>> GetArtworksForGameAsync(long igdbId)
     {
-        var artworks = (await _client.QueryAsync<IgdbArtwork>(
+        var artworks = (await QueryUpstreamAsync<IgdbArtwork>(
             "artworks",
             $"""
             where game = {igdbId};
@@ -85,7 +144,7 @@ public class IgdbService
 
         if (artworkTypeIds.Count == 0) return artworks;
 
-        var artworkTypes = (await _client.QueryAsync<IgdbNamedEntity>(
+        var artworkTypes = (await QueryUpstreamAsync<IgdbNamedEntity>(
             "artwork_types",
             $"""
             where id = ({string.Join(",", artworkTypeIds)});
@@ -107,7 +166,7 @@ public class IgdbService
 
     private async Task<List<IgdbImage>> GetScreenshotsForGameAsync(long igdbId)
     {
-        return (await _client.QueryAsync<IgdbImage>(
+        return (await QueryUpstreamAsync<IgdbImage>(
             "screenshots",
             $"""
             where game = {igdbId};

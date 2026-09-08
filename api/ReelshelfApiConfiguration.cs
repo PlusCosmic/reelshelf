@@ -54,6 +54,8 @@ internal static class ReelshelfApiConfiguration
         app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
+        // After authentication so per-user rate-limit partitions can key on the signed-in identity.
+        app.UseRateLimiter();
         app.UseAuthenticatedUserResolution();
     }
 
@@ -274,6 +276,7 @@ internal static class ReelshelfApiConfiguration
             });
 
         builder.Services.AddAuthorization();
+        builder.AddReelshelfRateLimiting();
     }
 
     private static void AddApplicationModules(this WebApplicationBuilder builder)
@@ -300,7 +303,8 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<BunnyService>();
         builder.Services.AddScoped<FFmpegService>();
 
-        builder.Services.AddScoped<IgdbService>();
+        builder.Services.AddMemoryCache();
+        builder.Services.AddSingleton<IgdbService>();
         builder.Services.AddScoped<GameCategoryService>();
 
         builder.Services.AddScoped<ApexStatements>();
