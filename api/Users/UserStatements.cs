@@ -3,7 +3,7 @@ using Npgsql;
 
 namespace Reelshelf.Users;
 
-public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore
+public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, Storage.IStorageWarningStore
 {
     private const string UserColumns = "id, username, global_name, avatar_url, email, onboarding_completed_at, role, role_from_whitelist";
 
@@ -143,6 +143,25 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore
             WHERE id = @userId";
 
         await connection.ExecuteAsync(sql, new { userId, username, globalName, avatarUrl });
+    }
+
+    public async Task<Storage.StorageWarningState> GetState(Guid userId)
+    {
+        const string sql = "SELECT email, storage_warned_at AS warned_at FROM app_user WHERE id = @userId";
+        return await connection.QuerySingleOrDefaultAsync<Storage.StorageWarningState>(sql, new { userId })
+               ?? new Storage.StorageWarningState(null, null);
+    }
+
+    public async Task MarkWarned(Guid userId)
+    {
+        const string sql = "UPDATE app_user SET storage_warned_at = now() WHERE id = @userId AND storage_warned_at IS NULL";
+        await connection.ExecuteAsync(sql, new { userId });
+    }
+
+    public async Task ClearWarned(Guid userId)
+    {
+        const string sql = "UPDATE app_user SET storage_warned_at = NULL WHERE id = @userId";
+        await connection.ExecuteAsync(sql, new { userId });
     }
 
     /// <summary>Records the address the user chose for account mail (null when they skipped) and marks onboarding done.</summary>

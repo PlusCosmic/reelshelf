@@ -13,6 +13,7 @@ using Reelshelf.Auth;
 using Reelshelf.Bunny;
 using Reelshelf.Core;
 using Reelshelf.Discord;
+using Reelshelf.Email;
 using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.FFmpeg;
@@ -208,6 +209,20 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<UserStatements>();
         builder.Services.AddScoped<IUserIdentityStore>(sp => sp.GetRequiredService<UserStatements>());
         builder.Services.AddScoped<AccountLinkingService>();
+        builder.Services.AddScoped<IStorageWarningStore>(sp => sp.GetRequiredService<UserStatements>());
+        builder.Services.AddScoped<StorageWarningService>();
+
+        string? resendApiKey = builder.Configuration["Resend:ApiKey"] ?? builder.Configuration["ResendApiKey"];
+        if (!string.IsNullOrWhiteSpace(resendApiKey))
+        {
+            builder.Services.AddHttpClient(ResendEmailSender.HttpClientName,
+                client => ResendEmailSender.Configure(client, resendApiKey));
+            builder.Services.AddSingleton<IEmailSender, ResendEmailSender>();
+        }
+        else
+        {
+            builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        }
         builder.Services.AddScoped<GameCategoryStatements>();
 
         builder.Services.AddScoped<ClipsStatements>();

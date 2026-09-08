@@ -42,6 +42,7 @@
 - Auth endpoints are intentionally at root `/auth` for OAuth callback compatibility; other API endpoints are grouped under `/api`.
 - `api/whitelist.json` does not gate access. Any Discord or Twitch account can sign in; entries match a linked identity by `DiscordId` or `TwitchId`, and listed users get unlimited clip storage and may pin a role. Everyone else gets the default tier from `Storage:DefaultLimitBytes` (25 GiB). See `docs/adr/0002-open-signup-with-storage-tiers.md`.
 - Sign-in providers are Discord and Twitch (`DiscordClientId`/`DiscordClientSecret`, `TwitchClientId`/`TwitchClientSecret`). Accounts live in `app_user`; each provider login is a `user_identity` row, and one account may link both. See `docs/adr/0003-linked-identities.md`.
+- Account mail (linked sign-in notices, storage nearly full) goes through Resend via `ResendApiKey` and `Email__From`; with no key the API logs what it would have sent. See `api/Email/`.
 - Every endpoint must carry its own `RequireAuthorization()`; there is no global auth middleware after the whitelist gate was removed.
 - OpenAPI is only mapped in Development, `OpenApi`, or when `OpenApi:Public` is true; background services are disabled in `OpenApi` environment.
 - Production image builds the frontend first, publishes the API, installs `ffmpeg`, and serves `frontend/dist` from API `wwwroot`.

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.WebUtilities;
+using Reelshelf.Email;
 using Reelshelf.Users;
 
 namespace Reelshelf.Auth;
@@ -89,7 +90,9 @@ public static class AuthEndpoints
     public static async Task<Results<RedirectHttpResult, UnauthorizedHttpResult>> PostLoginRedirect(
         HttpContext ctx,
         string? returnUrl,
-        AccountLinkingService accountLinking)
+        AccountLinkingService accountLinking,
+        UserStatements userStatements,
+        IEmailSender emailSender)
     {
         AuthenticateResult external = await ctx.AuthenticateAsync(AuthenticationSetup.ExternalScheme);
         if (!external.Succeeded || external.Principal is null || external.Properties is null)
@@ -112,7 +115,7 @@ public static class AuthEndpoints
         string? linkUserId = properties.GetString(AuthenticationSetup.LinkUserItem);
         if (linkUserId is not null)
         {
-            return await CompleteLink(ctx, linkUserId, identity, returnUrl, accountLinking);
+            return await CompleteLink(ctx, linkUserId, identity, returnUrl, accountLinking, userStatements, emailSender);
         }
 
         SignInOutcome outcome = await accountLinking.SignIn(identity);
@@ -126,7 +129,9 @@ public static class AuthEndpoints
         string linkUserId,
         ExternalIdentity identity,
         string? returnUrl,
-        AccountLinkingService accountLinking)
+        AccountLinkingService accountLinking,
+        UserStatements userStatements,
+        IEmailSender emailSender)
     {
         string destination = ResolveReturnUrl(returnUrl) ?? _frontendOrigin.TrimEnd('/') + SettingsPath;
 
@@ -138,6 +143,11 @@ public static class AuthEndpoints
         }
 
         LinkOutcome outcome = await accountLinking.Link(startedBy, identity);
+        if (outcome == LinkOutcome.Linked)
+        {
+            await NotifyIdentityLinked(startedBy, identity, userStatements, emailSender);
+        }
+
         string redirect = outcome switch
         {
             LinkOutcome.Linked or LinkOutcome.AlreadyLinked => WithQuery(destination, "linked", identity.Provider),
@@ -146,6 +156,24 @@ public static class AuthEndpoints
         };
 
         return TypedResults.Redirect(redirect);
+    }
+
+    /// <summary>Tells the account owner a new sign-in method was attached, so a hijacked link can be undone.</summary>
+    private static async Task NotifyIdentityLinked(
+        Guid userId,
+        ExternalIdentity identity,
+        UserStatements userStatements,
+        IEmailSender emailSender)
+    {
+        UserStatements.UserRow? user = await userStatements.GetUserById(userId);
+        if (string.IsNullOrEmpty(user?.Email))
+        {
+            return;
+        }
+
+        string providerLabel = identity.Provider == AuthProvider.Twitch ? "Twitch" : "Discord";
+        string settingsUrl = _frontendOrigin.TrimEnd('/') + SettingsPath;
+        await emailSender.SendAsync(AccountEmails.IdentityLinked(user.Email, providerLabel, identity.Username, settingsUrl));
     }
 
     public static async Task Logout(HttpContext ctx)

@@ -18,6 +18,7 @@ public class ClipService(
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection,
     StorageQuotaService storageQuotaService,
+    StorageWarningService storageWarningService,
     IConfiguration configuration,
     ILogger<ClipService> logger)
 {
@@ -133,6 +134,9 @@ public class ClipService(
             await DiscardUnattachedVideoAsync(reserved.Id, video.Guid);
             throw;
         }
+
+        // The clip now counts toward usage; warn the owner once if this pushed them near their limit.
+        await storageWarningService.Evaluate(userId, await storageQuotaService.GetQuota(userId));
 
         long expiration = DateTimeOffset.Now.AddHours(1).ToUnixTimeSeconds();
         string libraryId = configuration["BunnyLibraryId"]
