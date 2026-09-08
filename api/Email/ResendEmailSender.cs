@@ -14,7 +14,7 @@ public sealed class ResendEmailSender(
 {
     public const string HttpClientName = "resend";
 
-    private readonly string _from = configuration["Email:From"] ?? "Reelshelf <no-reply@clips.pluscosmic.dev>";
+    private readonly string _from = configuration["Email:From"] ?? "Reelshelf <no-reply@reelshelf.app>";
 
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {

@@ -19,16 +19,29 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
             return new SignInOutcome(created, Created: true);
         }
 
-        await store.UpdateIdentityProfile(existing.Id, identity);
+        // Same lock as link/unlink, so an unlink racing this sign-in cannot have its promoted successor
+        // overwritten by the profile of the identity it just removed.
+        await using IAccountScope scope = await store.LockAccount(existing.UserId);
 
         List<UserStatements.UserIdentityRow> identities = await store.GetIdentitiesForUser(existing.UserId);
-        if (identities.Count == 0 || identities[0].Id == existing.Id)
+        UserStatements.UserIdentityRow? current = identities.FirstOrDefault(i => i.Id == existing.Id);
+        if (current is null)
+        {
+            // Unlinked between the lookup and the lock: treat it as a first sign-in for this identity.
+            UserStatements.UserRow created = await store.CreateUserWithIdentity(identity);
+            await scope.CommitAsync();
+            return new SignInOutcome(created, Created: true);
+        }
+
+        await store.UpdateIdentityProfile(current.Id, identity);
+        if (identities[0].Id == current.Id)
         {
             await store.UpdateUserProfile(existing.UserId, identity.Username, identity.DisplayName, identity.AvatarUrl);
         }
 
         UserStatements.UserRow user = await store.GetUserById(existing.UserId)
                                       ?? throw new InvalidOperationException("Identity points at a missing account");
+        await scope.CommitAsync();
         return new SignInOutcome(user, Created: false);
     }
 

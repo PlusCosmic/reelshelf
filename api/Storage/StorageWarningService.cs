@@ -30,14 +30,17 @@ public sealed class StorageWarningService(
                 return;
             }
 
-            bool overThreshold = quota.UsedBytes * 100 >= limit * (long)_warnAtPercent;
+            long thresholdBytes = (long)Math.Ceiling(limit * (_warnAtPercent / 100.0));
+            bool overThreshold = quota.UsedBytes >= thresholdBytes;
             StorageWarningState state = await store.GetState(userId);
 
+            // The store re-checks live usage inside the same statement that flips the marker, so a stale
+            // snapshot from a request that raced a concurrent upload or deletion cannot set or clear it wrongly.
             if (!overThreshold)
             {
                 if (state.WarnedAt is not null)
                 {
-                    await store.ClearWarned(userId);
+                    await store.ClearWarned(userId, thresholdBytes);
                 }
 
                 return;
@@ -48,9 +51,9 @@ public sealed class StorageWarningService(
                 return;
             }
 
-            // Claim the marker first; only the request that wins the claim sends, so concurrent uploads
-            // crossing the threshold together produce one notice.
-            if (!await store.MarkWarned(userId))
+            // Only the request that wins the claim sends, so concurrent uploads crossing the threshold
+            // together produce one notice.
+            if (!await store.MarkWarned(userId, thresholdBytes))
             {
                 return;
             }
@@ -72,7 +75,12 @@ public sealed record StorageWarningState(string? Email, DateTimeOffset? WarnedAt
 public interface IStorageWarningStore
 {
     Task<StorageWarningState> GetState(Guid userId);
-    /// <summary>Sets the marker if it is not already set; false when another request got there first.</summary>
-    Task<bool> MarkWarned(Guid userId);
-    Task ClearWarned(Guid userId);
+    /// <summary>
+    /// Sets the marker if it is unset and the account's live usage is at least <paramref name="thresholdBytes"/>;
+    /// false when another request got there first or usage has since dropped.
+    /// </summary>
+    Task<bool> MarkWarned(Guid userId, long thresholdBytes);
+
+    /// <summary>Clears the marker only if live usage is below <paramref name="thresholdBytes"/>.</summary>
+    Task ClearWarned(Guid userId, long thresholdBytes);
 }

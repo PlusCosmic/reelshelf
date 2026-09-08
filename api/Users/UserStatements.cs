@@ -196,16 +196,30 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, S
                ?? new Storage.StorageWarningState(null, null);
     }
 
-    public async Task<bool> MarkWarned(Guid userId)
+    // Same usage expression as ClipsStatements.GetStorageUsedBytesByOwner, evaluated in the update itself.
+    private const string LiveUsageSql =
+        "(SELECT COALESCE(SUM(GREATEST(COALESCE(file_size, 0), COALESCE(storage_size, 0))), 0) FROM clip WHERE owner_id = @userId)";
+
+    public async Task<bool> MarkWarned(Guid userId, long thresholdBytes)
     {
-        const string sql = "UPDATE app_user SET storage_warned_at = now() WHERE id = @userId AND storage_warned_at IS NULL";
-        return await connection.ExecuteAsync(sql, new { userId }) == 1;
+        string sql = $@"
+            UPDATE app_user
+            SET storage_warned_at = now()
+            WHERE id = @userId
+              AND storage_warned_at IS NULL
+              AND {LiveUsageSql} >= @thresholdBytes";
+        return await connection.ExecuteAsync(sql, new { userId, thresholdBytes }) == 1;
     }
 
-    public async Task ClearWarned(Guid userId)
+    public async Task ClearWarned(Guid userId, long thresholdBytes)
     {
-        const string sql = "UPDATE app_user SET storage_warned_at = NULL WHERE id = @userId";
-        await connection.ExecuteAsync(sql, new { userId });
+        string sql = $@"
+            UPDATE app_user
+            SET storage_warned_at = NULL
+            WHERE id = @userId
+              AND storage_warned_at IS NOT NULL
+              AND {LiveUsageSql} < @thresholdBytes";
+        await connection.ExecuteAsync(sql, new { userId, thresholdBytes });
     }
 
     /// <summary>Records the address the user chose for account mail (null when they skipped) and marks onboarding done.</summary>
