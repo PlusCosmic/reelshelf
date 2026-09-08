@@ -20,7 +20,23 @@ public record Clip(
 
 public record PagedClipsResponse(List<Clip> Clips, long TotalClips, long TotalPages);
 
-public record ClipLibraryResponse(List<GameCategoryResponse> Categories, List<Clip> Clips);
+/// <summary>
+/// Whole-library totals, computed in the database over every clip the owner has. Clips themselves are
+/// paged through the clips endpoint, so nothing here is derived from a subset the client happens to hold.
+/// </summary>
+public record ClipLibraryTotals(long ClipCount, long UnviewedCount, long DurationSeconds, long StorageBytes);
+
+public record ClipCategoryTotals(
+    Guid GameCategoryId,
+    long ClipCount,
+    long UnviewedCount,
+    long DurationSeconds,
+    long StorageBytes);
+
+public record ClipLibraryResponse(
+    List<GameCategoryResponse> Categories,
+    ClipLibraryTotals Totals,
+    List<ClipCategoryTotals> CategoryTotals);
 
 public record ClipShareSummary(bool Shared);
 

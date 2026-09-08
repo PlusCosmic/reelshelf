@@ -1,13 +1,84 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Clip } from "@/api-client";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryClient,
+} from "@tanstack/react-query";
+import type { Clip, PagedClipsResponse } from "@/api-client";
 import { storageUsageQueryKey } from "@/hooks/auth.queries";
 import {
   deleteClip,
+  fetchClips,
+  fetchTopTags,
   getSharedClip,
   getVideo,
   markClipAsViewed,
   shareVideo,
 } from "@/shared/services/clips";
+
+export const CLIPS_PAGE_SIZE = 48;
+
+/**
+ * Drops every cache that describes which clips exist: the paged grids, the shelf totals and topline,
+ * and the tag chips. Call it wherever clips are added or removed — all three are computed server-side
+ * now, so none of them can be patched up client-side from the mutation's result.
+ *
+ * Only active queries refetch, so calling this once per clip during a bulk import costs nothing while
+ * the user is still on the upload page; the library refetches once, when they navigate back to it.
+ */
+export function invalidateClipCollections(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
+  void queryClient.invalidateQueries({ queryKey: ["clips", "list"] });
+  void queryClient.invalidateQueries({ queryKey: ["clips", "top-tags"] });
+}
+
+export type ClipsFilters = {
+  categoryId?: string | null;
+  tag?: string | null;
+  search?: string;
+};
+
+/**
+ * Pages the caller's clips through the API. Filters go in the query key and on to the server, so
+ * searching or filtering covers the whole archive rather than the pages already fetched.
+ */
+export function useClipsInfinite(filters: ClipsFilters = {}, enabled = true) {
+  const search = filters.search?.trim() || undefined;
+  const categoryId = filters.categoryId ?? undefined;
+  const tag = filters.tag ?? undefined;
+
+  return useInfiniteQuery({
+    queryKey: ["clips", "list", { categoryId, tag, search }],
+    queryFn: ({ pageParam }) =>
+      fetchClips({
+        page: pageParam,
+        pageSize: CLIPS_PAGE_SIZE,
+        categoryId,
+        tags: tag ? [tag] : undefined,
+        search,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) =>
+      allPages.length < lastPage.totalPages ? allPages.length + 1 : undefined,
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
+/**
+ * Tag counts across the owner's clips, or one category's. Counted in the database, so the chips do not
+ * shrink as you page.
+ */
+export function useTopTags(categoryId?: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ["clips", "top-tags", categoryId ?? null],
+    queryFn: () => fetchTopTags(categoryId ?? undefined),
+    staleTime: 30_000,
+    enabled,
+  });
+}
 
 export function useClip(clipId: string | undefined | null) {
   return useQuery({
@@ -47,8 +118,33 @@ export function useMarkAsViewed() {
     },
     onSuccess: (_data, clipId) => {
       queryClient.invalidateQueries({ queryKey: ["clips", clipId] });
+      // Patch the cached grids in place rather than invalidating them: the player's sidebar keeps a
+      // list query active, so invalidating would refetch every page the user has loaded just to clear
+      // one "New" badge. The totals are a single cheap query, so those we do refetch.
+      markClipViewedInCachedPages(queryClient, clipId);
+      queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
     },
   });
+}
+
+/** Exported for tests; call it through the mutation rather than directly. */
+export function markClipViewedInCachedPages(
+  queryClient: QueryClient,
+  clipId: string,
+) {
+  queryClient.setQueriesData<InfiniteData<PagedClipsResponse>>(
+    { queryKey: ["clips", "list"] },
+    (data) =>
+      data && {
+        ...data,
+        pages: data.pages.map((page) => ({
+          ...page,
+          clips: page.clips.map((clip) =>
+            clip.clipId === clipId ? { ...clip, isViewed: true } : clip,
+          ),
+        })),
+      },
+  );
 }
 
 export function useShareClip() {
@@ -70,7 +166,7 @@ export function useDeleteClip() {
     mutationFn: (clipId: string) => deleteClip(clipId),
     onSuccess: (_data, clipId) => {
       queryClient.removeQueries({ queryKey: ["clips", clipId] });
-      queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
+      invalidateClipCollections(queryClient);
       // Playlist summaries and details embed clips; drop the deleted one from them too.
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
       queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });

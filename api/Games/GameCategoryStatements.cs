@@ -60,6 +60,22 @@ public class GameCategoryStatements(NpgsqlConnection connection)
         return await connection.QuerySingleOrDefaultAsync<GameCategory>(sql, new { Id = id });
     }
 
+    public async Task<List<GameCategory>> GetByIdsAsync(IReadOnlyCollection<Guid> ids)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        const string sql = """
+            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, is_custom, created_at, updated_at
+            FROM game_category
+            WHERE id = ANY(@Ids)
+            """;
+        var results = await connection.QueryAsync<GameCategory>(sql, new { Ids = ids.ToArray() });
+        return results.ToList();
+    }
+
     public async Task<GameCategory?> GetBySlugAsync(string slug)
     {
         const string sql = """

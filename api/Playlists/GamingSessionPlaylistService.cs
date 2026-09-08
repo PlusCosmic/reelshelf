@@ -95,9 +95,9 @@ public class GamingSessionPlaylistService(
 
         do
         {
-            PagedClipsResponse pageResult = await clipService.GetClipsForCategory(
-                gameCategoryId,
+            PagedClipsResponse pageResult = await clipService.GetClips(
                 userId,
+                gameCategoryId,
                 page,
                 ClipPageSize,
                 null,

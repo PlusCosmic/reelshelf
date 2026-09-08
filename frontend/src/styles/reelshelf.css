@@ -2772,6 +2772,17 @@ a {
   text-align: center;
 }
 
+.rs-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 4px;
+}
+
+.rs-load-more button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .rs-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.34fr);

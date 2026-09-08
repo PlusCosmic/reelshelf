@@ -8,6 +8,7 @@ import {
   useTwitchClips,
 } from "@/hooks/queries";
 import { storageUsageQueryKey } from "@/hooks/auth.queries";
+import { invalidateClipCollections } from "@/hooks/clips.queries";
 import { twitchClipsQueryKey } from "@/hooks/twitch.queries";
 import {
   buildTwitchImportRows,
@@ -128,6 +129,8 @@ export function useTwitchClipsImport() {
             importedClipId: imported.clipId,
             status: "imported",
           });
+          // The clip is in the library from here, whatever the session filing below does next.
+          invalidateClipCollections(queryClient);
         } catch (error) {
           updateRow(row.clip.id, {
             error: importErrorMessage(error),
@@ -199,9 +202,6 @@ export function useTwitchClipsImport() {
                 : row,
             ),
           );
-          void queryClient.invalidateQueries({
-            queryKey: ["clips", "library"],
-          });
           void queryClient.invalidateQueries({ queryKey: ["playlists"] });
         } catch (error) {
           // The clips are in the library; only the collection filing failed, and the library still shows them.

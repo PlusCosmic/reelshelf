@@ -16,6 +16,7 @@ import {
   playerUrl,
 } from "@/components/Reelshelf/reelshelf-model";
 import { useClip, useMarkAsViewed } from "@/hooks/queries";
+import { useClipsInfinite } from "@/hooks/clips.queries";
 import { useLibraryData } from "@/components/Reelshelf/useLibraryData";
 
 export const Route = createFileRoute("/games/$slug/$clipId")({
@@ -25,18 +26,24 @@ export const Route = createFileRoute("/games/$slug/$clipId")({
 function ClipDetailRoute() {
   const { slug, clipId } = Route.useParams();
   const { data: clip, isLoading, isError } = useClip(clipId);
-  const { categories, clips } = useLibraryData();
+  const { categories } = useLibraryData();
   const markViewed = useMarkAsViewed();
   const category = clip
     ? categoryForClip(clip, categories)
     : categories.find((item) => item.slug === slug);
   const [colorA, colorB] = getGameColors(category?.id ?? slug);
+  // The sidebar shows a handful from the same category; the first page is far more than enough,
+  // and it shares a cache entry with the category grid's unfiltered first page.
+  const { data: categoryClips } = useClipsInfinite(
+    { categoryId: category?.id },
+    !!category,
+  );
   const related = useMemo(
     () =>
-      clips
-        .filter((item) => item.categorySlug === slug && item.clipId !== clipId)
+      (categoryClips?.pages[0]?.clips ?? [])
+        .filter((item) => item.clipId !== clipId)
         .slice(0, 4),
-    [clipId, clips, slug],
+    [categoryClips, clipId],
   );
 
   if (isLoading)

@@ -140,38 +140,37 @@
         }
       }
     },
-    "/api/clips/categories/{categoryId}/videos": {
+    "/api/clips": {
       "get": {
         "tags": [
           "ClipsEndpoints"
         ],
-        "operationId": "GetVideosByCategory",
+        "operationId": "GetClips",
         "parameters": [
-          {
-            "name": "categoryId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
           {
             "name": "page",
             "in": "query",
-            "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "default": 1
             }
           },
           {
             "name": "pageSize",
             "in": "query",
-            "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "default": 48
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -185,7 +184,7 @@
             }
           },
           {
-            "name": "titleSearch",
+            "name": "search",
             "in": "query",
             "schema": {
               "type": "string"
@@ -245,7 +244,9 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/clips/categories/{categoryId}/videos": {
       "post": {
         "tags": [
           "ClipsEndpoints"
@@ -540,6 +541,16 @@
           "ClipsEndpoints"
         ],
         "operationId": "GetTopTags",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -2080,10 +2091,43 @@
           "game_metadata": { }
         }
       },
+      "ClipCategoryTotals": {
+        "required": [
+          "game_category_id",
+          "clip_count",
+          "unviewed_count",
+          "duration_seconds",
+          "storage_bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "game_category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clip_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unviewed_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "storage_bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ClipLibraryResponse": {
         "required": [
           "categories",
-          "clips"
+          "totals",
+          "category_totals"
         ],
         "type": "object",
         "properties": {
@@ -2093,11 +2137,41 @@
               "$ref": "#/components/schemas/GameCategoryResponse"
             }
           },
-          "clips": {
+          "totals": {
+            "$ref": "#/components/schemas/ClipLibraryTotals"
+          },
+          "category_totals": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Clip"
+              "$ref": "#/components/schemas/ClipCategoryTotals"
             }
+          }
+        }
+      },
+      "ClipLibraryTotals": {
+        "required": [
+          "clip_count",
+          "unviewed_count",
+          "duration_seconds",
+          "storage_bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unviewed_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "storage_bytes": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

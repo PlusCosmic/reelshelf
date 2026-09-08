@@ -362,9 +362,10 @@ public class ClipService(
         return await GetClipById(clipId, userId);
     }
 
-    public async Task<List<TopTag>> GetTopTags(Guid userId)
+    public async Task<List<TopTag>> GetTopTags(Guid userId, Guid? gameCategoryId = null)
     {
-        List<ClipsStatements.TopTagRow> topTagRows = await clipsStatements.GetTagsOrderedByUsageForOwner(userId);
+        List<ClipsStatements.TopTagRow> topTagRows =
+            await clipsStatements.GetTagsOrderedByUsageForOwner(userId, gameCategoryId);
         return topTagRows.Select(t => new TopTag(t.Name, t.Count)).ToList();
     }
 
@@ -386,37 +387,29 @@ public class ClipService(
         return true;
     }
 
-    public async Task<PagedClipsResponse> GetClipsForCategory(Guid gameCategoryId,
-        Guid userId, int page, int pageSize, List<string>? tags = null, string? titleSearch = null,
-        bool unviewedOnly = false, ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
+    /// <summary>
+    /// A page of the caller's clips. A null <paramref name="gameCategoryId"/> spans the whole archive, so
+    /// search and filters run in the database over every clip rather than over whatever the client holds.
+    /// <paramref name="search"/> matches a clip's title, one of its tags, or its category name.
+    /// </summary>
+    public async Task<PagedClipsResponse> GetClips(
+        Guid userId, Guid? gameCategoryId, int page, int pageSize, List<string>? tags = null,
+        string? search = null, bool unviewedOnly = false,
+        ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
         DateTimeOffset? startDate = null, DateTimeOffset? endDate = null)
     {
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
-        // Get the game category for the slug
-        GameCategory? gameCategory = await gameCategoryStatements.GetByIdAsync(gameCategoryId);
-        if (gameCategory == null)
-        {
-            return new PagedClipsResponse([], 0, 0);
-        }
-
-        ClipsStatements.ClipCollectionRow? clipCollection =
-            await clipsStatements.GetCollectionByOwnerAndCategory(userId, gameCategoryId);
-        if (clipCollection == null)
-        {
-            return new PagedClipsResponse([], 0, 0);
-        }
-
         // Normalize tags for filtering (same as when adding tags)
         List<string>? normalizedTags = tags?.Select(NormalizeTag).ToList();
 
         ClipsStatements.PagedClipWithTagsRows clipsPage =
-            await clipsStatements.GetClipsWithTagsByOwnerAndCategory(
+            await clipsStatements.GetClipsWithTags(
                 userId,
                 gameCategoryId,
                 normalizedTags,
-                titleSearch,
+                search,
                 startDate,
                 endDate,
                 unviewedOnly,
@@ -430,17 +423,22 @@ public class ClipService(
         HashSet<Guid> viewedClipIds = await clipsStatements.GetViewedClipIds(userId, clipIds);
         HashSet<Guid> sharedClipIds = await clipsStatements.GetSharedClipIds(clipIds);
 
-        int totalPages = (int)Math.Ceiling((double)clipsPage.TotalCount / pageSize);
+        List<Guid> categoryIds = pagedClips.Select(c => c.GameCategoryId).Distinct().ToList();
+        Dictionary<Guid, GameCategory> categoriesById =
+            (await gameCategoryStatements.GetByIdsAsync(categoryIds)).ToDictionary(category => category.Id);
+        Dictionary<Guid, ClipsStatements.ClipCollectionRow> collectionsByCategoryId =
+            (await clipsStatements.GetCollectionsByOwner(userId))
+            .ToDictionary(collection => collection.GameCategoryId);
 
         List<Clip> finalClips = clipProjection.ProjectClips(
             pagedClips,
-            gameCategory,
-            clipCollection,
+            categoriesById,
+            collectionsByCategoryId,
             viewedClipIds,
             sharedClipIds);
 
-        PagedClipsResponse pagedClipsResponse = new(finalClips, clipsPage.TotalCount, totalPages);
-        return pagedClipsResponse;
+        int totalPages = (int)Math.Ceiling((double)clipsPage.TotalCount / pageSize);
+        return new PagedClipsResponse(finalClips, clipsPage.TotalCount, totalPages);
     }
 
     public async Task<bool> DeleteClip(Guid clipId, Guid userId)

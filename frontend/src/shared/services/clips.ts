@@ -1,6 +1,9 @@
 import {
   type Clip,
   type ClipLibraryResponse,
+  type GetClipsRequest,
+  type PagedClipsResponse,
+  type TopTag,
   type ClipShareResponse,
   type CreateClipResponse,
   type SharedClipResponse,
@@ -10,6 +13,18 @@ import { createClipsApi, createSharedClipsApi } from "./apiClients";
 export async function fetchClipLibrary(): Promise<ClipLibraryResponse> {
   const api = createClipsApi();
   return api.getClipLibrary();
+}
+
+export async function fetchClips(
+  request: GetClipsRequest,
+): Promise<PagedClipsResponse> {
+  const api = createClipsApi();
+  return api.getClips(request);
+}
+
+export async function fetchTopTags(categoryId?: string): Promise<TopTag[]> {
+  const api = createClipsApi();
+  return api.getTopTags({ categoryId });
 }
 
 export async function createVideoRequest(

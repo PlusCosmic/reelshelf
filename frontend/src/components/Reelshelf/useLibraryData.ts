@@ -3,6 +3,13 @@ import { fetchPlaylists } from "@/shared/services/playlists";
 import type { PlaylistSummary } from "@/api-client";
 import { fetchClipLibrary } from "@/shared/services/clips";
 
+const emptyTotals = {
+  clipCount: 0,
+  unviewedCount: 0,
+  durationSeconds: 0,
+  storageBytes: 0,
+};
+
 export function useLibraryData() {
   const libraryQuery = useQuery({
     queryKey: ["clips", "library"],
@@ -12,7 +19,8 @@ export function useLibraryData() {
 
   return {
     categories: libraryQuery.data?.categories ?? [],
-    clips: libraryQuery.data?.clips ?? [],
+    categoryTotals: libraryQuery.data?.categoryTotals ?? [],
+    totals: libraryQuery.data?.totals ?? emptyTotals,
     isLoading: libraryQuery.isLoading,
     isError: libraryQuery.isError,
   };

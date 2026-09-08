@@ -12,7 +12,7 @@ public static class ClipsEndpoints
             .RequireAuthorization();
 
         group.MapGet("library", GetLibrary).WithName("GetClipLibrary");
-        group.MapGet("categories/{categoryId:guid}/videos", GetVideosByCategory).WithName("GetVideosByCategory");
+        group.MapGet("", GetClips).WithName("GetClips");
         group.MapPost("categories/{categoryId:guid}/videos", CreateVideo).WithName("CreateVideo")
             .RequirePermission(Permissions.ClipsCreate)
             .RequireRateLimiting(RateLimitPolicies.ClipPrepare);
@@ -39,14 +39,19 @@ public static class ClipsEndpoints
         return TypedResults.Ok(await libraryService.GetLibrary(user.Id));
     }
 
-    private static async Task<Results<Ok<PagedClipsResponse>, BadRequest<string>>> GetVideosByCategory(
+    /// <summary>
+    /// A page of the caller's clips. Omit categoryId to search and filter the whole archive; the grids
+    /// page through this rather than filtering a preview payload client-side.
+    /// search matches a clip's title, one of its tags, or its category name.
+    /// </summary>
+    private static async Task<Results<Ok<PagedClipsResponse>, BadRequest<string>>> GetClips(
         ClipService clipService,
-        Guid categoryId,
         AuthenticatedUser user,
-        int page,
-        int pageSize,
+        int page = 1,
+        int pageSize = 48,
+        Guid? categoryId = null,
         string[]? tags = null,
-        string? titleSearch = null,
+        string? search = null,
         bool unviewedOnly = false,
         ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
         DateTimeOffset? startDate = null,
@@ -64,7 +69,7 @@ public static class ClipsEndpoints
 
         List<string>? tagList = tags?.ToList();
         return TypedResults.Ok(
-            await clipService.GetClipsForCategory(categoryId, user.Id, page, pageSize, tagList, titleSearch, unviewedOnly, sortOrder, startDate, endDate));
+            await clipService.GetClips(user.Id, categoryId, page, pageSize, tagList, search, unviewedOnly, sortOrder, startDate, endDate));
     }
 
     private static async Task<Results<Ok<CreateClipResponse>, Conflict<string>, BadRequest<string>>> CreateVideo(
@@ -163,9 +168,12 @@ public static class ClipsEndpoints
         return TypedResults.Ok(updated);
     }
 
-    private static async Task<Ok<List<TopTag>>> GetTopTags(ClipService clipService, AuthenticatedUser user)
+    private static async Task<Ok<List<TopTag>>> GetTopTags(
+        ClipService clipService,
+        AuthenticatedUser user,
+        Guid? categoryId = null)
     {
-        return TypedResults.Ok(await clipService.GetTopTags(user.Id));
+        return TypedResults.Ok(await clipService.GetTopTags(user.Id, categoryId));
     }
 
     private static async Task<Results<Ok, NotFound>> MarkVideoAsViewed(

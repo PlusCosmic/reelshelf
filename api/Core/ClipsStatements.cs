@@ -20,6 +20,21 @@ public class ClipsStatements(NpgsqlConnection connection)
         return await connection.QuerySingleOrDefaultAsync<ClipCollectionRow>(sql, new { ownerId, gameCategoryId });
     }
 
+    /// <summary>
+    /// Every collection the owner has, keyed by category. One row per category, so this is cheap enough
+    /// to fetch whole rather than per clip when projecting a page that spans categories.
+    /// </summary>
+    public async Task<List<ClipCollectionRow>> GetCollectionsByOwner(Guid ownerId)
+    {
+        const string sql = """
+            SELECT id, owner_id, collection_id, game_category_id
+            FROM clip_collection
+            WHERE owner_id = @ownerId
+            """;
+
+        return (await connection.QueryAsync<ClipCollectionRow>(sql, new { ownerId })).ToList();
+    }
+
     public async Task<ClipCollectionRow> InsertCollection(Guid ownerId, Guid collectionId, Guid gameCategoryId)
     {
         const string sql = """
@@ -31,11 +46,34 @@ public class ClipsStatements(NpgsqlConnection connection)
         return await connection.QuerySingleAsync<ClipCollectionRow>(sql, new { ownerId, collectionId, gameCategoryId });
     }
 
-    public async Task<PagedClipWithTagsRows> GetClipsWithTagsByOwnerAndCategory(
+    /// <summary>
+    /// Wraps free-text search in a literal "contains" pattern. The user typed a substring, not a pattern,
+    /// so the LIKE metacharacters and the escape character itself are escaped first — otherwise a search
+    /// for "_" or "%" matches every clip. Pairs with ESCAPE '\' on each ILIKE.
+    /// </summary>
+    public static string? ToContainsPattern(string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            return null;
+        }
+
+        string escaped = search
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+        return $"%{escaped}%";
+    }
+
+    /// <summary>
+    /// A page of the owner's clips, newest first by default. A null <paramref name="gameCategoryId"/>
+    /// spans every category, which is what the library grid and archive-wide search need.
+    /// </summary>
+    public async Task<PagedClipWithTagsRows> GetClipsWithTags(
         Guid ownerId,
-        Guid gameCategoryId,
+        Guid? gameCategoryId,
         List<string>? tags = null,
-        string? titleSearch = null,
+        string? search = null,
         DateTimeOffset? startDate = null,
         DateTimeOffset? endDate = null,
         bool unviewedOnly = false,
@@ -47,7 +85,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         DynamicParameters parameters = new();
         parameters.Add("ownerId", ownerId);
         parameters.Add("gameCategoryId", gameCategoryId);
-        parameters.Add("titleSearch", string.IsNullOrWhiteSpace(titleSearch) ? null : $"%{titleSearch}%");
+        parameters.Add("search", ToContainsPattern(search));
         parameters.Add("startDate", startDate);
         parameters.Add("endDate", endDate);
         parameters.Add("viewedByUserId", viewedByUserId);
@@ -56,8 +94,17 @@ public class ClipsStatements(NpgsqlConnection connection)
 
         StringBuilder where = new("""
             c.owner_id = @ownerId
-            AND c.game_category_id = @gameCategoryId
-            AND (@titleSearch::text IS NULL OR c.title ILIKE @titleSearch)
+            AND (@gameCategoryId::uuid IS NULL OR c.game_category_id = @gameCategoryId)
+            AND (@search::text IS NULL OR c.title ILIKE @search ESCAPE '\' OR EXISTS (
+                SELECT 1
+                FROM clip_tag search_ct
+                INNER JOIN tag search_t ON search_ct.tag_id = search_t.id
+                WHERE search_ct.clip_id = c.id AND search_t.name ILIKE @search ESCAPE '\'
+            ) OR EXISTS (
+                SELECT 1
+                FROM game_category search_gc
+                WHERE search_gc.id = c.game_category_id AND search_gc.name ILIKE @search ESCAPE '\'
+            ))
             AND (@startDate::timestamptz IS NULL OR c.created_at >= @startDate)
             AND (@endDate::timestamptz IS NULL OR c.created_at <= @endDate)
             """);
@@ -243,20 +290,49 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Total bytes of clip storage attributed to an owner.
+    /// Bytes of storage attributed to a single clip row.
     /// Counts the larger of the client-declared file size (known at creation, before anything is uploaded)
     /// and Bunny's reported storage size (trusted, but only available after encoding), so an under-declared
     /// size stops mattering once Bunny reports the real one.
+    /// Every place that reports storage must use this expression, or the numbers disagree across the UI.
+    /// </summary>
+    public const string StorageBytesExpression = "GREATEST(COALESCE(file_size, 0), COALESCE(storage_size, 0))";
+
+    /// <summary>
+    /// Total bytes of clip storage attributed to an owner.
     /// </summary>
     public async Task<long> GetStorageUsedBytesByOwner(Guid ownerId)
     {
-        const string sql = """
-            SELECT COALESCE(SUM(GREATEST(COALESCE(file_size, 0), COALESCE(storage_size, 0))), 0)
+        string sql = $"""
+            SELECT COALESCE(SUM({StorageBytesExpression}), 0)
             FROM clip
             WHERE owner_id = @ownerId
             """;
 
         return await connection.QuerySingleAsync<long>(sql, new { ownerId });
+    }
+
+    /// <summary>
+    /// Clip count, unviewed count, duration and storage per category for an owner, computed over every
+    /// clip row rather than over a page of clips. Storage uses <see cref="StorageBytesExpression"/> so a
+    /// library topline built from these rows matches the storage meter exactly.
+    /// </summary>
+    public async Task<List<CategoryTotalsRow>> GetCategoryTotalsByOwner(Guid ownerId)
+    {
+        string sql = $"""
+            SELECT
+                c.game_category_id,
+                COUNT(*) AS clip_count,
+                COUNT(*) FILTER (WHERE cv.clip_id IS NULL) AS unviewed_count,
+                COALESCE(SUM(COALESCE(c.length, 0)), 0) AS duration_seconds,
+                COALESCE(SUM({StorageBytesExpression}), 0) AS storage_bytes
+            FROM clip c
+            LEFT JOIN clip_view cv ON cv.clip_id = c.id AND cv.user_id = @ownerId
+            WHERE c.owner_id = @ownerId
+            GROUP BY c.game_category_id
+            """;
+
+        return (await connection.QueryAsync<CategoryTotalsRow>(sql, new { ownerId })).ToList();
     }
 
     /// <summary>
@@ -419,7 +495,7 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>Tags used on the owner's own clips, most used first. Other users' tags are private to them.</summary>
-    public async Task<List<TopTagRow>> GetTagsOrderedByUsageForOwner(Guid ownerId)
+    public async Task<List<TopTagRow>> GetTagsOrderedByUsageForOwner(Guid ownerId, Guid? gameCategoryId = null)
     {
         const string sql = """
             SELECT t.name, COUNT(ct.clip_id)::int AS count
@@ -427,11 +503,12 @@ public class ClipsStatements(NpgsqlConnection connection)
             JOIN clip_tag ct ON ct.tag_id = t.id
             JOIN clip c ON c.id = ct.clip_id
             WHERE c.owner_id = @ownerId
+              AND (@gameCategoryId::uuid IS NULL OR c.game_category_id = @gameCategoryId)
             GROUP BY t.name
             ORDER BY count DESC, t.name ASC
             """;
 
-        return (await connection.QueryAsync<TopTagRow>(sql, new { ownerId })).ToList();
+        return (await connection.QueryAsync<TopTagRow>(sql, new { ownerId, gameCategoryId })).ToList();
     }
 
     public async Task<ClipViewRow> InsertClipView(Guid userId, Guid clipId)
@@ -695,6 +772,15 @@ public class ClipsStatements(NpgsqlConnection connection)
         public int? VideoStatus { get; set; }
         public int? EncodeProgress { get; set; }
         public long? FileSize { get; set; }
+    }
+
+    public class CategoryTotalsRow
+    {
+        public Guid GameCategoryId { get; set; }
+        public long ClipCount { get; set; }
+        public long UnviewedCount { get; set; }
+        public long DurationSeconds { get; set; }
+        public long StorageBytes { get; set; }
     }
 
     public class TagRow
