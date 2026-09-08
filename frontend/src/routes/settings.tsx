@@ -44,8 +44,8 @@ function SettingsRoute() {
           <em>{user?.globalName ?? user?.username ?? "your account"}</em>.
         </h1>
       </section>
-      <section className="rs-section rs-split">
-        <div className="rs-settings-main">
+      <section className="rs-section rs-settings">
+        <div className="rs-settings-section">
           <h2 className="rs-eyebrow">Account email</h2>
           <p className="rs-sidebar-copy">
             Used for notices about newly linked sign-in methods and when your
@@ -53,14 +53,14 @@ function SettingsRoute() {
           </p>
           <EmailField initialEmail={user?.email ?? null} />
         </div>
-        <aside className="rs-sidebar-panel">
+        <div className="rs-settings-section">
           <h2 className="rs-eyebrow">Linked accounts</h2>
           <p className="rs-sidebar-copy">
             Sign in with any linked account. Your name and avatar follow the
             primary one.
           </p>
           <LinkedAccounts notice={notice} />
-        </aside>
+        </div>
       </section>
     </>
   );

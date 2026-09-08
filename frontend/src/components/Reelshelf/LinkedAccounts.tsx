@@ -99,14 +99,16 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
             </span>
             <span className="rs-linked-meta">
               <span className="rs-linked-name">
-                {identity.displayName ?? identity.username}
+                <span>{identity.displayName ?? identity.username}</span>
                 {identity.isPrimary ? (
                   <span className="rs-linked-primary">primary</span>
                 ) : null}
               </span>
               <span className="rs-linked-sub">
-                {providerLabel(identity.provider)} · @{identity.username}
-                {identity.email ? ` · ${identity.email}` : null}
+                <span>
+                  {providerLabel(identity.provider)} · @{identity.username}
+                </span>
+                {identity.email ? <span>{identity.email}</span> : null}
               </span>
             </span>
             <button
