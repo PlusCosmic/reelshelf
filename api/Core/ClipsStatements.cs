@@ -47,6 +47,25 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
+    /// Wraps free-text search in a literal "contains" pattern. The user typed a substring, not a pattern,
+    /// so the LIKE metacharacters and the escape character itself are escaped first — otherwise a search
+    /// for "_" or "%" matches every clip. Pairs with ESCAPE '\' on each ILIKE.
+    /// </summary>
+    public static string? ToContainsPattern(string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            return null;
+        }
+
+        string escaped = search
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+        return $"%{escaped}%";
+    }
+
+    /// <summary>
     /// A page of the owner's clips, newest first by default. A null <paramref name="gameCategoryId"/>
     /// spans every category, which is what the library grid and archive-wide search need.
     /// </summary>
@@ -66,7 +85,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         DynamicParameters parameters = new();
         parameters.Add("ownerId", ownerId);
         parameters.Add("gameCategoryId", gameCategoryId);
-        parameters.Add("search", string.IsNullOrWhiteSpace(search) ? null : $"%{search}%");
+        parameters.Add("search", ToContainsPattern(search));
         parameters.Add("startDate", startDate);
         parameters.Add("endDate", endDate);
         parameters.Add("viewedByUserId", viewedByUserId);
@@ -76,15 +95,15 @@ public class ClipsStatements(NpgsqlConnection connection)
         StringBuilder where = new("""
             c.owner_id = @ownerId
             AND (@gameCategoryId::uuid IS NULL OR c.game_category_id = @gameCategoryId)
-            AND (@search::text IS NULL OR c.title ILIKE @search OR EXISTS (
+            AND (@search::text IS NULL OR c.title ILIKE @search ESCAPE '\' OR EXISTS (
                 SELECT 1
                 FROM clip_tag search_ct
                 INNER JOIN tag search_t ON search_ct.tag_id = search_t.id
-                WHERE search_ct.clip_id = c.id AND search_t.name ILIKE @search
+                WHERE search_ct.clip_id = c.id AND search_t.name ILIKE @search ESCAPE '\'
             ) OR EXISTS (
                 SELECT 1
                 FROM game_category search_gc
-                WHERE search_gc.id = c.game_category_id AND search_gc.name ILIKE @search
+                WHERE search_gc.id = c.game_category_id AND search_gc.name ILIKE @search ESCAPE '\'
             ))
             AND (@startDate::timestamptz IS NULL OR c.created_at >= @startDate)
             AND (@endDate::timestamptz IS NULL OR c.created_at <= @endDate)

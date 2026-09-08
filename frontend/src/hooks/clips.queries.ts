@@ -3,9 +3,10 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type InfiniteData,
   type QueryClient,
 } from "@tanstack/react-query";
-import type { Clip } from "@/api-client";
+import type { Clip, PagedClipsResponse } from "@/api-client";
 import { storageUsageQueryKey } from "@/hooks/auth.queries";
 import {
   deleteClip,
@@ -117,8 +118,33 @@ export function useMarkAsViewed() {
     },
     onSuccess: (_data, clipId) => {
       queryClient.invalidateQueries({ queryKey: ["clips", clipId] });
+      // Patch the cached grids in place rather than invalidating them: the player's sidebar keeps a
+      // list query active, so invalidating would refetch every page the user has loaded just to clear
+      // one "New" badge. The totals are a single cheap query, so those we do refetch.
+      markClipViewedInCachedPages(queryClient, clipId);
+      queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
     },
   });
+}
+
+/** Exported for tests; call it through the mutation rather than directly. */
+export function markClipViewedInCachedPages(
+  queryClient: QueryClient,
+  clipId: string,
+) {
+  queryClient.setQueriesData<InfiniteData<PagedClipsResponse>>(
+    { queryKey: ["clips", "list"] },
+    (data) =>
+      data && {
+        ...data,
+        pages: data.pages.map((page) => ({
+          ...page,
+          clips: page.clips.map((clip) =>
+            clip.clipId === clipId ? { ...clip, isViewed: true } : clip,
+          ),
+        })),
+      },
+  );
 }
 
 export function useShareClip() {
