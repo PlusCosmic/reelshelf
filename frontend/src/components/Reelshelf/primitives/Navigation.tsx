@@ -18,8 +18,11 @@ export function PlayerActions({ clip }: { clip: Clip }) {
   const navigate = useNavigate();
   const deleteClip = useDeleteClip();
   const { data: currentUser } = useCurrentUser();
-  // Only the owner can delete; collaborators and share viewers see the clip but not this action.
-  const canDelete = currentUser?.id === clip.ownerId;
+  // Only the owner can share or delete; collaborators and share viewers see the clip but not these
+  // actions, and the API rejects them for anyone else anyway.
+  const isOwner = currentUser?.id === clip.ownerId;
+  const canShare = isOwner;
+  const canDelete = isOwner;
 
   function handleDelete() {
     if (deleteClip.isPending) return;
@@ -41,14 +44,16 @@ export function PlayerActions({ clip }: { clip: Clip }) {
   return (
     <>
       <div className="rs-action-row">
-        <button
-          className="rs-small-button"
-          type="button"
-          onClick={() => setShareOpen(true)}
-        >
-          <IconShare3 size={13} />
-          Share
-        </button>
+        {canShare ? (
+          <button
+            className="rs-small-button"
+            type="button"
+            onClick={() => setShareOpen(true)}
+          >
+            <IconShare3 size={13} />
+            Share
+          </button>
+        ) : null}
         <button className="rs-small-button" type="button">
           <IconFolderPlus size={13} />
           Add to collection

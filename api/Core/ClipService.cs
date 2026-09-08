@@ -1,7 +1,7 @@
+using Npgsql;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
-using Npgsql;
 using Reelshelf.Bunny;
 using Reelshelf.Bunny.Models;
 using Reelshelf.Core.Models;
@@ -91,10 +91,11 @@ public class ClipService(
 
         // Reserve quota first. The clip row is inserted with a placeholder video id under a per-owner lock
         // so concurrent requests cannot all pass the check on the same stale usage figure, and so a request
-        // that will be rejected never spends a Bunny operation. No network calls happen inside the lock.
+        // that will be rejected never spends a Bunny operation. No network calls happen inside the lock, and
+        // disposing the lock returns the pooled connection before the Bunny call below.
         Guid placeholderVideoId = Guid.NewGuid();
         ClipsStatements.ClipRow reserved;
-        await using (NpgsqlTransaction reservation = await clipsStatements.BeginOwnerStorageLock(userId))
+        await using (ClipsStatements.OwnerStorageLock reservation = await clipsStatements.BeginOwnerStorageLock(userId))
         {
             await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
 

@@ -231,12 +231,16 @@ public class ClipsStatements(NpgsqlConnection connection)
     /// <summary>
     /// Opens a transaction holding a per-owner advisory lock so a storage check and the clip insert that
     /// follows it cannot interleave with another request for the same owner. Dispose without committing to roll back.
+    /// Disposing also closes the connection if this call opened it, so the pooled connection is returned
+    /// before the caller goes on to do external I/O rather than being held for the rest of the request.
     /// </summary>
-    public async Task<NpgsqlTransaction> BeginOwnerStorageLock(Guid ownerId)
+    public async Task<OwnerStorageLock> BeginOwnerStorageLock(Guid ownerId)
     {
+        bool openedConnection = false;
         if (connection.State != System.Data.ConnectionState.Open)
         {
             await connection.OpenAsync();
+            openedConnection = true;
         }
 
         NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
@@ -244,7 +248,23 @@ public class ClipsStatements(NpgsqlConnection connection)
             "SELECT pg_advisory_xact_lock(hashtext(@key))",
             new { key = $"clip-storage:{ownerId}" },
             transaction);
-        return transaction;
+        return new OwnerStorageLock(connection, transaction, openedConnection);
+    }
+
+    public sealed class OwnerStorageLock(NpgsqlConnection connection, NpgsqlTransaction transaction, bool openedConnection)
+        : IAsyncDisposable
+    {
+        public Task CommitAsync() => transaction.CommitAsync();
+
+        public async ValueTask DisposeAsync()
+        {
+            await transaction.DisposeAsync();
+            if (openedConnection)
+            {
+                // Return the pooled connection now; later Dapper calls on this scope reopen it per call.
+                await connection.CloseAsync();
+            }
+        }
     }
 
     /// <summary>
