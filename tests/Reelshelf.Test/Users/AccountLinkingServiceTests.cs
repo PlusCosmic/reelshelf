@@ -6,10 +6,10 @@ namespace Reelshelf.Test.Users;
 public class AccountLinkingServiceTests
 {
     private static readonly ExternalIdentity DiscordHarry =
-        new(AuthProvider.Discord, "1001", "harry", "Harry", "https://cdn.discordapp.com/avatars/1001/abc");
+        new(AuthProvider.Discord, "1001", "harry", "Harry", "https://cdn.discordapp.com/avatars/1001/abc", "harry@example.com");
 
     private static readonly ExternalIdentity TwitchHarry =
-        new(AuthProvider.Twitch, "2002", "harry_tv", "HarryTV", "https://static-cdn.jtvnw.net/harry.png");
+        new(AuthProvider.Twitch, "2002", "harry_tv", "HarryTV", "https://static-cdn.jtvnw.net/harry.png", "harry@twitch.example");
 
     [Fact]
     public async Task SignIn_CreatesAccountForUnknownIdentity()
@@ -23,6 +23,7 @@ public class AccountLinkingServiceTests
         Assert.Equal("harry", outcome.User.Username);
         Assert.Equal("Harry", outcome.User.GlobalName);
         Assert.Equal(DiscordHarry.AvatarUrl, outcome.User.AvatarUrl);
+        Assert.Equal("harry@example.com", outcome.User.Email);
         UserStatements.UserIdentityRow identity = Assert.Single(store.Identities.Values);
         Assert.Equal(outcome.User.Id, identity.UserId);
     }
@@ -126,6 +127,7 @@ public class AccountLinkingServiceTests
         UserStatements.UserRow user = store.Users[harry.User.Id];
         Assert.Equal("harry_tv", user.Username);
         Assert.Equal("HarryTV", user.GlobalName);
+        Assert.Equal("harry@twitch.example", user.Email);
         List<LinkedIdentity> remaining = await service.GetLinkedIdentities(harry.User.Id);
         LinkedIdentity twitch = Assert.Single(remaining);
         Assert.True(twitch.IsPrimary);
@@ -165,7 +167,8 @@ public class AccountLinkingServiceTests
                 Id = Guid.NewGuid(),
                 Username = identity.Username,
                 GlobalName = identity.DisplayName,
-                AvatarUrl = identity.AvatarUrl
+                AvatarUrl = identity.AvatarUrl,
+                Email = identity.Email
             };
             Users[user.Id] = user;
             Insert(user.Id, identity);
@@ -183,15 +186,17 @@ public class AccountLinkingServiceTests
             row.Username = identity.Username;
             row.DisplayName = identity.DisplayName;
             row.AvatarUrl = identity.AvatarUrl;
+            row.Email = identity.Email;
             return Task.CompletedTask;
         }
 
-        public Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl)
+        public Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl, string? email)
         {
             UserStatements.UserRow user = Users[userId];
             user.Username = username;
             user.GlobalName = globalName;
             user.AvatarUrl = avatarUrl;
+            user.Email = email;
             return Task.CompletedTask;
         }
 
@@ -218,6 +223,7 @@ public class AccountLinkingServiceTests
                 Username = identity.Username,
                 DisplayName = identity.DisplayName,
                 AvatarUrl = identity.AvatarUrl,
+                Email = identity.Email,
                 LinkedAt = _clock
             };
             Identities[row.Id] = row;

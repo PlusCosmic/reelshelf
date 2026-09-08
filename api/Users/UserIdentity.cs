@@ -20,13 +20,17 @@ public static class AuthProvider
     }
 }
 
-/// <summary>Profile a provider reported for one of its users at sign-in time.</summary>
+/// <summary>
+/// Profile a provider reported for one of its users at sign-in time. Email is stored for the account owner
+/// and never used to match sign-ins to accounts.
+/// </summary>
 public sealed record ExternalIdentity(
     string Provider,
     string ProviderUserId,
     string Username,
     string? DisplayName,
-    string? AvatarUrl);
+    string? AvatarUrl,
+    string? Email);
 
 /// <summary>Provider-level reference to an identity; enough to match whitelist entries.</summary>
 public sealed record UserIdentityRef(string Provider, string ProviderUserId);
@@ -38,5 +42,6 @@ public sealed record LinkedIdentity(
     string Username,
     string? DisplayName,
     string? AvatarUrl,
+    string? Email,
     DateTimeOffset LinkedAt,
     bool IsPrimary);

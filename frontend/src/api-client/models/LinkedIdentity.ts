@@ -51,6 +51,12 @@ export interface LinkedIdentity {
   avatarUrl: string | null;
   /**
    *
+   * @type {string}
+   * @memberof LinkedIdentity
+   */
+  email: string | null;
+  /**
+   *
    * @type {Date}
    * @memberof LinkedIdentity
    */
@@ -76,6 +82,7 @@ export function instanceOfLinkedIdentity(
   if (!("displayName" in value) || value["displayName"] === undefined)
     return false;
   if (!("avatarUrl" in value) || value["avatarUrl"] === undefined) return false;
+  if (!("email" in value) || value["email"] === undefined) return false;
   if (!("linkedAt" in value) || value["linkedAt"] === undefined) return false;
   if (!("isPrimary" in value) || value["isPrimary"] === undefined) return false;
   return true;
@@ -98,6 +105,7 @@ export function LinkedIdentityFromJSONTyped(
     username: json["username"],
     displayName: json["display_name"],
     avatarUrl: json["avatar_url"],
+    email: json["email"],
     linkedAt: new Date(json["linked_at"]),
     isPrimary: json["is_primary"],
   };
@@ -121,6 +129,7 @@ export function LinkedIdentityToJSONTyped(
     username: value["username"],
     display_name: value["displayName"],
     avatar_url: value["avatarUrl"],
+    email: value["email"],
     linked_at: value["linkedAt"].toISOString(),
     is_primary: value["isPrimary"],
   };

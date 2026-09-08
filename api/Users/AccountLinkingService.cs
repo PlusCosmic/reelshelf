@@ -23,7 +23,7 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
         List<UserStatements.UserIdentityRow> identities = await store.GetIdentitiesForUser(existing.UserId);
         if (identities.Count == 0 || identities[0].Id == existing.Id)
         {
-            await store.UpdateUserProfile(existing.UserId, identity.Username, identity.DisplayName, identity.AvatarUrl);
+            await store.UpdateUserProfile(existing.UserId, identity.Username, identity.DisplayName, identity.AvatarUrl, identity.Email);
         }
 
         UserStatements.UserRow user = await store.GetUserById(existing.UserId)
@@ -76,7 +76,7 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
         {
             // The next-oldest identity becomes primary and the account profile follows it.
             UserStatements.UserIdentityRow successor = identities[1];
-            await store.UpdateUserProfile(userId, successor.Username, successor.DisplayName, successor.AvatarUrl);
+            await store.UpdateUserProfile(userId, successor.Username, successor.DisplayName, successor.AvatarUrl, successor.Email);
         }
 
         return UnlinkOutcome.Unlinked;
@@ -92,6 +92,7 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
                 identity.Username,
                 identity.DisplayName,
                 identity.AvatarUrl,
+                identity.Email,
                 identity.LinkedAt,
                 IsPrimary: index == 0))
             .ToList();
@@ -123,6 +124,6 @@ public interface IUserIdentityStore
     Task<UserStatements.UserRow> CreateUserWithIdentity(ExternalIdentity identity);
     Task<UserStatements.UserIdentityRow> LinkIdentity(Guid userId, ExternalIdentity identity);
     Task UpdateIdentityProfile(Guid identityId, ExternalIdentity identity);
-    Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl);
+    Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl, string? email);
     Task DeleteIdentity(Guid identityId);
 }

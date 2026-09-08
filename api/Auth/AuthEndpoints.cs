@@ -181,7 +181,8 @@ public static class AuthEndpoints
             options.DiscordId,
             options.Username,
             string.IsNullOrWhiteSpace(options.GlobalName) ? null : options.GlobalName,
-            avatarUrl));
+            avatarUrl,
+            Email: null));
 
         await SignInAccount(ctx, outcome.User, persistent: true);
 

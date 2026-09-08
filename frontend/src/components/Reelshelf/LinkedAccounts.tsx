@@ -106,6 +106,7 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
               </span>
               <span className="rs-linked-sub">
                 {providerLabel(identity.provider)} · @{identity.username}
+                {identity.email ? ` · ${identity.email}` : null}
               </span>
             </span>
             <button

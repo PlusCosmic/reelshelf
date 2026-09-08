@@ -19,6 +19,7 @@ internal static class AuthenticationSetup
 
     public const string DisplayNameClaim = "urn:reelshelf:display_name";
     public const string AvatarUrlClaim = "urn:reelshelf:avatar_url";
+    public const string EmailClaim = "urn:reelshelf:email";
 
     /// <summary>Authentication-properties key naming the provider a challenge was issued for.</summary>
     public const string ProviderItem = "reelshelf.provider";
@@ -80,6 +81,7 @@ internal static class AuthenticationSetup
                 options.CallbackPath = new PathString("/auth/discord/callback");
 
                 options.Scope.Add("identify");
+                options.Scope.Add("email");
 
                 options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
                 options.ClaimActions.MapJsonKey(ClaimTypes.Name, "username");
@@ -95,6 +97,15 @@ internal static class AuthenticationSetup
                     if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(avatarHash))
                     {
                         context.Identity?.AddClaim(new Claim(AvatarUrlClaim, DiscordAvatarUrl(id, avatarHash)));
+                    }
+
+                    // Discord returns the address even when unconfirmed; only keep one the user has verified.
+                    string? email = user.RootElement.GetStringOrNull("email");
+                    bool verified = user.RootElement.TryGetProperty("verified", out JsonElement verifiedElement) &&
+                                    verifiedElement.ValueKind == JsonValueKind.True;
+                    if (verified && !string.IsNullOrEmpty(email))
+                    {
+                        context.Identity?.AddClaim(new Claim(EmailClaim, email));
                     }
                 });
 
@@ -112,9 +123,9 @@ internal static class AuthenticationSetup
 
                 options.CallbackPath = new PathString("/auth/twitch/callback");
 
-                // Reading the token owner's public profile needs no scope. Twitch:Scopes can widen this
-                // (space separated) if a deployment needs more.
-                foreach (string scope in (configuration["Twitch:Scopes"] ?? "")
+                // user:read:email adds the address to the Helix user payload. Twitch:Scopes overrides the list
+                // (space separated) if a deployment needs something else.
+                foreach (string scope in (configuration["Twitch:Scopes"] ?? "user:read:email")
                              .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 {
                     options.Scope.Add(scope);
@@ -124,6 +135,7 @@ internal static class AuthenticationSetup
                 options.ClaimActions.MapJsonKey(ClaimTypes.Name, "login");
                 options.ClaimActions.MapJsonKey(DisplayNameClaim, "display_name");
                 options.ClaimActions.MapJsonKey(AvatarUrlClaim, "profile_image_url");
+                options.ClaimActions.MapJsonKey(EmailClaim, "email");
 
                 options.Events = ProviderEvents(async context =>
                 {
@@ -163,7 +175,8 @@ internal static class AuthenticationSetup
             providerUserId,
             username,
             NullIfEmpty(principal.FindFirstValue(DisplayNameClaim)),
-            NullIfEmpty(principal.FindFirstValue(AvatarUrlClaim)));
+            NullIfEmpty(principal.FindFirstValue(AvatarUrlClaim)),
+            NullIfEmpty(principal.FindFirstValue(EmailClaim)));
     }
 
     private static OAuthEvents ProviderEvents(Func<OAuthCreatingTicketContext, Task> onCreatingTicket)

@@ -13,12 +13,11 @@ Reelshelf only knew Discord: the user table was `discord_user`, its natural key 
 - The session cookie's subject is the account id. Sessions issued before this change carried a Discord id and are treated as signed out, so users sign in once more after deployment.
 - OAuth handlers (Discord, Twitch) sign in to a short-lived external cookie. `GET /auth/post-login-redirect` reads it, resolves the account, and issues the real session:
   - a known identity signs in to its account;
-  - an unknown identity creates a new account (no merging by email, since Discord's `identify` scope has none and Twitch's would need an extra consent);
+  - an unknown identity creates a new account. Both providers are asked for the email address (`identify email` on Discord, `user:read:email` on Twitch) and it is stored per identity and mirrored from the primary onto the account, but it is never used to match a sign-in to an existing account: whoever controls an address at one provider must not be able to attach themselves to an account at the other, and Discord does not guarantee the address is current. Discord addresses are kept only when Discord reports them verified;
   - when the challenge was started from `GET /auth/{provider}/link` by a signed-in user, the identity is attached to that account instead. The account id travels in the data-protected authentication properties and must match the current session when the provider returns.
 - The oldest identity is the account's **primary identity**. The account's username, display name and avatar refresh from it at sign-in; signing in with a secondary identity refreshes only that identity's own profile. Unlinking the primary promotes the next-oldest and copies its profile onto the account.
 - An account holds at most one identity per provider and can never drop its last one (`DELETE /api/me/identities/{provider}`). An identity already attached to another account cannot be linked; the settings page reports why.
 - `whitelist.json` entries name a person by `DiscordId` and/or `TwitchId`. Any linked identity that matches applies the entry, and an entry with an explicit role wins over one without.
-- Twitch's authorize call is sent with no scopes; reading the token owner's public profile through Helix needs none. `Twitch:Scopes` can widen this per deployment.
 
 ## Consequences
 

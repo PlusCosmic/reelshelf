@@ -2240,6 +2240,7 @@
           "username",
           "display_name",
           "avatar_url",
+          "email",
           "linked_at",
           "is_primary"
         ],
@@ -2261,6 +2262,12 @@
             ]
           },
           "avatar_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
             "type": [
               "null",
               "string"
