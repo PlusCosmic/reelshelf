@@ -1,9 +1,20 @@
+using System.Collections.Concurrent;
 using FFMpegCore;
+using Reelshelf.Exceptions;
 
 namespace Reelshelf.FFmpeg;
 
 public class FFmpegService
 {
+    private const int DefaultMaxConcurrentDownloads = 3;
+    private static readonly TimeSpan QueueWait = TimeSpan.FromSeconds(30);
+
+    // Process-wide limits (the service itself is scoped). Each download spawns an ffmpeg process, so
+    // a single account must not be able to fan out unboundedly now that sign-up is open.
+    private static SemaphoreSlim? _globalDownloads;
+    private static readonly object GlobalDownloadsInit = new();
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> PerVideoLocks = new();
+
     private readonly ILogger<FFmpegService> _logger;
     private readonly string _outputPath;
 
@@ -11,6 +22,12 @@ public class FFmpegService
     {
         _logger = logger;
         _outputPath = configuration["FFmpegOutputPath"] ?? Path.Combine(Path.GetTempPath(), "ffmpeg-downloads");
+
+        int maxConcurrent = configuration.GetValue<int?>("FFmpeg:MaxConcurrentDownloads") ?? DefaultMaxConcurrentDownloads;
+        lock (GlobalDownloadsInit)
+        {
+            _globalDownloads ??= new SemaphoreSlim(Math.Max(1, maxConcurrent), Math.Max(1, maxConcurrent));
+        }
 
         // Ensure output directory exists
         Directory.CreateDirectory(_outputPath);
@@ -24,8 +41,32 @@ public class FFmpegService
     /// <returns>Path to the downloaded video file</returns>
     public async Task<string> DownloadHlsVideoAsync(Guid videoId, CancellationToken cancellationToken = default)
     {
+        SemaphoreSlim globalDownloads = _globalDownloads!;
+        if (!await globalDownloads.WaitAsync(QueueWait, cancellationToken))
+        {
+            throw new ServiceUnavailableException("Too many downloads are in progress. Try again in a moment.");
+        }
+
+        // Requests for the same video run one at a time rather than racing several ffmpeg processes.
+        SemaphoreSlim videoLock = PerVideoLocks.GetOrAdd(videoId, _ => new SemaphoreSlim(1, 1));
+        await videoLock.WaitAsync(cancellationToken);
+        try
+        {
+            return await DownloadHlsVideoCoreAsync(videoId, cancellationToken);
+        }
+        finally
+        {
+            videoLock.Release();
+            globalDownloads.Release();
+        }
+    }
+
+    private async Task<string> DownloadHlsVideoCoreAsync(Guid videoId, CancellationToken cancellationToken)
+    {
         string hlsUrl = $"https://vz-cd8f9809-39a.b-cdn.net/{videoId}/playlist.m3u8";
-        string outputFileName = $"{videoId}.mp4";
+        // Unique per request: the endpoint streams the file with DeleteOnClose, so two requests for the
+        // same video must never share a path.
+        string outputFileName = $"{videoId}-{Guid.NewGuid():N}.mp4";
         string outputPath = Path.Combine(_outputPath, outputFileName);
 
         try

@@ -25,15 +25,17 @@ public class GamingSessionPlaylistService(
         DiscordStatements.DiscordUserRow currentUser = await playlistAccess.GetUser(discordUserId);
         List<Guid> participants = IncludeCurrentUser(participantIds, currentUser.Id);
 
-        // A session pulls each participant's recent clips into a shared playlist, so participants are
-        // limited to people who already share a playlist with the caller (add them by username first).
-        HashSet<Guid> allowedParticipants = (await discordStatements.GetPlaylistPeers(currentUser.Id))
+        // A session pulls each participant's recent clips into a playlist the caller controls, so a
+        // participant must have opted in: they must have added the caller to a collection they created.
+        // Anything the caller can do alone (creating a playlist, adding a collaborator) does not count.
+        HashSet<Guid> allowedParticipants = (await discordStatements.GetUsersWhoAddedMe(currentUser.Id))
             .Select(peer => peer.Id)
             .ToHashSet();
         allowedParticipants.Add(currentUser.Id);
         if (participants.Any(participantId => !allowedParticipants.Contains(participantId)))
         {
-            throw new BadRequestException("Participants must already share a collection with you");
+            throw new BadRequestException(
+                "You can only start a session with people who have added you to one of their collections");
         }
 
         string playlistName = $"{categoryName} Session - {DateTimeOffset.UtcNow:MMMM dd}";

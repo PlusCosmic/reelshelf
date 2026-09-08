@@ -74,6 +74,25 @@ public class DiscordStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
+    /// Users who have added <paramref name="userId"/> as a collaborator on a playlist they created.
+    /// Being added is a deliberate act by that user, so this is the set of people who have opted in to
+    /// sharing with the caller; it cannot be manufactured by the caller.
+    /// </summary>
+    public async Task<List<DiscordUserRow>> GetUsersWhoAddedMe(Guid userId)
+    {
+        const string sql = @"
+            SELECT DISTINCT u.id, u.discord_id, u.username, u.global_name, u.avatar, u.role, u.role_from_whitelist
+            FROM playlist_collaborators pc
+            JOIN playlists p ON p.id = pc.playlist_id
+            JOIN discord_user u ON u.id = p.creator_user_id
+            WHERE pc.user_id = @userId
+              AND p.creator_user_id != @userId";
+
+        var result = await connection.QueryAsync<DiscordUserRow>(sql, new { userId });
+        return result.ToList();
+    }
+
+    /// <summary>
     /// Users who already share a playlist with <paramref name="userId"/>: collaborators on playlists they own,
     /// and owners plus fellow collaborators of playlists they collaborate on. Never lists strangers.
     /// </summary>

@@ -54,6 +54,9 @@ export function useBulkUploadController({
   // Clip rows created at the API for uploads that have not finished. They hold storage
   // until the upload succeeds, so abandoning the upload must delete them.
   const preparedClipIdsRef = useRef<Map<string, string>>(new Map());
+  // Rows whose previous prepared clip (and its Bunny video) was deleted. Their next attempt must not
+  // resume the stale TUS upload URL tus-js-client remembered for the file.
+  const freshUploadRowIdsRef = useRef<Set<string>>(new Set());
   const filingSessionKeysRef = useRef<Set<string>>(new Set());
   const [rows, setRows] = useState<BulkUploadRow[]>([]);
   const [rejected, setRejected] = useState<BulkUploadRejectedFile[]>([]);
@@ -274,7 +277,15 @@ export function useBulkUploadController({
 
           uploadRefs.current.set(row.id, upload);
           const previousUploads = await upload.findPreviousUploads();
-          if (previousUploads.length) {
+          if (freshUploadRowIdsRef.current.delete(row.id)) {
+            await Promise.all(
+              previousUploads.map((previous) =>
+                upload.options.urlStorage
+                  ?.removeUpload(previous.urlStorageKey)
+                  .catch(() => undefined),
+              ),
+            );
+          } else if (previousUploads.length) {
             upload.resumeFromPreviousUpload(previousUploads[0]);
           }
 
@@ -601,11 +612,13 @@ export function useBulkUploadController({
     try {
       await deleteClip(clipId);
       preparedClipIdsRef.current.delete(rowId);
+      freshUploadRowIdsRef.current.add(rowId);
       return true;
     } catch (error) {
       // A 404 means it is already gone (purged, or deleted elsewhere).
       if (error instanceof ApiError && error.status === 404) {
         preparedClipIdsRef.current.delete(rowId);
+        freshUploadRowIdsRef.current.add(rowId);
         return true;
       }
       return false;

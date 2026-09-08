@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
 using Reelshelf.Core;
+using Reelshelf.Exceptions;
 
 namespace Reelshelf.FFmpeg;
 
@@ -42,6 +43,13 @@ public static class FFmpegEndpoints
         catch (FileNotFoundException ex)
         {
             return TypedResults.NotFound(ex.Message);
+        }
+        catch (ServiceUnavailableException ex)
+        {
+            return TypedResults.Problem(
+                detail: ex.Message,
+                title: "Downloads busy",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
         }
         catch (Exception ex)
         {
