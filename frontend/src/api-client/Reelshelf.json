@@ -2080,10 +2080,39 @@
           "game_metadata": { }
         }
       },
+      "ClipCategoryTotals": {
+        "required": [
+          "game_category_id",
+          "clip_count",
+          "duration_seconds",
+          "storage_bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "game_category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clip_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "storage_bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ClipLibraryResponse": {
         "required": [
           "categories",
-          "clips"
+          "clips",
+          "totals",
+          "category_totals"
         ],
         "type": "object",
         "properties": {
@@ -2098,6 +2127,37 @@
             "items": {
               "$ref": "#/components/schemas/Clip"
             }
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ClipLibraryTotals"
+          },
+          "category_totals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClipCategoryTotals"
+            }
+          }
+        }
+      },
+      "ClipLibraryTotals": {
+        "required": [
+          "clip_count",
+          "duration_seconds",
+          "storage_bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "storage_bytes": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

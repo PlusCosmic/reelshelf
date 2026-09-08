@@ -60,7 +60,8 @@ function libraryRouteReducer(
 
 function LibraryRoute() {
   const navigate = useNavigate();
-  const { categories, clips, isLoading, isError } = useLibraryData();
+  const { categories, categoryTotals, clips, totals, isLoading, isError } =
+    useLibraryData();
   const [state, dispatch] = useReducer(libraryRouteReducer, {
     addCategoryOpen: false,
     draggingUpload: false,
@@ -70,8 +71,8 @@ function LibraryRoute() {
   });
   const dragDepthRef = useRef(0);
   const shelf = useMemo(
-    () => makeGameShelf(categories, clips),
-    [categories, clips],
+    () => makeGameShelf(categories, categoryTotals),
+    [categories, categoryTotals],
   );
   const tags = useMemo(() => topTags(clips, 8), [clips]);
 
@@ -163,7 +164,7 @@ function LibraryRoute() {
         <div>
           <div>
             <div className="rs-eyebrow">
-              Your archive - <StatLine clips={clips} />
+              Your archive - <StatLine totals={totals} />
             </div>
             <h1 className="rs-display rs-h1">
               Welcome back.{" "}

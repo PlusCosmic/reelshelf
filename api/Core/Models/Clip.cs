@@ -20,7 +20,19 @@ public record Clip(
 
 public record PagedClipsResponse(List<Clip> Clips, long TotalClips, long TotalPages);
 
-public record ClipLibraryResponse(List<GameCategoryResponse> Categories, List<Clip> Clips);
+/// <summary>
+/// Whole-library totals, computed over every clip the owner has rather than over the clips the response
+/// carries. The clip list is capped per category, so summing it undercounts once a category fills up.
+/// </summary>
+public record ClipLibraryTotals(long ClipCount, long DurationSeconds, long StorageBytes);
+
+public record ClipCategoryTotals(Guid GameCategoryId, long ClipCount, long DurationSeconds, long StorageBytes);
+
+public record ClipLibraryResponse(
+    List<GameCategoryResponse> Categories,
+    List<Clip> Clips,
+    ClipLibraryTotals Totals,
+    List<ClipCategoryTotals> CategoryTotals);
 
 public record ClipShareSummary(bool Shared);
 

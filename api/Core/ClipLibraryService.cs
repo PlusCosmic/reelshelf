@@ -5,7 +5,8 @@ namespace Reelshelf.Core;
 
 public class ClipLibraryService(
     GameCategoryService gameCategoryService,
-    ClipService clipService)
+    ClipService clipService,
+    ClipsStatements clipsStatements)
 {
     private const int PreviewClipsPerCategory = 96;
 
@@ -27,6 +28,18 @@ public class ClipLibraryService(
             clips.AddRange(categoryClips.Clips);
         }
 
-        return new ClipLibraryResponse(categories, clips);
+        // Totals come from the database, not from the clip list above: that list stops at
+        // PreviewClipsPerCategory per category and skips categories no longer in the caller's library,
+        // so summing it reports less than the storage meter does.
+        List<ClipsStatements.CategoryTotalsRow> totalsRows = await clipsStatements.GetCategoryTotalsByOwner(userId);
+        List<ClipCategoryTotals> categoryTotals = totalsRows
+            .Select(row => new ClipCategoryTotals(row.GameCategoryId, row.ClipCount, row.DurationSeconds, row.StorageBytes))
+            .ToList();
+        ClipLibraryTotals totals = new(
+            categoryTotals.Sum(total => total.ClipCount),
+            categoryTotals.Sum(total => total.DurationSeconds),
+            categoryTotals.Sum(total => total.StorageBytes));
+
+        return new ClipLibraryResponse(categories, clips, totals, categoryTotals);
     }
 }

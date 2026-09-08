@@ -307,7 +307,7 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
 
     // Same usage expression as ClipsStatements.GetStorageUsedBytesByOwner, evaluated in the update itself.
     private const string LiveUsageSql =
-        "(SELECT COALESCE(SUM(GREATEST(COALESCE(file_size, 0), COALESCE(storage_size, 0))), 0) FROM clip WHERE owner_id = @userId)";
+        $"(SELECT COALESCE(SUM({Core.ClipsStatements.StorageBytesExpression}), 0) FROM clip WHERE owner_id = @userId)";
 
     public async Task<bool> MarkWarned(Guid userId, long thresholdBytes)
     {

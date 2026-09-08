@@ -20,6 +20,20 @@ import {
   ClipToJSON,
   ClipToJSONTyped,
 } from "./Clip";
+import type { ClipCategoryTotals } from "./ClipCategoryTotals";
+import {
+  ClipCategoryTotalsFromJSON,
+  ClipCategoryTotalsFromJSONTyped,
+  ClipCategoryTotalsToJSON,
+  ClipCategoryTotalsToJSONTyped,
+} from "./ClipCategoryTotals";
+import type { ClipLibraryTotals } from "./ClipLibraryTotals";
+import {
+  ClipLibraryTotalsFromJSON,
+  ClipLibraryTotalsFromJSONTyped,
+  ClipLibraryTotalsToJSON,
+  ClipLibraryTotalsToJSONTyped,
+} from "./ClipLibraryTotals";
 import type { GameCategoryResponse } from "./GameCategoryResponse";
 import {
   GameCategoryResponseFromJSON,
@@ -46,6 +60,18 @@ export interface ClipLibraryResponse {
    * @memberof ClipLibraryResponse
    */
   clips: Array<Clip>;
+  /**
+   *
+   * @type {ClipLibraryTotals}
+   * @memberof ClipLibraryResponse
+   */
+  totals: ClipLibraryTotals;
+  /**
+   *
+   * @type {Array<ClipCategoryTotals>}
+   * @memberof ClipLibraryResponse
+   */
+  categoryTotals: Array<ClipCategoryTotals>;
 }
 
 /**
@@ -57,6 +83,9 @@ export function instanceOfClipLibraryResponse(
   if (!("categories" in value) || value["categories"] === undefined)
     return false;
   if (!("clips" in value) || value["clips"] === undefined) return false;
+  if (!("totals" in value) || value["totals"] === undefined) return false;
+  if (!("categoryTotals" in value) || value["categoryTotals"] === undefined)
+    return false;
   return true;
 }
 
@@ -76,6 +105,10 @@ export function ClipLibraryResponseFromJSONTyped(
       GameCategoryResponseFromJSON,
     ),
     clips: (json["clips"] as Array<any>).map(ClipFromJSON),
+    totals: ClipLibraryTotalsFromJSON(json["totals"]),
+    categoryTotals: (json["category_totals"] as Array<any>).map(
+      ClipCategoryTotalsFromJSON,
+    ),
   };
 }
 
@@ -96,5 +129,9 @@ export function ClipLibraryResponseToJSONTyped(
       GameCategoryResponseToJSON,
     ),
     clips: (value["clips"] as Array<any>).map(ClipToJSON),
+    totals: ClipLibraryTotalsToJSON(value["totals"]),
+    category_totals: (value["categoryTotals"] as Array<any>).map(
+      ClipCategoryTotalsToJSON,
+    ),
   };
 }

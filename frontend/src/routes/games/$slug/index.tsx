@@ -9,6 +9,7 @@ import {
   StatLine,
 } from "@/components/Reelshelf/ReelshelfPrimitives";
 import {
+  categoryTotalsFor,
   getGameColors,
   newestClips,
   topTags,
@@ -23,7 +24,8 @@ export const Route = createFileRoute("/games/$slug/")({
 function GameCategoryRoute() {
   const { slug } = Route.useParams();
   const navigate = useNavigate();
-  const { categories, clips, isLoading, isError } = useLibraryData();
+  const { categories, categoryTotals, clips, isLoading, isError } =
+    useLibraryData();
   const [tag, setTag] = useState<string | null>(null);
   const category = categories.find((item) => item.slug === slug);
   const [colorA, colorB] = getGameColors(category?.id ?? slug);
@@ -38,6 +40,10 @@ function GameCategoryRoute() {
     [category?.id, clips, slug],
   );
   const tags = useMemo(() => topTags(gameClips, 10), [gameClips]);
+  const totals = useMemo(
+    () => categoryTotalsFor(categoryTotals, category?.id ?? ""),
+    [categoryTotals, category?.id],
+  );
   const filtered = tag
     ? gameClips.filter((clip) => clip.tags.includes(tag))
     : gameClips;
@@ -77,7 +83,7 @@ function GameCategoryRoute() {
         <BackToLibrary />
         <div className="rs-eyebrow rs-over-media">
           {category.isCustom ? "Custom category" : "Game category"} -{" "}
-          <StatLine clips={gameClips} />
+          <StatLine totals={totals} />
         </div>
         <h1 className="rs-display rs-h1 rs-over-media-title">
           {category.name}

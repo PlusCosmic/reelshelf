@@ -243,20 +243,47 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Total bytes of clip storage attributed to an owner.
+    /// Bytes of storage attributed to a single clip row.
     /// Counts the larger of the client-declared file size (known at creation, before anything is uploaded)
     /// and Bunny's reported storage size (trusted, but only available after encoding), so an under-declared
     /// size stops mattering once Bunny reports the real one.
+    /// Every place that reports storage must use this expression, or the numbers disagree across the UI.
+    /// </summary>
+    public const string StorageBytesExpression = "GREATEST(COALESCE(file_size, 0), COALESCE(storage_size, 0))";
+
+    /// <summary>
+    /// Total bytes of clip storage attributed to an owner.
     /// </summary>
     public async Task<long> GetStorageUsedBytesByOwner(Guid ownerId)
     {
-        const string sql = """
-            SELECT COALESCE(SUM(GREATEST(COALESCE(file_size, 0), COALESCE(storage_size, 0))), 0)
+        string sql = $"""
+            SELECT COALESCE(SUM({StorageBytesExpression}), 0)
             FROM clip
             WHERE owner_id = @ownerId
             """;
 
         return await connection.QuerySingleAsync<long>(sql, new { ownerId });
+    }
+
+    /// <summary>
+    /// Clip count, duration and storage per category for an owner, computed over every clip row rather
+    /// than over the page of clips the library endpoint returns. Storage uses <see cref="StorageBytesExpression"/>
+    /// so a library topline built from these rows matches the storage meter exactly.
+    /// </summary>
+    public async Task<List<CategoryTotalsRow>> GetCategoryTotalsByOwner(Guid ownerId)
+    {
+        string sql = $"""
+            SELECT
+                game_category_id,
+                COUNT(*) AS clip_count,
+                COALESCE(SUM(COALESCE(length, 0)), 0) AS duration_seconds,
+                COALESCE(SUM({StorageBytesExpression}), 0) AS storage_bytes
+            FROM clip
+            WHERE owner_id = @ownerId
+            GROUP BY game_category_id
+            """;
+
+        return (await connection.QueryAsync<CategoryTotalsRow>(sql, new { ownerId })).ToList();
     }
 
     /// <summary>
@@ -695,6 +722,14 @@ public class ClipsStatements(NpgsqlConnection connection)
         public int? VideoStatus { get; set; }
         public int? EncodeProgress { get; set; }
         public long? FileSize { get; set; }
+    }
+
+    public class CategoryTotalsRow
+    {
+        public Guid GameCategoryId { get; set; }
+        public long ClipCount { get; set; }
+        public long DurationSeconds { get; set; }
+        public long StorageBytes { get; set; }
     }
 
     public class TagRow

@@ -1,4 +1,8 @@
-import type { Clip, GameCategoryResponse } from "@/api-client";
+import type {
+  Clip,
+  ClipCategoryTotals,
+  GameCategoryResponse,
+} from "@/api-client";
 import { apiConfig } from "@/shared/config/apiConfig";
 
 export interface GameShelfItem extends GameCategoryResponse {
@@ -32,35 +36,44 @@ export function getGameColors(id: string): [string, string] {
   return palette[hash % palette.length];
 }
 
+/**
+ * Shelf tiles use the API's per-category totals rather than counting the clips in the payload,
+ * which stops at a preview page per category and so undercounts a full shelf.
+ */
 export function makeGameShelf(
   categories: GameCategoryResponse[] = [],
-  clips: Clip[] = [],
+  categoryTotals: ClipCategoryTotals[] = [],
 ): GameShelfItem[] {
-  const clipsByCategory = new Map<string, Clip[]>();
-  for (const clip of clips) {
-    const categoryClips = clipsByCategory.get(clip.gameCategoryId) ?? [];
-    categoryClips.push(clip);
-    clipsByCategory.set(clip.gameCategoryId, categoryClips);
-  }
+  const totalsByCategory = new Map(
+    categoryTotals.map((totals) => [totals.gameCategoryId, totals]),
+  );
 
   return categories.map((category) => {
-    const categoryClips = clipsByCategory.get(category.id) ?? [];
+    const totals = totalsByCategory.get(category.id);
     const [colorA, colorB] = getGameColors(category.id);
     return {
       ...category,
-      clipCount: categoryClips.length,
-      durationSeconds: categoryClips.reduce(
-        (sum, clip) => sum + (clip.video.length || 0),
-        0,
-      ),
-      sizeBytes: categoryClips.reduce(
-        (sum, clip) => sum + (clip.video.storageSize || 0),
-        0,
-      ),
+      clipCount: totals?.clipCount ?? 0,
+      durationSeconds: totals?.durationSeconds ?? 0,
+      sizeBytes: totals?.storageBytes ?? 0,
       colorA,
       colorB,
     };
   });
+}
+
+export function categoryTotalsFor(
+  categoryTotals: ClipCategoryTotals[],
+  categoryId: string,
+) {
+  const totals = categoryTotals.find(
+    (item) => item.gameCategoryId === categoryId,
+  );
+  return {
+    clipCount: totals?.clipCount ?? 0,
+    durationSeconds: totals?.durationSeconds ?? 0,
+    storageBytes: totals?.storageBytes ?? 0,
+  };
 }
 
 export function categoryForClip(
