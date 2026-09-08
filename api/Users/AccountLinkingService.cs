@@ -13,24 +13,35 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
     public async Task<SignInOutcome> SignIn(ExternalIdentity identity)
     {
         UserStatements.UserIdentityRow? existing = await store.GetIdentity(identity.Provider, identity.ProviderUserId);
-        if (existing is null)
+        if (existing is not null)
         {
-            UserStatements.UserRow created = await store.CreateUserWithIdentity(identity);
-            return new SignInOutcome(created, Created: true);
+            SignInOutcome? refreshed = await RefreshExisting(existing, identity);
+            if (refreshed is not null)
+            {
+                return refreshed;
+            }
+
+            // Unlinked between the lookup and the lock: fall through and treat it as a first sign-in.
         }
 
-        // Same lock as link/unlink, so an unlink racing this sign-in cannot have its promoted successor
-        // overwritten by the profile of the identity it just removed.
+        UserStatements.UserRow created = await store.CreateUserWithIdentity(identity);
+        return new SignInOutcome(created, Created: true);
+    }
+
+    /// <summary>
+    /// Refreshes a known identity (and the account profile when it is primary) under the account lock, so an
+    /// unlink racing this sign-in cannot have its promoted successor overwritten. Returns null when the identity
+    /// no longer belongs to the account; the lock is released before the caller creates anything.
+    /// </summary>
+    private async Task<SignInOutcome?> RefreshExisting(UserStatements.UserIdentityRow existing, ExternalIdentity identity)
+    {
         await using IAccountScope scope = await store.LockAccount(existing.UserId);
 
         List<UserStatements.UserIdentityRow> identities = await store.GetIdentitiesForUser(existing.UserId);
         UserStatements.UserIdentityRow? current = identities.FirstOrDefault(i => i.Id == existing.Id);
         if (current is null)
         {
-            // Unlinked between the lookup and the lock: treat it as a first sign-in for this identity.
-            UserStatements.UserRow created = await store.CreateUserWithIdentity(identity);
-            await scope.CommitAsync();
-            return new SignInOutcome(created, Created: true);
+            return null;
         }
 
         await store.UpdateIdentityProfile(current.Id, identity);

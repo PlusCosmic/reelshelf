@@ -47,6 +47,29 @@ public class AccountLinkingServiceTests
     }
 
     [Fact]
+    public async Task SignIn_WhenIdentityIsUnlinkedBeforeTheLock_CreatesAFreshAccount()
+    {
+        FakeStore store = new();
+        AccountLinkingService service = new(store);
+        SignInOutcome harry = await service.SignIn(DiscordHarry);
+        await service.Link(harry.User.Id, TwitchHarry);
+
+        // The Discord identity is found by the lookup, then unlinked by another request before the lock is taken.
+        store.OnLockAccount = () =>
+        {
+            Guid discordId = store.Identities.Values.Single(i => i.Provider == AuthProvider.Discord).Id;
+            store.Identities.Remove(discordId);
+            store.OnLockAccount = null;
+        };
+
+        SignInOutcome outcome = await service.SignIn(DiscordHarry);
+
+        Assert.True(outcome.Created);
+        Assert.NotEqual(harry.User.Id, outcome.User.Id);
+        Assert.Equal(outcome.User.Id, store.Identities.Values.Single(i => i.Provider == AuthProvider.Discord).UserId);
+    }
+
+    [Fact]
     public async Task SignIn_WithSecondaryIdentity_LeavesAccountProfileAlone()
     {
         FakeStore store = new();
@@ -184,6 +207,12 @@ public class AccountLinkingServiceTests
 
         public Task<UserStatements.UserRow> CreateUserWithIdentity(ExternalIdentity identity)
         {
+            if (_activeScopes > 0)
+            {
+                // Npgsql rejects a second transaction on the same connection; the real store would throw here.
+                throw new InvalidOperationException("CreateUserWithIdentity started inside an account lock");
+            }
+
             UserStatements.UserRow user = new()
             {
                 Id = Guid.NewGuid(),
@@ -203,15 +232,27 @@ public class AccountLinkingServiceTests
             return Task.FromResult<UserStatements.UserIdentityRow?>(duplicate ? null : Insert(userId, identity));
         }
 
+        /// <summary>Runs when a lock is taken, before the caller re-reads; lets a test simulate a concurrent change.</summary>
+        public Action? OnLockAccount { get; set; }
+
+        private int _activeScopes;
+
         public Task<IAccountScope> LockAccount(Guid userId)
         {
-            return Task.FromResult<IAccountScope>(new NoopScope());
+            _activeScopes++;
+            OnLockAccount?.Invoke();
+            return Task.FromResult<IAccountScope>(new FakeScope(this));
         }
 
-        private sealed class NoopScope : IAccountScope
+        private sealed class FakeScope(FakeStore owner) : IAccountScope
         {
             public Task CommitAsync() => Task.CompletedTask;
-            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+            public ValueTask DisposeAsync()
+            {
+                owner._activeScopes--;
+                return ValueTask.CompletedTask;
+            }
         }
 
         public Task UpdateIdentityProfile(Guid identityId, ExternalIdentity identity)

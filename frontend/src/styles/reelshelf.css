@@ -533,6 +533,8 @@ a {
 
 .rs-menu-item {
   width: 100%;
+  box-sizing: border-box;
+  text-decoration: none;
   display: flex;
   align-items: center;
   gap: 10px;

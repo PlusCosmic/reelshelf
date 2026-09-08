@@ -4,7 +4,12 @@ import {
   createRootRoute,
   useRouterState,
 } from "@tanstack/react-router";
-import { IconLogout, IconMoon, IconSun } from "@tabler/icons-react";
+import {
+  IconLogout,
+  IconMoon,
+  IconSettings,
+  IconSun,
+} from "@tabler/icons-react";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
@@ -117,6 +122,15 @@ function AuthenticatedShell({
                     <StorageMeter usage={storage.data} compact />
                   </div>
                 ) : null}
+                <Link
+                  to="/settings"
+                  className="rs-menu-item"
+                  role="menuitem"
+                  onClick={() => setProfileMenuOpen(false)}
+                >
+                  <IconSettings size={16} />
+                  Settings
+                </Link>
                 <button
                   className="rs-menu-item"
                   type="button"
