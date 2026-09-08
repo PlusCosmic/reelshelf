@@ -93,6 +93,8 @@ public class AuthenticatedUserMiddleware(RequestDelegate next, WhitelistService 
                 dbUser.Username,
                 dbUser.GlobalName,
                 dbUser.AvatarUrl,
+                dbUser.Email,
+                dbUser.OnboardingCompletedAt is not null,
                 effectiveRole,
                 new HashSet<string>(additionalPermissions),
                 identities);

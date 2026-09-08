@@ -39,6 +39,9 @@ A Discord or Twitch login attached to an **Account**. An **Account** has at leas
 **Primary Identity**:
 The oldest **Linked Identity** on an **Account**. The account name and avatar follow it; unlinking it promotes the next-oldest.
 
+**Account Email**:
+The address the user chose for account mail (linked sign-in notices, storage nearly full). Suggested from a provider on first sign-in, but owned by the user; providers never overwrite it.
+
 **Storage Tier**:
 How much clip storage a user may keep. Everyone who signs in with Discord or Twitch gets the free tier (25 GB); users with a **Linked Identity** listed in `whitelist.json` get the unlimited tier.
 _Avoid_: Treating the whitelist as an access gate; it no longer blocks sign-in.

@@ -2634,3 +2634,39 @@ a {
     font-size: 12px;
   }
 }
+
+.rs-onboarding {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+.rs-onboarding-card {
+  display: grid;
+  gap: 14px;
+  width: min(520px, 100%);
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-soft);
+}
+
+.rs-onboarding-card .rs-h1 {
+  margin: 0;
+}
+
+.rs-settings-main {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.rs-email-form {
+  gap: 10px;
+}
+
+.rs-email-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

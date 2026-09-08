@@ -8,6 +8,7 @@ import { IconLogout, IconMoon, IconSun } from "@tabler/icons-react";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
+import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
 import { StorageMeter } from "@/components/Reelshelf/StorageMeter";
 import { useCurrentUser, useLogout, useStorageUsage } from "@/hooks/queries";
@@ -150,7 +151,7 @@ function AuthenticatedShell({
         </div>
       </header>
       <main>
-        <Outlet />
+        {user.needsOnboarding ? <EmailOnboarding user={user} /> : <Outlet />}
       </main>
     </div>
   );

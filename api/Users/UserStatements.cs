@@ -5,7 +5,7 @@ namespace Reelshelf.Users;
 
 public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore
 {
-    private const string UserColumns = "id, username, global_name, avatar_url, email, role, role_from_whitelist";
+    private const string UserColumns = "id, username, global_name, avatar_url, email, onboarding_completed_at, role, role_from_whitelist";
 
     private const string IdentityColumns =
         "id, user_id, provider, provider_user_id, username, display_name, avatar_url, email, linked_at";
@@ -72,13 +72,13 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore
         await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
 
         string insertUser = $@"
-            INSERT INTO app_user (username, global_name, avatar_url, email)
-            VALUES (@username, @globalName, @avatarUrl, @email)
+            INSERT INTO app_user (username, global_name, avatar_url)
+            VALUES (@username, @globalName, @avatarUrl)
             RETURNING {UserColumns}";
 
         UserRow user = await connection.QuerySingleAsync<UserRow>(
             insertUser,
-            new { username = identity.Username, globalName = identity.DisplayName, avatarUrl = identity.AvatarUrl, email = identity.Email },
+            new { username = identity.Username, globalName = identity.DisplayName, avatarUrl = identity.AvatarUrl },
             transaction);
 
         await InsertIdentity(user.Id, identity, transaction);
@@ -133,17 +133,28 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore
         });
     }
 
-    public async Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl, string? email)
+    public async Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl)
     {
         const string sql = @"
             UPDATE app_user
             SET username = @username,
                 global_name = @globalName,
-                avatar_url = @avatarUrl,
-                email = @email
+                avatar_url = @avatarUrl
             WHERE id = @userId";
 
-        await connection.ExecuteAsync(sql, new { userId, username, globalName, avatarUrl, email });
+        await connection.ExecuteAsync(sql, new { userId, username, globalName, avatarUrl });
+    }
+
+    /// <summary>Records the address the user chose for account mail (null when they skipped) and marks onboarding done.</summary>
+    public async Task SetUserEmail(Guid userId, string? email)
+    {
+        const string sql = @"
+            UPDATE app_user
+            SET email = @email,
+                onboarding_completed_at = COALESCE(onboarding_completed_at, now())
+            WHERE id = @userId";
+
+        await connection.ExecuteAsync(sql, new { userId, email });
     }
 
     public async Task DeleteIdentity(Guid identityId)
@@ -161,7 +172,7 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore
     public async Task<List<UserRow>> GetUsersWhoAddedMe(Guid userId)
     {
         const string sql = @"
-            SELECT DISTINCT u.id, u.username, u.global_name, u.avatar_url, u.email, u.role, u.role_from_whitelist
+            SELECT DISTINCT u.id, u.username, u.global_name, u.avatar_url, u.email, u.onboarding_completed_at, u.role, u.role_from_whitelist
             FROM playlist_collaborators pc
             JOIN playlists p ON p.id = pc.playlist_id
             JOIN app_user u ON u.id = p.creator_user_id
@@ -263,6 +274,7 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore
         public string? GlobalName { get; set; }
         public string? AvatarUrl { get; set; }
         public string? Email { get; set; }
+        public DateTimeOffset? OnboardingCompletedAt { get; set; }
         public string Role { get; set; } = "Editor";
         public bool RoleFromWhitelist { get; set; }
     }

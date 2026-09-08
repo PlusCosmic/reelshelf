@@ -23,7 +23,8 @@ public class AccountLinkingServiceTests
         Assert.Equal("harry", outcome.User.Username);
         Assert.Equal("Harry", outcome.User.GlobalName);
         Assert.Equal(DiscordHarry.AvatarUrl, outcome.User.AvatarUrl);
-        Assert.Equal("harry@example.com", outcome.User.Email);
+        Assert.Null(outcome.User.Email);
+        Assert.Equal("harry@example.com", Assert.Single(store.Identities.Values).Email);
         UserStatements.UserIdentityRow identity = Assert.Single(store.Identities.Values);
         Assert.Equal(outcome.User.Id, identity.UserId);
     }
@@ -127,7 +128,6 @@ public class AccountLinkingServiceTests
         UserStatements.UserRow user = store.Users[harry.User.Id];
         Assert.Equal("harry_tv", user.Username);
         Assert.Equal("HarryTV", user.GlobalName);
-        Assert.Equal("harry@twitch.example", user.Email);
         List<LinkedIdentity> remaining = await service.GetLinkedIdentities(harry.User.Id);
         LinkedIdentity twitch = Assert.Single(remaining);
         Assert.True(twitch.IsPrimary);
@@ -167,8 +167,7 @@ public class AccountLinkingServiceTests
                 Id = Guid.NewGuid(),
                 Username = identity.Username,
                 GlobalName = identity.DisplayName,
-                AvatarUrl = identity.AvatarUrl,
-                Email = identity.Email
+                AvatarUrl = identity.AvatarUrl
             };
             Users[user.Id] = user;
             Insert(user.Id, identity);
@@ -190,13 +189,12 @@ public class AccountLinkingServiceTests
             return Task.CompletedTask;
         }
 
-        public Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl, string? email)
+        public Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl)
         {
             UserStatements.UserRow user = Users[userId];
             user.Username = username;
             user.GlobalName = globalName;
             user.AvatarUrl = avatarUrl;
-            user.Email = email;
             return Task.CompletedTask;
         }
 

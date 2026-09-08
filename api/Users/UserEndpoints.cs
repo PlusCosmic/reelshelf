@@ -12,7 +12,8 @@ public static class UserEndpoints
         RouteGroupBuilder meGroup = app.MapGroup("me")
             .RequireAuthorization();
 
-        meGroup.MapGet("/", GetMe);
+        meGroup.MapGet("/", GetMe).WithName("GetMe");
+        meGroup.MapPut("/email", SetEmail).WithName("SetMyEmail");
         meGroup.MapGet("/storage", GetStorageUsage).WithName("GetMyStorageUsage");
         meGroup.MapGet("/identities", GetLinkedIdentities).WithName("GetMyLinkedIdentities");
         meGroup.MapDelete("/identities/{provider}", UnlinkIdentity).WithName("UnlinkMyIdentity");
@@ -22,9 +23,38 @@ public static class UserEndpoints
         app.MapGet("users/suggestions", GetUserSuggestions).RequireAuthorization();
     }
 
-    private static Ok<UserProfile> GetMe(AuthenticatedUser user)
+    private static async Task<Ok<CurrentUserResponse>> GetMe(AuthenticatedUser user, UserStatements userStatements)
     {
-        return TypedResults.Ok(new UserProfile(user.Id, user.Username, user.GlobalName, user.AvatarUrl));
+        // Until the user has chosen an address, offer the one their providers reported (primary identity first).
+        string? suggestedEmail = null;
+        if (!user.OnboardingCompleted)
+        {
+            List<UserStatements.UserIdentityRow> identities = await userStatements.GetIdentitiesForUser(user.Id);
+            suggestedEmail = identities.Select(identity => identity.Email).FirstOrDefault(email => !string.IsNullOrEmpty(email));
+        }
+
+        return TypedResults.Ok(new CurrentUserResponse(
+            user.Id,
+            user.Username,
+            user.GlobalName,
+            user.AvatarUrl,
+            user.Email,
+            suggestedEmail,
+            NeedsOnboarding: !user.OnboardingCompleted));
+    }
+
+    private static async Task<Results<NoContent, BadRequest<string>>> SetEmail(
+        AuthenticatedUser user,
+        SetEmailRequest request,
+        UserStatements userStatements)
+    {
+        if (!EmailAddress.TryNormalize(request.Email, out string? email))
+        {
+            return TypedResults.BadRequest("Enter a valid email address, or leave it empty.");
+        }
+
+        await userStatements.SetUserEmail(user.Id, email);
+        return TypedResults.NoContent();
     }
 
     private static async Task<Ok<StorageUsageResponse>> GetStorageUsage(
@@ -86,3 +116,16 @@ public static class UserEndpoints
         return TypedResults.Ok(suggestions);
     }
 }
+
+/// <summary>The signed-in user's own view of their account; never returned for other users.</summary>
+public sealed record CurrentUserResponse(
+    Guid Id,
+    string Username,
+    string? GlobalName,
+    string? Avatar,
+    string? Email,
+    string? SuggestedEmail,
+    bool NeedsOnboarding);
+
+/// <summary>An empty or null email clears the address; onboarding still counts as completed.</summary>
+public sealed record SetEmailRequest(string? Email);

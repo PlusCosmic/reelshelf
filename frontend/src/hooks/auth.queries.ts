@@ -4,6 +4,7 @@ import {
   fetchLinkedIdentities,
   fetchMe,
   fetchStorageUsage,
+  setEmail,
   unlinkIdentity,
 } from "@/shared/services/user";
 
@@ -52,6 +53,17 @@ export function useUnlinkIdentity() {
         queryClient.invalidateQueries({ queryKey: currentUserQueryKey }),
         queryClient.invalidateQueries({ queryKey: storageUsageQueryKey }),
       ]);
+    },
+  });
+}
+
+export function useSetEmail() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: setEmail,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: currentUserQueryKey });
     },
   });
 }

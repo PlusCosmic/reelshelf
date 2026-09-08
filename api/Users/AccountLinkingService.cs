@@ -6,6 +6,7 @@ namespace Reelshelf.Users;
 ///
 /// The oldest linked identity is the account's <b>primary</b> identity: the account's username, display name
 /// and avatar follow it. Signing in with a secondary identity refreshes only that identity's own profile.
+/// The account email is the user's own choice and is never overwritten by a provider.
 /// </summary>
 public sealed class AccountLinkingService(IUserIdentityStore store)
 {
@@ -23,7 +24,7 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
         List<UserStatements.UserIdentityRow> identities = await store.GetIdentitiesForUser(existing.UserId);
         if (identities.Count == 0 || identities[0].Id == existing.Id)
         {
-            await store.UpdateUserProfile(existing.UserId, identity.Username, identity.DisplayName, identity.AvatarUrl, identity.Email);
+            await store.UpdateUserProfile(existing.UserId, identity.Username, identity.DisplayName, identity.AvatarUrl);
         }
 
         UserStatements.UserRow user = await store.GetUserById(existing.UserId)
@@ -76,7 +77,7 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
         {
             // The next-oldest identity becomes primary and the account profile follows it.
             UserStatements.UserIdentityRow successor = identities[1];
-            await store.UpdateUserProfile(userId, successor.Username, successor.DisplayName, successor.AvatarUrl, successor.Email);
+            await store.UpdateUserProfile(userId, successor.Username, successor.DisplayName, successor.AvatarUrl);
         }
 
         return UnlinkOutcome.Unlinked;
@@ -124,6 +125,6 @@ public interface IUserIdentityStore
     Task<UserStatements.UserRow> CreateUserWithIdentity(ExternalIdentity identity);
     Task<UserStatements.UserIdentityRow> LinkIdentity(Guid userId, ExternalIdentity identity);
     Task UpdateIdentityProfile(Guid identityId, ExternalIdentity identity);
-    Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl, string? email);
+    Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl);
     Task DeleteIdentity(Guid identityId);
 }

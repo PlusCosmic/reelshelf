@@ -14,13 +14,19 @@
 
 import * as runtime from "../runtime";
 import type {
+  CurrentUserResponse,
   LinkedIdentity,
+  SetEmailRequest,
   StorageUsageResponse,
   UserProfile,
 } from "../models/index";
 import {
+  CurrentUserResponseFromJSON,
+  CurrentUserResponseToJSON,
   LinkedIdentityFromJSON,
   LinkedIdentityToJSON,
+  SetEmailRequestFromJSON,
+  SetEmailRequestToJSON,
   StorageUsageResponseFromJSON,
   StorageUsageResponseToJSON,
   UserProfileFromJSON,
@@ -31,6 +37,10 @@ export interface ApiUserUserIdGetRequest {
   userId: string;
 }
 
+export interface SetMyEmailRequest {
+  setEmailRequest: SetEmailRequest;
+}
+
 export interface UnlinkMyIdentityRequest {
   provider: string;
 }
@@ -39,41 +49,6 @@ export interface UnlinkMyIdentityRequest {
  *
  */
 export class UserEndpointsApi extends runtime.BaseAPI {
-  /**
-   */
-  async apiMeGetRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<UserProfile>> {
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/me`;
-
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
-
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      UserProfileFromJSON(jsonValue),
-    );
-  }
-
-  /**
-   */
-  async apiMeGet(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<UserProfile> {
-    const response = await this.apiMeGetRaw(initOverrides);
-    return await response.value();
-  }
-
   /**
    */
   async apiUserUserIdGetRaw(
@@ -162,6 +137,41 @@ export class UserEndpointsApi extends runtime.BaseAPI {
 
   /**
    */
+  async getMeRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<CurrentUserResponse>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/me`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      CurrentUserResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async getMe(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<CurrentUserResponse> {
+    const response = await this.getMeRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
   async getMyLinkedIdentitiesRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<LinkedIdentity>>> {
@@ -228,6 +238,50 @@ export class UserEndpointsApi extends runtime.BaseAPI {
   ): Promise<StorageUsageResponse> {
     const response = await this.getMyStorageUsageRaw(initOverrides);
     return await response.value();
+  }
+
+  /**
+   */
+  async setMyEmailRaw(
+    requestParameters: SetMyEmailRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["setEmailRequest"] == null) {
+      throw new runtime.RequiredError(
+        "setEmailRequest",
+        'Required parameter "setEmailRequest" was null or undefined when calling setMyEmail().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/me/email`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "PUT",
+        headers: headerParameters,
+        query: queryParameters,
+        body: SetEmailRequestToJSON(requestParameters["setEmailRequest"]),
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async setMyEmail(
+    requestParameters: SetMyEmailRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.setMyEmailRaw(requestParameters, initOverrides);
   }
 
   /**

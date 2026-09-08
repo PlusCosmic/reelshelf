@@ -1607,13 +1607,47 @@
         "tags": [
           "UserEndpoints"
         ],
+        "operationId": "GetMe",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserProfile"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/email": {
+      "put": {
+        "tags": [
+          "UserEndpoints"
+        ],
+        "operationId": "SetMyEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -2098,6 +2132,54 @@
           "correct_as_of": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "CurrentUserResponse": {
+        "required": [
+          "id",
+          "username",
+          "global_name",
+          "avatar",
+          "email",
+          "suggested_email",
+          "needs_onboarding"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "global_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "avatar": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "suggested_email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "needs_onboarding": {
+            "type": "boolean"
           }
         }
       },
@@ -2602,6 +2684,20 @@
               "type": "string",
               "format": "uuid"
             }
+          }
+        }
+      },
+      "SetEmailRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

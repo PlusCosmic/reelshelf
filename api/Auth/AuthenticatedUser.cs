@@ -12,6 +12,8 @@ public record AuthenticatedUser(
     string Username,
     string? GlobalName,
     string? AvatarUrl,
+    string? Email,
+    bool OnboardingCompleted,
     UserRole Role,
     HashSet<string> AdditionalPermissions,
     IReadOnlyList<UserIdentityRef> Identities)
