@@ -79,10 +79,11 @@ These should be designed into state shape but not block the first implementation
 2. Queue Build
    - Filter to supported video files: MP4, MOV, WebM, MKV.
    - Reject files over the existing 4 GB limit.
+
 - Create one queue row per valid file, including the single-file case.
-   - Default title is filename without extension.
-   - Default created date uses `file.lastModified`.
-   - Infer session grouping from adjacent files by selected/inferred game and timestamp gap.
+  - Default title is filename without extension.
+  - Default created date uses `file.lastModified`.
+  - Infer session grouping from adjacent files by selected/inferred game and timestamp gap.
 
 3. Review
    - Rows are selected by default.
