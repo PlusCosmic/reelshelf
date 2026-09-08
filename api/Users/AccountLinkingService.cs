@@ -12,20 +12,32 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
 {
     public async Task<SignInOutcome> SignIn(ExternalIdentity identity)
     {
-        UserStatements.UserIdentityRow? existing = await store.GetIdentity(identity.Provider, identity.ProviderUserId);
-        if (existing is not null)
+        // Two passes cover the races around a first sign-in: the identity being unlinked between lookup and
+        // lock, or a concurrent callback for the same identity creating the account first.
+        for (int attempt = 0; attempt < 3; attempt++)
         {
-            SignInOutcome? refreshed = await RefreshExisting(existing, identity);
-            if (refreshed is not null)
+            UserStatements.UserIdentityRow? existing = await store.GetIdentity(identity.Provider, identity.ProviderUserId);
+            if (existing is not null)
             {
-                return refreshed;
+                SignInOutcome? refreshed = await RefreshExisting(existing, identity);
+                if (refreshed is not null)
+                {
+                    return refreshed;
+                }
+
+                // Unlinked between the lookup and the lock: treat it as a first sign-in.
             }
 
-            // Unlinked between the lookup and the lock: fall through and treat it as a first sign-in.
+            UserStatements.UserRow? created = await store.CreateUserWithIdentity(identity);
+            if (created is not null)
+            {
+                return new SignInOutcome(created, Created: true);
+            }
+
+            // Lost the race to another first sign-in for this identity; it exists now, so look it up again.
         }
 
-        UserStatements.UserRow created = await store.CreateUserWithIdentity(identity);
-        return new SignInOutcome(created, Created: true);
+        throw new InvalidOperationException($"Could not resolve an account for {identity.Provider} identity {identity.ProviderUserId}");
     }
 
     /// <summary>
@@ -162,7 +174,8 @@ public interface IUserIdentityStore
     Task<UserStatements.UserRow?> GetUserById(Guid id);
     Task<UserStatements.UserIdentityRow?> GetIdentity(string provider, string providerUserId);
     Task<List<UserStatements.UserIdentityRow>> GetIdentitiesForUser(Guid userId);
-    Task<UserStatements.UserRow> CreateUserWithIdentity(ExternalIdentity identity);
+    /// <summary>Null when the identity already exists; nothing is left behind in that case.</summary>
+    Task<UserStatements.UserRow?> CreateUserWithIdentity(ExternalIdentity identity);
     /// <summary>Null when the identity already exists for some account.</summary>
     Task<UserStatements.UserIdentityRow?> LinkIdentity(Guid userId, ExternalIdentity identity);
 

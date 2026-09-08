@@ -62,7 +62,11 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, S
         return result.ToList();
     }
 
-    public async Task<UserRow> CreateUserWithIdentity(ExternalIdentity identity)
+    /// <summary>
+    /// Creates an account owning <paramref name="identity"/>. Returns null when the identity already exists,
+    /// i.e. a concurrent first sign-in won; the account row inserted here is rolled back with the transaction.
+    /// </summary>
+    public async Task<UserRow?> CreateUserWithIdentity(ExternalIdentity identity)
     {
         if (connection.State != System.Data.ConnectionState.Open)
         {
@@ -81,7 +85,16 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, S
             new { username = identity.Username, globalName = identity.DisplayName, avatarUrl = identity.AvatarUrl },
             transaction);
 
-        await InsertIdentity(user.Id, identity, transaction);
+        try
+        {
+            await InsertIdentity(user.Id, identity, transaction);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            await transaction.RollbackAsync();
+            return null;
+        }
+
         await transaction.CommitAsync();
         return user;
     }

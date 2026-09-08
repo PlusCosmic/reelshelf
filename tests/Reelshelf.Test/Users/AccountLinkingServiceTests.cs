@@ -70,6 +70,22 @@ public class AccountLinkingServiceTests
     }
 
     [Fact]
+    public async Task SignIn_LosingTheRaceToCreateTheSameIdentity_SignsIntoTheWinner()
+    {
+        FakeStore store = new();
+        AccountLinkingService service = new(store);
+        SignInOutcome winner = await service.SignIn(DiscordHarry);
+
+        // This callback looked the identity up before the winner committed, so it tries to create and conflicts.
+        store.HideFromLookup = DiscordHarry;
+        SignInOutcome loser = await service.SignIn(DiscordHarry);
+
+        Assert.False(loser.Created);
+        Assert.Equal(winner.User.Id, loser.User.Id);
+        Assert.Single(store.Users);
+    }
+
+    [Fact]
     public async Task SignIn_WithSecondaryIdentity_LeavesAccountProfileAlone()
     {
         FakeStore store = new();
@@ -104,8 +120,8 @@ public class AccountLinkingServiceTests
         FakeStore store = new();
         AccountLinkingService service = new(store);
         SignInOutcome harry = await service.SignIn(DiscordHarry);
-        store.HideFromLookup = TwitchHarry;
         await service.SignIn(TwitchHarry);
+        store.HideFromLookup = TwitchHarry;
 
         LinkOutcome outcome = await service.Link(harry.User.Id, TwitchHarry);
 
@@ -174,7 +190,10 @@ public class AccountLinkingServiceTests
     {
         private DateTimeOffset _clock = new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
 
-        /// <summary>Simulates another request inserting this identity after the lookup: GetIdentity misses, insert conflicts.</summary>
+        /// <summary>
+        /// Simulates another request inserting this identity right after the lookup: the next GetIdentity misses
+        /// once, the insert then conflicts, and later lookups see the identity.
+        /// </summary>
         public ExternalIdentity? HideFromLookup { get; set; }
 
         public Dictionary<Guid, UserStatements.UserRow> Users { get; } = [];
@@ -189,6 +208,7 @@ public class AccountLinkingServiceTests
         {
             if (HideFromLookup is { } hidden && hidden.Provider == provider && hidden.ProviderUserId == providerUserId)
             {
+                HideFromLookup = null;
                 return Task.FromResult<UserStatements.UserIdentityRow?>(null);
             }
 
@@ -205,12 +225,18 @@ public class AccountLinkingServiceTests
                 .ToList());
         }
 
-        public Task<UserStatements.UserRow> CreateUserWithIdentity(ExternalIdentity identity)
+        public Task<UserStatements.UserRow?> CreateUserWithIdentity(ExternalIdentity identity)
         {
             if (_activeScopes > 0)
             {
                 // Npgsql rejects a second transaction on the same connection; the real store would throw here.
                 throw new InvalidOperationException("CreateUserWithIdentity started inside an account lock");
+            }
+
+            if (Identities.Values.Any(i => i.Provider == identity.Provider && i.ProviderUserId == identity.ProviderUserId))
+            {
+                // Unique violation on the identity: the real store rolls the account row back and reports null.
+                return Task.FromResult<UserStatements.UserRow?>(null);
             }
 
             UserStatements.UserRow user = new()
@@ -222,7 +248,7 @@ public class AccountLinkingServiceTests
             };
             Users[user.Id] = user;
             Insert(user.Id, identity);
-            return Task.FromResult(user);
+            return Task.FromResult<UserStatements.UserRow?>(user);
         }
 
         public Task<UserStatements.UserIdentityRow?> LinkIdentity(Guid userId, ExternalIdentity identity)
