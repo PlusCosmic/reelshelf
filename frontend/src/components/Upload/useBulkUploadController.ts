@@ -15,6 +15,7 @@ import {
 } from "@/hooks/bulkUploadQueue";
 import { useCategories } from "@/hooks/queries";
 import { storageUsageQueryKey } from "@/hooks/auth.queries";
+import { invalidateClipCollections } from "@/hooks/clips.queries";
 import { ApiError } from "@/shared/services/api-error";
 import { addTagToVideo, deleteClip } from "@/shared/services/clips";
 import {
@@ -243,6 +244,7 @@ export function useBulkUploadController({
               activeUploadIdsRef.current.delete(row.id);
               requestedUploadIdsRef.current.delete(row.id);
               preparedClipIdsRef.current.delete(row.id);
+              invalidateClipCollections(queryClient);
               setRows((current) =>
                 current.map((item) =>
                   item.id === row.id
@@ -632,6 +634,7 @@ export function useBulkUploadController({
       } finally {
         releaseInFlightRef.current.delete(rowId);
         void queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
+        invalidateClipCollections(queryClient);
       }
     })();
     releaseInFlightRef.current.set(rowId, release);

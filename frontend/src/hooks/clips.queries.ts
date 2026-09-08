@@ -3,6 +3,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
 import type { Clip } from "@/api-client";
 import { storageUsageQueryKey } from "@/hooks/auth.queries";
@@ -17,6 +18,20 @@ import {
 } from "@/shared/services/clips";
 
 export const CLIPS_PAGE_SIZE = 48;
+
+/**
+ * Drops every cache that describes which clips exist: the paged grids, the shelf totals and topline,
+ * and the tag chips. Call it wherever clips are added or removed — all three are computed server-side
+ * now, so none of them can be patched up client-side from the mutation's result.
+ *
+ * Only active queries refetch, so calling this once per clip during a bulk import costs nothing while
+ * the user is still on the upload page; the library refetches once, when they navigate back to it.
+ */
+export function invalidateClipCollections(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
+  void queryClient.invalidateQueries({ queryKey: ["clips", "list"] });
+  void queryClient.invalidateQueries({ queryKey: ["clips", "top-tags"] });
+}
 
 export type ClipsFilters = {
   categoryId?: string | null;
@@ -125,9 +140,7 @@ export function useDeleteClip() {
     mutationFn: (clipId: string) => deleteClip(clipId),
     onSuccess: (_data, clipId) => {
       queryClient.removeQueries({ queryKey: ["clips", clipId] });
-      queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
-      queryClient.invalidateQueries({ queryKey: ["clips", "list"] });
-      queryClient.invalidateQueries({ queryKey: ["clips", "top-tags"] });
+      invalidateClipCollections(queryClient);
       // Playlist summaries and details embed clips; drop the deleted one from them too.
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
       queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
