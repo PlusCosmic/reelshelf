@@ -5,13 +5,21 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/auth/discord/login": {
+    "/auth/{provider}/login": {
       "get": {
         "tags": [
           "AuthEndpoints"
         ],
         "operationId": "Login",
         "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "returnUrl",
             "in": "query",
@@ -21,8 +29,38 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/auth/{provider}/link": {
+      "get": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "LinkIdentity",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "returnUrl",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -45,6 +83,39 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/dev-login": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "DevLogin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevLoginResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -606,7 +677,7 @@
     "/api/user/{userId}": {
       "get": {
         "tags": [
-          "DiscordUserEndpoints"
+          "UserEndpoints"
         ],
         "parameters": [
           {
@@ -625,7 +696,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DiscordUser"
+                  "$ref": "#/components/schemas/UserProfile"
                 }
               }
             }
@@ -639,7 +710,7 @@
     "/api/users/suggestions": {
       "get": {
         "tags": [
-          "DiscordUserEndpoints"
+          "UserEndpoints"
         ],
         "responses": {
           "200": {
@@ -649,7 +720,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/DiscordUser"
+                    "$ref": "#/components/schemas/UserProfile"
                   }
                 }
               }
@@ -1534,15 +1605,49 @@
     "/api/me": {
       "get": {
         "tags": [
-          "DiscordUserEndpoints"
+          "UserEndpoints"
         ],
+        "operationId": "GetMe",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DiscordUser"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/email": {
+      "put": {
+        "tags": [
+          "UserEndpoints"
+        ],
+        "operationId": "SetMyEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -1553,7 +1658,7 @@
     "/api/me/storage": {
       "get": {
         "tags": [
-          "DiscordUserEndpoints"
+          "UserEndpoints"
         ],
         "operationId": "GetMyStorageUsage",
         "responses": {
@@ -1563,6 +1668,65 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StorageUsageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/identities": {
+      "get": {
+        "tags": [
+          "UserEndpoints"
+        ],
+        "operationId": "GetMyLinkedIdentities",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LinkedIdentity"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/identities/{provider}": {
+      "delete": {
+        "tags": [
+          "UserEndpoints"
+        ],
+        "operationId": "UnlinkMyIdentity",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -1971,12 +2135,15 @@
           }
         }
       },
-      "DiscordUser": {
+      "CurrentUserResponse": {
         "required": [
           "id",
           "username",
           "global_name",
-          "avatar"
+          "avatar",
+          "email",
+          "suggested_email",
+          "needs_onboarding"
         ],
         "type": "object",
         "properties": {
@@ -1998,6 +2165,52 @@
               "null",
               "string"
             ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "suggested_email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "needs_onboarding": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DevLoginRequest": {
+        "required": [
+          "api_key"
+        ],
+        "type": "object",
+        "properties": {
+          "api_key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "return_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DevLoginResponse": {
+        "required": [
+          "redirect_url"
+        ],
+        "type": "object",
+        "properties": {
+          "redirect_url": {
+            "type": "string"
           }
         }
       },
@@ -2099,6 +2312,55 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "LinkedIdentity": {
+        "required": [
+          "provider",
+          "provider_user_id",
+          "username",
+          "display_name",
+          "avatar_url",
+          "email",
+          "linked_at",
+          "is_primary"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "provider_user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "avatar_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "linked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "is_primary": {
+            "type": "boolean"
           }
         }
       },
@@ -2425,6 +2687,20 @@
           }
         }
       },
+      "SetEmailRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "SharedClipResponse": {
         "required": [
           "title",
@@ -2522,6 +2798,36 @@
           }
         }
       },
+      "UserProfile": {
+        "required": [
+          "id",
+          "username",
+          "global_name",
+          "avatar"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "global_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "avatar": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "VideoDetectionRequest": {
         "required": [
           "clip_id",
@@ -2579,7 +2885,7 @@
       "name": "Reelshelf"
     },
     {
-      "name": "DiscordUserEndpoints"
+      "name": "UserEndpoints"
     },
     {
       "name": "PlaylistEndpoints"

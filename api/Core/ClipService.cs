@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Reelshelf.Bunny;
 using Reelshelf.Bunny.Models;
 using Reelshelf.Core.Models;
-using Reelshelf.Discord;
+using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
 using Reelshelf.Storage;
@@ -15,10 +15,10 @@ namespace Reelshelf.Core;
 public class ClipService(
     BunnyService bunnyService,
     ClipsStatements clipsStatements,
-    DiscordStatements discordStatements,
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection,
     StorageQuotaService storageQuotaService,
+    StorageWarningService storageWarningService,
     IConfiguration configuration,
     ILogger<ClipService> logger)
 {
@@ -49,16 +49,13 @@ public class ClipService(
     }
 
     public async Task<CreateClipResponse?> CreateClip(Guid gameCategoryId, string videoTitle,
-        string discordUserId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null)
+        Guid userId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null)
     {
         if (fileSize <= 0 || fileSize > StorageQuota.MaxDeclaredFileSizeBytes)
         {
             throw new BadRequestException("File size must be between 1 byte and 1 TiB");
         }
 
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
 
         // Get the category to get the slug for Bunny CDN collection naming
         GameCategory? gameCategory = await gameCategoryStatements.GetByIdAsync(gameCategoryId);
@@ -78,7 +75,7 @@ public class ClipService(
         }
 
         // Cheap unlocked check first so a plainly over-limit request fails before taking the lock.
-        await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
+        await storageQuotaService.EnsureCanStore(userId, fileSize);
 
         // Reserve quota before anything is created at Bunny. The clip row is inserted with a placeholder
         // video id under a per-owner lock so concurrent requests cannot all pass the check on the same stale
@@ -89,7 +86,7 @@ public class ClipService(
         ClipsStatements.ClipRow reserved;
         await using (ClipsStatements.OwnerStorageLock reservation = await clipsStatements.BeginOwnerStorageLock(userId))
         {
-            await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
+            await storageQuotaService.EnsureCanStore(userId, fileSize);
 
             reserved = await clipsStatements.InsertClip(
                 userId,
@@ -137,6 +134,9 @@ public class ClipService(
             await DiscardUnattachedVideoAsync(reserved.Id, video.Guid);
             throw;
         }
+
+        // The clip now counts toward usage; warn the owner once if this pushed them near their limit.
+        await storageWarningService.Evaluate(userId, await storageQuotaService.GetQuota(userId));
 
         long expiration = DateTimeOffset.Now.AddHours(1).ToUnixTimeSeconds();
         string libraryId = configuration["BunnyLibraryId"]
@@ -203,12 +203,8 @@ public class ClipService(
         }
     }
 
-    public async Task<Clip?> GetClipById(Guid clipId, string discordUserId)
+    public async Task<Clip?> GetClipById(Guid clipId, Guid userId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
         ClipsStatements.ClipWithTagsRow? clipWithTags = await clipsStatements.GetClipWithTagsById(clipId);
         if (clipWithTags == null)
         {
@@ -242,7 +238,7 @@ public class ClipService(
         return clipProjection.ProjectClip(clipWithTags, gameCategory, clipCollection, isViewed, share != null);
     }
 
-    public async Task<Clip?> AddTagToClip(Guid clipId, string discordUserId, string tag)
+    public async Task<Clip?> AddTagToClip(Guid clipId, Guid userId, string tag)
     {
         if (string.IsNullOrWhiteSpace(tag))
         {
@@ -255,11 +251,9 @@ public class ClipService(
             tag = tag[..32];
         }
 
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
 
         ClipsStatements.ClipWithTagsRow? clipWithTags =
-            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, discordUser.Id);
+            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, userId);
         if (clipWithTags == null)
         {
             return null;
@@ -271,7 +265,7 @@ public class ClipService(
 
         if (existingTags.Contains(tag))
         {
-            return await GetClipById(clipId, discordUserId); // already tagged
+            return await GetClipById(clipId, userId); // already tagged
         }
 
         if (existingTags.Count >= 5)
@@ -287,10 +281,10 @@ public class ClipService(
 
         await clipsStatements.InsertClipTag(clipId, tagEntity.Id);
 
-        return await GetClipById(clipId, discordUserId);
+        return await GetClipById(clipId, userId);
     }
 
-    public async Task<Clip?> RemoveTagFromClip(Guid clipId, string discordUserId, string tag)
+    public async Task<Clip?> RemoveTagFromClip(Guid clipId, Guid userId, string tag)
     {
         if (string.IsNullOrWhiteSpace(tag))
         {
@@ -299,11 +293,9 @@ public class ClipService(
 
         tag = NormalizeTag(tag);
 
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
 
         ClipsStatements.ClipWithTagsRow? clipWithTags =
-            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, discordUser.Id);
+            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, userId);
         if (clipWithTags == null)
         {
             return null;
@@ -315,10 +307,10 @@ public class ClipService(
             await clipsStatements.DeleteClipTag(clipId, tagEntity.Id);
         }
 
-        return await GetClipById(clipId, discordUserId);
+        return await GetClipById(clipId, userId);
     }
 
-    public async Task<Clip?> UpdateClipTitle(Guid clipId, string discordUserId, string newTitle)
+    public async Task<Clip?> UpdateClipTitle(Guid clipId, Guid userId, string newTitle)
     {
         if (string.IsNullOrWhiteSpace(newTitle))
         {
@@ -330,35 +322,26 @@ public class ClipService(
             newTitle = newTitle[..200];
         }
 
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
 
         ClipsStatements.ClipWithTagsRow? clip =
-            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, discordUser.Id);
+            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, userId);
         if (clip == null)
         {
             return null;
         }
 
         await clipsStatements.UpdateClipTitle(clipId, newTitle);
-        return await GetClipById(clipId, discordUserId);
+        return await GetClipById(clipId, userId);
     }
 
-    public async Task<List<TopTag>> GetTopTags(string discordUserId)
+    public async Task<List<TopTag>> GetTopTags(Guid userId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-
-        List<ClipsStatements.TopTagRow> topTagRows = await clipsStatements.GetTagsOrderedByUsageForOwner(discordUser.Id);
+        List<ClipsStatements.TopTagRow> topTagRows = await clipsStatements.GetTagsOrderedByUsageForOwner(userId);
         return topTagRows.Select(t => new TopTag(t.Name, t.Count)).ToList();
     }
 
-    public async Task<bool> MarkClipAsViewed(Guid clipId, string discordUserId)
+    public async Task<bool> MarkClipAsViewed(Guid clipId, Guid userId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
-
         ClipsStatements.ClipRow? clip = await clipsStatements.GetClipById(clipId);
         if (clip == null || (clip.OwnerId != userId && !await clipsStatements.UserCanAccessClip(clipId, userId)))
         {
@@ -376,13 +359,10 @@ public class ClipService(
     }
 
     public async Task<PagedClipsResponse> GetClipsForCategory(Guid gameCategoryId,
-        string discordUserId, int page, int pageSize, List<string>? tags = null, string? titleSearch = null,
+        Guid userId, int page, int pageSize, List<string>? tags = null, string? titleSearch = null,
         bool unviewedOnly = false, ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
         DateTimeOffset? startDate = null, DateTimeOffset? endDate = null)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-        Guid userId = discordUser.Id;
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
@@ -435,12 +415,10 @@ public class ClipService(
         return pagedClipsResponse;
     }
 
-    public async Task<bool> DeleteClip(Guid clipId, string discordUserId)
+    public async Task<bool> DeleteClip(Guid clipId, Guid userId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId) ?? throw new UnauthorizedException("User not found");
-
         ClipsStatements.ClipWithTagsRow? clip =
-            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, discordUser.Id);
+            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, userId);
         if (clip == null)
         {
             return false;
@@ -448,16 +426,16 @@ public class ClipService(
 
         await bunnyService.DeleteVideoAsync(clip.VideoId);
         await clipsStatements.DeleteClip(clipId);
+
+        // Usage went down; clear the "nearly full" marker if the owner is back under the threshold.
+        await storageWarningService.Evaluate(userId, await storageQuotaService.GetQuota(userId));
         return true;
     }
 
-    public async Task<ClipShareResponse?> CreateOrGetShare(Guid clipId, string discordUserId)
+    public async Task<ClipShareResponse?> CreateOrGetShare(Guid clipId, Guid userId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
-                                                       ?? throw new UnauthorizedException("User not found");
-
         ClipsStatements.ClipWithTagsRow? clip =
-            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, discordUser.Id);
+            await clipsStatements.GetClipWithTagsByIdAndOwner(clipId, userId);
         if (clip == null)
         {
             return null;
@@ -480,7 +458,7 @@ public class ClipService(
 
             try
             {
-                ClipsStatements.ClipShareRow share = await clipsStatements.InsertClipShare(token, clipId, discordUser.Id);
+                ClipsStatements.ClipShareRow share = await clipsStatements.InsertClipShare(token, clipId, userId);
                 logger.LogInformation("Created clip share {ShareId} for clip {ClipId}", share.Id, clipId);
                 return new ClipShareResponse($"/share/{share.Token}", true);
             }

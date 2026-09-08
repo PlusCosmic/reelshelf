@@ -1,28 +1,27 @@
-using Reelshelf.Discord;
+using Reelshelf.Users;
 using Reelshelf.Exceptions;
 
 namespace Reelshelf.Playlists;
 
 public class PlaylistAccess(
     PlaylistStatements playlistStatements,
-    DiscordStatements discordStatements)
+    UserStatements userStatements)
 {
-    public async Task<DiscordStatements.DiscordUserRow> GetUser(string discordUserId)
+    public async Task<UserStatements.UserRow> GetUser(Guid userId)
     {
-        return await discordStatements.GetUserByDiscordId(discordUserId)
+        return await userStatements.GetUserById(userId)
                ?? throw new UnauthorizedException("User not found");
     }
 
-    public async Task<PlaylistActor?> GetCollaborator(Guid playlistId, string discordUserId)
+    public async Task<PlaylistActor?> GetCollaborator(Guid playlistId, Guid userId)
     {
-        DiscordStatements.DiscordUserRow user = await GetUser(discordUserId);
+        UserStatements.UserRow user = await GetUser(userId);
         bool isCollaborator = await playlistStatements.IsUserCollaborator(playlistId, user.Id);
         return isCollaborator ? new PlaylistActor(user) : null;
     }
 }
 
-public sealed record PlaylistActor(DiscordStatements.DiscordUserRow User)
+public sealed record PlaylistActor(UserStatements.UserRow User)
 {
     public Guid UserId => User.Id;
-    public string DiscordId => User.DiscordId;
 }

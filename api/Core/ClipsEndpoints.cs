@@ -36,7 +36,7 @@ public static class ClipsEndpoints
         ClipLibraryService libraryService,
         AuthenticatedUser user)
     {
-        return TypedResults.Ok(await libraryService.GetLibrary(user.DiscordId));
+        return TypedResults.Ok(await libraryService.GetLibrary(user.Id));
     }
 
     private static async Task<Results<Ok<PagedClipsResponse>, BadRequest<string>>> GetVideosByCategory(
@@ -64,7 +64,7 @@ public static class ClipsEndpoints
 
         List<string>? tagList = tags?.ToList();
         return TypedResults.Ok(
-            await clipService.GetClipsForCategory(categoryId, user.DiscordId, page, pageSize, tagList, titleSearch, unviewedOnly, sortOrder, startDate, endDate));
+            await clipService.GetClipsForCategory(categoryId, user.Id, page, pageSize, tagList, titleSearch, unviewedOnly, sortOrder, startDate, endDate));
     }
 
     private static async Task<Results<Ok<CreateClipResponse>, Conflict<string>, BadRequest<string>>> CreateVideo(
@@ -81,7 +81,7 @@ public static class ClipsEndpoints
             return TypedResults.BadRequest("File size must be greater than zero");
         }
 
-        CreateClipResponse? result = await clipService.CreateClip(categoryId, videoTitle, user.DiscordId, createdAt ?? DateTimeOffset.UtcNow, fileSize, md5Hash);
+        CreateClipResponse? result = await clipService.CreateClip(categoryId, videoTitle, user.Id, createdAt ?? DateTimeOffset.UtcNow, fileSize, md5Hash);
         if (result is null)
         {
             return TypedResults.Conflict("A video with this MD5 hash already exists");
@@ -95,7 +95,7 @@ public static class ClipsEndpoints
         AuthenticatedUser user,
         Guid clipId)
     {
-        Clip? clip = await clipService.GetClipById(clipId, user.DiscordId);
+        Clip? clip = await clipService.GetClipById(clipId, user.Id);
         if (clip is null)
         {
             return TypedResults.NotFound();
@@ -109,7 +109,7 @@ public static class ClipsEndpoints
         AuthenticatedUser user,
         Guid clipId)
     {
-        ClipShareResponse? response = await clipService.CreateOrGetShare(clipId, user.DiscordId);
+        ClipShareResponse? response = await clipService.CreateOrGetShare(clipId, user.Id);
         if (response is null)
         {
             return TypedResults.NotFound();
@@ -124,7 +124,7 @@ public static class ClipsEndpoints
         Guid clipId,
         AddTagRequest request)
     {
-        Clip? updated = await clipService.AddTagToClip(clipId, user.DiscordId, request.Tag);
+        Clip? updated = await clipService.AddTagToClip(clipId, user.Id, request.Tag);
         if (updated is null)
         {
             return TypedResults.NotFound();
@@ -139,7 +139,7 @@ public static class ClipsEndpoints
         Guid clipId,
         string tag)
     {
-        Clip? updated = await clipService.RemoveTagFromClip(clipId, user.DiscordId, tag);
+        Clip? updated = await clipService.RemoveTagFromClip(clipId, user.Id, tag);
         if (updated is null)
         {
             return TypedResults.NotFound();
@@ -154,7 +154,7 @@ public static class ClipsEndpoints
         Guid clipId,
         UpdateTitleRequest request)
     {
-        Clip? updated = await clipService.UpdateClipTitle(clipId, user.DiscordId, request.Title);
+        Clip? updated = await clipService.UpdateClipTitle(clipId, user.Id, request.Title);
         if (updated is null)
         {
             return TypedResults.NotFound();
@@ -165,7 +165,7 @@ public static class ClipsEndpoints
 
     private static async Task<Ok<List<TopTag>>> GetTopTags(ClipService clipService, AuthenticatedUser user)
     {
-        return TypedResults.Ok(await clipService.GetTopTags(user.DiscordId));
+        return TypedResults.Ok(await clipService.GetTopTags(user.Id));
     }
 
     private static async Task<Results<Ok, NotFound>> MarkVideoAsViewed(
@@ -173,7 +173,7 @@ public static class ClipsEndpoints
         AuthenticatedUser user,
         Guid clipId)
     {
-        bool success = await clipService.MarkClipAsViewed(clipId, user.DiscordId);
+        bool success = await clipService.MarkClipAsViewed(clipId, user.Id);
         if (!success)
         {
             return TypedResults.NotFound();
@@ -187,7 +187,7 @@ public static class ClipsEndpoints
         AuthenticatedUser user,
         Guid clipId)
     {
-        bool success = await clipService.DeleteClip(clipId, user.DiscordId);
+        bool success = await clipService.DeleteClip(clipId, user.Id);
         if (!success)
         {
             return TypedResults.NotFound();

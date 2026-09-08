@@ -13,8 +13,25 @@
  */
 
 import * as runtime from "../runtime";
+import type { DevLoginRequest, DevLoginResponse } from "../models/index";
+import {
+  DevLoginRequestFromJSON,
+  DevLoginRequestToJSON,
+  DevLoginResponseFromJSON,
+  DevLoginResponseToJSON,
+} from "../models/index";
+
+export interface DevLoginOperationRequest {
+  devLoginRequest: DevLoginRequest;
+}
+
+export interface LinkIdentityRequest {
+  provider: string;
+  returnUrl?: string;
+}
 
 export interface LoginRequest {
+  provider: string;
   returnUrl?: string;
 }
 
@@ -28,10 +45,64 @@ export interface PostLoginRedirectRequest {
 export class AuthEndpointsApi extends runtime.BaseAPI {
   /**
    */
-  async loginRaw(
-    requestParameters: LoginRequest,
+  async devLoginRaw(
+    requestParameters: DevLoginOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<DevLoginResponse>> {
+    if (requestParameters["devLoginRequest"] == null) {
+      throw new runtime.RequiredError(
+        "devLoginRequest",
+        'Required parameter "devLoginRequest" was null or undefined when calling devLogin().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/auth/dev-login`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: DevLoginRequestToJSON(requestParameters["devLoginRequest"]),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      DevLoginResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async devLogin(
+    requestParameters: DevLoginOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<DevLoginResponse> {
+    const response = await this.devLoginRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async linkIdentityRaw(
+    requestParameters: LinkIdentityRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["provider"] == null) {
+      throw new runtime.RequiredError(
+        "provider",
+        'Required parameter "provider" was null or undefined when calling linkIdentity().',
+      );
+    }
+
     const queryParameters: any = {};
 
     if (requestParameters["returnUrl"] != null) {
@@ -40,7 +111,60 @@ export class AuthEndpointsApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/auth/discord/login`;
+    let urlPath = `/auth/{provider}/link`;
+    urlPath = urlPath.replace(
+      `{${"provider"}}`,
+      encodeURIComponent(String(requestParameters["provider"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async linkIdentity(
+    requestParameters: LinkIdentityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.linkIdentityRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   */
+  async loginRaw(
+    requestParameters: LoginRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["provider"] == null) {
+      throw new runtime.RequiredError(
+        "provider",
+        'Required parameter "provider" was null or undefined when calling login().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["returnUrl"] != null) {
+      queryParameters["returnUrl"] = requestParameters["returnUrl"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/auth/{provider}/login`;
+    urlPath = urlPath.replace(
+      `{${"provider"}}`,
+      encodeURIComponent(String(requestParameters["provider"])),
+    );
 
     const response = await this.request(
       {
@@ -58,7 +182,7 @@ export class AuthEndpointsApi extends runtime.BaseAPI {
   /**
    */
   async login(
-    requestParameters: LoginRequest = {},
+    requestParameters: LoginRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.loginRaw(requestParameters, initOverrides);

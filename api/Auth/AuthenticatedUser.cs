@@ -1,3 +1,5 @@
+using Reelshelf.Users;
+
 namespace Reelshelf.Auth;
 
 /// <summary>
@@ -7,12 +9,14 @@ namespace Reelshelf.Auth;
 /// </summary>
 public record AuthenticatedUser(
     Guid Id,
-    string DiscordId,
     string Username,
     string? GlobalName,
-    string? Avatar,
+    string? AvatarUrl,
+    string? Email,
+    bool OnboardingCompleted,
     UserRole Role,
-    HashSet<string> AdditionalPermissions)
+    HashSet<string> AdditionalPermissions,
+    IReadOnlyList<UserIdentityRef> Identities)
 {
     internal const string HttpContextKey = "Reelshelf.AuthenticatedUser";
 
@@ -88,9 +92,4 @@ public record AuthenticatedUser(
 
         return ValueTask.FromResult<AuthenticatedUser?>(null);
     }
-
-    /// <summary>
-    /// Constructs the full Discord CDN avatar URL for this user.
-    /// </summary>
-    public string GetAvatarUrl() => $"https://cdn.discordapp.com/avatars/{DiscordId}/{Avatar}";
 }

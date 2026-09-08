@@ -141,11 +141,10 @@ public class PlaylistStatements(NpgsqlConnection connection)
                 pc.user_id,
                 pc.added_at,
                 pc.added_by_user_id,
-                du.discord_id,
                 du.username,
-                du.avatar as avatar_url
+                du.avatar_url
             FROM playlist_collaborators pc
-            INNER JOIN discord_user du ON pc.user_id = du.id
+            INNER JOIN app_user du ON pc.user_id = du.id
             WHERE pc.playlist_id = @playlistId
             ORDER BY pc.added_at ASC";
 
@@ -326,7 +325,6 @@ public class PlaylistStatements(NpgsqlConnection connection)
         public Guid UserId { get; set; }
         public DateTimeOffset AddedAt { get; set; }
         public Guid AddedByUserId { get; set; }
-        public string DiscordId { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
         public string? AvatarUrl { get; set; }
     }

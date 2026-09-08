@@ -193,28 +193,154 @@ a {
   text-align: center;
 }
 
-.rs-discord-login {
+.rs-landing-logins {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.rs-landing-error {
+  position: relative;
+  z-index: 2;
+  margin: 16px 0 0;
+  color: var(--danger, #c2410c);
+  font-size: 13px;
+  text-align: center;
+}
+
+.rs-provider-login {
+  --provider: #5865f2;
+  --provider-shadow: rgba(88, 101, 242, 0.22);
+  --provider-shadow-hover: rgba(88, 101, 242, 0.38);
   display: inline-flex;
   align-items: center;
   gap: 11px;
   border: 0;
   border-radius: 10px;
-  background: #5865f2;
+  background: var(--provider);
   color: white;
   cursor: pointer;
   font-size: 15px;
   font-weight: 700;
   padding: 14px 22px;
-  box-shadow: 0 4px 14px rgba(88, 101, 242, 0.22);
+  box-shadow: 0 4px 14px var(--provider-shadow);
   transition:
     box-shadow 0.18s,
     transform 0.18s;
 }
 
-.rs-discord-login:hover,
-.rs-discord-login[data-hover="true"] {
-  box-shadow: 0 10px 28px rgba(88, 101, 242, 0.38);
+.rs-provider-login[data-provider="twitch"] {
+  --provider: #9146ff;
+  --provider-shadow: rgba(145, 70, 255, 0.22);
+  --provider-shadow-hover: rgba(145, 70, 255, 0.38);
+}
+
+.rs-provider-login:hover,
+.rs-provider-login[data-hover="true"] {
+  box-shadow: 0 10px 28px var(--provider-shadow-hover);
   transform: translateY(-1px);
+}
+
+.rs-provider-login-compact {
+  font-size: 13px;
+  padding: 9px 14px;
+  gap: 8px;
+  border-radius: 8px;
+}
+
+.rs-linked-accounts {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.rs-linked-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-linked-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.rs-linked-provider {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: white;
+  background: #5865f2;
+}
+
+.rs-linked-provider[data-provider="twitch"] {
+  background: #9146ff;
+}
+
+.rs-linked-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rs-linked-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-linked-primary {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  color: var(--fg-soft);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.rs-linked-sub {
+  color: var(--fg-soft);
+  font-size: 12px;
+}
+
+.rs-linked-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rs-linked-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 13px;
+}
+
+.rs-linked-notice[data-tone="error"] {
+  color: var(--danger, #c2410c);
 }
 
 .rs-landing-footer {
@@ -407,6 +533,8 @@ a {
 
 .rs-menu-item {
   width: 100%;
+  box-sizing: border-box;
+  text-decoration: none;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2507,4 +2635,40 @@ a {
     color: var(--fg-soft);
     font-size: 12px;
   }
+}
+
+.rs-onboarding {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+.rs-onboarding-card {
+  display: grid;
+  gap: 14px;
+  width: min(520px, 100%);
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-soft);
+}
+
+.rs-onboarding-card .rs-h1 {
+  margin: 0;
+}
+
+.rs-settings-main {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.rs-email-form {
+  gap: 10px;
+}
+
+.rs-email-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }

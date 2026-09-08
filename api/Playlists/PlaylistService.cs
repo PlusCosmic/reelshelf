@@ -1,6 +1,6 @@
 using Reelshelf.Core;
 using Reelshelf.Playlists.Models;
-using Reelshelf.Discord;
+using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
 
@@ -8,13 +8,13 @@ namespace Reelshelf.Playlists;
 
 public class PlaylistService(
     PlaylistStatements playlistStatements,
-    DiscordStatements discordStatements,
+    UserStatements userStatements,
     PlaylistAccess playlistAccess,
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection)
 {
-    public async Task<Playlist> CreatePlaylist(string name, string? description, string discordUserId)
+    public async Task<Playlist> CreatePlaylist(string name, string? description, Guid userId)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -26,8 +26,6 @@ public class PlaylistService(
             throw new BadRequestException("Playlist name cannot exceed 255 characters");
         }
 
-        DiscordStatements.DiscordUserRow discordUser = await playlistAccess.GetUser(discordUserId);
-        Guid userId = discordUser.Id;
 
         PlaylistStatements.PlaylistRow playlistRow = await playlistStatements.InsertPlaylist(name, description, userId);
 
@@ -43,11 +41,8 @@ public class PlaylistService(
         );
     }
 
-    public async Task<List<PlaylistSummary>> GetPlaylistsForUser(string discordUserId)
+    public async Task<List<PlaylistSummary>> GetPlaylistsForUser(Guid userId)
     {
-        DiscordStatements.DiscordUserRow discordUser = await playlistAccess.GetUser(discordUserId);
-        Guid userId = discordUser.Id;
-
         List<PlaylistStatements.PlaylistSummaryRow> playlistRows = await playlistStatements.GetPlaylistsByUserId(userId);
 
         return playlistRows.Select(p => new PlaylistSummary(
@@ -62,9 +57,9 @@ public class PlaylistService(
         )).ToList();
     }
 
-    public async Task<PlaylistWithDetails?> GetPlaylistById(Guid playlistId, string discordUserId)
+    public async Task<PlaylistWithDetails?> GetPlaylistById(Guid playlistId, Guid userId)
     {
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, userId);
         if (actor is null)
         {
             return null;
@@ -81,7 +76,7 @@ public class PlaylistService(
         List<PlaylistCollaborator> collaborators = collaboratorRows.Select(c => new PlaylistCollaborator(
             c.UserId,
             c.Username,
-            GetDiscordAvatarUrl(c.DiscordId, c.AvatarUrl),
+            c.AvatarUrl,
             c.AddedAt,
             c.AddedByUserId
         )).ToList();
@@ -127,7 +122,7 @@ public class PlaylistService(
         );
     }
 
-    public async Task<Playlist?> UpdatePlaylist(Guid playlistId, string discordUserId, string? name, string? description)
+    public async Task<Playlist?> UpdatePlaylist(Guid playlistId, Guid userId, string? name, string? description)
     {
         if (name != null && string.IsNullOrWhiteSpace(name))
         {
@@ -139,7 +134,7 @@ public class PlaylistService(
             throw new BadRequestException("Playlist name cannot exceed 255 characters");
         }
 
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, userId);
         if (actor is null)
         {
             return null;
@@ -163,9 +158,9 @@ public class PlaylistService(
         );
     }
 
-    public async Task<bool> DeletePlaylist(Guid playlistId, string discordUserId)
+    public async Task<bool> DeletePlaylist(Guid playlistId, Guid userId)
     {
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, userId);
         if (actor is null)
         {
             return false;
@@ -175,9 +170,9 @@ public class PlaylistService(
         return true;
     }
 
-    public async Task<PlaylistWithDetails?> AddClipToPlaylist(Guid playlistId, Guid clipId, string discordUserId)
+    public async Task<PlaylistWithDetails?> AddClipToPlaylist(Guid playlistId, Guid clipId, Guid userId)
     {
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, userId);
         if (actor is null)
         {
             return null;
@@ -204,12 +199,12 @@ public class PlaylistService(
 
         await playlistStatements.TouchPlaylistUpdatedAt(playlistId);
 
-        return await GetPlaylistById(playlistId, discordUserId);
+        return await GetPlaylistById(playlistId, userId);
     }
 
-    public async Task<PlaylistWithDetails?> AddClipsToPlaylist(Guid playlistId, List<Guid> clipIds, string discordUserId)
+    public async Task<PlaylistWithDetails?> AddClipsToPlaylist(Guid playlistId, List<Guid> clipIds, Guid userId)
     {
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, userId);
         if (actor is null)
         {
             return null;
@@ -236,7 +231,7 @@ public class PlaylistService(
 
         await playlistStatements.TouchPlaylistUpdatedAt(playlistId);
 
-        return await GetPlaylistById(playlistId, discordUserId);
+        return await GetPlaylistById(playlistId, userId);
     }
 
     /// <summary>
@@ -249,9 +244,9 @@ public class PlaylistService(
         return clip.OwnerId == actor.UserId;
     }
 
-    public async Task<bool> RemoveClipFromPlaylist(Guid playlistId, Guid clipId, string discordUserId)
+    public async Task<bool> RemoveClipFromPlaylist(Guid playlistId, Guid clipId, Guid userId)
     {
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, userId);
         if (actor is null)
         {
             return false;
@@ -270,9 +265,9 @@ public class PlaylistService(
         return true;
     }
 
-    public async Task<PlaylistWithDetails?> ReorderPlaylistClips(Guid playlistId, List<Guid> clipOrdering, string discordUserId)
+    public async Task<PlaylistWithDetails?> ReorderPlaylistClips(Guid playlistId, List<Guid> clipOrdering, Guid userId)
     {
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, userId);
         if (actor is null)
         {
             return null;
@@ -282,26 +277,32 @@ public class PlaylistService(
 
         await playlistStatements.TouchPlaylistUpdatedAt(playlistId);
 
-        return await GetPlaylistById(playlistId, discordUserId);
+        return await GetPlaylistById(playlistId, userId);
     }
 
-    public async Task<List<PlaylistCollaborator>?> AddCollaborator(Guid playlistId, string discordUserId, Guid? userId, string? username)
+    public async Task<List<PlaylistCollaborator>?> AddCollaborator(Guid playlistId, Guid actingUserId, Guid? userId, string? username)
     {
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, actingUserId);
         if (actor is null)
         {
             return null;
         }
 
-        DiscordStatements.DiscordUserRow? userToAdd = null;
+        UserStatements.UserRow? userToAdd = null;
 
         if (userId.HasValue)
         {
-            userToAdd = await discordStatements.GetUserById(userId.Value);
+            userToAdd = await userStatements.GetUserById(userId.Value);
         }
         else if (!string.IsNullOrWhiteSpace(username))
         {
-            userToAdd = await discordStatements.GetUserByUsername(username);
+            List<UserStatements.UserRow> matches = await userStatements.GetUsersByUsername(username);
+            if (matches.Count > 1)
+            {
+                throw new BadRequestException("More than one account uses that username; pick the person from the suggestions instead");
+            }
+
+            userToAdd = matches.SingleOrDefault();
         }
 
         if (userToAdd == null)
@@ -317,15 +318,15 @@ public class PlaylistService(
         return collaboratorRows.Select(c => new PlaylistCollaborator(
             c.UserId,
             c.Username,
-            GetDiscordAvatarUrl(c.DiscordId, c.AvatarUrl),
+            c.AvatarUrl,
             c.AddedAt,
             c.AddedByUserId
         )).ToList();
     }
 
-    public async Task<bool> RemoveCollaborator(Guid playlistId, Guid collaboratorUserId, string discordUserId)
+    public async Task<bool> RemoveCollaborator(Guid playlistId, Guid collaboratorUserId, Guid userId)
     {
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, userId);
         if (actor is null)
         {
             return false;
@@ -348,9 +349,9 @@ public class PlaylistService(
         return true;
     }
 
-    public async Task<List<PlaylistCollaborator>?> GetCollaborators(Guid playlistId, string discordUserId)
+    public async Task<List<PlaylistCollaborator>?> GetCollaborators(Guid playlistId, Guid userId)
     {
-        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, discordUserId);
+        PlaylistActor? actor = await playlistAccess.GetCollaborator(playlistId, userId);
         if (actor is null)
         {
             return null;
@@ -362,16 +363,10 @@ public class PlaylistService(
         return collaboratorRows.Select(c => new PlaylistCollaborator(
             c.UserId,
             c.Username,
-            GetDiscordAvatarUrl(c.DiscordId, c.AvatarUrl),
+            c.AvatarUrl,
             c.AddedAt,
             c.AddedByUserId
         )).ToList();
     }
 
-    private static string? GetDiscordAvatarUrl(string discordId, string? avatar)
-    {
-        return string.IsNullOrWhiteSpace(avatar)
-            ? null
-            : $"https://cdn.discordapp.com/avatars/{discordId}/{avatar}";
-    }
 }

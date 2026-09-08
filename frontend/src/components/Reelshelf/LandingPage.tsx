@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { IconBrandDiscord } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
+import { ProviderIcon } from "@/components/Reelshelf/ProviderIcon";
+import { authProviders, startLogin } from "@/shared/services/auth";
 
 const previewClips = [
   {
@@ -50,13 +51,16 @@ const previewClips = [
   },
 ];
 
-function loginWithDiscord() {
-  const returnUrl = `${window.location.origin}/`;
-  window.location.href = `/auth/discord/login?returnUrl=${encodeURIComponent(returnUrl)}`;
+function readAuthError(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("auth_error")
+    ? "The provider didn't complete the sign-in. Try again."
+    : null;
 }
 
 export function LandingPage() {
-  const [hover, setHover] = useState(false);
+  const [hover, setHover] = useState<string | null>(null);
+  const authError = readAuthError();
 
   return (
     <div className="rs-landing">
@@ -103,17 +107,30 @@ export function LandingPage() {
           Your shelf is exactly where you left it.
         </p>
 
-        <button
-          className="rs-discord-login"
-          type="button"
-          onClick={loginWithDiscord}
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          data-hover={hover ? "true" : "false"}
-        >
-          <IconBrandDiscord size={22} />
-          Continue with Discord
-        </button>
+        <div className="rs-landing-logins">
+          {authProviders.map((provider) => (
+            <button
+              key={provider.id}
+              className="rs-provider-login"
+              data-provider={provider.id}
+              type="button"
+              onClick={() =>
+                startLogin(provider.id, `${window.location.origin}/`)
+              }
+              onMouseEnter={() => setHover(provider.id)}
+              onMouseLeave={() => setHover(null)}
+              data-hover={hover === provider.id ? "true" : "false"}
+            >
+              <ProviderIcon provider={provider.id} size={22} />
+              Continue with {provider.label}
+            </button>
+          ))}
+        </div>
+        {authError ? (
+          <p className="rs-landing-error" role="alert">
+            {authError}
+          </p>
+        ) : null}
       </main>
 
       <footer className="rs-landing-footer">for friends, kept quietly</footer>

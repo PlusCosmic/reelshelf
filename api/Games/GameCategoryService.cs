@@ -1,12 +1,10 @@
 using System.Text.RegularExpressions;
-using Reelshelf.Discord;
 
 namespace Reelshelf.Games;
 
 public partial class GameCategoryService(
     GameCategoryStatements statements,
-    IgdbService igdbService,
-    DiscordStatements discordStatements)
+    IgdbService igdbService)
 {
     public async Task<List<GameCategoryResponse>> GetAllCategoriesAsync()
     {
@@ -14,21 +12,15 @@ public partial class GameCategoryService(
         return categories.Select(ToResponse).ToList();
     }
 
-    public async Task<List<GameCategoryResponse>> GetUserCategoriesAsync(string discordUserId)
+    public async Task<List<GameCategoryResponse>> GetUserCategoriesAsync(Guid userId)
     {
-        var user = await discordStatements.GetUserByDiscordId(discordUserId);
-        if (user == null) return [];
-
-        var categories = await statements.GetUserCategoriesAsync(user.Id);
+        var categories = await statements.GetUserCategoriesAsync(userId);
         return categories.Select(ToResponse).ToList();
     }
 
-    public async Task<List<GameCategoryResponse>> GetLibraryCategoriesAsync(string discordUserId)
+    public async Task<List<GameCategoryResponse>> GetLibraryCategoriesAsync(Guid userId)
     {
-        var user = await discordStatements.GetUserByDiscordId(discordUserId);
-        if (user == null) return [];
-
-        var categories = await statements.GetLibraryCategoriesAsync(user.Id);
+        var categories = await statements.GetLibraryCategoriesAsync(userId);
         return categories.Select(ToResponse).ToList();
     }
 
@@ -44,12 +36,9 @@ public partial class GameCategoryService(
     }
 
     public async Task<GameCategoryResponse?> AddGameCategoryAsync(
-        string discordUserId,
+        Guid userId,
         long igdbId)
     {
-        var user = await discordStatements.GetUserByDiscordId(discordUserId);
-        if (user == null) return null;
-
         // Check if category already exists globally
         var existing = await statements.GetByIgdbIdAsync(igdbId);
         if (existing != null)
@@ -64,7 +53,7 @@ public partial class GameCategoryService(
             }
 
             // Just add the user subscription
-            await statements.AddUserCategoryAsync(user.Id, existing.Id);
+            await statements.AddUserCategoryAsync(userId, existing.Id);
             return ToResponse(existing);
         }
 
@@ -83,29 +72,26 @@ public partial class GameCategoryService(
         ));
 
         // Add user subscription
-        await statements.AddUserCategoryAsync(user.Id, category.Id);
+        await statements.AddUserCategoryAsync(userId, category.Id);
 
         return ToResponse(category);
     }
 
     public async Task<GameCategoryResponse?> AddCustomCategoryAsync(
-        string discordUserId,
+        Guid userId,
         string name,
         string? coverUrl)
     {
-        var user = await discordStatements.GetUserByDiscordId(discordUserId);
-        if (user == null) return null;
-
         // Custom categories are private to their creator. Slugs are globally unique, so suffix the creator's
         // id: another account cannot pre-create a name and have this user silently subscribe to its row,
         // and a custom slug can never collide with an IGDB category's slug.
-        var slug = $"{GenerateSlug(name)}-{user.Id.ToString("N")[..8]}";
+        var slug = $"{GenerateSlug(name)}-{userId.ToString("N")[..8]}";
 
         // Re-adding a category this user already created subscribes to their own row again
         var existing = await statements.GetBySlugAsync(slug);
         if (existing != null)
         {
-            await statements.AddUserCategoryAsync(user.Id, existing.Id);
+            await statements.AddUserCategoryAsync(userId, existing.Id);
             return ToResponse(existing);
         }
 
@@ -116,16 +102,13 @@ public partial class GameCategoryService(
             coverUrl
         ));
 
-        await statements.AddUserCategoryAsync(user.Id, category.Id);
+        await statements.AddUserCategoryAsync(userId, category.Id);
         return ToResponse(category);
     }
 
-    public async Task<bool> RemoveUserCategoryAsync(string discordUserId, Guid categoryId)
+    public async Task<bool> RemoveUserCategoryAsync(Guid userId, Guid categoryId)
     {
-        var user = await discordStatements.GetUserByDiscordId(discordUserId);
-        if (user == null) return false;
-
-        await statements.RemoveUserCategoryAsync(user.Id, categoryId);
+        await statements.RemoveUserCategoryAsync(userId, categoryId);
         return true;
     }
 

@@ -23,7 +23,7 @@ public static class GameCategoryEndpoints
     private static async Task<Ok<List<GameCategoryResponse>>>
         GetUserCategories(GameCategoryService service, AuthenticatedUser user)
     {
-        var categories = await service.GetLibraryCategoriesAsync(user.DiscordId);
+        var categories = await service.GetLibraryCategoriesAsync(user.Id);
         return TypedResults.Ok(categories);
     }
 
@@ -49,7 +49,7 @@ public static class GameCategoryEndpoints
     private static async Task<Results<Ok<GameCategoryResponse>, NotFound>>
         AddFromIgdb(GameCategoryService service, AuthenticatedUser user, AddGameFromIgdbRequest request)
     {
-        var category = await service.AddGameCategoryAsync(user.DiscordId, request.IgdbId);
+        var category = await service.AddGameCategoryAsync(user.Id, request.IgdbId);
         if (category is null) return TypedResults.NotFound();
 
         return TypedResults.Ok(category);
@@ -67,7 +67,7 @@ public static class GameCategoryEndpoints
         if (request.Name.Length > 100)
             return TypedResults.BadRequest("Name must be 100 characters or less");
 
-        var category = await service.AddCustomCategoryAsync(user.DiscordId, request.Name, request.CoverUrl);
+        var category = await service.AddCustomCategoryAsync(user.Id, request.Name, request.CoverUrl);
         if (category is null) return TypedResults.BadRequest("Failed to create category");
 
         return TypedResults.Ok(category);
@@ -76,7 +76,7 @@ public static class GameCategoryEndpoints
     private static async Task<Ok>
         RemoveCategory(GameCategoryService service, AuthenticatedUser user, Guid categoryId)
     {
-        await service.RemoveUserCategoryAsync(user.DiscordId, categoryId);
+        await service.RemoveUserCategoryAsync(user.Id, categoryId);
         return TypedResults.Ok();
     }
 }

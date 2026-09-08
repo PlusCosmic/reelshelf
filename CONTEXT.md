@@ -30,8 +30,20 @@ The best available browser-provided path for a local file, used only for upload 
 **Gaming Session**:
 A group of clips from the same game within the same 5am-to-5am gaming day, represented after upload as an auto-generated **Playlist**.
 
+**Account**:
+A Reelshelf user record that owns clips, playlists and storage. Created on the first sign-in from any provider.
+
+**Linked Identity**:
+A Discord or Twitch login attached to an **Account**. An **Account** has at least one and at most one per provider; any of them signs in to the same **Account**.
+
+**Primary Identity**:
+The oldest **Linked Identity** on an **Account**. The account name and avatar follow it; unlinking it promotes the next-oldest.
+
+**Account Email**:
+The address the user chose for account mail (linked sign-in notices, storage nearly full). Suggested from a provider on first sign-in, but owned by the user; providers never overwrite it.
+
 **Storage Tier**:
-How much clip storage a user may keep. Everyone who signs in with Discord gets the free tier (25 GB); users listed in `whitelist.json` get the unlimited tier.
+How much clip storage a user may keep. Everyone who signs in with Discord or Twitch gets the free tier (25 GB); users with a **Linked Identity** listed in `whitelist.json` get the unlimited tier.
 _Avoid_: Treating the whitelist as an access gate; it no longer blocks sign-in.
 
 **Storage Usage**:
@@ -96,6 +108,12 @@ The sum of a user's clip sizes, counted from the client-declared file size at up
 >
 > **Dev:** "Does a user need to be on the whitelist to use Reelshelf?"
 > **Domain expert:** "No. Anyone can sign in and gets the free **Storage Tier**. The whitelist only marks who has unlimited storage (and optional role overrides)."
+>
+> **Dev:** "If someone signs in with Twitch after using Discord, do they get a second library?"
+> **Domain expert:** "Only if they never linked the two. Linking from Settings attaches the Twitch login to the existing **Account**; a fresh Twitch sign-in with nothing linked creates a new **Account**."
+>
+> **Dev:** "Can two Reelshelf accounts share one Twitch login?"
+> **Domain expert:** "No. A provider login belongs to exactly one **Account**; linking it elsewhere is refused until it is unlinked."
 >
 > **Dev:** "Can users configure bulk upload concurrency?"
 > **Domain expert:** "No. Start with a fixed limit of three active uploads."

@@ -16,39 +16,39 @@ import { mapValues } from "../runtime";
 /**
  *
  * @export
- * @interface DiscordUser
+ * @interface UserProfile
  */
-export interface DiscordUser {
+export interface UserProfile {
   /**
    *
    * @type {string}
-   * @memberof DiscordUser
+   * @memberof UserProfile
    */
   id: string;
   /**
    *
    * @type {string}
-   * @memberof DiscordUser
+   * @memberof UserProfile
    */
   username: string;
   /**
    *
    * @type {string}
-   * @memberof DiscordUser
+   * @memberof UserProfile
    */
   globalName: string | null;
   /**
    *
    * @type {string}
-   * @memberof DiscordUser
+   * @memberof UserProfile
    */
   avatar: string | null;
 }
 
 /**
- * Check if a given object implements the DiscordUser interface.
+ * Check if a given object implements the UserProfile interface.
  */
-export function instanceOfDiscordUser(value: object): value is DiscordUser {
+export function instanceOfUserProfile(value: object): value is UserProfile {
   if (!("id" in value) || value["id"] === undefined) return false;
   if (!("username" in value) || value["username"] === undefined) return false;
   if (!("globalName" in value) || value["globalName"] === undefined)
@@ -57,14 +57,14 @@ export function instanceOfDiscordUser(value: object): value is DiscordUser {
   return true;
 }
 
-export function DiscordUserFromJSON(json: any): DiscordUser {
-  return DiscordUserFromJSONTyped(json, false);
+export function UserProfileFromJSON(json: any): UserProfile {
+  return UserProfileFromJSONTyped(json, false);
 }
 
-export function DiscordUserFromJSONTyped(
+export function UserProfileFromJSONTyped(
   json: any,
   ignoreDiscriminator: boolean,
-): DiscordUser {
+): UserProfile {
   if (json == null) {
     return json;
   }
@@ -76,12 +76,12 @@ export function DiscordUserFromJSONTyped(
   };
 }
 
-export function DiscordUserToJSON(json: any): DiscordUser {
-  return DiscordUserToJSONTyped(json, false);
+export function UserProfileToJSON(json: any): UserProfile {
+  return UserProfileToJSONTyped(json, false);
 }
 
-export function DiscordUserToJSONTyped(
-  value?: DiscordUser | null,
+export function UserProfileToJSONTyped(
+  value?: UserProfile | null,
   ignoreDiscriminator: boolean = false,
 ): any {
   if (value == null) {

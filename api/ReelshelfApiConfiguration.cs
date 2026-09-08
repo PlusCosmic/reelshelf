@@ -1,11 +1,6 @@
-using System.Net.Http.Headers;
-using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dapper;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Json;
@@ -18,6 +13,8 @@ using Reelshelf.Auth;
 using Reelshelf.Bunny;
 using Reelshelf.Core;
 using Reelshelf.Discord;
+using Reelshelf.Email;
+using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.FFmpeg;
 using Reelshelf.Games;
@@ -199,83 +196,7 @@ internal static class ReelshelfApiConfiguration
             .SetApplicationName("Reelshelf")
             .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
-        builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            })
-            .AddCookie(options =>
-            {
-                options.Cookie.Name = "pcdash.auth";
-                options.Cookie.HttpOnly = true;
-                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                options.Cookie.SameSite = SameSiteMode.Lax;
-                options.ExpireTimeSpan = TimeSpan.FromDays(7);
-                options.SlidingExpiration = true;
-
-                options.Events = new CookieAuthenticationEvents
-                {
-                    OnRedirectToLogin = context =>
-                    {
-                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        return Task.CompletedTask;
-                    },
-                    OnRedirectToAccessDenied = context =>
-                    {
-                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                        return Task.CompletedTask;
-                    }
-                };
-            })
-            .AddOAuth("Discord", options =>
-            {
-                options.AuthorizationEndpoint = "https://discord.com/api/oauth2/authorize";
-                options.TokenEndpoint = "https://discord.com/api/oauth2/token";
-                options.UserInformationEndpoint = "https://discord.com/api/users/@me";
-
-                options.ClientId = builder.Configuration["DiscordClientId"] ?? "";
-                options.ClientSecret = builder.Configuration["DiscordClientSecret"] ?? "";
-
-                options.CallbackPath = new PathString("/auth/discord/callback");
-
-                options.Scope.Add("identify");
-
-                options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
-                options.ClaimActions.MapJsonKey(ClaimTypes.Name, "username");
-                options.ClaimActions.MapJsonKey("urn:discord:avatar", "avatar");
-                options.ClaimActions.MapJsonKey("urn:discord:global_name", "global_name");
-
-                options.Events = new OAuthEvents
-                {
-                    OnRedirectToAuthorizationEndpoint = context =>
-                    {
-                        if (context.Request.Path.StartsWithSegments("/api"))
-                        {
-                            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                            return Task.CompletedTask;
-                        }
-
-                        context.Response.Redirect(context.RedirectUri);
-                        return Task.CompletedTask;
-                    },
-                    OnCreatingTicket = async context =>
-                    {
-                        HttpRequestMessage request = new(HttpMethod.Get, context.Options.UserInformationEndpoint);
-                        request.Headers.Authorization =
-                            new AuthenticationHeaderValue("Bearer", context.AccessToken);
-
-                        HttpResponseMessage response = await context.Backchannel.SendAsync(request);
-                        response.EnsureSuccessStatusCode();
-
-                        JsonDocument user = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
-                        context.RunClaimActions(user.RootElement);
-                    }
-                };
-
-                options.SaveTokens = true;
-            });
-
-        builder.Services.AddAuthorization();
+        builder.AddReelshelfAuthentication();
         builder.AddReelshelfRateLimiting();
     }
 
@@ -285,7 +206,23 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddSingleton<WhitelistService>();
         builder.Services.AddScoped<StorageQuotaService>();
         builder.Services.AddSingleton<DiscordRoleMapping>();
-        builder.Services.AddScoped<DiscordStatements>();
+        builder.Services.AddScoped<UserStatements>();
+        builder.Services.AddScoped<IUserIdentityStore>(sp => sp.GetRequiredService<UserStatements>());
+        builder.Services.AddScoped<AccountLinkingService>();
+        builder.Services.AddScoped<IStorageWarningStore>(sp => sp.GetRequiredService<UserStatements>());
+        builder.Services.AddScoped<StorageWarningService>();
+
+        string? resendApiKey = builder.Configuration["Resend:ApiKey"] ?? builder.Configuration["ResendApiKey"];
+        if (!string.IsNullOrWhiteSpace(resendApiKey))
+        {
+            builder.Services.AddHttpClient(ResendEmailSender.HttpClientName,
+                client => ResendEmailSender.Configure(client, resendApiKey));
+            builder.Services.AddSingleton<IEmailSender, ResendEmailSender>();
+        }
+        else
+        {
+            builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        }
         builder.Services.AddScoped<GameCategoryStatements>();
 
         builder.Services.AddScoped<ClipsStatements>();
