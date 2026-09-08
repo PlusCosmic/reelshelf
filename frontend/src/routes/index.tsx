@@ -5,16 +5,14 @@ import { IconPlus } from "@tabler/icons-react";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
 import {
   Chip,
-  ClipGrid,
+  PagedClipGrid,
   SearchBox,
   StatLine,
 } from "@/components/Reelshelf/ReelshelfPrimitives";
-import {
-  makeGameShelf,
-  newestClips,
-  topTags,
-} from "@/components/Reelshelf/reelshelf-model";
+import { makeGameShelf } from "@/components/Reelshelf/reelshelf-model";
 import { useLibraryData } from "@/components/Reelshelf/useLibraryData";
+import { useTopTags } from "@/hooks/clips.queries";
+import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import { setPendingBulkUploadEntry } from "@/utils/bulkUploadEntry";
 import {
   bulkUploadInputsFromDataTransfer,
@@ -60,7 +58,7 @@ function libraryRouteReducer(
 
 function LibraryRoute() {
   const navigate = useNavigate();
-  const { categories, categoryTotals, clips, totals, isLoading, isError } =
+  const { categories, categoryTotals, totals, isLoading, isError } =
     useLibraryData();
   const [state, dispatch] = useReducer(libraryRouteReducer, {
     addCategoryOpen: false,
@@ -74,26 +72,13 @@ function LibraryRoute() {
     () => makeGameShelf(categories, categoryTotals),
     [categories, categoryTotals],
   );
-  const tags = useMemo(() => topTags(clips, 8), [clips]);
-
-  const filtered = useMemo(() => {
-    const normalizedQuery = state.query.trim().toLowerCase();
-    return newestClips(clips).filter((clip) => {
-      const category = categories.find(
-        (item) => item.id === clip.gameCategoryId,
-      );
-      if (state.gameId && clip.gameCategoryId !== state.gameId) return false;
-      if (state.tag && !clip.tags.includes(state.tag)) return false;
-      if (!normalizedQuery) return true;
-      return (
-        clip.video.title.toLowerCase().includes(normalizedQuery) ||
-        clip.tags.some((clipTag) =>
-          clipTag.toLowerCase().includes(normalizedQuery),
-        ) ||
-        category?.name.toLowerCase().includes(normalizedQuery)
-      );
-    });
-  }, [categories, clips, state.gameId, state.query, state.tag]);
+  const tags = (useTopTags().data ?? []).slice(0, 8);
+  // The grid queries the API, so let typing settle before asking for a new page of results.
+  const search = useDebouncedValue(state.query);
+  const filters = useMemo(
+    () => ({ categoryId: state.gameId, tag: state.tag, search }),
+    [search, state.gameId, state.tag],
+  );
 
   if (isLoading)
     return <div className="rs-section rs-empty">Loading your archive…</div>;
@@ -167,11 +152,7 @@ function LibraryRoute() {
               Your archive - <StatLine totals={totals} />
             </div>
             <h1 className="rs-display rs-h1">
-              Welcome back.{" "}
-              <em>
-                {clips.filter((clip) => !clip.isViewed).length || "No"} new
-                clips
-              </em>{" "}
+              Welcome back. <em>{totals.unviewedCount || "No"} new clips</em>{" "}
               are waiting on the shelf.
             </h1>
           </div>
@@ -246,18 +227,18 @@ function LibraryRoute() {
         >
           All tags
         </Chip>
-        {tags.map(([tagName, count]) => (
+        {tags.map((tag) => (
           <Chip
-            key={tagName}
-            active={state.tag === tagName}
+            key={tag.name}
+            active={state.tag === tag.name}
             onClick={() =>
               dispatch({
                 type: "setTag",
-                value: state.tag === tagName ? null : tagName,
+                value: state.tag === tag.name ? null : tag.name,
               })
             }
           >
-            #{tagName} <span className="rs-muted-count">{count}</span>
+            #{tag.name} <span className="rs-muted-count">{tag.count}</span>
           </Chip>
         ))}
         <div className="rs-filter-spacer" />
@@ -268,8 +249,8 @@ function LibraryRoute() {
       </section>
 
       <section className="rs-section">
-        <ClipGrid
-          clips={filtered}
+        <PagedClipGrid
+          filters={filters}
           categories={categories}
           variant="filmstrip"
         />

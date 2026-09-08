@@ -13,13 +13,6 @@
  */
 
 import { mapValues } from "../runtime";
-import type { Clip } from "./Clip";
-import {
-  ClipFromJSON,
-  ClipFromJSONTyped,
-  ClipToJSON,
-  ClipToJSONTyped,
-} from "./Clip";
 import type { ClipCategoryTotals } from "./ClipCategoryTotals";
 import {
   ClipCategoryTotalsFromJSON,
@@ -56,12 +49,6 @@ export interface ClipLibraryResponse {
   categories: Array<GameCategoryResponse>;
   /**
    *
-   * @type {Array<Clip>}
-   * @memberof ClipLibraryResponse
-   */
-  clips: Array<Clip>;
-  /**
-   *
    * @type {ClipLibraryTotals}
    * @memberof ClipLibraryResponse
    */
@@ -82,7 +69,6 @@ export function instanceOfClipLibraryResponse(
 ): value is ClipLibraryResponse {
   if (!("categories" in value) || value["categories"] === undefined)
     return false;
-  if (!("clips" in value) || value["clips"] === undefined) return false;
   if (!("totals" in value) || value["totals"] === undefined) return false;
   if (!("categoryTotals" in value) || value["categoryTotals"] === undefined)
     return false;
@@ -104,7 +90,6 @@ export function ClipLibraryResponseFromJSONTyped(
     categories: (json["categories"] as Array<any>).map(
       GameCategoryResponseFromJSON,
     ),
-    clips: (json["clips"] as Array<any>).map(ClipFromJSON),
     totals: ClipLibraryTotalsFromJSON(json["totals"]),
     categoryTotals: (json["category_totals"] as Array<any>).map(
       ClipCategoryTotalsFromJSON,
@@ -128,7 +113,6 @@ export function ClipLibraryResponseToJSONTyped(
     categories: (value["categories"] as Array<any>).map(
       GameCategoryResponseToJSON,
     ),
-    clips: (value["clips"] as Array<any>).map(ClipToJSON),
     totals: ClipLibraryTotalsToJSON(value["totals"]),
     category_totals: (value["categoryTotals"] as Array<any>).map(
       ClipCategoryTotalsToJSON,

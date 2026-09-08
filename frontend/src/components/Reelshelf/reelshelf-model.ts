@@ -7,6 +7,7 @@ import { apiConfig } from "@/shared/config/apiConfig";
 
 export interface GameShelfItem extends GameCategoryResponse {
   clipCount: number;
+  unviewedCount: number;
   durationSeconds: number;
   sizeBytes: number;
   colorA: string;
@@ -54,6 +55,7 @@ export function makeGameShelf(
     return {
       ...category,
       clipCount: totals?.clipCount ?? 0,
+      unviewedCount: totals?.unviewedCount ?? 0,
       durationSeconds: totals?.durationSeconds ?? 0,
       sizeBytes: totals?.storageBytes ?? 0,
       colorA,
@@ -71,6 +73,7 @@ export function categoryTotalsFor(
   );
   return {
     clipCount: totals?.clipCount ?? 0,
+    unviewedCount: totals?.unviewedCount ?? 0,
     durationSeconds: totals?.durationSeconds ?? 0,
     storageBytes: totals?.storageBytes ?? 0,
   };
@@ -120,18 +123,4 @@ export function formatSize(bytes = 0) {
     unit += 1;
   }
   return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[unit]}`;
-}
-
-export function newestClips(clips: Clip[]) {
-  return clips.toSorted(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
-}
-
-export function topTags(clips: Clip[], limit = 8) {
-  const counts = new Map<string, number>();
-  for (const clip of clips) {
-    for (const tag of clip.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
-  }
-  return [...counts.entries()].toSorted((a, b) => b[1] - a[1]).slice(0, limit);
 }

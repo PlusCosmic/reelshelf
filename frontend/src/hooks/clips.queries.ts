@@ -1,13 +1,68 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { Clip } from "@/api-client";
 import { storageUsageQueryKey } from "@/hooks/auth.queries";
 import {
   deleteClip,
+  fetchClips,
+  fetchTopTags,
   getSharedClip,
   getVideo,
   markClipAsViewed,
   shareVideo,
 } from "@/shared/services/clips";
+
+export const CLIPS_PAGE_SIZE = 48;
+
+export type ClipsFilters = {
+  categoryId?: string | null;
+  tag?: string | null;
+  search?: string;
+};
+
+/**
+ * Pages the caller's clips through the API. Filters go in the query key and on to the server, so
+ * searching or filtering covers the whole archive rather than the pages already fetched.
+ */
+export function useClipsInfinite(filters: ClipsFilters = {}, enabled = true) {
+  const search = filters.search?.trim() || undefined;
+  const categoryId = filters.categoryId ?? undefined;
+  const tag = filters.tag ?? undefined;
+
+  return useInfiniteQuery({
+    queryKey: ["clips", "list", { categoryId, tag, search }],
+    queryFn: ({ pageParam }) =>
+      fetchClips({
+        page: pageParam,
+        pageSize: CLIPS_PAGE_SIZE,
+        categoryId,
+        tags: tag ? [tag] : undefined,
+        search,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) =>
+      allPages.length < lastPage.totalPages ? allPages.length + 1 : undefined,
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
+/**
+ * Tag counts across the owner's clips, or one category's. Counted in the database, so the chips do not
+ * shrink as you page.
+ */
+export function useTopTags(categoryId?: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ["clips", "top-tags", categoryId ?? null],
+    queryFn: () => fetchTopTags(categoryId ?? undefined),
+    staleTime: 30_000,
+    enabled,
+  });
+}
 
 export function useClip(clipId: string | undefined | null) {
   return useQuery({
@@ -71,6 +126,8 @@ export function useDeleteClip() {
     onSuccess: (_data, clipId) => {
       queryClient.removeQueries({ queryKey: ["clips", clipId] });
       queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
+      queryClient.invalidateQueries({ queryKey: ["clips", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["clips", "top-tags"] });
       // Playlist summaries and details embed clips; drop the deleted one from them too.
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
       queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });

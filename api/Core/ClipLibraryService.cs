@@ -3,43 +3,38 @@ using Reelshelf.Games;
 
 namespace Reelshelf.Core;
 
+/// <summary>
+/// The library shell: the caller's categories and the totals the shelf and topline render.
+/// Clips are not included — the grids page through the clips endpoint, so this stays one query per
+/// concern instead of a per-category fan-out that could only ever return a preview anyway.
+/// </summary>
 public class ClipLibraryService(
     GameCategoryService gameCategoryService,
-    ClipService clipService,
     ClipsStatements clipsStatements)
 {
-    private const int PreviewClipsPerCategory = 96;
-
     public async Task<ClipLibraryResponse> GetLibrary(Guid userId)
     {
         // Only the caller's categories: the global list grows with every account's custom categories.
         List<GameCategoryResponse> categories = await gameCategoryService.GetLibraryCategoriesAsync(userId);
-        List<Clip> clips = [];
 
-        foreach (GameCategoryResponse category in categories)
-        {
-            PagedClipsResponse categoryClips = await clipService.GetClipsForCategory(
-                category.Id,
-                userId,
-                1,
-                PreviewClipsPerCategory,
-                sortOrder: ClipSortOrder.DateDescending);
-
-            clips.AddRange(categoryClips.Clips);
-        }
-
-        // Totals come from the database, not from the clip list above: that list stops at
-        // PreviewClipsPerCategory per category and skips categories no longer in the caller's library,
-        // so summing it reports less than the storage meter does.
         List<ClipsStatements.CategoryTotalsRow> totalsRows = await clipsStatements.GetCategoryTotalsByOwner(userId);
         List<ClipCategoryTotals> categoryTotals = totalsRows
-            .Select(row => new ClipCategoryTotals(row.GameCategoryId, row.ClipCount, row.DurationSeconds, row.StorageBytes))
+            .Select(row => new ClipCategoryTotals(
+                row.GameCategoryId,
+                row.ClipCount,
+                row.UnviewedCount,
+                row.DurationSeconds,
+                row.StorageBytes))
             .ToList();
+
+        // Summed over every category the owner has clips in, including any dropped from their library,
+        // so the topline matches the storage meter rather than the shelf.
         ClipLibraryTotals totals = new(
             categoryTotals.Sum(total => total.ClipCount),
+            categoryTotals.Sum(total => total.UnviewedCount),
             categoryTotals.Sum(total => total.DurationSeconds),
             categoryTotals.Sum(total => total.StorageBytes));
 
-        return new ClipLibraryResponse(categories, clips, totals, categoryTotals);
+        return new ClipLibraryResponse(categories, totals, categoryTotals);
     }
 }

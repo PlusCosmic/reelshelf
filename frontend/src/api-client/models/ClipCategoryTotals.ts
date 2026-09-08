@@ -36,6 +36,12 @@ export interface ClipCategoryTotals {
    * @type {number}
    * @memberof ClipCategoryTotals
    */
+  unviewedCount: number;
+  /**
+   *
+   * @type {number}
+   * @memberof ClipCategoryTotals
+   */
   durationSeconds: number;
   /**
    *
@@ -54,6 +60,8 @@ export function instanceOfClipCategoryTotals(
   if (!("gameCategoryId" in value) || value["gameCategoryId"] === undefined)
     return false;
   if (!("clipCount" in value) || value["clipCount"] === undefined) return false;
+  if (!("unviewedCount" in value) || value["unviewedCount"] === undefined)
+    return false;
   if (!("durationSeconds" in value) || value["durationSeconds"] === undefined)
     return false;
   if (!("storageBytes" in value) || value["storageBytes"] === undefined)
@@ -75,6 +83,7 @@ export function ClipCategoryTotalsFromJSONTyped(
   return {
     gameCategoryId: json["game_category_id"],
     clipCount: json["clip_count"],
+    unviewedCount: json["unviewed_count"],
     durationSeconds: json["duration_seconds"],
     storageBytes: json["storage_bytes"],
   };
@@ -95,6 +104,7 @@ export function ClipCategoryTotalsToJSONTyped(
   return {
     game_category_id: value["gameCategoryId"],
     clip_count: value["clipCount"],
+    unviewed_count: value["unviewedCount"],
     duration_seconds: value["durationSeconds"],
     storage_bytes: value["storageBytes"],
   };

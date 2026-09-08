@@ -9,7 +9,7 @@ public class ClipProjection(IConfiguration configuration)
     public Clip ProjectClip(
         ClipsStatements.ClipWithTagsRow row,
         GameCategory gameCategory,
-        ClipsStatements.ClipCollectionRow collection,
+        ClipsStatements.ClipCollectionRow? collection,
         bool isViewed,
         bool isShared)
     {
@@ -28,7 +28,7 @@ public class ClipProjection(IConfiguration configuration)
             0,
             row.EncodeProgress ?? 0,
             row.StorageSize ?? 0,
-            collection.CollectionId,
+            collection?.CollectionId ?? Guid.Empty,
             row.ThumbnailFileName ?? string.Empty,
             string.Empty,
             gameCategory.Slug,
@@ -65,6 +65,39 @@ public class ClipProjection(IConfiguration configuration)
                 viewedClipIds.Contains(row.Id),
                 sharedClipIds.Contains(row.Id)))
             .ToList();
+    }
+
+    /// <summary>
+    /// Projects a page that may span categories, looking each clip's category and collection up by id.
+    /// A clip's category always exists (the foreign key cascades), so a row is only skipped if the
+    /// category was deleted mid-request; a missing collection just leaves the collection id empty,
+    /// since nothing reads it off a listing.
+    /// </summary>
+    public List<Clip> ProjectClips(
+        IReadOnlyList<ClipsStatements.ClipWithTagsRow> rows,
+        IReadOnlyDictionary<Guid, GameCategory> categoriesById,
+        IReadOnlyDictionary<Guid, ClipsStatements.ClipCollectionRow> collectionsByCategoryId,
+        ISet<Guid> viewedClipIds,
+        ISet<Guid> sharedClipIds)
+    {
+        List<Clip> clips = [];
+        foreach (ClipsStatements.ClipWithTagsRow row in rows)
+        {
+            if (!categoriesById.TryGetValue(row.GameCategoryId, out GameCategory? category))
+            {
+                continue;
+            }
+
+            collectionsByCategoryId.TryGetValue(row.GameCategoryId, out ClipsStatements.ClipCollectionRow? collection);
+            clips.Add(ProjectClip(
+                row,
+                category,
+                collection,
+                viewedClipIds.Contains(row.Id),
+                sharedClipIds.Contains(row.Id)));
+        }
+
+        return clips;
     }
 
     private static List<string> ParseTags(string? tagNames)

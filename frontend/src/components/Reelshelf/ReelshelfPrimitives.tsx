@@ -6,4 +6,5 @@ export {
   PlayerActions,
   SharedIndicator,
 } from "./primitives/Navigation";
+export { PagedClipGrid } from "./PagedClipGrid";
 export { StatLine } from "./primitives/Stats";

@@ -62,20 +62,24 @@ export interface DeleteClipRequest {
   clipId: string;
 }
 
-export interface GetVideoByIdRequest {
-  clipId: string;
-}
-
-export interface GetVideosByCategoryRequest {
-  categoryId: string;
-  page: number;
-  pageSize: number;
+export interface GetClipsRequest {
+  page?: number;
+  pageSize?: number;
+  categoryId?: string;
   tags?: Array<string>;
-  titleSearch?: string;
+  search?: string;
   unviewedOnly?: boolean;
   sortOrder?: number;
   startDate?: Date;
   endDate?: Date;
+}
+
+export interface GetTopTagsRequest {
+  categoryId?: string;
+}
+
+export interface GetVideoByIdRequest {
+  clipId: string;
 }
 
 export interface MarkVideoAsViewedRequest {
@@ -359,10 +363,88 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
 
   /**
    */
+  async getClipsRaw(
+    requestParameters: GetClipsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<PagedClipsResponse>> {
+    const queryParameters: any = {};
+
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
+    if (requestParameters["categoryId"] != null) {
+      queryParameters["categoryId"] = requestParameters["categoryId"];
+    }
+
+    if (requestParameters["tags"] != null) {
+      queryParameters["tags"] = requestParameters["tags"];
+    }
+
+    if (requestParameters["search"] != null) {
+      queryParameters["search"] = requestParameters["search"];
+    }
+
+    if (requestParameters["unviewedOnly"] != null) {
+      queryParameters["unviewedOnly"] = requestParameters["unviewedOnly"];
+    }
+
+    if (requestParameters["sortOrder"] != null) {
+      queryParameters["sortOrder"] = requestParameters["sortOrder"];
+    }
+
+    if (requestParameters["startDate"] != null) {
+      queryParameters["startDate"] = requestParameters["startDate"];
+    }
+
+    if (requestParameters["endDate"] != null) {
+      queryParameters["endDate"] = requestParameters["endDate"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clips`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      PagedClipsResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async getClips(
+    requestParameters: GetClipsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<PagedClipsResponse> {
+    const response = await this.getClipsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
   async getTopTagsRaw(
+    requestParameters: GetTopTagsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<TopTag>>> {
     const queryParameters: any = {};
+
+    if (requestParameters["categoryId"] != null) {
+      queryParameters["categoryId"] = requestParameters["categoryId"];
+    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
@@ -386,9 +468,10 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
   /**
    */
   async getTopTags(
+    requestParameters: GetTopTagsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<TopTag>> {
-    const response = await this.getTopTagsRaw(initOverrides);
+    const response = await this.getTopTagsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -437,103 +520,6 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Clip> {
     const response = await this.getVideoByIdRaw(
-      requestParameters,
-      initOverrides,
-    );
-    return await response.value();
-  }
-
-  /**
-   */
-  async getVideosByCategoryRaw(
-    requestParameters: GetVideosByCategoryRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<PagedClipsResponse>> {
-    if (requestParameters["categoryId"] == null) {
-      throw new runtime.RequiredError(
-        "categoryId",
-        'Required parameter "categoryId" was null or undefined when calling getVideosByCategory().',
-      );
-    }
-
-    if (requestParameters["page"] == null) {
-      throw new runtime.RequiredError(
-        "page",
-        'Required parameter "page" was null or undefined when calling getVideosByCategory().',
-      );
-    }
-
-    if (requestParameters["pageSize"] == null) {
-      throw new runtime.RequiredError(
-        "pageSize",
-        'Required parameter "pageSize" was null or undefined when calling getVideosByCategory().',
-      );
-    }
-
-    const queryParameters: any = {};
-
-    if (requestParameters["page"] != null) {
-      queryParameters["page"] = requestParameters["page"];
-    }
-
-    if (requestParameters["pageSize"] != null) {
-      queryParameters["pageSize"] = requestParameters["pageSize"];
-    }
-
-    if (requestParameters["tags"] != null) {
-      queryParameters["tags"] = requestParameters["tags"];
-    }
-
-    if (requestParameters["titleSearch"] != null) {
-      queryParameters["titleSearch"] = requestParameters["titleSearch"];
-    }
-
-    if (requestParameters["unviewedOnly"] != null) {
-      queryParameters["unviewedOnly"] = requestParameters["unviewedOnly"];
-    }
-
-    if (requestParameters["sortOrder"] != null) {
-      queryParameters["sortOrder"] = requestParameters["sortOrder"];
-    }
-
-    if (requestParameters["startDate"] != null) {
-      queryParameters["startDate"] = requestParameters["startDate"];
-    }
-
-    if (requestParameters["endDate"] != null) {
-      queryParameters["endDate"] = requestParameters["endDate"];
-    }
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/clips/categories/{categoryId}/videos`;
-    urlPath = urlPath.replace(
-      `{${"categoryId"}}`,
-      encodeURIComponent(String(requestParameters["categoryId"])),
-    );
-
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
-
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      PagedClipsResponseFromJSON(jsonValue),
-    );
-  }
-
-  /**
-   */
-  async getVideosByCategory(
-    requestParameters: GetVideosByCategoryRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<PagedClipsResponse> {
-    const response = await this.getVideosByCategoryRaw(
       requestParameters,
       initOverrides,
     );

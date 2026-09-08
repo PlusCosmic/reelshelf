@@ -5,16 +5,15 @@ import { IconUpload } from "@tabler/icons-react";
 import {
   BackToLibrary,
   Chip,
-  ClipGrid,
+  PagedClipGrid,
   StatLine,
 } from "@/components/Reelshelf/ReelshelfPrimitives";
 import {
   categoryTotalsFor,
   getGameColors,
-  newestClips,
-  topTags,
 } from "@/components/Reelshelf/reelshelf-model";
 import { useLibraryData } from "@/components/Reelshelf/useLibraryData";
+import { useTopTags } from "@/hooks/clips.queries";
 import { setPendingBulkUploadEntry } from "@/utils/bulkUploadEntry";
 
 export const Route = createFileRoute("/games/$slug/")({
@@ -24,29 +23,19 @@ export const Route = createFileRoute("/games/$slug/")({
 function GameCategoryRoute() {
   const { slug } = Route.useParams();
   const navigate = useNavigate();
-  const { categories, categoryTotals, clips, isLoading, isError } =
-    useLibraryData();
+  const { categories, categoryTotals, isLoading, isError } = useLibraryData();
   const [tag, setTag] = useState<string | null>(null);
   const category = categories.find((item) => item.slug === slug);
   const [colorA, colorB] = getGameColors(category?.id ?? slug);
-  const gameClips = useMemo(
-    () =>
-      newestClips(
-        clips.filter(
-          (clip) =>
-            clip.categorySlug === slug || clip.gameCategoryId === category?.id,
-        ),
-      ),
-    [category?.id, clips, slug],
-  );
-  const tags = useMemo(() => topTags(gameClips, 10), [gameClips]);
+  const tags = (useTopTags(category?.id, !!category).data ?? []).slice(0, 10);
   const totals = useMemo(
     () => categoryTotalsFor(categoryTotals, category?.id ?? ""),
     [categoryTotals, category?.id],
   );
-  const filtered = tag
-    ? gameClips.filter((clip) => clip.tags.includes(tag))
-    : gameClips;
+  const filters = useMemo(
+    () => ({ categoryId: category?.id ?? null, tag }),
+    [category?.id, tag],
+  );
 
   if (isLoading)
     return <div className="rs-section rs-empty">Loading game shelf…</div>;
@@ -99,13 +88,13 @@ function GameCategoryRoute() {
           <Chip active={!tag} onClick={() => setTag(null)}>
             All clips
           </Chip>
-          {tags.map(([tagName, count]) => (
+          {tags.map((item) => (
             <Chip
-              key={tagName}
-              active={tag === tagName}
-              onClick={() => setTag(tag === tagName ? null : tagName)}
+              key={item.name}
+              active={tag === item.name}
+              onClick={() => setTag(tag === item.name ? null : item.name)}
             >
-              #{tagName} - {count}
+              #{item.name} - {item.count}
             </Chip>
           ))}
         </div>
@@ -115,8 +104,8 @@ function GameCategoryRoute() {
         <div className="rs-section-heading">
           <h2 className="rs-display rs-h2">All clips</h2>
         </div>
-        <ClipGrid
-          clips={filtered}
+        <PagedClipGrid
+          filters={filters}
           categories={categories}
           variant="filmstrip"
         />

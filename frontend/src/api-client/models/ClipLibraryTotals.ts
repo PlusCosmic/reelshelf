@@ -30,6 +30,12 @@ export interface ClipLibraryTotals {
    * @type {number}
    * @memberof ClipLibraryTotals
    */
+  unviewedCount: number;
+  /**
+   *
+   * @type {number}
+   * @memberof ClipLibraryTotals
+   */
   durationSeconds: number;
   /**
    *
@@ -46,6 +52,8 @@ export function instanceOfClipLibraryTotals(
   value: object,
 ): value is ClipLibraryTotals {
   if (!("clipCount" in value) || value["clipCount"] === undefined) return false;
+  if (!("unviewedCount" in value) || value["unviewedCount"] === undefined)
+    return false;
   if (!("durationSeconds" in value) || value["durationSeconds"] === undefined)
     return false;
   if (!("storageBytes" in value) || value["storageBytes"] === undefined)
@@ -66,6 +74,7 @@ export function ClipLibraryTotalsFromJSONTyped(
   }
   return {
     clipCount: json["clip_count"],
+    unviewedCount: json["unviewed_count"],
     durationSeconds: json["duration_seconds"],
     storageBytes: json["storage_bytes"],
   };
@@ -85,6 +94,7 @@ export function ClipLibraryTotalsToJSONTyped(
 
   return {
     clip_count: value["clipCount"],
+    unviewed_count: value["unviewedCount"],
     duration_seconds: value["durationSeconds"],
     storage_bytes: value["storageBytes"],
   };
