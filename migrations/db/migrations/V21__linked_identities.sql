@@ -3,6 +3,12 @@
 
 ALTER TABLE discord_user RENAME TO app_user;
 
+-- The production schema predates the V16 baseline and has varchar(100) profile columns; provider avatars
+-- become full URLs below and Twitch display names are free-form, so give them the baseline's text type.
+ALTER TABLE app_user ALTER COLUMN username TYPE text;
+ALTER TABLE app_user ALTER COLUMN global_name TYPE text;
+ALTER TABLE app_user ALTER COLUMN avatar TYPE text;
+
 CREATE TABLE IF NOT EXISTS user_identity (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
@@ -28,6 +34,7 @@ SELECT
     global_name,
     CASE
         WHEN avatar IS NULL OR avatar = '' THEN NULL
+        WHEN avatar LIKE 'http%' THEN avatar
         ELSE 'https://cdn.discordapp.com/avatars/' || discord_id || '/' || avatar
     END
 FROM app_user
@@ -37,6 +44,7 @@ ON CONFLICT (provider, provider_user_id) DO NOTHING;
 UPDATE app_user
 SET avatar = CASE
     WHEN avatar IS NULL OR avatar = '' THEN NULL
+    WHEN avatar LIKE 'http%' THEN avatar
     ELSE 'https://cdn.discordapp.com/avatars/' || discord_id || '/' || avatar
 END;
 
