@@ -3,7 +3,8 @@ using Npgsql;
 
 namespace Reelshelf.Users;
 
-public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, Storage.IStorageWarningStore
+public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector tokenProtector)
+    : IUserIdentityStore, IProviderTokenStore, Storage.IStorageWarningStore
 {
     private const string UserColumns = "id, username, global_name, avatar_url, email, onboarding_completed_at, role, role_from_whitelist";
 
@@ -151,10 +152,13 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, S
     private async Task<UserIdentityRow> InsertIdentity(Guid userId, ExternalIdentity identity, NpgsqlTransaction? transaction)
     {
         string sql = $@"
-            INSERT INTO user_identity (user_id, provider, provider_user_id, username, display_name, avatar_url, email)
-            VALUES (@userId, @provider, @providerUserId, @username, @displayName, @avatarUrl, @email)
+            INSERT INTO user_identity (user_id, provider, provider_user_id, username, display_name, avatar_url, email,
+                                       access_token, refresh_token, token_expires_at, token_scopes)
+            VALUES (@userId, @provider, @providerUserId, @username, @displayName, @avatarUrl, @email,
+                    @accessToken, @refreshToken, @tokenExpiresAt, @tokenScopes)
             RETURNING {IdentityColumns}";
 
+        ProtectedTokens tokens = Protect(identity.Tokens);
         return await connection.QuerySingleAsync<UserIdentityRow>(
             sql,
             new
@@ -165,11 +169,19 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, S
                 username = identity.Username,
                 displayName = identity.DisplayName,
                 avatarUrl = identity.AvatarUrl,
-                email = identity.Email
+                email = identity.Email,
+                accessToken = tokens.AccessToken,
+                refreshToken = tokens.RefreshToken,
+                tokenExpiresAt = tokens.ExpiresAt,
+                tokenScopes = tokens.Scopes
             },
             transaction);
     }
 
+    /// <summary>
+    /// Refreshes the provider profile and, when the sign-in carried tokens, replaces the stored ones. A sign-in
+    /// without tokens (Discord, or a provider round-trip that did not save them) leaves existing tokens alone.
+    /// </summary>
     public async Task UpdateIdentityProfile(Guid identityId, ExternalIdentity identity)
     {
         const string sql = @"
@@ -177,17 +189,101 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, S
             SET username = @username,
                 display_name = @displayName,
                 avatar_url = @avatarUrl,
-                email = @email
+                email = @email,
+                access_token = CASE WHEN @hasTokens THEN @accessToken ELSE access_token END,
+                refresh_token = CASE WHEN @hasTokens THEN @refreshToken ELSE refresh_token END,
+                token_expires_at = CASE WHEN @hasTokens THEN @tokenExpiresAt ELSE token_expires_at END,
+                token_scopes = CASE WHEN @hasTokens THEN @tokenScopes ELSE token_scopes END
             WHERE id = @identityId";
 
+        ProtectedTokens tokens = Protect(identity.Tokens);
         await connection.ExecuteAsync(sql, new
         {
             identityId,
             username = identity.Username,
             displayName = identity.DisplayName,
             avatarUrl = identity.AvatarUrl,
-            email = identity.Email
+            email = identity.Email,
+            hasTokens = identity.Tokens is not null,
+            accessToken = tokens.AccessToken,
+            refreshToken = tokens.RefreshToken,
+            tokenExpiresAt = tokens.ExpiresAt,
+            tokenScopes = tokens.Scopes
         });
+    }
+
+    /// <summary>The identity an account holds for <paramref name="provider"/>, with its decrypted tokens, or null.</summary>
+    public async Task<ProviderIdentityTokens?> GetIdentityTokens(Guid userId, string provider)
+    {
+        const string sql = @"
+            SELECT id, provider_user_id, username, display_name, access_token, refresh_token, token_expires_at, token_scopes
+            FROM user_identity
+            WHERE user_id = @userId AND provider = @provider
+            LIMIT 1";
+
+        TokenRow? row = await connection.QuerySingleOrDefaultAsync<TokenRow>(sql, new { userId, provider });
+        if (row is null)
+        {
+            return null;
+        }
+
+        string? accessToken = tokenProtector.Unprotect(row.AccessToken);
+        ProviderTokens? tokens = accessToken is null
+            ? null
+            : new ProviderTokens(
+                accessToken,
+                tokenProtector.Unprotect(row.RefreshToken),
+                row.TokenExpiresAt,
+                ProviderTokens.ParseScopes(row.TokenScopes));
+
+        return new ProviderIdentityTokens(row.Id, row.ProviderUserId, row.Username, row.DisplayName, tokens);
+    }
+
+    /// <summary>Stores refreshed tokens, or clears them (null) when the provider says they are no longer valid.</summary>
+    public async Task UpdateIdentityTokens(Guid identityId, ProviderTokens? tokens)
+    {
+        const string sql = @"
+            UPDATE user_identity
+            SET access_token = @accessToken,
+                refresh_token = @refreshToken,
+                token_expires_at = @tokenExpiresAt,
+                token_scopes = @tokenScopes
+            WHERE id = @identityId";
+
+        ProtectedTokens protectedTokens = Protect(tokens);
+        await connection.ExecuteAsync(sql, new
+        {
+            identityId,
+            accessToken = protectedTokens.AccessToken,
+            refreshToken = protectedTokens.RefreshToken,
+            tokenExpiresAt = protectedTokens.ExpiresAt,
+            tokenScopes = protectedTokens.Scopes
+        });
+    }
+
+    private ProtectedTokens Protect(ProviderTokens? tokens)
+    {
+        return tokens is null
+            ? new ProtectedTokens(null, null, null, null)
+            : new ProtectedTokens(
+                tokenProtector.Protect(tokens.AccessToken),
+                tokenProtector.Protect(tokens.RefreshToken),
+                tokens.ExpiresAt,
+                tokens.ScopesAsString());
+    }
+
+    private sealed record ProtectedTokens(string? AccessToken, string? RefreshToken, DateTimeOffset? ExpiresAt, string? Scopes);
+
+    private sealed class TokenRow
+    {
+        public Guid Id { get; set; }
+        public string ProviderUserId { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string? AccessToken { get; set; }
+        public string? RefreshToken { get; set; }
+        public DateTimeOffset? TokenExpiresAt { get; set; }
+        public string? TokenScopes { get; set; }
     }
 
     public async Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl)

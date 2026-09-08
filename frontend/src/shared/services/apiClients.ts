@@ -5,6 +5,7 @@ import {
   GameCategoryEndpointsApi,
   PlaylistEndpointsApi,
   SharedClipsEndpointsApi,
+  TwitchClipsEndpointsApi,
 } from "@/api-client";
 import { apiConfig } from "../config/apiConfig";
 import { createApiErrorMiddleware } from "./apiError";
@@ -33,4 +34,8 @@ export function createUserApi() {
 
 export function createPlaylistApi() {
   return new PlaylistEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createTwitchClipsApi() {
+  return new TwitchClipsEndpointsApi(new ClipsConfiguration(clientOptions));
 }

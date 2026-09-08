@@ -2488,7 +2488,247 @@ a {
   border-bottom: 1px solid var(--line);
 }
 
+/* Add clips: source tabs shared by the file uploader and the Twitch importer */
+.rs-add-clips {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px 32px 0;
+}
+
+.rs-add-clips-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rs-add-clips-tabs .rs-chip {
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+.rs-add-clips .rs-upload-page {
+  padding-top: 20px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.rs-twitch-panel {
+  display: grid;
+  gap: 14px;
+  padding: 20px 0 80px;
+}
+
+.rs-twitch-loading {
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.rs-twitch-cta {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 520px;
+  margin: 24px auto;
+  padding: 40px 32px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.rs-twitch-cta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: color-mix(in oklch, #9146ff 16%, var(--bg));
+  color: #9146ff;
+}
+
+.rs-twitch-cta-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.rs-twitch-cta-copy,
+.rs-twitch-cta-footnote {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rs-twitch-cta-footnote {
+  font-size: 12px;
+}
+
+.rs-twitch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.rs-twitch-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  color: var(--fg-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rs-twitch-games {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--accent) 8%, var(--bg));
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-twitch-games-error {
+  width: 100%;
+  color: var(--danger, #c2410c);
+}
+
+.rs-twitch-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--fg-soft);
+  font-size: 12px;
+}
+
+.rs-twitch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.rs-twitch-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.rs-twitch-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--accent) 60%, transparent);
+}
+
+.rs-twitch-card.settled {
+  opacity: 0.86;
+}
+
+.rs-twitch-card-media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--bg-soft);
+}
+
+.rs-twitch-card-media img,
+.rs-twitch-card-media .rs-upload-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.rs-twitch-card-duration {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rs-twitch-card-check {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.rs-twitch-card-body {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.rs-twitch-card-title {
+  font-weight: 700;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.rs-twitch-card-field .rs-ui-field-label {
+  font-size: 11px;
+}
+
+.rs-twitch-card-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.rs-twitch-card-status small {
+  width: 100%;
+  color: var(--danger, #c2410c);
+}
+
+.rs-twitch-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+
 @media (max-width: 900px) {
+  .rs-add-clips {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .rs-twitch-grid {
+    grid-template-columns: 1fr;
+  }
   .rs-topbar {
     grid-template-columns: 1fr auto;
     gap: 12px;

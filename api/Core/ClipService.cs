@@ -48,12 +48,25 @@ public class ClipService(
         return WebEncoders.Base64UrlEncode(bytes);
     }
 
+    /// <summary>
+    /// Reserves storage and creates the Bunny video a clip's bytes will be uploaded into. Returns null when the
+    /// owner already has this video (same MD5 for the game, or the same <paramref name="source"/> clip).
+    /// </summary>
     public async Task<CreateClipResponse?> CreateClip(Guid gameCategoryId, string videoTitle,
-        Guid userId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null)
+        Guid userId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null, ClipSource? source = null)
     {
         if (fileSize <= 0 || fileSize > StorageQuota.MaxDeclaredFileSizeBytes)
         {
             throw new BadRequestException("File size must be between 1 byte and 1 TiB");
+        }
+
+        if (source is not null)
+        {
+            HashSet<string> imported = await clipsStatements.GetImportedSourceClipIds(userId, source.Provider, [source.ClipId]);
+            if (imported.Count > 0)
+            {
+                return null; // Already imported
+            }
         }
 
 
@@ -88,14 +101,23 @@ public class ClipService(
         {
             await storageQuotaService.EnsureCanStore(userId, fileSize);
 
-            reserved = await clipsStatements.InsertClip(
-                userId,
-                placeholderVideoId,
-                gameCategoryId,
-                md5Hash,
-                createdAt,
-                videoTitle,
-                fileSize: fileSize);
+            try
+            {
+                reserved = await clipsStatements.InsertClip(
+                    userId,
+                    placeholderVideoId,
+                    gameCategoryId,
+                    md5Hash,
+                    createdAt,
+                    videoTitle,
+                    fileSize: fileSize,
+                    source: source);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+            {
+                // Two imports of the same source clip raced past the check above; the first one wins.
+                return null;
+            }
 
             await reservation.CommitAsync();
         }
@@ -153,6 +175,12 @@ public class ClipService(
             libraryId,
             video.Guid,
             video.CollectionId);
+    }
+
+    /// <summary>Server-side upload of a clip's bytes into the video <see cref="CreateClip"/> prepared for it.</summary>
+    public Task UploadVideo(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken)
+    {
+        return bunnyService.UploadVideoAsync(videoId, content, contentLength, cancellationToken);
     }
 
     private async Task<ClipsStatements.ClipCollectionRow> CreateCollectionAsync(Guid userId, GameCategory gameCategory)

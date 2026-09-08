@@ -200,15 +200,46 @@ public class ClipsStatements(NpgsqlConnection connection)
     public async Task<ClipRow> InsertClip(Guid ownerId, Guid videoId, Guid gameCategoryId, string? md5Hash,
         DateTimeOffset createdAt, string? title = null, int? length = null, string? thumbnailFileName = null,
         DateTimeOffset? dateUploaded = null, long? storageSize = null, int? videoStatus = null, int? encodeProgress = null,
-        long? fileSize = null)
+        long? fileSize = null, ClipSource? source = null)
     {
         const string sql = """
-            INSERT INTO clip (owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size)
-            VALUES (@ownerId, @videoId, @gameCategoryId, @md5Hash, @createdAt, @title, @length, @thumbnailFileName, @dateUploaded, @storageSize, @videoStatus, @encodeProgress, @fileSize)
+            INSERT INTO clip (owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size, source_provider, source_clip_id)
+            VALUES (@ownerId, @videoId, @gameCategoryId, @md5Hash, @createdAt, @title, @length, @thumbnailFileName, @dateUploaded, @storageSize, @videoStatus, @encodeProgress, @fileSize, @sourceProvider, @sourceClipId)
             RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size
             """;
 
-        return await connection.QuerySingleAsync<ClipRow>(sql, new { ownerId, videoId, gameCategoryId, md5Hash, createdAt, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress, fileSize });
+        return await connection.QuerySingleAsync<ClipRow>(sql, new
+        {
+            ownerId, videoId, gameCategoryId, md5Hash, createdAt, title, length, thumbnailFileName, dateUploaded,
+            storageSize, videoStatus, encodeProgress, fileSize,
+            sourceProvider = source?.Provider,
+            sourceClipId = source?.ClipId
+        });
+    }
+
+    /// <summary>Corrects the declared size once the real byte count of a server-side copy is known.</summary>
+    public async Task UpdateClipFileSize(Guid clipId, long fileSize)
+    {
+        await connection.ExecuteAsync("UPDATE clip SET file_size = @fileSize WHERE id = @clipId", new { clipId, fileSize });
+    }
+
+    /// <summary>Which of <paramref name="sourceClipIds"/> the owner has already imported from <paramref name="provider"/>.</summary>
+    public async Task<HashSet<string>> GetImportedSourceClipIds(Guid ownerId, string provider, IReadOnlyCollection<string> sourceClipIds)
+    {
+        if (sourceClipIds.Count == 0)
+        {
+            return [];
+        }
+
+        const string sql = """
+            SELECT source_clip_id
+            FROM clip
+            WHERE owner_id = @ownerId AND source_provider = @provider AND source_clip_id = ANY(@sourceClipIds)
+            """;
+
+        IEnumerable<string> imported = await connection.QueryAsync<string>(sql,
+            new { ownerId, provider, sourceClipIds = sourceClipIds.ToArray() });
+        return imported.ToHashSet(StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -745,3 +776,6 @@ public class ClipsStatements(NpgsqlConnection connection)
         public int Count { get; set; }
     }
 }
+
+/// <summary>Where an imported clip came from: the provider name and its id there. Local uploads have none.</summary>
+public sealed record ClipSource(string Provider, string ClipId);
