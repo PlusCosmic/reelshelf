@@ -1,7 +1,9 @@
 using IGDB;
 using IGDB.Models;
+using System.Threading.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
+using Reelshelf.Exceptions;
 
 namespace Reelshelf.Games;
 
@@ -14,12 +16,16 @@ namespace Reelshelf.Games;
 public class IgdbService
 {
     private const int DefaultMaxConcurrentUpstreamCalls = 4;
+    // IGDB allows 4 requests per second per application. Pace the aggregate across all users to that.
+    private const int DefaultUpstreamRequestsPerSecond = 4;
+    private const int UpstreamQueueLimit = 64;
     private static readonly TimeSpan SearchCacheDuration = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan GameCacheDuration = TimeSpan.FromHours(6);
 
     private readonly IGDBClient _client;
     private readonly IMemoryCache _cache;
     private readonly SemaphoreSlim _upstreamCalls;
+    private readonly TokenBucketRateLimiter _upstreamPacer;
 
     public IgdbService(IConfiguration configuration, IMemoryCache cache)
     {
@@ -33,6 +39,17 @@ public class IgdbService
 
         int maxConcurrent = configuration.GetValue<int?>("Igdb:MaxConcurrentUpstreamCalls") ?? DefaultMaxConcurrentUpstreamCalls;
         _upstreamCalls = new SemaphoreSlim(Math.Max(1, maxConcurrent), Math.Max(1, maxConcurrent));
+
+        int perSecond = Math.Max(1, configuration.GetValue<int?>("Igdb:UpstreamRequestsPerSecond") ?? DefaultUpstreamRequestsPerSecond);
+        _upstreamPacer = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = perSecond,
+            TokensPerPeriod = perSecond,
+            ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+            QueueLimit = UpstreamQueueLimit,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            AutoReplenishment = true
+        });
     }
 
     public async Task<List<GameSearchResult>> SearchGamesAsync(string query, int limit = 10)
@@ -79,10 +96,18 @@ public class IgdbService
     }
 
     /// <summary>
-    /// Every call to IGDB goes through here so the process-wide concurrency cap applies uniformly.
+    /// Every call to IGDB goes through here so the process-wide pacing and concurrency cap apply uniformly,
+    /// regardless of how many accounts are calling or how many upstream requests one lookup fans out into.
     /// </summary>
     private async Task<T[]> QueryUpstreamAsync<T>(string endpoint, string query)
     {
+        using RateLimitLease lease = await _upstreamPacer.AcquireAsync(1);
+        if (!lease.IsAcquired)
+        {
+            // The wait queue is full: the shared budget is saturated, so fail fast instead of piling on.
+            throw new ServiceUnavailableException("Game lookups are busy right now. Try again in a moment.");
+        }
+
         await _upstreamCalls.WaitAsync();
         try
         {

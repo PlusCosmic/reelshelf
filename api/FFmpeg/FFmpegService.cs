@@ -46,7 +46,7 @@ public class FFmpegService
     /// <param name="videoId">The Bunny video ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Path to the downloaded video file</returns>
-    public async Task<string> DownloadHlsVideoAsync(Guid videoId, CancellationToken cancellationToken = default)
+    public async Task<DownloadedVideo> DownloadHlsVideoAsync(Guid videoId, CancellationToken cancellationToken = default)
     {
         // Take the per-video gate first: duplicate requests for one video queue here without holding
         // any process-wide capacity, so they cannot starve downloads of other videos.
@@ -68,11 +68,16 @@ public class FFmpegService
 
                 try
                 {
-                    return await DownloadHlsVideoCoreAsync(videoId, cancellationToken);
+                    string path = await DownloadHlsVideoCoreAsync(videoId, cancellationToken);
+                    // The global permit is handed to the result and released when the caller disposes it,
+                    // i.e. once the response has been streamed. Otherwise a slow client could keep many
+                    // finished MP4s open on disk while new conversions start, defeating the cap.
+                    return new DownloadedVideo(path, globalDownloads);
                 }
-                finally
+                catch
                 {
                     globalDownloads.Release();
+                    throw;
                 }
             }
             finally
@@ -84,6 +89,28 @@ public class FFmpegService
         finally
         {
             ReturnGate(videoId, gate);
+        }
+    }
+
+    /// <summary>
+    /// A converted file on disk plus the download permit it occupies. Dispose after the file has been
+    /// streamed (or could not be opened) to return that capacity.
+    /// </summary>
+    public sealed class DownloadedVideo : IDisposable
+    {
+        private SemaphoreSlim? _capacity;
+
+        internal DownloadedVideo(string path, SemaphoreSlim capacity)
+        {
+            Path = path;
+            _capacity = capacity;
+        }
+
+        public string Path { get; }
+
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref _capacity, null)?.Release();
         }
     }
 

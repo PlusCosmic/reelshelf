@@ -14,7 +14,8 @@ public static class ClipsEndpoints
         group.MapGet("library", GetLibrary).WithName("GetClipLibrary");
         group.MapGet("categories/{categoryId:guid}/videos", GetVideosByCategory).WithName("GetVideosByCategory");
         group.MapPost("categories/{categoryId:guid}/videos", CreateVideo).WithName("CreateVideo")
-            .RequirePermission(Permissions.ClipsCreate);
+            .RequirePermission(Permissions.ClipsCreate)
+            .RequireRateLimiting(RateLimitPolicies.ClipPrepare);
         group.MapGet("videos/{clipId:guid}", GetVideoById).WithName("GetVideoById");
         group.MapPost("videos/{clipId:guid}/share", ShareVideo).WithName("ShareVideo");
         group.MapPost("videos/{clipId:guid}/view", MarkVideoAsViewed).WithName("MarkVideoAsViewed");

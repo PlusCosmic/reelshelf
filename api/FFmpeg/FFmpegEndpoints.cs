@@ -19,6 +19,7 @@ public static class FFmpegEndpoints
         FFmpegService ffmpegService,
         ClipsStatements clipsStatements,
         AuthenticatedUser user,
+        HttpContext httpContext,
         Guid videoId,
         CancellationToken cancellationToken)
     {
@@ -31,8 +32,21 @@ public static class FFmpegEndpoints
 
         try
         {
-            string filePath = await ffmpegService.DownloadHlsVideoAsync(videoId, cancellationToken);
-            var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose);
+            FFmpegService.DownloadedVideo download = await ffmpegService.DownloadHlsVideoAsync(videoId, cancellationToken);
+            FileStream fileStream;
+            try
+            {
+                fileStream = new FileStream(download.Path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose);
+            }
+            catch
+            {
+                download.Dispose();
+                throw;
+            }
+
+            // Keep the download permit until the response has been written, so the number of finished files
+            // waiting on slow clients is bounded by MaxConcurrentDownloads too.
+            httpContext.Response.RegisterForDispose(download);
 
             return TypedResults.File(
                 fileStream,
