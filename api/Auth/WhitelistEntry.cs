@@ -2,6 +2,7 @@ namespace Reelshelf.Auth;
 
 /// <summary>
 /// Represents a single entry in the whitelist configuration.
+/// Listed users get unlimited clip storage and may carry an explicit role override.
 /// </summary>
 public class WhitelistEntry
 {

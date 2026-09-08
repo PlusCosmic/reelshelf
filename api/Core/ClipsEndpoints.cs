@@ -14,7 +14,8 @@ public static class ClipsEndpoints
         group.MapGet("library", GetLibrary).WithName("GetClipLibrary");
         group.MapGet("categories/{categoryId:guid}/videos", GetVideosByCategory).WithName("GetVideosByCategory");
         group.MapPost("categories/{categoryId:guid}/videos", CreateVideo).WithName("CreateVideo")
-            .RequirePermission(Permissions.ClipsCreate);
+            .RequirePermission(Permissions.ClipsCreate)
+            .RequireRateLimiting(RateLimitPolicies.ClipPrepare);
         group.MapGet("videos/{clipId:guid}", GetVideoById).WithName("GetVideoById");
         group.MapPost("videos/{clipId:guid}/share", ShareVideo).WithName("ShareVideo");
         group.MapPost("videos/{clipId:guid}/view", MarkVideoAsViewed).WithName("MarkVideoAsViewed");
@@ -66,15 +67,21 @@ public static class ClipsEndpoints
             await clipService.GetClipsForCategory(categoryId, user.DiscordId, page, pageSize, tagList, titleSearch, unviewedOnly, sortOrder, startDate, endDate));
     }
 
-    private static async Task<Results<Ok<CreateClipResponse>, Conflict<string>>> CreateVideo(
+    private static async Task<Results<Ok<CreateClipResponse>, Conflict<string>, BadRequest<string>>> CreateVideo(
         ClipService clipService,
         Guid categoryId,
         AuthenticatedUser user,
         string videoTitle,
+        long fileSize,
         DateTimeOffset? createdAt = null,
         string? md5Hash = null)
     {
-        CreateClipResponse? result = await clipService.CreateClip(categoryId, videoTitle, user.DiscordId, createdAt ?? DateTimeOffset.UtcNow, md5Hash);
+        if (fileSize <= 0)
+        {
+            return TypedResults.BadRequest("File size must be greater than zero");
+        }
+
+        CreateClipResponse? result = await clipService.CreateClip(categoryId, videoTitle, user.DiscordId, createdAt ?? DateTimeOffset.UtcNow, fileSize, md5Hash);
         if (result is null)
         {
             return TypedResults.Conflict("A video with this MD5 hash already exists");
@@ -156,9 +163,9 @@ public static class ClipsEndpoints
         return TypedResults.Ok(updated);
     }
 
-    private static async Task<Ok<List<TopTag>>> GetTopTags(ClipService clipService)
+    private static async Task<Ok<List<TopTag>>> GetTopTags(ClipService clipService, AuthenticatedUser user)
     {
-        return TypedResults.Ok(await clipService.GetTopTags());
+        return TypedResults.Ok(await clipService.GetTopTags(user.DiscordId));
     }
 
     private static async Task<Results<Ok, NotFound>> MarkVideoAsViewed(

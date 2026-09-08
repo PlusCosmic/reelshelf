@@ -25,6 +25,7 @@ const clipUploadMocks = vi.hoisted(() => ({
 const serviceMocks = vi.hoisted(() => ({
   addClipsToPlaylist: vi.fn(),
   addTagToVideo: vi.fn(),
+  deleteClip: vi.fn(),
   ensureGamingSessionPlaylist: vi.fn(),
   fetchPlaylists: vi.fn(),
 }));
@@ -73,10 +74,18 @@ vi.mock("@/hooks/queries", () => ({
     data: categories,
     isLoading: false,
   }),
+  useStorageUsage: () => ({
+    data: {
+      usedBytes: 5 * 1024 ** 3,
+      limitBytes: 25 * 1024 ** 3,
+      isUnlimited: false,
+    },
+  }),
 }));
 
 vi.mock("@/shared/services/clips", () => ({
   addTagToVideo: serviceMocks.addTagToVideo,
+  deleteClip: serviceMocks.deleteClip,
 }));
 
 vi.mock("@/shared/services/playlists", () => ({
@@ -242,6 +251,54 @@ describe("BulkUploadQueue", () => {
       expect(clipUploadMocks.createPreparedClipUpload).toHaveBeenCalledTimes(1),
     );
     expect(await screen.findByText("duplicate")).toBeTruthy();
+  });
+
+  it("shows storage usage and sends the file size when preparing an upload", async () => {
+    renderQueue();
+
+    expect(
+      screen.getByRole("meter", { name: "Clip storage" }).textContent,
+    ).toBe("5 GB of 25 GB used");
+
+    fireEvent.change(screen.getByLabelText("Choose video files"), {
+      target: { files: [videoFile("Apex Legends/sized.mp4")] },
+    });
+
+    await screen.findByDisplayValue("sized");
+    fireEvent.click(screen.getByRole("button", { name: /add 1 to library/i }));
+
+    await waitFor(() =>
+      expect(clipUploadMocks.createPreparedClipUpload).toHaveBeenCalledWith(
+        expect.objectContaining({ fileSize: 4, title: "sized" }),
+      ),
+    );
+  });
+
+  it("deletes the prepared clip when its upload fails so it stops holding storage", async () => {
+    serviceMocks.deleteClip.mockResolvedValue(undefined);
+    clipUploadMocks.createTusClipUpload.mockImplementation(
+      (options: { onError: (error: Error) => void }) => ({
+        abort: vi.fn(),
+        findPreviousUploads: vi.fn().mockResolvedValue([]),
+        resumeFromPreviousUpload: vi.fn(),
+        start: () => options.onError(new Error("network down")),
+      }),
+    );
+    renderQueue();
+
+    fireEvent.change(screen.getByLabelText("Choose video files"), {
+      target: { files: [videoFile("Apex Legends/failing.mp4")] },
+    });
+
+    await screen.findByDisplayValue("failing");
+    fireEvent.click(screen.getByRole("button", { name: /add 1 to library/i }));
+
+    await waitFor(() =>
+      expect(serviceMocks.deleteClip).toHaveBeenCalledWith(
+        "clip-hash-failing.mp4",
+      ),
+    );
+    expect(await screen.findByText("network down")).toBeTruthy();
   });
 
   it("files uploaded rows with tags, user collection, and a session collection", async () => {

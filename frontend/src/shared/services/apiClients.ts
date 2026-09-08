@@ -1,6 +1,7 @@
 import {
   ClipsEndpointsApi,
   Configuration as ClipsConfiguration,
+  DiscordUserEndpointsApi,
   GameCategoryEndpointsApi,
   PlaylistEndpointsApi,
   SharedClipsEndpointsApi,
@@ -24,6 +25,10 @@ export function createSharedClipsApi() {
 
 export function createGameCategoryApi() {
   return new GameCategoryEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createUserApi() {
+  return new DiscordUserEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
 export function createPlaylistApi() {

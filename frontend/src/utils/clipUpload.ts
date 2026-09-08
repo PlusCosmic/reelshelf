@@ -7,6 +7,7 @@ import { calculateFileMD5 } from "@/utils/fileHash";
 export type CreateVideoForUpload = (request: {
   categoryId: string;
   title: string;
+  fileSize: number;
   md5Hash?: string;
   createdAt?: Date;
 }) => Promise<CreateClipResponse | null>;
@@ -27,20 +28,23 @@ export function calculateClipUploadMd5(file: File) {
 export async function createPreparedClipUpload({
   categoryId,
   createdAt,
-  createVideo = ({ categoryId, title, md5Hash, createdAt }) =>
-    createVideoRequest(categoryId, title, md5Hash, createdAt),
+  createVideo = ({ categoryId, title, fileSize, md5Hash, createdAt }) =>
+    createVideoRequest(categoryId, title, fileSize, md5Hash, createdAt),
+  fileSize,
   md5Hash,
   title,
 }: {
   categoryId: string;
   createdAt?: Date;
   createVideo?: CreateVideoForUpload;
+  fileSize: number;
   md5Hash: string;
   title: string;
 }): Promise<CreateClipResponse> {
   const response = await createVideo({
     categoryId,
     title,
+    fileSize,
     md5Hash,
     createdAt,
   });
@@ -84,6 +88,10 @@ export function createTusClipUpload({
 export function uploadErrorMessage(uploadError: unknown) {
   if (uploadError instanceof ApiError && uploadError.status === 409) {
     return "This video has already been uploaded.";
+  }
+  // A 403 from clip creation is the storage limit; the API's detail says how much space remains.
+  if (uploadError instanceof ApiError && uploadError.status === 403) {
+    return uploadError.message || "You have reached your storage limit.";
   }
   return uploadError instanceof Error
     ? uploadError.message

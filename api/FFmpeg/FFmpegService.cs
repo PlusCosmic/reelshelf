@@ -1,9 +1,27 @@
 using FFMpegCore;
+using Reelshelf.Exceptions;
 
 namespace Reelshelf.FFmpeg;
 
 public class FFmpegService
 {
+    private const int DefaultMaxConcurrentDownloads = 3;
+    private static readonly TimeSpan QueueWait = TimeSpan.FromSeconds(30);
+
+    // Process-wide limits (the service itself is scoped). Each download spawns an ffmpeg process, so
+    // a single account must not be able to fan out unboundedly now that sign-up is open.
+    private static SemaphoreSlim? _globalDownloads;
+    private static readonly object GlobalDownloadsInit = new();
+    // Per-video gates are reference counted and evicted once the last holder or waiter leaves, so the
+    // dictionary tracks in-flight videos only rather than every video ever downloaded.
+    private static readonly Dictionary<Guid, VideoGate> PerVideoGates = new();
+
+    private sealed class VideoGate
+    {
+        public readonly SemaphoreSlim Semaphore = new(1, 1);
+        public int RefCount;
+    }
+
     private readonly ILogger<FFmpegService> _logger;
     private readonly string _outputPath;
 
@@ -11,6 +29,12 @@ public class FFmpegService
     {
         _logger = logger;
         _outputPath = configuration["FFmpegOutputPath"] ?? Path.Combine(Path.GetTempPath(), "ffmpeg-downloads");
+
+        int maxConcurrent = configuration.GetValue<int?>("FFmpeg:MaxConcurrentDownloads") ?? DefaultMaxConcurrentDownloads;
+        lock (GlobalDownloadsInit)
+        {
+            _globalDownloads ??= new SemaphoreSlim(Math.Max(1, maxConcurrent), Math.Max(1, maxConcurrent));
+        }
 
         // Ensure output directory exists
         Directory.CreateDirectory(_outputPath);
@@ -22,10 +46,111 @@ public class FFmpegService
     /// <param name="videoId">The Bunny video ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Path to the downloaded video file</returns>
-    public async Task<string> DownloadHlsVideoAsync(Guid videoId, CancellationToken cancellationToken = default)
+    public async Task<DownloadedVideo> DownloadHlsVideoAsync(Guid videoId, CancellationToken cancellationToken = default)
+    {
+        // Take the per-video gate first: duplicate requests for one video queue here without holding
+        // any process-wide capacity, so they cannot starve downloads of other videos.
+        VideoGate gate = RentGate(videoId);
+        try
+        {
+            if (!await gate.Semaphore.WaitAsync(QueueWait, cancellationToken))
+            {
+                throw new ServiceUnavailableException("This clip is already being downloaded. Try again in a moment.");
+            }
+
+            try
+            {
+                SemaphoreSlim globalDownloads = _globalDownloads!;
+                if (!await globalDownloads.WaitAsync(QueueWait, cancellationToken))
+                {
+                    throw new ServiceUnavailableException("Too many downloads are in progress. Try again in a moment.");
+                }
+
+                try
+                {
+                    string path = await DownloadHlsVideoCoreAsync(videoId, cancellationToken);
+                    // The global permit is handed to the result and released when the caller disposes it,
+                    // i.e. once the response has been streamed. Otherwise a slow client could keep many
+                    // finished MP4s open on disk while new conversions start, defeating the cap.
+                    return new DownloadedVideo(path, globalDownloads);
+                }
+                catch
+                {
+                    globalDownloads.Release();
+                    throw;
+                }
+            }
+            finally
+            {
+                // Every exit after the video gate was taken (timeout, cancellation, ffmpeg failure) releases it.
+                gate.Semaphore.Release();
+            }
+        }
+        finally
+        {
+            ReturnGate(videoId, gate);
+        }
+    }
+
+    /// <summary>
+    /// A converted file on disk plus the download permit it occupies. Dispose after the file has been
+    /// streamed (or could not be opened) to return that capacity.
+    /// </summary>
+    public sealed class DownloadedVideo : IDisposable
+    {
+        private SemaphoreSlim? _capacity;
+
+        internal DownloadedVideo(string path, SemaphoreSlim capacity)
+        {
+            Path = path;
+            _capacity = capacity;
+        }
+
+        public string Path { get; }
+
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref _capacity, null)?.Release();
+        }
+    }
+
+    private static VideoGate RentGate(Guid videoId)
+    {
+        lock (PerVideoGates)
+        {
+            if (!PerVideoGates.TryGetValue(videoId, out VideoGate? gate))
+            {
+                gate = new VideoGate();
+                PerVideoGates[videoId] = gate;
+            }
+
+            gate.RefCount++;
+            return gate;
+        }
+    }
+
+    private static void ReturnGate(Guid videoId, VideoGate gate)
+    {
+        lock (PerVideoGates)
+        {
+            if (--gate.RefCount > 0)
+            {
+                return;
+            }
+
+            // Nobody holds or waits on this gate any more, so it can leave the map and be disposed. A later
+            // request for the same video rents a fresh gate.
+            PerVideoGates.Remove(videoId);
+            gate.Semaphore.Dispose();
+        }
+    }
+
+    private async Task<string> DownloadHlsVideoCoreAsync(Guid videoId, CancellationToken cancellationToken)
     {
         string hlsUrl = $"https://vz-cd8f9809-39a.b-cdn.net/{videoId}/playlist.m3u8";
-        string outputFileName = $"{videoId}.mp4";
+        // Unique per request: the endpoint streams the file with DeleteOnClose, so two requests for the
+        // same video must never share a path.
+        string outputFileName = $"{videoId}-{Guid.NewGuid():N}.mp4";
         string outputPath = Path.Combine(_outputPath, outputFileName);
 
         try

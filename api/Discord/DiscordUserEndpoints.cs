@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
+using Reelshelf.Storage;
 
 namespace Reelshelf.Discord;
 
@@ -12,6 +13,7 @@ public static class DiscordUserEndpoints
             .RequireAuthorization();
 
         meGroup.MapGet("/", GetMe);
+        meGroup.MapGet("/storage", GetStorageUsage).WithName("GetMyStorageUsage");
 
         // Endpoints that don't need the current user but still require authorization
         app.MapGet("user/{userId:guid}", GetUser).RequireAuthorization();
@@ -21,6 +23,14 @@ public static class DiscordUserEndpoints
     private static Ok<DiscordUser> GetMe(AuthenticatedUser user)
     {
         return TypedResults.Ok(new DiscordUser(user.Id, user.Username, user.GlobalName, user.GetAvatarUrl()));
+    }
+
+    private static async Task<Ok<StorageUsageResponse>> GetStorageUsage(
+        AuthenticatedUser user,
+        StorageQuotaService storageQuotaService)
+    {
+        StorageQuota quota = await storageQuotaService.GetQuota(user.Id, user.DiscordId);
+        return TypedResults.Ok(new StorageUsageResponse(quota.UsedBytes, quota.LimitBytes, quota.IsUnlimited));
     }
 
     private static async Task<Results<Ok<DiscordUser>, NotFound>> GetUser(Guid userId, DiscordStatements discordStatements)
@@ -42,7 +52,8 @@ public static class DiscordUserEndpoints
         AuthenticatedUser user,
         DiscordStatements discordStatements)
     {
-        var users = await discordStatements.GetAllUsersExcept(user.DiscordId);
+        // Sign-up is open, so only suggest people the caller already shares a playlist with.
+        var users = await discordStatements.GetPlaylistPeers(user.Id);
 
         var suggestions = users.Select(u => new DiscordUser(
             u.Id,

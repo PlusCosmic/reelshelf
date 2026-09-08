@@ -15,12 +15,19 @@ export async function fetchClipLibrary(): Promise<ClipLibraryResponse> {
 export async function createVideoRequest(
   categoryId: string,
   title: string,
+  fileSize: number,
   md5Hash?: string,
   createdAt?: Date,
 ): Promise<CreateClipResponse | null> {
   const api = createClipsApi();
 
-  return api.createVideo({ categoryId, videoTitle: title, md5Hash, createdAt });
+  return api.createVideo({
+    categoryId,
+    videoTitle: title,
+    fileSize,
+    md5Hash,
+    createdAt,
+  });
 }
 
 export async function getVideo(videoId: string): Promise<Clip | null> {
@@ -35,6 +42,11 @@ export async function addTagToVideo(
 ): Promise<void> {
   const api = createClipsApi();
   await api.addTagToClip({ clipId: clipId, addTagRequest: { tag: tag } });
+}
+
+export async function deleteClip(clipId: string): Promise<void> {
+  const api = createClipsApi();
+  await api.deleteClip({ clipId });
 }
 
 export async function markClipAsViewed(clipId: string): Promise<void> {

@@ -65,6 +65,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             BadRequestException => "Bad Request",
             ConflictException => "Conflict",
             UnauthorizedException => "Unauthorized",
+            StorageQuotaExceededException => "Storage Limit Reached",
             ServiceUnavailableException => "Service Unavailable",
             _ => "An error occurred"
         };

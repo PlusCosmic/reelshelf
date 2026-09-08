@@ -22,6 +22,7 @@ using Reelshelf.Exceptions;
 using Reelshelf.FFmpeg;
 using Reelshelf.Games;
 using Reelshelf.Playlists;
+using Reelshelf.Storage;
 using StackExchange.Redis;
 
 namespace Reelshelf;
@@ -53,7 +54,8 @@ internal static class ReelshelfApiConfiguration
         app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
-        app.UseMiddleware<WhitelistMiddleware>();
+        // After authentication so per-user rate-limit partitions can key on the signed-in identity.
+        app.UseRateLimiter();
         app.UseAuthenticatedUserResolution();
     }
 
@@ -274,11 +276,14 @@ internal static class ReelshelfApiConfiguration
             });
 
         builder.Services.AddAuthorization();
+        builder.AddReelshelfRateLimiting();
     }
 
     private static void AddApplicationModules(this WebApplicationBuilder builder)
     {
+        // whitelist.json no longer gates access; it marks users with unlimited storage and role overrides.
         builder.Services.AddSingleton<WhitelistService>();
+        builder.Services.AddScoped<StorageQuotaService>();
         builder.Services.AddSingleton<DiscordRoleMapping>();
         builder.Services.AddScoped<DiscordStatements>();
         builder.Services.AddScoped<GameCategoryStatements>();
@@ -298,7 +303,8 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<BunnyService>();
         builder.Services.AddScoped<FFmpegService>();
 
-        builder.Services.AddScoped<IgdbService>();
+        builder.Services.AddMemoryCache();
+        builder.Services.AddSingleton<IgdbService>();
         builder.Services.AddScoped<GameCategoryService>();
 
         builder.Services.AddScoped<ApexStatements>();

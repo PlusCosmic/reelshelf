@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Clip } from "@/api-client";
+import { storageUsageQueryKey } from "@/hooks/auth.queries";
 import {
+  deleteClip,
   getSharedClip,
   getVideo,
   markClipAsViewed,
@@ -57,6 +59,21 @@ export function useShareClip() {
     onSuccess: (_data, clipId) => {
       queryClient.invalidateQueries({ queryKey: ["clips", clipId] });
       queryClient.invalidateQueries({ queryKey: ["clips"], exact: false });
+    },
+  });
+}
+
+export function useDeleteClip() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (clipId: string) => deleteClip(clipId),
+    onSuccess: (_data, clipId) => {
+      queryClient.removeQueries({ queryKey: ["clips", clipId] });
+      queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
+      // Playlist summaries and details embed clips; drop the deleted one from them too.
+      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
     },
   });
 }

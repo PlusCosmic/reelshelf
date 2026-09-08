@@ -53,6 +53,7 @@ export interface AddTagToClipRequest {
 export interface CreateVideoRequest {
   categoryId: string;
   videoTitle: string;
+  fileSize: number;
   createdAt?: Date;
   md5Hash?: string;
 }
@@ -215,10 +216,21 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
       );
     }
 
+    if (requestParameters["fileSize"] == null) {
+      throw new runtime.RequiredError(
+        "fileSize",
+        'Required parameter "fileSize" was null or undefined when calling createVideo().',
+      );
+    }
+
     const queryParameters: any = {};
 
     if (requestParameters["videoTitle"] != null) {
       queryParameters["videoTitle"] = requestParameters["videoTitle"];
+    }
+
+    if (requestParameters["fileSize"] != null) {
+      queryParameters["fileSize"] = requestParameters["fileSize"];
     }
 
     if (requestParameters["createdAt"] != null) {

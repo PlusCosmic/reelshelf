@@ -199,15 +199,97 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     public async Task<ClipRow> InsertClip(Guid ownerId, Guid videoId, Guid gameCategoryId, string? md5Hash,
         DateTimeOffset createdAt, string? title = null, int? length = null, string? thumbnailFileName = null,
-        DateTimeOffset? dateUploaded = null, long? storageSize = null, int? videoStatus = null, int? encodeProgress = null)
+        DateTimeOffset? dateUploaded = null, long? storageSize = null, int? videoStatus = null, int? encodeProgress = null,
+        long? fileSize = null)
     {
         const string sql = """
-            INSERT INTO clip (owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress)
-            VALUES (@ownerId, @videoId, @gameCategoryId, @md5Hash, @createdAt, @title, @length, @thumbnailFileName, @dateUploaded, @storageSize, @videoStatus, @encodeProgress)
-            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress
+            INSERT INTO clip (owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size)
+            VALUES (@ownerId, @videoId, @gameCategoryId, @md5Hash, @createdAt, @title, @length, @thumbnailFileName, @dateUploaded, @storageSize, @videoStatus, @encodeProgress, @fileSize)
+            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size
             """;
 
-        return await connection.QuerySingleAsync<ClipRow>(sql, new { ownerId, videoId, gameCategoryId, md5Hash, createdAt, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress });
+        return await connection.QuerySingleAsync<ClipRow>(sql, new { ownerId, videoId, gameCategoryId, md5Hash, createdAt, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress, fileSize });
+    }
+
+    /// <summary>
+    /// Total bytes of clip storage attributed to an owner.
+    /// Counts the larger of the client-declared file size (known at creation, before anything is uploaded)
+    /// and Bunny's reported storage size (trusted, but only available after encoding), so an under-declared
+    /// size stops mattering once Bunny reports the real one.
+    /// </summary>
+    public async Task<long> GetStorageUsedBytesByOwner(Guid ownerId)
+    {
+        const string sql = """
+            SELECT COALESCE(SUM(GREATEST(COALESCE(file_size, 0), COALESCE(storage_size, 0))), 0)
+            FROM clip
+            WHERE owner_id = @ownerId
+            """;
+
+        return await connection.QuerySingleAsync<long>(sql, new { ownerId });
+    }
+
+    /// <summary>
+    /// Opens a transaction holding a per-owner advisory lock so a storage check and the clip insert that
+    /// follows it cannot interleave with another request for the same owner. Dispose without committing to roll back.
+    /// Disposing also closes the connection if this call opened it, so the pooled connection is returned
+    /// before the caller goes on to do external I/O rather than being held for the rest of the request.
+    /// </summary>
+    public async Task<OwnerStorageLock> BeginOwnerStorageLock(Guid ownerId)
+    {
+        bool openedConnection = false;
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+            openedConnection = true;
+        }
+
+        NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync(
+            "SELECT pg_advisory_xact_lock(hashtext(@key))",
+            new { key = $"clip-storage:{ownerId}" },
+            transaction);
+        return new OwnerStorageLock(connection, transaction, openedConnection);
+    }
+
+    public sealed class OwnerStorageLock(NpgsqlConnection connection, NpgsqlTransaction transaction, bool openedConnection)
+        : IAsyncDisposable
+    {
+        public Task CommitAsync() => transaction.CommitAsync();
+
+        public async ValueTask DisposeAsync()
+        {
+            await transaction.DisposeAsync();
+            if (openedConnection)
+            {
+                // Return the pooled connection now; later Dapper calls on this scope reopen it per call.
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clips whose video was never uploaded or failed with nothing stored: still in a pre-upload Bunny status
+    /// (or Bunny's general Failed state) with zero storage, reserved at the API before <paramref name="reservedBefore"/>.
+    /// These hold quota and their MD5 for their owner until removed.
+    /// (created_at is the client-supplied capture time and says nothing about when the upload started.)
+    /// </summary>
+    public async Task<List<ClipRow>> GetAbandonedClips(DateTimeOffset reservedBefore)
+    {
+        const string sql = """
+            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size
+            FROM clip
+            WHERE reserved_at < @reservedBefore
+              AND COALESCE(storage_size, 0) = 0
+              AND (video_status IS NULL OR video_status IN (@Queued, @PresignedUploadStarted, @PresignedUploadFailed, @Failed))
+            """;
+        return (await connection.QueryAsync<ClipRow>(sql, new
+        {
+            reservedBefore,
+            Queued = (int)BunnyVideoStatus.Queued,
+            PresignedUploadStarted = (int)BunnyVideoStatus.PresignedUploadStarted,
+            PresignedUploadFailed = (int)BunnyVideoStatus.PresignedUploadFailed,
+            Failed = (int)BunnyVideoStatus.Failed
+        })).ToList();
     }
 
     public async Task<ClipWithTagsRow?> GetClipWithTagsById(Guid clipId)
@@ -305,18 +387,20 @@ public class ClipsStatements(NpgsqlConnection connection)
         await connection.ExecuteAsync(sql, new { clipId, tagId });
     }
 
-    public async Task<List<TopTagRow>> GetAllTagsOrderedByUsage()
+    /// <summary>Tags used on the owner's own clips, most used first. Other users' tags are private to them.</summary>
+    public async Task<List<TopTagRow>> GetTagsOrderedByUsageForOwner(Guid ownerId)
     {
         const string sql = """
+            SELECT t.name, COUNT(ct.clip_id)::int AS count
+            FROM tag t
+            JOIN clip_tag ct ON ct.tag_id = t.id
+            JOIN clip c ON c.id = ct.clip_id
+            WHERE c.owner_id = @ownerId
+            GROUP BY t.name
+            ORDER BY count DESC, t.name ASC
+            """;
 
-                                       SELECT t.name, COUNT(ct.clip_id)::int as count
-                                       FROM tag t
-                                       LEFT JOIN clip_tag ct ON ct.tag_id = t.id
-                                       GROUP BY t.name
-                                       ORDER BY count DESC, t.name ASC
-                           """;
-
-        return (await connection.QueryAsync<TopTagRow>(sql)).ToList();
+        return (await connection.QueryAsync<TopTagRow>(sql, new { ownerId })).ToList();
     }
 
     public async Task<ClipViewRow> InsertClipView(Guid userId, Guid clipId)
@@ -343,6 +427,34 @@ public class ClipsStatements(NpgsqlConnection connection)
         const string sql =
             "SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress FROM clip WHERE video_id = @videoId LIMIT 1";
         return await connection.QuerySingleOrDefaultAsync<ClipRow>(sql, new { videoId });
+    }
+
+    /// <summary>
+    /// Whether <paramref name="userId"/> may view a clip: they own it, it is in a playlist they created or
+    /// collaborate on, or it has an active public share.
+    /// </summary>
+    /// <summary>
+    /// Whether <paramref name="userId"/> may read the clip by id: the owner, or a current creator/collaborator
+    /// of a playlist containing it. Share links are deliberately not considered here; they are only honoured
+    /// through the token endpoint, so knowing a clip's UUID never substitutes for holding the token.
+    /// </summary>
+    public async Task<bool> UserCanAccessClip(Guid clipId, Guid userId)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1 FROM clip c WHERE c.id = @clipId AND c.owner_id = @userId
+            ) OR EXISTS (
+                SELECT 1
+                FROM playlist_clips pc
+                JOIN playlists p ON p.id = pc.playlist_id
+                WHERE pc.clip_id = @clipId
+                  AND (p.creator_user_id = @userId
+                       OR EXISTS (SELECT 1 FROM playlist_collaborators col
+                                  WHERE col.playlist_id = p.id AND col.user_id = @userId))
+            )
+            """;
+
+        return await connection.QuerySingleAsync<bool>(sql, new { clipId, userId });
     }
 
     public async Task<ClipShareRow?> GetActiveShareByClipId(Guid clipId)
@@ -486,6 +598,39 @@ public class ClipsStatements(NpgsqlConnection connection)
         })).ToList();
     }
 
+    /// <summary>
+    /// Replaces the placeholder video id on a reserved clip row with the Bunny video created for it.
+    /// </summary>
+    public async Task<ClipRow> AttachBunnyVideo(Guid clipId, Guid videoId, string? title, int? length,
+        string? thumbnailFileName, DateTimeOffset? dateUploaded, long? storageSize, int? videoStatus, int? encodeProgress)
+    {
+        const string sql = """
+            UPDATE clip
+            SET video_id = @videoId,
+                title = @title,
+                length = @length,
+                thumbnail_file_name = @thumbnailFileName,
+                date_uploaded = @dateUploaded,
+                storage_size = @storageSize,
+                video_status = @videoStatus,
+                encode_progress = @encodeProgress
+            WHERE id = @clipId
+            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size
+            """;
+
+        return await connection.QuerySingleAsync<ClipRow>(sql,
+            new { clipId, videoId, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress });
+    }
+
+    /// <summary>
+    /// Records the real Bunny video id on a reserved row when full attachment failed, so the abandoned-upload
+    /// purge can still find and delete the video instead of it being orphaned at Bunny.
+    /// </summary>
+    public async Task SetClipVideoId(Guid clipId, Guid videoId)
+    {
+        await connection.ExecuteAsync("UPDATE clip SET video_id = @videoId WHERE id = @clipId", new { clipId, videoId });
+    }
+
     public async Task UpdateClipMetadata(Guid clipId, string? title, int? length, string? thumbnailFileName,
         DateTimeOffset? dateUploaded, long? storageSize, int? videoStatus, int? encodeProgress)
     {
@@ -518,6 +663,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         public long? StorageSize { get; set; }
         public int? VideoStatus { get; set; }
         public int? EncodeProgress { get; set; }
+        public long? FileSize { get; set; }
     }
 
     public class TagRow

@@ -68,6 +68,11 @@ public class BunnyService
     {
         var url = _videosUrl + $"/{videoId}";
         var videoResponse = await _httpClient.GetAsync(url);
+        if (videoResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
         videoResponse.EnsureSuccessStatusCode();
         var response = await videoResponse.Content.ReadFromJsonAsync<BunnyVideo>();
         return response;
@@ -84,10 +89,19 @@ public class BunnyService
         response.EnsureSuccessStatusCode();
     }
 
+    /// <summary>
+    /// Idempotent: a video Bunny no longer knows about counts as deleted, so a retried clip delete whose
+    /// earlier attempt removed the video but not the row can still complete.
+    /// </summary>
     public async Task DeleteVideoAsync(Guid videoId)
     {
         var url = _videosUrl + $"/{videoId}";
         var response = await _httpClient.DeleteAsync(url);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return;
+        }
+
         response.EnsureSuccessStatusCode();
     }
 }

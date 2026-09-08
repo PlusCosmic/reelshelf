@@ -1,13 +1,14 @@
+using Npgsql;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
-using Npgsql;
 using Reelshelf.Bunny;
 using Reelshelf.Bunny.Models;
 using Reelshelf.Core.Models;
 using Reelshelf.Discord;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
+using Reelshelf.Storage;
 
 namespace Reelshelf.Core;
 
@@ -17,6 +18,7 @@ public class ClipService(
     DiscordStatements discordStatements,
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection,
+    StorageQuotaService storageQuotaService,
     IConfiguration configuration,
     ILogger<ClipService> logger)
 {
@@ -47,8 +49,13 @@ public class ClipService(
     }
 
     public async Task<CreateClipResponse?> CreateClip(Guid gameCategoryId, string videoTitle,
-        string discordUserId, DateTimeOffset createdAt, string? md5Hash = null)
+        string discordUserId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null)
     {
+        if (fileSize <= 0 || fileSize > StorageQuota.MaxDeclaredFileSizeBytes)
+        {
+            throw new BadRequestException("File size must be between 1 byte and 1 TiB");
+        }
+
         DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
                                                        ?? throw new UnauthorizedException("User not found");
         Guid userId = discordUser.Id;
@@ -70,30 +77,66 @@ public class ClipService(
             }
         }
 
-        // Get or create collection
-        ClipsStatements.ClipCollectionRow? clipCollection =
-            await clipsStatements.GetCollectionByOwnerAndCategory(userId, gameCategoryId);
-        if (clipCollection == null)
+        // Cheap unlocked check first so a plainly over-limit request fails before taking the lock.
+        await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
+
+        // Reserve quota before anything is created at Bunny. The clip row is inserted with a placeholder
+        // video id under a per-owner lock so concurrent requests cannot all pass the check on the same stale
+        // usage figure, and so a request that will be rejected never spends a Bunny operation, collection
+        // creation included. No network calls happen inside the lock, and disposing the lock returns the
+        // pooled connection before the Bunny calls below.
+        Guid placeholderVideoId = Guid.NewGuid();
+        ClipsStatements.ClipRow reserved;
+        await using (ClipsStatements.OwnerStorageLock reservation = await clipsStatements.BeginOwnerStorageLock(userId))
         {
-            BunnyCollection bunnyCollection = await bunnyService.CreateCollectionAsync(gameCategory.Slug, userId);
-            clipCollection = await clipsStatements.InsertCollection(userId, bunnyCollection.Guid, gameCategoryId);
+            await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
+
+            reserved = await clipsStatements.InsertClip(
+                userId,
+                placeholderVideoId,
+                gameCategoryId,
+                md5Hash,
+                createdAt,
+                videoTitle,
+                fileSize: fileSize);
+
+            await reservation.CommitAsync();
         }
 
-        BunnyVideo video = await bunnyService.CreateVideoAsync(clipCollection.CollectionId, videoTitle);
+        ClipsStatements.ClipCollectionRow clipCollection;
+        BunnyVideo video;
+        try
+        {
+            clipCollection = await clipsStatements.GetCollectionByOwnerAndCategory(userId, gameCategoryId)
+                             ?? await CreateCollectionAsync(userId, gameCategory);
+            video = await bunnyService.CreateVideoAsync(clipCollection.CollectionId, videoTitle);
+        }
+        catch
+        {
+            // Nothing billable exists for this clip yet: give the reservation back.
+            await ReleaseReservationAsync(reserved.Id);
+            throw;
+        }
 
-        ClipsStatements.ClipRow clip = await clipsStatements.InsertClip(
-            userId,
-            video.Guid,
-            gameCategoryId,
-            md5Hash,
-            createdAt,
-            video.Title,
-            video.Length,
-            video.ThumbnailFileName,
-            video.DateUploaded,
-            video.StorageSize,
-            video.Status,
-            video.EncodeProgress);
+        ClipsStatements.ClipRow clip;
+        try
+        {
+            clip = await clipsStatements.AttachBunnyVideo(
+                reserved.Id,
+                video.Guid,
+                video.Title,
+                video.Length,
+                video.ThumbnailFileName,
+                video.DateUploaded,
+                video.StorageSize,
+                video.Status,
+                video.EncodeProgress);
+        }
+        catch
+        {
+            await DiscardUnattachedVideoAsync(reserved.Id, video.Guid);
+            throw;
+        }
 
         long expiration = DateTimeOffset.Now.AddHours(1).ToUnixTimeSeconds();
         string libraryId = configuration["BunnyLibraryId"]
@@ -112,6 +155,54 @@ public class ClipService(
             video.CollectionId);
     }
 
+    private async Task<ClipsStatements.ClipCollectionRow> CreateCollectionAsync(Guid userId, GameCategory gameCategory)
+    {
+        BunnyCollection bunnyCollection = await bunnyService.CreateCollectionAsync(gameCategory.Slug, userId);
+        return await clipsStatements.InsertCollection(userId, bunnyCollection.Guid, gameCategory.Id);
+    }
+
+    /// <summary>
+    /// A video was created at Bunny but could not be attached to its reserved row. Delete the video and the
+    /// reservation; if the Bunny delete fails, keep the row and record the real video id on it so the
+    /// abandoned-upload purge can finish the job rather than leaving a billable orphan.
+    /// </summary>
+    private async Task DiscardUnattachedVideoAsync(Guid clipId, Guid videoId)
+    {
+        try
+        {
+            await bunnyService.DeleteVideoAsync(videoId);
+        }
+        catch (Exception deleteError)
+        {
+            logger.LogWarning(deleteError, "Failed to delete Bunny video {VideoId} after attaching it to clip {ClipId} failed; keeping the row for the purge", videoId, clipId);
+            try
+            {
+                await clipsStatements.SetClipVideoId(clipId, videoId);
+            }
+            catch (Exception recordError)
+            {
+                logger.LogError(recordError, "Could not record Bunny video {VideoId} on clip {ClipId}; the video may be orphaned", videoId, clipId);
+            }
+
+            return;
+        }
+
+        await ReleaseReservationAsync(clipId);
+    }
+
+    private async Task ReleaseReservationAsync(Guid clipId)
+    {
+        try
+        {
+            await clipsStatements.DeleteClip(clipId);
+        }
+        catch (Exception cleanupError)
+        {
+            // The abandoned-upload purge removes it after a day if this fails.
+            logger.LogWarning(cleanupError, "Failed to release storage reservation for clip {ClipId}", clipId);
+        }
+    }
+
     public async Task<Clip?> GetClipById(Guid clipId, string discordUserId)
     {
         DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
@@ -120,6 +211,12 @@ public class ClipService(
 
         ClipsStatements.ClipWithTagsRow? clipWithTags = await clipsStatements.GetClipWithTagsById(clipId);
         if (clipWithTags == null)
+        {
+            return null;
+        }
+
+        // Sign-up is open: only the owner, playlist members, or a clip with an active share may be read by id.
+        if (clipWithTags.OwnerId != userId && !await clipsStatements.UserCanAccessClip(clipId, userId))
         {
             return null;
         }
@@ -247,9 +344,12 @@ public class ClipService(
         return await GetClipById(clipId, discordUserId);
     }
 
-    public async Task<List<TopTag>> GetTopTags()
+    public async Task<List<TopTag>> GetTopTags(string discordUserId)
     {
-        List<ClipsStatements.TopTagRow> topTagRows = await clipsStatements.GetAllTagsOrderedByUsage();
+        DiscordStatements.DiscordUserRow discordUser = await discordStatements.GetUserByDiscordId(discordUserId)
+                                                       ?? throw new UnauthorizedException("User not found");
+
+        List<ClipsStatements.TopTagRow> topTagRows = await clipsStatements.GetTagsOrderedByUsageForOwner(discordUser.Id);
         return topTagRows.Select(t => new TopTag(t.Name, t.Count)).ToList();
     }
 
@@ -260,7 +360,7 @@ public class ClipService(
         Guid userId = discordUser.Id;
 
         ClipsStatements.ClipRow? clip = await clipsStatements.GetClipById(clipId);
-        if (clip == null)
+        if (clip == null || (clip.OwnerId != userId && !await clipsStatements.UserCanAccessClip(clipId, userId)))
         {
             return false;
         }

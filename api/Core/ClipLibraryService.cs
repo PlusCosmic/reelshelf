@@ -11,7 +11,8 @@ public class ClipLibraryService(
 
     public async Task<ClipLibraryResponse> GetLibrary(string discordUserId)
     {
-        List<GameCategoryResponse> categories = await gameCategoryService.GetAllCategoriesAsync();
+        // Only the caller's categories: the global list grows with every account's custom categories.
+        List<GameCategoryResponse> categories = await gameCategoryService.GetLibraryCategoriesAsync(discordUserId);
         List<Clip> clips = [];
 
         foreach (GameCategoryResponse category in categories)

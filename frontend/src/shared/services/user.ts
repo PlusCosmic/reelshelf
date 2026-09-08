@@ -1,4 +1,6 @@
+import type { StorageUsageResponse } from "@/api-client";
 import { apiConfig } from "../config/apiConfig";
+import { createUserApi } from "./apiClients";
 import { ApiError, toApiError } from "./apiError";
 
 export interface DiscordUser {
@@ -10,6 +12,12 @@ export interface DiscordUser {
 
 export async function fetchMe(): Promise<DiscordUser | null> {
   return requestUser("/api/me");
+}
+
+export type StorageUsage = StorageUsageResponse;
+
+export async function fetchStorageUsage(): Promise<StorageUsage> {
+  return createUserApi().getMyStorageUsage();
 }
 
 interface DiscordUserResponse {

@@ -23,6 +23,15 @@ public partial class GameCategoryService(
         return categories.Select(ToResponse).ToList();
     }
 
+    public async Task<List<GameCategoryResponse>> GetLibraryCategoriesAsync(string discordUserId)
+    {
+        var user = await discordStatements.GetUserByDiscordId(discordUserId);
+        if (user == null) return [];
+
+        var categories = await statements.GetLibraryCategoriesAsync(user.Id);
+        return categories.Select(ToResponse).ToList();
+    }
+
     public async Task<GameCategoryResponse?> GetCategoryByIdAsync(Guid categoryId)
     {
         var category = await statements.GetByIdAsync(categoryId);
@@ -87,9 +96,12 @@ public partial class GameCategoryService(
         var user = await discordStatements.GetUserByDiscordId(discordUserId);
         if (user == null) return null;
 
-        var slug = GenerateSlug(name);
+        // Custom categories are private to their creator. Slugs are globally unique, so suffix the creator's
+        // id: another account cannot pre-create a name and have this user silently subscribe to its row,
+        // and a custom slug can never collide with an IGDB category's slug.
+        var slug = $"{GenerateSlug(name)}-{user.Id.ToString("N")[..8]}";
 
-        // Check if slug already exists
+        // Re-adding a category this user already created subscribes to their own row again
         var existing = await statements.GetBySlugAsync(slug);
         if (existing != null)
         {

@@ -6,6 +6,9 @@ namespace Reelshelf.Auth;
 /// Service that manages the whitelist configuration.
 /// Registered as a singleton and loaded once at startup.
 /// Provides O(1) lookups for Discord IDs and their associated roles.
+///
+/// The whitelist does not gate access: any Discord account can sign in and use the default storage tier.
+/// Listed users get unlimited storage, and an entry may also pin a role override.
 /// </summary>
 public class WhitelistService
 {
@@ -19,7 +22,7 @@ public class WhitelistService
     }
 
     /// <summary>
-    /// Checks if a Discord ID is in the whitelist.
+    /// Checks if a Discord ID is in the whitelist (unlimited storage tier).
     /// </summary>
     public bool IsWhitelisted(string discordId)
     {
@@ -63,7 +66,7 @@ public class WhitelistService
 
         if (!File.Exists(whitelistPath))
         {
-            _logger.LogWarning("whitelist.json not found at {Path}, denying all requests", whitelistPath);
+            _logger.LogWarning("whitelist.json not found at {Path}; every user gets the default storage tier", whitelistPath);
             return new Dictionary<string, WhitelistEntry>();
         }
 
@@ -85,10 +88,12 @@ public class WhitelistService
             var legacyConfig = JsonSerializer.Deserialize<LegacyWhitelistConfig>(json, options);
             if (legacyConfig?.WhitelistedDiscordUserIds is { Count: > 0 })
             {
+                // Legacy entries grant the unlimited tier only; they must not pin a role,
+                // or the role sync would demote these users back to Viewer (who cannot upload).
                 var entries = legacyConfig.WhitelistedDiscordUserIds
                     .ToDictionary(
                         id => id,
-                        id => new WhitelistEntry { DiscordId = id, Role = nameof(UserRole.Viewer) });
+                        id => new WhitelistEntry { DiscordId = id });
                 _logger.LogInformation("Loaded {Count} whitelisted users (legacy format)", entries.Count);
                 return entries;
             }

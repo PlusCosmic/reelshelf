@@ -1,31 +1,59 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   IconChevronLeft,
   IconCopy,
   IconDownload,
   IconFolderPlus,
   IconShare3,
+  IconTrash,
   IconX,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Clip } from "@/api-client";
-import { useShareClip } from "@/hooks/queries";
+import { useCurrentUser, useDeleteClip, useShareClip } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 
 export function PlayerActions({ clip }: { clip: Clip }) {
   const [shareOpen, setShareOpen] = useState(false);
+  const navigate = useNavigate();
+  const deleteClip = useDeleteClip();
+  const { data: currentUser } = useCurrentUser();
+  // Only the owner can share or delete; collaborators and share viewers see the clip but not these
+  // actions, and the API rejects them for anyone else anyway.
+  const isOwner = currentUser?.id === clip.ownerId;
+  const canShare = isOwner;
+  const canDelete = isOwner;
+
+  function handleDelete() {
+    if (deleteClip.isPending) return;
+    const confirmed = window.confirm(
+      `Delete "${clip.video.title}"? This removes the video and frees its storage.`,
+    );
+    if (!confirmed) return;
+
+    deleteClip.mutate(clip.clipId, {
+      onSuccess: () => {
+        void navigate({
+          to: "/games/$slug",
+          params: { slug: clip.categorySlug },
+        });
+      },
+    });
+  }
 
   return (
     <>
       <div className="rs-action-row">
-        <button
-          className="rs-small-button"
-          type="button"
-          onClick={() => setShareOpen(true)}
-        >
-          <IconShare3 size={13} />
-          Share
-        </button>
+        {canShare ? (
+          <button
+            className="rs-small-button"
+            type="button"
+            onClick={() => setShareOpen(true)}
+          >
+            <IconShare3 size={13} />
+            Share
+          </button>
+        ) : null}
         <button className="rs-small-button" type="button">
           <IconFolderPlus size={13} />
           Add to collection
@@ -34,7 +62,25 @@ export function PlayerActions({ clip }: { clip: Clip }) {
           <IconDownload size={13} />
           Download
         </button>
+        {canDelete ? (
+          <button
+            className="rs-small-button rs-small-button-danger"
+            type="button"
+            onClick={handleDelete}
+            disabled={deleteClip.isPending}
+          >
+            <IconTrash size={13} />
+            {deleteClip.isPending ? "Deleting…" : "Delete"}
+          </button>
+        ) : null}
       </div>
+      {deleteClip.isError ? (
+        <div className="rs-upload-error" role="alert">
+          {deleteClip.error instanceof Error
+            ? deleteClip.error.message
+            : "The clip could not be deleted."}
+        </div>
+      ) : null}
       {shareOpen ? (
         <ShareClipDialog clip={clip} onClose={() => setShareOpen(false)} />
       ) : null}

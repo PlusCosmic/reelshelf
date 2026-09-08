@@ -11,16 +11,19 @@ public static class GameCategoryEndpoints
 
         group.MapGet("/categories", GetUserCategories).WithName("GetUserGameCategories");
         group.MapGet("/categories/{categoryId:guid}", GetCategoryById).WithName("GetGameCategoryById");
-        group.MapGet("/search", SearchGames).WithName("SearchGames");
-        group.MapPost("/categories/from-igdb", AddFromIgdb).WithName("AddGameCategoryFromIgdb");
+        // Both routes call IGDB with the application's shared credentials, so they carry a per-user limit.
+        group.MapGet("/search", SearchGames).WithName("SearchGames")
+            .RequireRateLimiting(RateLimitPolicies.Igdb);
+        group.MapPost("/categories/from-igdb", AddFromIgdb).WithName("AddGameCategoryFromIgdb")
+            .RequireRateLimiting(RateLimitPolicies.Igdb);
         group.MapPost("/categories/custom", AddCustomCategory).WithName("AddCustomCategory");
         group.MapDelete("/categories/{categoryId:guid}", RemoveCategory).WithName("RemoveGameCategory");
     }
 
     private static async Task<Ok<List<GameCategoryResponse>>>
-        GetUserCategories(GameCategoryService service)
+        GetUserCategories(GameCategoryService service, AuthenticatedUser user)
     {
-        var categories = await service.GetAllCategoriesAsync();
+        var categories = await service.GetLibraryCategoriesAsync(user.DiscordId);
         return TypedResults.Ok(categories);
     }
 

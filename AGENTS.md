@@ -40,6 +40,8 @@
 
 - JSON is configured as `snake_case` in `api/Program.cs`; generated TypeScript clients reflect that contract.
 - Auth endpoints are intentionally at root `/auth` for OAuth callback compatibility; other API endpoints are grouped under `/api`.
+- `api/whitelist.json` does not gate access. Any Discord account can sign in; listed users get unlimited clip storage and may pin a role. Everyone else gets the default tier from `Storage:DefaultLimitBytes` (25 GiB). See `docs/adr/0002-open-signup-with-storage-tiers.md`.
+- Every endpoint must carry its own `RequireAuthorization()`; there is no global auth middleware after the whitelist gate was removed.
 - OpenAPI is only mapped in Development, `OpenApi`, or when `OpenApi:Public` is true; background services are disabled in `OpenApi` environment.
 - Production image builds the frontend first, publishes the API, installs `ffmpeg`, and serves `frontend/dist` from API `wwwroot`.
 

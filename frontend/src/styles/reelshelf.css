@@ -1792,6 +1792,13 @@ a {
   margin-bottom: 18px;
 }
 
+.rs-bulk-upload-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+  gap: 8px;
+}
+
 .rs-bulk-upload-summary {
   display: flex;
   flex-wrap: wrap;
@@ -1799,6 +1806,51 @@ a {
   gap: 8px;
   color: var(--fg-soft);
   font-size: 12px;
+}
+
+.rs-small-button-danger:hover:not(:disabled),
+.rs-small-button-danger:focus-visible {
+  color: oklch(0.55 0.18 30);
+  border-color: oklch(0.55 0.18 30);
+}
+
+.rs-storage-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  color: var(--fg-soft);
+  font-size: 12px;
+}
+
+.rs-storage-meter-track {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+
+.rs-storage-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 240ms ease;
+}
+
+.rs-storage-meter.near-limit .rs-storage-meter-fill {
+  background: oklch(0.6 0.16 30);
+}
+
+.rs-storage-meter.compact {
+  min-width: 0;
+}
+
+.rs-menu-storage {
+  padding: 6px 8px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
 }
 
 .rs-bulk-upload-summary span,
@@ -2369,6 +2421,10 @@ a {
   .rs-bulk-upload-header {
     display: grid;
     gap: 8px;
+  }
+
+  .rs-bulk-upload-meta {
+    align-items: start;
   }
 
   .rs-bulk-upload-summary {

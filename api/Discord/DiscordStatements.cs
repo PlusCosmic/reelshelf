@@ -8,7 +8,7 @@ public class DiscordStatements(NpgsqlConnection connection)
     public async Task<DiscordUserRow?> GetUserByDiscordId(string discordId)
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
+            SELECT id, discord_id, username, global_name, avatar, role, role_from_whitelist
             FROM discord_user
             WHERE discord_id = @discordId
             LIMIT 1";
@@ -19,7 +19,7 @@ public class DiscordStatements(NpgsqlConnection connection)
     public async Task<DiscordUserRow?> GetUserById(Guid id)
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
+            SELECT id, discord_id, username, global_name, avatar, role, role_from_whitelist
             FROM discord_user
             WHERE id = @id
             LIMIT 1";
@@ -30,7 +30,7 @@ public class DiscordStatements(NpgsqlConnection connection)
     public async Task<DiscordUserRow?> GetUserByUsername(string username)
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
+            SELECT id, discord_id, username, global_name, avatar, role, role_from_whitelist
             FROM discord_user
             WHERE username = @username
             LIMIT 1";
@@ -43,7 +43,7 @@ public class DiscordStatements(NpgsqlConnection connection)
         const string sql = @"
             INSERT INTO discord_user (discord_id, username, global_name, avatar)
             VALUES (@discordId, @username, @globalName, @avatar)
-            RETURNING id, discord_id, username, global_name, avatar, role";
+            RETURNING id, discord_id, username, global_name, avatar, role, role_from_whitelist";
 
         return await connection.QuerySingleAsync<DiscordUserRow>(sql, new { discordId, username, globalName, avatar });
     }
@@ -68,27 +68,67 @@ public class DiscordStatements(NpgsqlConnection connection)
                 username = EXCLUDED.username,
                 global_name = EXCLUDED.global_name,
                 avatar = EXCLUDED.avatar
-            RETURNING id, discord_id, username, global_name, avatar, role";
+            RETURNING id, discord_id, username, global_name, avatar, role, role_from_whitelist";
 
         return await connection.QuerySingleAsync<DiscordUserRow>(sql, new { discordId, username, globalName, avatar });
     }
 
-    public async Task<List<DiscordUserRow>> GetAllUsersExcept(string excludeDiscordId)
+    /// <summary>
+    /// Users who have personally added <paramref name="userId"/> as a collaborator on a playlist they created.
+    /// Being added by the creator is a deliberate act by that user, so this is the set of people who have
+    /// opted in to sharing with the caller. Rows added by other collaborators do not count, because any
+    /// collaborator can add users and that would let a third party manufacture the creator's consent.
+    /// </summary>
+    public async Task<List<DiscordUserRow>> GetUsersWhoAddedMe(Guid userId)
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
-            FROM discord_user
-            WHERE discord_id != @excludeDiscordId
-            ORDER BY global_name, username";
+            SELECT DISTINCT u.id, u.discord_id, u.username, u.global_name, u.avatar, u.role, u.role_from_whitelist
+            FROM playlist_collaborators pc
+            JOIN playlists p ON p.id = pc.playlist_id
+            JOIN discord_user u ON u.id = p.creator_user_id
+            WHERE pc.user_id = @userId
+              AND pc.added_by_user_id = p.creator_user_id
+              AND p.creator_user_id != @userId";
 
-        var result = await connection.QueryAsync<DiscordUserRow>(sql, new { excludeDiscordId });
+        var result = await connection.QueryAsync<DiscordUserRow>(sql, new { userId });
+        return result.ToList();
+    }
+
+    /// <summary>
+    /// Users who already share a playlist with <paramref name="userId"/>: collaborators on playlists they own,
+    /// and owners plus fellow collaborators of playlists they collaborate on. Never lists strangers.
+    /// </summary>
+    public async Task<List<DiscordUserRow>> GetPlaylistPeers(Guid userId)
+    {
+        const string sql = @"
+            WITH my_playlists AS (
+                SELECT id FROM playlists WHERE creator_user_id = @userId
+                UNION
+                SELECT playlist_id FROM playlist_collaborators WHERE user_id = @userId
+            ),
+            peer_ids AS (
+                SELECT p.creator_user_id AS user_id
+                FROM playlists p
+                JOIN my_playlists mp ON mp.id = p.id
+                UNION
+                SELECT pc.user_id
+                FROM playlist_collaborators pc
+                JOIN my_playlists mp ON mp.id = pc.playlist_id
+            )
+            SELECT u.id, u.discord_id, u.username, u.global_name, u.avatar, u.role
+            FROM discord_user u
+            JOIN peer_ids pi ON pi.user_id = u.id
+            WHERE u.id != @userId
+            ORDER BY u.global_name, u.username";
+
+        var result = await connection.QueryAsync<DiscordUserRow>(sql, new { userId });
         return result.ToList();
     }
 
     public async Task<List<DiscordUserRow>> GetAllUsers()
     {
         const string sql = @"
-            SELECT id, discord_id, username, global_name, avatar, role
+            SELECT id, discord_id, username, global_name, avatar, role, role_from_whitelist
             FROM discord_user
             ORDER BY role DESC, global_name, username";
 
@@ -107,14 +147,15 @@ public class DiscordStatements(NpgsqlConnection connection)
         return permissions.ToList();
     }
 
-    public async Task UpdateUserRole(Guid userId, string role)
+    public async Task UpdateUserRole(Guid userId, string role, bool roleFromWhitelist)
     {
         const string sql = @"
             UPDATE discord_user
-            SET role = @role
+            SET role = @role,
+                role_from_whitelist = @roleFromWhitelist
             WHERE id = @userId";
 
-        await connection.ExecuteAsync(sql, new { userId, role });
+        await connection.ExecuteAsync(sql, new { userId, role, roleFromWhitelist });
     }
 
     public async Task GrantPermission(Guid userId, string permission, Guid? grantedBy = null)
@@ -143,6 +184,7 @@ public class DiscordStatements(NpgsqlConnection connection)
         public string Username { get; set; } = string.Empty;
         public string? GlobalName { get; set; }
         public string? Avatar { get; set; }
-        public string Role { get; set; } = "Viewer";
+        public string Role { get; set; } = "Editor";
+        public bool RoleFromWhitelist { get; set; }
     }
 }
