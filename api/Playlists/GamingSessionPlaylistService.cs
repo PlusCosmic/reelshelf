@@ -14,6 +14,8 @@ public class GamingSessionPlaylistService(
     ClipService clipService)
 {
     private const int SessionLookbackDays = 1;
+    /// <summary>Upper bound on people in one session, caller included.</summary>
+    private const int MaxParticipants = 12;
     private const int ClipPageSize = 100;
 
     public async Task<PlaylistWithDetails> CreateGamingSessionPlaylist(
@@ -24,6 +26,10 @@ public class GamingSessionPlaylistService(
     {
         DiscordStatements.DiscordUserRow currentUser = await playlistAccess.GetUser(discordUserId);
         List<Guid> participants = IncludeCurrentUser(participantIds, currentUser.Id);
+        if (participants.Count > MaxParticipants)
+        {
+            throw new BadRequestException($"A session can include at most {MaxParticipants} participants");
+        }
 
         // A session pulls each participant's recent clips into a playlist the caller controls, so a
         // participant must have opted in: they must have added the caller to a collection they created.
@@ -129,9 +135,13 @@ public class GamingSessionPlaylistService(
         await playlistStatements.TouchPlaylistUpdatedAt(playlistId);
     }
 
+    /// <summary>
+    /// Distinct participant ids with the caller included. Duplicates are collapsed before any lookups so a
+    /// repeated id cannot multiply the per-participant library scans below.
+    /// </summary>
     private static List<Guid> IncludeCurrentUser(List<Guid> participantIds, Guid currentUserId)
     {
-        List<Guid> participants = participantIds.ToList();
+        List<Guid> participants = participantIds.Distinct().ToList();
         if (!participants.Contains(currentUserId))
         {
             participants.Add(currentUserId);

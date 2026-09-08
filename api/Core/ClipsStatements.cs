@@ -573,6 +573,30 @@ public class ClipsStatements(NpgsqlConnection connection)
         })).ToList();
     }
 
+    /// <summary>
+    /// Replaces the placeholder video id on a reserved clip row with the Bunny video created for it.
+    /// </summary>
+    public async Task<ClipRow> AttachBunnyVideo(Guid clipId, Guid videoId, string? title, int? length,
+        string? thumbnailFileName, DateTimeOffset? dateUploaded, long? storageSize, int? videoStatus, int? encodeProgress)
+    {
+        const string sql = """
+            UPDATE clip
+            SET video_id = @videoId,
+                title = @title,
+                length = @length,
+                thumbnail_file_name = @thumbnailFileName,
+                date_uploaded = @dateUploaded,
+                storage_size = @storageSize,
+                video_status = @videoStatus,
+                encode_progress = @encodeProgress
+            WHERE id = @clipId
+            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size
+            """;
+
+        return await connection.QuerySingleAsync<ClipRow>(sql,
+            new { clipId, videoId, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress });
+    }
+
     public async Task UpdateClipMetadata(Guid clipId, string? title, int? length, string? thumbnailFileName,
         DateTimeOffset? dateUploaded, long? storageSize, int? videoStatus, int? encodeProgress)
     {

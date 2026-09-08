@@ -99,11 +99,15 @@ public class AuthenticatedUserMiddleware(RequestDelegate next, WhitelistService 
     /// <summary>Role for accounts with no whitelist override; matches the discord_user.role column default.</summary>
     private const UserRole DefaultRole = UserRole.Editor;
 
+    /// <summary>
+    /// New accounts get <see cref="DefaultRole"/> from the column default, so the parser never needs to grant
+    /// privileges: an unrecognised stored value falls back to Viewer rather than Editor.
+    /// </summary>
     private static UserRole ParseRole(string roleString)
     {
         return Enum.TryParse<UserRole>(roleString, ignoreCase: true, out UserRole role)
             ? role
-            : DefaultRole;
+            : UserRole.Viewer;
     }
 }
 

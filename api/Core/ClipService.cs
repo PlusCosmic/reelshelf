@@ -77,7 +77,7 @@ public class ClipService(
             }
         }
 
-        // Cheap unlocked check first so a plainly over-limit request never touches Bunny.
+        // Cheap unlocked check first so a plainly over-limit request fails before any collection work.
         await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
 
         // Get or create collection
@@ -89,47 +89,66 @@ public class ClipService(
             clipCollection = await clipsStatements.InsertCollection(userId, bunnyCollection.Guid, gameCategoryId);
         }
 
-        // All external I/O happens before the lock; the locked section below is two local queries.
-        BunnyVideo video = await bunnyService.CreateVideoAsync(clipCollection.CollectionId, videoTitle);
-
-        ClipsStatements.ClipRow clip;
-        try
+        // Reserve quota first. The clip row is inserted with a placeholder video id under a per-owner lock
+        // so concurrent requests cannot all pass the check on the same stale usage figure, and so a request
+        // that will be rejected never spends a Bunny operation. No network calls happen inside the lock.
+        Guid placeholderVideoId = Guid.NewGuid();
+        ClipsStatements.ClipRow reserved;
+        await using (NpgsqlTransaction reservation = await clipsStatements.BeginOwnerStorageLock(userId))
         {
-            // Hold a per-owner lock across the authoritative check and the insert so concurrent
-            // uploads cannot all pass on the same stale usage figure. No network calls inside.
-            await using NpgsqlTransaction reservation = await clipsStatements.BeginOwnerStorageLock(userId);
-
             await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
 
-            clip = await clipsStatements.InsertClip(
+            reserved = await clipsStatements.InsertClip(
                 userId,
-                video.Guid,
+                placeholderVideoId,
                 gameCategoryId,
                 md5Hash,
                 createdAt,
+                videoTitle,
+                fileSize: fileSize);
+
+            await reservation.CommitAsync();
+        }
+
+        BunnyVideo video;
+        ClipsStatements.ClipRow clip;
+        try
+        {
+            video = await bunnyService.CreateVideoAsync(clipCollection.CollectionId, videoTitle);
+        }
+        catch
+        {
+            // Bunny rejected the create: give the reservation back rather than leaving a row that never uploads.
+            await ReleaseReservationAsync(reserved.Id);
+            throw;
+        }
+
+        try
+        {
+            clip = await clipsStatements.AttachBunnyVideo(
+                reserved.Id,
+                video.Guid,
                 video.Title,
                 video.Length,
                 video.ThumbnailFileName,
                 video.DateUploaded,
                 video.StorageSize,
                 video.Status,
-                video.EncodeProgress,
-                fileSize);
-
-            await reservation.CommitAsync();
+                video.EncodeProgress);
         }
         catch
         {
-            // The reservation failed (quota raced, duplicate, DB error): do not leave an orphan video at Bunny.
+            // The row could not be linked to its video: remove both so nothing billable is left untracked.
             try
             {
                 await bunnyService.DeleteVideoAsync(video.Guid);
             }
             catch (Exception cleanupError)
             {
-                logger.LogWarning(cleanupError, "Failed to delete Bunny video {VideoId} after clip reservation failed", video.Guid);
+                logger.LogWarning(cleanupError, "Failed to delete Bunny video {VideoId} after attaching it to clip {ClipId} failed", video.Guid, reserved.Id);
             }
 
+            await ReleaseReservationAsync(reserved.Id);
             throw;
         }
 
@@ -148,6 +167,19 @@ public class ClipService(
             libraryId,
             video.Guid,
             video.CollectionId);
+    }
+
+    private async Task ReleaseReservationAsync(Guid clipId)
+    {
+        try
+        {
+            await clipsStatements.DeleteClip(clipId);
+        }
+        catch (Exception cleanupError)
+        {
+            // The abandoned-upload purge removes it after a day if this fails.
+            logger.LogWarning(cleanupError, "Failed to release storage reservation for clip {ClipId}", clipId);
+        }
     }
 
     public async Task<Clip?> GetClipById(Guid clipId, string discordUserId)
