@@ -127,7 +127,7 @@ const features: Array<{
   {
     icon: <IconLink size={20} aria-hidden="true" />,
     title: "Share one clip with one link",
-    copy: "Send a link and it plays. Whoever you send it to doesn't need an account, and nobody else can see it.",
+    copy: "Send a link and it plays. No account needed on their end, and the clip is only visible to people who have the link.",
   },
   {
     icon: <IconDownload size={20} aria-hidden="true" />,
