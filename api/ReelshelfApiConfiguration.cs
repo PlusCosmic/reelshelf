@@ -4,6 +4,7 @@ using Dapper;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using Npgsql;
@@ -20,6 +21,7 @@ using Reelshelf.FFmpeg;
 using Reelshelf.Games;
 using Reelshelf.Playlists;
 using Reelshelf.Storage;
+using Reelshelf.Twitch;
 using StackExchange.Redis;
 
 namespace Reelshelf;
@@ -71,6 +73,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapApexEndpoints();
         apiGroup.MapApexDetectionEndpoints();
         apiGroup.MapUserEndpoints();
+        apiGroup.MapTwitchClipsEndpoints();
 
         // OpenAPI is useful during development and explicit client-generation jobs, but should not be public by default.
         if (app.Environment.IsDevelopment() ||
@@ -206,8 +209,10 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddSingleton<WhitelistService>();
         builder.Services.AddScoped<StorageQuotaService>();
         builder.Services.AddSingleton<DiscordRoleMapping>();
+        builder.Services.AddSingleton<ProviderTokenProtector>();
         builder.Services.AddScoped<UserStatements>();
         builder.Services.AddScoped<IUserIdentityStore>(sp => sp.GetRequiredService<UserStatements>());
+        builder.Services.AddScoped<IProviderTokenStore>(sp => sp.GetRequiredService<UserStatements>());
         builder.Services.AddScoped<AccountLinkingService>();
         builder.Services.AddScoped<IStorageWarningStore>(sp => sp.GetRequiredService<UserStatements>());
         builder.Services.AddScoped<StorageWarningService>();
@@ -242,6 +247,14 @@ internal static class ReelshelfApiConfiguration
 
         builder.Services.AddMemoryCache();
         builder.Services.AddSingleton<IgdbService>();
+
+        // Twitch clip import: Helix calls on the user's token, plus a patient client for the clip file itself.
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        builder.Services.AddHttpClient(TwitchApiClient.HttpClientName);
+        builder.Services.AddHttpClient(TwitchClipService.DownloadHttpClientName,
+            client => client.Timeout = TimeSpan.FromMinutes(5));
+        builder.Services.AddSingleton<TwitchApiClient>();
+        builder.Services.AddScoped<TwitchClipService>();
         builder.Services.AddScoped<GameCategoryService>();
 
         builder.Services.AddScoped<ApexStatements>();

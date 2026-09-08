@@ -102,7 +102,7 @@ function AuthenticatedShell({
             to="/upload"
             className={active("/upload") ? "active" : undefined}
           >
-            Upload
+            Add clips
           </Link>
         </nav>
 

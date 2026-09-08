@@ -10,4 +10,5 @@ export * from "./GameCategoryEndpointsApi";
 export * from "./PlaylistEndpointsApi";
 export * from "./ReelshelfApi";
 export * from "./SharedClipsEndpointsApi";
+export * from "./TwitchClipsEndpointsApi";
 export * from "./UserEndpointsApi";

@@ -190,3 +190,18 @@ public interface IAccountScope : IAsyncDisposable
 {
     Task CommitAsync();
 }
+
+/// <summary>Read and refresh the provider tokens stored on an account's identities.</summary>
+public interface IProviderTokenStore
+{
+    Task<ProviderIdentityTokens?> GetIdentityTokens(Guid userId, string provider);
+    Task UpdateIdentityTokens(Guid identityId, ProviderTokens? tokens);
+}
+
+/// <summary>One linked identity together with whatever provider tokens are stored for it (null when none are usable).</summary>
+public sealed record ProviderIdentityTokens(
+    Guid IdentityId,
+    string ProviderUserId,
+    string Username,
+    string? DisplayName,
+    ProviderTokens? Tokens);

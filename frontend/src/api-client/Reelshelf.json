@@ -1733,6 +1733,102 @@
           }
         }
       }
+    },
+    "/api/twitch/clips": {
+      "get": {
+        "tags": [
+          "TwitchClipsEndpoints"
+        ],
+        "operationId": "GetTwitchClips",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "first",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 24
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwitchClipsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/twitch/clips/import": {
+      "post": {
+        "tags": [
+          "TwitchClipsEndpoints"
+        ],
+        "operationId": "ImportTwitchClip",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTwitchClipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportedTwitchClipResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2315,6 +2411,59 @@
           }
         }
       },
+      "ImportedTwitchClipResponse": {
+        "required": [
+          "clip_id",
+          "video_id",
+          "twitch_clip_id",
+          "category_id",
+          "created_at"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "video_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "twitch_clip_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ImportTwitchClipRequest": {
+        "required": [
+          "clip_id",
+          "category_id"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "LinkedIdentity": {
         "required": [
           "provider",
@@ -2770,6 +2919,120 @@
           }
         }
       },
+      "TwitchClipsResponse": {
+        "required": [
+          "state",
+          "twitch_login",
+          "clips",
+          "cursor"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/TwitchClipsState"
+          },
+          "twitch_login": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TwitchClipSummary"
+            }
+          },
+          "cursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TwitchClipsState": {
+        "enum": [
+          "NotLinked",
+          "NeedsAuthorization",
+          "Ready"
+        ]
+      },
+      "TwitchClipSummary": {
+        "required": [
+          "id",
+          "title",
+          "url",
+          "thumbnail_url",
+          "duration_seconds",
+          "view_count",
+          "created_at",
+          "creator_name",
+          "game_name",
+          "igdb_id",
+          "suggested_category_id",
+          "already_imported"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "thumbnail_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "duration_seconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "view_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "creator_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "game_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "igdb_id": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "suggested_category_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "already_imported": {
+            "type": "boolean"
+          }
+        }
+      },
       "UpdatePlaylistRequest": {
         "type": "object",
         "properties": {
@@ -2904,6 +3167,9 @@
     },
     {
       "name": "ApexDetectionEndpoints"
+    },
+    {
+      "name": "TwitchClipsEndpoints"
     }
   ]
 }

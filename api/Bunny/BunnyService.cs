@@ -64,6 +64,24 @@ public class BunnyService
         return response ?? throw new InvalidOperationException("Failed to deserialize bunny video");
     }
 
+    /// <summary>
+    /// Streams a video file into an already-created Bunny video. This is the server-side counterpart of the
+    /// browser's TUS upload, used when the bytes come from another service (Twitch) rather than the user's disk.
+    /// </summary>
+    public async Task UploadVideoAsync(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken)
+    {
+        var url = _videosUrl + $"/{videoId}";
+        using StreamContent streamContent = new(content);
+        streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        if (contentLength is { } length)
+        {
+            streamContent.Headers.ContentLength = length;
+        }
+
+        using HttpResponseMessage response = await _httpClient.PutAsync(url, streamContent, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<BunnyVideo?> GetVideoByIdAsync(Guid videoId)
     {
         var url = _videosUrl + $"/{videoId}";

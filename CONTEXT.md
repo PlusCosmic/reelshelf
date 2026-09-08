@@ -42,6 +42,13 @@ The oldest **Linked Identity** on an **Account**. The account name and avatar fo
 **Account Email**:
 The address the user chose for account mail (linked sign-in notices, storage nearly full). Suggested from a provider on first sign-in, but owned by the user; providers never overwrite it.
 
+**Twitch Clip Import**:
+Copying a clip from the user's own Twitch channel into the **Library** through the API, using the Twitch login stored on their **Linked Identity**. The imported **Clip** is filed like an upload, including its **Gaming Session**.
+_Avoid_: Treating an import as an upload in the UI copy; the user picks from a list, nothing leaves their machine.
+
+**Clip Source**:
+Where an imported **Clip** came from (provider and the clip's id there). Locally uploaded clips have none. One owner holds a given source clip at most once.
+
 **Storage Tier**:
 How much clip storage a user may keep. Everyone who signs in with Discord or Twitch gets the free tier (25 GB); users with a **Linked Identity** listed in `whitelist.json` get the unlimited tier.
 _Avoid_: Treating the whitelist as an access gate; it no longer blocks sign-in.
@@ -63,6 +70,10 @@ The sum of a user's clip sizes, counted from the client-declared file size at up
 - A bulk-uploaded **Clip** can be added to both its automatic **Gaming Session** playlist and a user-selected **Playlist**.
 - The upload flow updates a **Gaming Session** playlist after active uploads for that session finish; later retries can add newly successful clips.
 - Duplicate upload detection is based on owner, game assignment, and file fingerprint.
+- A **Twitch Clip Import** is refused when the owner already holds that **Clip Source**; the Twitch list marks such clips as already in the library.
+- A **Twitch Clip Import** needs a Twitch **Linked Identity** whose stored token carries the clips scope; otherwise the add-clips page asks the user to link or reconnect Twitch instead of listing clips.
+- An imported **Clip** reserves storage for the file size Twitch reports before the copy starts, and the reservation is released if the copy fails.
+- The game for a **Twitch Clip Import** is suggested from the IGDB id Twitch reports for the clip's game; the user confirms or changes it before importing.
 - Tags selected during bulk upload are queue metadata until the corresponding **Clip** is successfully saved.
 - Committing a **Bulk Upload Queue** uploads selected rows only; unselected rows remain in the queue.
 - A queued row is saved only after the video upload and post-upload filing both succeed.
@@ -114,6 +125,12 @@ The sum of a user's clip sizes, counted from the client-declared file size at up
 >
 > **Dev:** "Can two Reelshelf accounts share one Twitch login?"
 > **Domain expert:** "No. A provider login belongs to exactly one **Account**; linking it elsewhere is refused until it is unlinked."
+>
+> **Dev:** "Does importing a Twitch clip go through the browser like an upload?"
+> **Domain expert:** "No. The API fetches the file from Twitch and pushes it into the same video the upload flow would have used. The browser only picks clips and games."
+>
+> **Dev:** "Someone linked Twitch last week and the import tab says to reconnect. Is their account broken?"
+> **Domain expert:** "No. Their token predates the clips scope. Reconnecting is the normal link flow and just refreshes the stored token."
 >
 > **Dev:** "Can users configure bulk upload concurrency?"
 > **Domain expert:** "No. Start with a fixed limit of three active uploads."

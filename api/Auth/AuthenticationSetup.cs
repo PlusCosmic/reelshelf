@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Reelshelf.Twitch;
 using Reelshelf.Users;
 
 namespace Reelshelf.Auth;
@@ -20,6 +21,9 @@ internal static class AuthenticationSetup
     public const string DisplayNameClaim = "urn:reelshelf:display_name";
     public const string AvatarUrlClaim = "urn:reelshelf:avatar_url";
     public const string EmailClaim = "urn:reelshelf:email";
+
+    /// <summary>Space-separated scopes the provider actually granted on the token, as reported in its token response.</summary>
+    public const string TokenScopesClaim = "urn:reelshelf:token_scopes";
 
     /// <summary>Authentication-properties key naming the provider a challenge was issued for.</summary>
     public const string ProviderItem = "reelshelf.provider";
@@ -123,9 +127,10 @@ internal static class AuthenticationSetup
 
                 options.CallbackPath = new PathString("/auth/twitch/callback");
 
-                // user:read:email adds the address to the Helix user payload. Twitch:Scopes overrides the list
-                // (space separated) if a deployment needs something else.
-                foreach (string scope in (configuration["Twitch:Scopes"] ?? "user:read:email")
+                // user:read:email adds the address to the Helix user payload; channel:manage:clips lets the app
+                // fetch download URLs for the user's own clips (see Twitch/TwitchScopes). Twitch:Scopes overrides
+                // the list (space separated) if a deployment needs something else.
+                foreach (string scope in (configuration["Twitch:Scopes"] ?? TwitchScopes.Default)
                              .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 {
                     options.Scope.Add(scope);
@@ -147,6 +152,17 @@ internal static class AuthenticationSetup
                     {
                         context.RunClaimActions(data[0]);
                     }
+
+                    // Twitch echoes the granted scopes in the token response; keep them so the app can tell
+                    // whether this token can do more than sign in.
+                    if (context.TokenResponse.Response?.RootElement.TryGetProperty("scope", out JsonElement scopes) == true &&
+                        scopes.ValueKind == JsonValueKind.Array)
+                    {
+                        string granted = string.Join(' ', scopes.EnumerateArray()
+                            .Where(scope => scope.ValueKind == JsonValueKind.String)
+                            .Select(scope => scope.GetString()));
+                        context.Identity?.AddClaim(new Claim(TokenScopesClaim, granted));
+                    }
                 });
 
                 options.SaveTokens = true;
@@ -160,8 +176,11 @@ internal static class AuthenticationSetup
         return $"https://cdn.discordapp.com/avatars/{discordId}/{avatarHash}";
     }
 
-    /// <summary>Reads the provider identity out of an external-scheme principal.</summary>
-    public static ExternalIdentity? ReadExternalIdentity(string provider, ClaimsPrincipal principal)
+    /// <summary>
+    /// Reads the provider identity out of an external-scheme principal. Tokens are kept only for Twitch, the
+    /// one provider the app calls back on the user's behalf; Discord tokens have no use here and are dropped.
+    /// </summary>
+    public static ExternalIdentity? ReadExternalIdentity(string provider, ClaimsPrincipal principal, AuthenticationProperties? properties)
     {
         string? providerUserId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
         string? username = principal.FindFirstValue(ClaimTypes.Name);
@@ -176,7 +195,31 @@ internal static class AuthenticationSetup
             username,
             NullIfEmpty(principal.FindFirstValue(DisplayNameClaim)),
             NullIfEmpty(principal.FindFirstValue(AvatarUrlClaim)),
-            NullIfEmpty(principal.FindFirstValue(EmailClaim)));
+            NullIfEmpty(principal.FindFirstValue(EmailClaim)),
+            provider == AuthProvider.Twitch ? ReadTokens(principal, properties) : null);
+    }
+
+    private static ProviderTokens? ReadTokens(ClaimsPrincipal principal, AuthenticationProperties? properties)
+    {
+        string? accessToken = properties?.GetTokenValue("access_token");
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            return null;
+        }
+
+        DateTimeOffset? expiresAt = DateTimeOffset.TryParse(
+            properties?.GetTokenValue("expires_at"),
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind,
+            out DateTimeOffset parsed)
+            ? parsed
+            : null;
+
+        return new ProviderTokens(
+            accessToken,
+            NullIfEmpty(properties?.GetTokenValue("refresh_token")),
+            expiresAt,
+            ProviderTokens.ParseScopes(principal.FindFirstValue(TokenScopesClaim)));
     }
 
     private static OAuthEvents ProviderEvents(Func<OAuthCreatingTicketContext, Task> onCreatingTicket)

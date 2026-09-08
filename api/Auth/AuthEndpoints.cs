@@ -105,7 +105,7 @@ public static class AuthEndpoints
         AuthenticationProperties properties = external.Properties;
         string? provider = properties.GetString(AuthenticationSetup.ProviderItem);
         ExternalIdentity? identity = AuthProvider.IsKnown(provider)
-            ? AuthenticationSetup.ReadExternalIdentity(provider!, external.Principal)
+            ? AuthenticationSetup.ReadExternalIdentity(provider!, external.Principal, properties)
             : null;
         if (identity is null)
         {
