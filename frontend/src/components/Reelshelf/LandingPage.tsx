@@ -317,7 +317,7 @@ export function LandingPage({
         </section>
       </main>
 
-      <footer className="rs-landing-footer">for friends, kept quietly</footer>
+      <footer className="rs-landing-footer">for the clips worth keeping</footer>
     </div>
   );
 }
