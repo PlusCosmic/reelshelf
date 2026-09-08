@@ -39,7 +39,7 @@ function RootComponent() {
     window.localStorage.setItem("reelshelf-theme", theme);
   }, [theme]);
 
-  if (pathname.startsWith("/share/")) {
+  if (pathname.startsWith("/share/") || pathname === "/sign-in") {
     return <PublicShell theme={theme} setTheme={setTheme} />;
   }
 
@@ -64,8 +64,21 @@ function AuthenticatedShell({
   const active = (path: string) =>
     path === "/" ? pathname === "/" : pathname.startsWith(path);
 
-  if (!user || isLoading || isError) {
-    return <LandingPage />;
+  if (isLoading) {
+    // The landing page is a full marketing page now, so don't flash it at a signed-in user
+    // while their session is still being checked.
+    return <div className="rs-landing rs-landing-pending" aria-busy="true" />;
+  }
+
+  if (!user || isError) {
+    return (
+      <LandingPage
+        theme={theme}
+        onToggleTheme={() =>
+          setTheme((value) => (value === "dark" ? "light" : "dark"))
+        }
+      />
+    );
   }
 
   return (
