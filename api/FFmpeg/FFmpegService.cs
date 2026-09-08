@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using FFMpegCore;
 using Reelshelf.Exceptions;
 
@@ -13,7 +12,15 @@ public class FFmpegService
     // a single account must not be able to fan out unboundedly now that sign-up is open.
     private static SemaphoreSlim? _globalDownloads;
     private static readonly object GlobalDownloadsInit = new();
-    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> PerVideoLocks = new();
+    // Per-video gates are reference counted and evicted once the last holder or waiter leaves, so the
+    // dictionary tracks in-flight videos only rather than every video ever downloaded.
+    private static readonly Dictionary<Guid, VideoGate> PerVideoGates = new();
+
+    private sealed class VideoGate
+    {
+        public readonly SemaphoreSlim Semaphore = new(1, 1);
+        public int RefCount;
+    }
 
     private readonly ILogger<FFmpegService> _logger;
     private readonly string _outputPath;
@@ -43,33 +50,71 @@ public class FFmpegService
     {
         // Take the per-video gate first: duplicate requests for one video queue here without holding
         // any process-wide capacity, so they cannot starve downloads of other videos.
-        SemaphoreSlim videoLock = PerVideoLocks.GetOrAdd(videoId, _ => new SemaphoreSlim(1, 1));
-        if (!await videoLock.WaitAsync(QueueWait, cancellationToken))
-        {
-            throw new ServiceUnavailableException("This clip is already being downloaded. Try again in a moment.");
-        }
-
+        VideoGate gate = RentGate(videoId);
         try
         {
-            SemaphoreSlim globalDownloads = _globalDownloads!;
-            if (!await globalDownloads.WaitAsync(QueueWait, cancellationToken))
+            if (!await gate.Semaphore.WaitAsync(QueueWait, cancellationToken))
             {
-                throw new ServiceUnavailableException("Too many downloads are in progress. Try again in a moment.");
+                throw new ServiceUnavailableException("This clip is already being downloaded. Try again in a moment.");
             }
 
             try
             {
-                return await DownloadHlsVideoCoreAsync(videoId, cancellationToken);
+                SemaphoreSlim globalDownloads = _globalDownloads!;
+                if (!await globalDownloads.WaitAsync(QueueWait, cancellationToken))
+                {
+                    throw new ServiceUnavailableException("Too many downloads are in progress. Try again in a moment.");
+                }
+
+                try
+                {
+                    return await DownloadHlsVideoCoreAsync(videoId, cancellationToken);
+                }
+                finally
+                {
+                    globalDownloads.Release();
+                }
             }
             finally
             {
-                globalDownloads.Release();
+                // Every exit after the video gate was taken (timeout, cancellation, ffmpeg failure) releases it.
+                gate.Semaphore.Release();
             }
         }
         finally
         {
-            // Every exit after the video gate was taken (timeout, cancellation, ffmpeg failure) releases it.
-            videoLock.Release();
+            ReturnGate(videoId, gate);
+        }
+    }
+
+    private static VideoGate RentGate(Guid videoId)
+    {
+        lock (PerVideoGates)
+        {
+            if (!PerVideoGates.TryGetValue(videoId, out VideoGate? gate))
+            {
+                gate = new VideoGate();
+                PerVideoGates[videoId] = gate;
+            }
+
+            gate.RefCount++;
+            return gate;
+        }
+    }
+
+    private static void ReturnGate(Guid videoId, VideoGate gate)
+    {
+        lock (PerVideoGates)
+        {
+            if (--gate.RefCount > 0)
+            {
+                return;
+            }
+
+            // Nobody holds or waits on this gate any more, so it can leave the map and be disposed. A later
+            // request for the same video rents a fresh gate.
+            PerVideoGates.Remove(videoId);
+            gate.Semaphore.Dispose();
         }
     }
 

@@ -186,7 +186,7 @@ public class PlaylistService(
         // Adding a clip to a playlist grants every member access to it, so the actor must already be
         // allowed to view the clip. Answer "not found" either way to avoid confirming a foreign clip id.
         ClipsStatements.ClipRow? clip = await clipsStatements.GetClipById(clipId);
-        if (clip == null || !await CanActorUseClip(actor, clip))
+        if (clip == null || !CanActorUseClip(actor, clip))
         {
             throw new BadRequestException("Clip not found");
         }
@@ -221,7 +221,7 @@ public class PlaylistService(
         foreach (Guid clipId in clipIds)
         {
             ClipsStatements.ClipRow? clip = await clipsStatements.GetClipById(clipId);
-            if (clip == null || !await CanActorUseClip(actor, clip))
+            if (clip == null || !CanActorUseClip(actor, clip))
             {
                 throw new BadRequestException($"Clip {clipId} not found");
             }
@@ -239,9 +239,14 @@ public class PlaylistService(
         return await GetPlaylistById(playlistId, discordUserId);
     }
 
-    private async Task<bool> CanActorUseClip(PlaylistActor actor, ClipsStatements.ClipRow clip)
+    /// <summary>
+    /// Only the clip's owner may place it in a playlist. Playlist membership grants read access to every
+    /// collaborator, so letting a non-owner copy a clip they can currently see into another playlist would
+    /// create a grant that survives the owner revoking the original share or collaboration.
+    /// </summary>
+    private static bool CanActorUseClip(PlaylistActor actor, ClipsStatements.ClipRow clip)
     {
-        return clip.OwnerId == actor.UserId || await clipsStatements.UserCanAccessClip(clip.Id, actor.UserId);
+        return clip.OwnerId == actor.UserId;
     }
 
     public async Task<bool> RemoveClipFromPlaylist(Guid playlistId, Guid clipId, string discordUserId)

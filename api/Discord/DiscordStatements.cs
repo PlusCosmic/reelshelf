@@ -74,9 +74,10 @@ public class DiscordStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Users who have added <paramref name="userId"/> as a collaborator on a playlist they created.
-    /// Being added is a deliberate act by that user, so this is the set of people who have opted in to
-    /// sharing with the caller; it cannot be manufactured by the caller.
+    /// Users who have personally added <paramref name="userId"/> as a collaborator on a playlist they created.
+    /// Being added by the creator is a deliberate act by that user, so this is the set of people who have
+    /// opted in to sharing with the caller. Rows added by other collaborators do not count, because any
+    /// collaborator can add users and that would let a third party manufacture the creator's consent.
     /// </summary>
     public async Task<List<DiscordUserRow>> GetUsersWhoAddedMe(Guid userId)
     {
@@ -86,6 +87,7 @@ public class DiscordStatements(NpgsqlConnection connection)
             JOIN playlists p ON p.id = pc.playlist_id
             JOIN discord_user u ON u.id = p.creator_user_id
             WHERE pc.user_id = @userId
+              AND pc.added_by_user_id = p.creator_user_id
               AND p.creator_user_id != @userId";
 
         var result = await connection.QueryAsync<DiscordUserRow>(sql, new { userId });
