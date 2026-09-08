@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS user_identity (
     display_name text,
     avatar_url text,
     linked_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (provider, provider_user_id)
+    CONSTRAINT user_identity_provider_user_key UNIQUE (provider, provider_user_id),
+    CONSTRAINT user_identity_user_provider_key UNIQUE (user_id, provider)
 );
 
 CREATE INDEX IF NOT EXISTS user_identity_user_id_idx ON user_identity (user_id);

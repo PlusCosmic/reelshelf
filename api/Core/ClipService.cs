@@ -426,6 +426,9 @@ public class ClipService(
 
         await bunnyService.DeleteVideoAsync(clip.VideoId);
         await clipsStatements.DeleteClip(clipId);
+
+        // Usage went down; clear the "nearly full" marker if the owner is back under the threshold.
+        await storageWarningService.Evaluate(userId, await storageQuotaService.GetQuota(userId));
         return true;
     }
 

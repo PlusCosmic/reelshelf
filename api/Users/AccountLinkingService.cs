@@ -34,6 +34,10 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
 
     public async Task<LinkOutcome> Link(Guid userId, ExternalIdentity identity)
     {
+        // The account lock serialises links and unlinks for this account; the database's unique constraints
+        // still catch a race between two different accounts claiming the same provider identity.
+        await using IAccountScope scope = await store.LockAccount(userId);
+
         UserStatements.UserIdentityRow? existing = await store.GetIdentity(identity.Provider, identity.ProviderUserId);
         if (existing is not null)
         {
@@ -43,6 +47,7 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
             }
 
             await store.UpdateIdentityProfile(existing.Id, identity);
+            await scope.CommitAsync();
             return LinkOutcome.AlreadyLinked;
         }
 
@@ -53,12 +58,22 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
             return LinkOutcome.ProviderAlreadyLinked;
         }
 
-        await store.LinkIdentity(userId, identity);
+        UserStatements.UserIdentityRow? linked = await store.LinkIdentity(userId, identity);
+        if (linked is null)
+        {
+            return LinkOutcome.LinkedToAnotherAccount;
+        }
+
+        await scope.CommitAsync();
         return LinkOutcome.Linked;
     }
 
     public async Task<UnlinkOutcome> Unlink(Guid userId, string provider)
     {
+        // Count, delete and successor promotion happen under one lock and transaction, so two concurrent
+        // unlinks cannot both pass the last-identity check, and a failure after the delete rolls it back.
+        await using IAccountScope scope = await store.LockAccount(userId);
+
         List<UserStatements.UserIdentityRow> identities = await store.GetIdentitiesForUser(userId);
         UserStatements.UserIdentityRow? target = identities.FirstOrDefault(i => i.Provider == provider);
         if (target is null)
@@ -80,6 +95,7 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
             await store.UpdateUserProfile(userId, successor.Username, successor.DisplayName, successor.AvatarUrl);
         }
 
+        await scope.CommitAsync();
         return UnlinkOutcome.Unlinked;
     }
 
@@ -123,8 +139,17 @@ public interface IUserIdentityStore
     Task<UserStatements.UserIdentityRow?> GetIdentity(string provider, string providerUserId);
     Task<List<UserStatements.UserIdentityRow>> GetIdentitiesForUser(Guid userId);
     Task<UserStatements.UserRow> CreateUserWithIdentity(ExternalIdentity identity);
-    Task<UserStatements.UserIdentityRow> LinkIdentity(Guid userId, ExternalIdentity identity);
+    /// <summary>Null when the identity already exists for some account.</summary>
+    Task<UserStatements.UserIdentityRow?> LinkIdentity(Guid userId, ExternalIdentity identity);
+
+    /// <summary>Serialises identity changes for one account; dispose without committing to roll back.</summary>
+    Task<IAccountScope> LockAccount(Guid userId);
     Task UpdateIdentityProfile(Guid identityId, ExternalIdentity identity);
     Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl);
     Task DeleteIdentity(Guid identityId);
+}
+
+public interface IAccountScope : IAsyncDisposable
+{
+    Task CommitAsync();
 }

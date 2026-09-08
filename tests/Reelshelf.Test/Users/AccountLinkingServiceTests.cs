@@ -76,6 +76,20 @@ public class AccountLinkingServiceTests
     }
 
     [Fact]
+    public async Task Link_LosingTheRaceForAnIdentity_ReportsAnotherAccount()
+    {
+        FakeStore store = new();
+        AccountLinkingService service = new(store);
+        SignInOutcome harry = await service.SignIn(DiscordHarry);
+        store.HideFromLookup = TwitchHarry;
+        await service.SignIn(TwitchHarry);
+
+        LinkOutcome outcome = await service.Link(harry.User.Id, TwitchHarry);
+
+        Assert.Equal(LinkOutcome.LinkedToAnotherAccount, outcome);
+    }
+
+    [Fact]
     public async Task Link_SameIdentityAgain_IsIdempotent()
     {
         FakeStore store = new();
@@ -137,6 +151,9 @@ public class AccountLinkingServiceTests
     {
         private DateTimeOffset _clock = new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
 
+        /// <summary>Simulates another request inserting this identity after the lookup: GetIdentity misses, insert conflicts.</summary>
+        public ExternalIdentity? HideFromLookup { get; set; }
+
         public Dictionary<Guid, UserStatements.UserRow> Users { get; } = [];
         public Dictionary<Guid, UserStatements.UserIdentityRow> Identities { get; } = [];
 
@@ -147,6 +164,11 @@ public class AccountLinkingServiceTests
 
         public Task<UserStatements.UserIdentityRow?> GetIdentity(string provider, string providerUserId)
         {
+            if (HideFromLookup is { } hidden && hidden.Provider == provider && hidden.ProviderUserId == providerUserId)
+            {
+                return Task.FromResult<UserStatements.UserIdentityRow?>(null);
+            }
+
             return Task.FromResult(Identities.Values.FirstOrDefault(i =>
                 i.Provider == provider && i.ProviderUserId == providerUserId));
         }
@@ -174,9 +196,22 @@ public class AccountLinkingServiceTests
             return Task.FromResult(user);
         }
 
-        public Task<UserStatements.UserIdentityRow> LinkIdentity(Guid userId, ExternalIdentity identity)
+        public Task<UserStatements.UserIdentityRow?> LinkIdentity(Guid userId, ExternalIdentity identity)
         {
-            return Task.FromResult(Insert(userId, identity));
+            bool duplicate = Identities.Values.Any(i =>
+                i.Provider == identity.Provider && i.ProviderUserId == identity.ProviderUserId);
+            return Task.FromResult<UserStatements.UserIdentityRow?>(duplicate ? null : Insert(userId, identity));
+        }
+
+        public Task<IAccountScope> LockAccount(Guid userId)
+        {
+            return Task.FromResult<IAccountScope>(new NoopScope());
+        }
+
+        private sealed class NoopScope : IAccountScope
+        {
+            public Task CommitAsync() => Task.CompletedTask;
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         }
 
         public Task UpdateIdentityProfile(Guid identityId, ExternalIdentity identity)

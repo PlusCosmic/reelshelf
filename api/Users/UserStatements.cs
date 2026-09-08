@@ -86,9 +86,53 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, S
         return user;
     }
 
-    public Task<UserIdentityRow> LinkIdentity(Guid userId, ExternalIdentity identity)
+    /// <summary>Returns null when the identity already exists for some account (unique violation).</summary>
+    public async Task<UserIdentityRow?> LinkIdentity(Guid userId, ExternalIdentity identity)
     {
-        return InsertIdentity(userId, identity, transaction: null);
+        try
+        {
+            return await InsertIdentity(userId, identity, transaction: null);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Opens a transaction holding a per-account advisory lock so identity checks and the writes that follow
+    /// cannot interleave with another link or unlink for the same account. Dispose without committing to roll back.
+    /// </summary>
+    public async Task<IAccountScope> LockAccount(Guid userId)
+    {
+        bool openedConnection = false;
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+            openedConnection = true;
+        }
+
+        NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync(
+            "SELECT pg_advisory_xact_lock(hashtext(@key))",
+            new { key = $"account:{userId}" },
+            transaction);
+        return new AccountScope(connection, transaction, openedConnection);
+    }
+
+    private sealed class AccountScope(NpgsqlConnection connection, NpgsqlTransaction transaction, bool openedConnection)
+        : IAccountScope
+    {
+        public Task CommitAsync() => transaction.CommitAsync();
+
+        public async ValueTask DisposeAsync()
+        {
+            await transaction.DisposeAsync();
+            if (openedConnection)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 
     private async Task<UserIdentityRow> InsertIdentity(Guid userId, ExternalIdentity identity, NpgsqlTransaction? transaction)
@@ -152,10 +196,10 @@ public class UserStatements(NpgsqlConnection connection) : IUserIdentityStore, S
                ?? new Storage.StorageWarningState(null, null);
     }
 
-    public async Task MarkWarned(Guid userId)
+    public async Task<bool> MarkWarned(Guid userId)
     {
         const string sql = "UPDATE app_user SET storage_warned_at = now() WHERE id = @userId AND storage_warned_at IS NULL";
-        await connection.ExecuteAsync(sql, new { userId });
+        return await connection.ExecuteAsync(sql, new { userId }) == 1;
     }
 
     public async Task ClearWarned(Guid userId)

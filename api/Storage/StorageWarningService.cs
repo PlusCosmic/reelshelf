@@ -48,8 +48,13 @@ public sealed class StorageWarningService(
                 return;
             }
 
-            // Mark first so a slow or failing send can't fire twice on concurrent uploads.
-            await store.MarkWarned(userId);
+            // Claim the marker first; only the request that wins the claim sends, so concurrent uploads
+            // crossing the threshold together produce one notice.
+            if (!await store.MarkWarned(userId))
+            {
+                return;
+            }
+
             if (!string.IsNullOrEmpty(state.Email))
             {
                 await emailSender.SendAsync(AccountEmails.StorageNearlyFull(state.Email, quota, _libraryUrl));
@@ -67,6 +72,7 @@ public sealed record StorageWarningState(string? Email, DateTimeOffset? WarnedAt
 public interface IStorageWarningStore
 {
     Task<StorageWarningState> GetState(Guid userId);
-    Task MarkWarned(Guid userId);
+    /// <summary>Sets the marker if it is not already set; false when another request got there first.</summary>
+    Task<bool> MarkWarned(Guid userId);
     Task ClearWarned(Guid userId);
 }

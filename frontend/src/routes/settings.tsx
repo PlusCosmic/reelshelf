@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LinkedAccounts,
   describeLinkResult,
@@ -25,10 +25,11 @@ function SettingsRoute() {
   const { data: user } = useCurrentUser();
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const notice = describeLinkResult(search);
+  // The link result arrives as query parameters. Keep it in state so it survives cleaning the URL,
+  // which happens right away so a refresh doesn't repeat the message.
+  const [notice] = useState(() => describeLinkResult(search));
 
   useEffect(() => {
-    // The link result arrives as query parameters; drop them once shown so a refresh doesn't repeat it.
     if (search.linked || search.link_error) {
       void navigate({ to: "/settings", search: {}, replace: true });
     }

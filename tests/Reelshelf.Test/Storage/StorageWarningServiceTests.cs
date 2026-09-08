@@ -55,6 +55,20 @@ public class StorageWarningServiceTests
     }
 
     [Fact]
+    public async Task ConcurrentCrossing_SendsOnlyForTheClaimant()
+    {
+        var (service, store, sender) = Build();
+        StorageQuota over = new(Limit * 92 / 100, Limit);
+
+        // Both requests read a clean state before either claims the marker.
+        await store.MarkWarned(UserId);
+        store.ResetForRace();
+        await Task.WhenAll(service.Evaluate(UserId, over), service.Evaluate(UserId, over));
+
+        Assert.Single(sender.Sent);
+    }
+
+    [Fact]
     public async Task UnlimitedTier_NeverWarns()
     {
         var (service, store, sender) = Build();
@@ -80,13 +94,20 @@ public class StorageWarningServiceTests
     {
         public DateTimeOffset? WarnedAt { get; private set; }
 
+        public void ResetForRace() => WarnedAt = null;
+
         public Task<StorageWarningState> GetState(Guid userId) =>
             Task.FromResult(new StorageWarningState(email, WarnedAt));
 
-        public Task MarkWarned(Guid userId)
+        public Task<bool> MarkWarned(Guid userId)
         {
-            WarnedAt ??= DateTimeOffset.UtcNow;
-            return Task.CompletedTask;
+            if (WarnedAt is not null)
+            {
+                return Task.FromResult(false);
+            }
+
+            WarnedAt = DateTimeOffset.UtcNow;
+            return Task.FromResult(true);
         }
 
         public Task ClearWarned(Guid userId)
