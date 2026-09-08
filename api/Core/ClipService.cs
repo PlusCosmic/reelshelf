@@ -77,22 +77,14 @@ public class ClipService(
             }
         }
 
-        // Cheap unlocked check first so a plainly over-limit request fails before any collection work.
+        // Cheap unlocked check first so a plainly over-limit request fails before taking the lock.
         await storageQuotaService.EnsureCanStore(userId, discordUserId, fileSize);
 
-        // Get or create collection
-        ClipsStatements.ClipCollectionRow? clipCollection =
-            await clipsStatements.GetCollectionByOwnerAndCategory(userId, gameCategoryId);
-        if (clipCollection == null)
-        {
-            BunnyCollection bunnyCollection = await bunnyService.CreateCollectionAsync(gameCategory.Slug, userId);
-            clipCollection = await clipsStatements.InsertCollection(userId, bunnyCollection.Guid, gameCategoryId);
-        }
-
-        // Reserve quota first. The clip row is inserted with a placeholder video id under a per-owner lock
-        // so concurrent requests cannot all pass the check on the same stale usage figure, and so a request
-        // that will be rejected never spends a Bunny operation. No network calls happen inside the lock, and
-        // disposing the lock returns the pooled connection before the Bunny call below.
+        // Reserve quota before anything is created at Bunny. The clip row is inserted with a placeholder
+        // video id under a per-owner lock so concurrent requests cannot all pass the check on the same stale
+        // usage figure, and so a request that will be rejected never spends a Bunny operation, collection
+        // creation included. No network calls happen inside the lock, and disposing the lock returns the
+        // pooled connection before the Bunny calls below.
         Guid placeholderVideoId = Guid.NewGuid();
         ClipsStatements.ClipRow reserved;
         await using (ClipsStatements.OwnerStorageLock reservation = await clipsStatements.BeginOwnerStorageLock(userId))
@@ -111,19 +103,22 @@ public class ClipService(
             await reservation.CommitAsync();
         }
 
+        ClipsStatements.ClipCollectionRow clipCollection;
         BunnyVideo video;
-        ClipsStatements.ClipRow clip;
         try
         {
+            clipCollection = await clipsStatements.GetCollectionByOwnerAndCategory(userId, gameCategoryId)
+                             ?? await CreateCollectionAsync(userId, gameCategory);
             video = await bunnyService.CreateVideoAsync(clipCollection.CollectionId, videoTitle);
         }
         catch
         {
-            // Bunny rejected the create: give the reservation back rather than leaving a row that never uploads.
+            // Nothing billable exists for this clip yet: give the reservation back.
             await ReleaseReservationAsync(reserved.Id);
             throw;
         }
 
+        ClipsStatements.ClipRow clip;
         try
         {
             clip = await clipsStatements.AttachBunnyVideo(
@@ -139,17 +134,7 @@ public class ClipService(
         }
         catch
         {
-            // The row could not be linked to its video: remove both so nothing billable is left untracked.
-            try
-            {
-                await bunnyService.DeleteVideoAsync(video.Guid);
-            }
-            catch (Exception cleanupError)
-            {
-                logger.LogWarning(cleanupError, "Failed to delete Bunny video {VideoId} after attaching it to clip {ClipId} failed", video.Guid, reserved.Id);
-            }
-
-            await ReleaseReservationAsync(reserved.Id);
+            await DiscardUnattachedVideoAsync(reserved.Id, video.Guid);
             throw;
         }
 
@@ -168,6 +153,41 @@ public class ClipService(
             libraryId,
             video.Guid,
             video.CollectionId);
+    }
+
+    private async Task<ClipsStatements.ClipCollectionRow> CreateCollectionAsync(Guid userId, GameCategory gameCategory)
+    {
+        BunnyCollection bunnyCollection = await bunnyService.CreateCollectionAsync(gameCategory.Slug, userId);
+        return await clipsStatements.InsertCollection(userId, bunnyCollection.Guid, gameCategory.Id);
+    }
+
+    /// <summary>
+    /// A video was created at Bunny but could not be attached to its reserved row. Delete the video and the
+    /// reservation; if the Bunny delete fails, keep the row and record the real video id on it so the
+    /// abandoned-upload purge can finish the job rather than leaving a billable orphan.
+    /// </summary>
+    private async Task DiscardUnattachedVideoAsync(Guid clipId, Guid videoId)
+    {
+        try
+        {
+            await bunnyService.DeleteVideoAsync(videoId);
+        }
+        catch (Exception deleteError)
+        {
+            logger.LogWarning(deleteError, "Failed to delete Bunny video {VideoId} after attaching it to clip {ClipId} failed; keeping the row for the purge", videoId, clipId);
+            try
+            {
+                await clipsStatements.SetClipVideoId(clipId, videoId);
+            }
+            catch (Exception recordError)
+            {
+                logger.LogError(recordError, "Could not record Bunny video {VideoId} on clip {ClipId}; the video may be orphaned", videoId, clipId);
+            }
+
+            return;
+        }
+
+        await ReleaseReservationAsync(clipId);
     }
 
     private async Task ReleaseReservationAsync(Guid clipId)

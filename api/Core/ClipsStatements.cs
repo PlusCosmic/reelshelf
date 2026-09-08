@@ -433,6 +433,11 @@ public class ClipsStatements(NpgsqlConnection connection)
     /// Whether <paramref name="userId"/> may view a clip: they own it, it is in a playlist they created or
     /// collaborate on, or it has an active public share.
     /// </summary>
+    /// <summary>
+    /// Whether <paramref name="userId"/> may read the clip by id: the owner, or a current creator/collaborator
+    /// of a playlist containing it. Share links are deliberately not considered here; they are only honoured
+    /// through the token endpoint, so knowing a clip's UUID never substitutes for holding the token.
+    /// </summary>
     public async Task<bool> UserCanAccessClip(Guid clipId, Guid userId)
     {
         const string sql = """
@@ -446,8 +451,6 @@ public class ClipsStatements(NpgsqlConnection connection)
                   AND (p.creator_user_id = @userId
                        OR EXISTS (SELECT 1 FROM playlist_collaborators col
                                   WHERE col.playlist_id = p.id AND col.user_id = @userId))
-            ) OR EXISTS (
-                SELECT 1 FROM clip_share s WHERE s.clip_id = @clipId AND s.revoked_at IS NULL
             )
             """;
 
@@ -617,6 +620,15 @@ public class ClipsStatements(NpgsqlConnection connection)
 
         return await connection.QuerySingleAsync<ClipRow>(sql,
             new { clipId, videoId, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress });
+    }
+
+    /// <summary>
+    /// Records the real Bunny video id on a reserved row when full attachment failed, so the abandoned-upload
+    /// purge can still find and delete the video instead of it being orphaned at Bunny.
+    /// </summary>
+    public async Task SetClipVideoId(Guid clipId, Guid videoId)
+    {
+        await connection.ExecuteAsync("UPDATE clip SET video_id = @videoId WHERE id = @clipId", new { clipId, videoId });
     }
 
     public async Task UpdateClipMetadata(Guid clipId, string? title, int? length, string? thumbnailFileName,
