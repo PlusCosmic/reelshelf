@@ -1,5 +1,5 @@
 using Reelshelf.Core;
-using Reelshelf.Discord;
+using Reelshelf.Users;
 using Reelshelf.Games;
 using Reelshelf.Playlists.Models;
 
@@ -12,9 +12,9 @@ public class GamingSessionPlaylistStore(
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements) : IGamingSessionPlaylistStore
 {
-    public Task<DiscordStatements.DiscordUserRow> GetUser(string discordUserId)
+    public Task<UserStatements.UserRow> GetUser(Guid userId)
     {
-        return playlistAccess.GetUser(discordUserId);
+        return playlistAccess.GetUser(userId);
     }
 
     public Task<GameCategory?> GetCategory(Guid categoryId)
@@ -47,9 +47,9 @@ public class GamingSessionPlaylistStore(
         return playlistStatements.UpdateGamingSessionTimezone(playlistId, timezone);
     }
 
-    public Task<Playlist> CreatePlaylist(string name, string? description, string discordUserId)
+    public Task<Playlist> CreatePlaylist(string name, string? description, Guid userId)
     {
-        return playlistService.CreatePlaylist(name, description, discordUserId);
+        return playlistService.CreatePlaylist(name, description, userId);
     }
 
     public Task<Guid> UpsertGamingSessionPlaylist(Guid playlistId, Guid ownerId, Guid categoryId, DateOnly sessionDate, string timezone)
@@ -82,8 +82,8 @@ public class GamingSessionPlaylistStore(
         return playlistStatements.TouchPlaylistUpdatedAt(playlistId);
     }
 
-    public Task<PlaylistWithDetails?> GetPlaylistDetails(Guid playlistId, string discordUserId)
+    public Task<PlaylistWithDetails?> GetPlaylistDetails(Guid playlistId, Guid userId)
     {
-        return playlistService.GetPlaylistById(playlistId, discordUserId);
+        return playlistService.GetPlaylistById(playlistId, userId);
     }
 }

@@ -9,17 +9,17 @@ public class ClipLibraryService(
 {
     private const int PreviewClipsPerCategory = 96;
 
-    public async Task<ClipLibraryResponse> GetLibrary(string discordUserId)
+    public async Task<ClipLibraryResponse> GetLibrary(Guid userId)
     {
         // Only the caller's categories: the global list grows with every account's custom categories.
-        List<GameCategoryResponse> categories = await gameCategoryService.GetLibraryCategoriesAsync(discordUserId);
+        List<GameCategoryResponse> categories = await gameCategoryService.GetLibraryCategoriesAsync(userId);
         List<Clip> clips = [];
 
         foreach (GameCategoryResponse category in categories)
         {
             PagedClipsResponse categoryClips = await clipService.GetClipsForCategory(
                 category.Id,
-                discordUserId,
+                userId,
                 1,
                 PreviewClipsPerCategory,
                 sortOrder: ClipSortOrder.DateDescending);

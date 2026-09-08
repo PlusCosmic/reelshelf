@@ -13,27 +13,37 @@
  */
 
 import * as runtime from "../runtime";
-import type { DiscordUser, StorageUsageResponse } from "../models/index";
+import type {
+  LinkedIdentity,
+  StorageUsageResponse,
+  UserProfile,
+} from "../models/index";
 import {
-  DiscordUserFromJSON,
-  DiscordUserToJSON,
+  LinkedIdentityFromJSON,
+  LinkedIdentityToJSON,
   StorageUsageResponseFromJSON,
   StorageUsageResponseToJSON,
+  UserProfileFromJSON,
+  UserProfileToJSON,
 } from "../models/index";
 
 export interface ApiUserUserIdGetRequest {
   userId: string;
 }
 
+export interface UnlinkMyIdentityRequest {
+  provider: string;
+}
+
 /**
  *
  */
-export class DiscordUserEndpointsApi extends runtime.BaseAPI {
+export class UserEndpointsApi extends runtime.BaseAPI {
   /**
    */
   async apiMeGetRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<DiscordUser>> {
+  ): Promise<runtime.ApiResponse<UserProfile>> {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
@@ -51,7 +61,7 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
     );
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
-      DiscordUserFromJSON(jsonValue),
+      UserProfileFromJSON(jsonValue),
     );
   }
 
@@ -59,7 +69,7 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
    */
   async apiMeGet(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<DiscordUser> {
+  ): Promise<UserProfile> {
     const response = await this.apiMeGetRaw(initOverrides);
     return await response.value();
   }
@@ -69,7 +79,7 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
   async apiUserUserIdGetRaw(
     requestParameters: ApiUserUserIdGetRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<DiscordUser>> {
+  ): Promise<runtime.ApiResponse<UserProfile>> {
     if (requestParameters["userId"] == null) {
       throw new runtime.RequiredError(
         "userId",
@@ -98,7 +108,7 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
     );
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
-      DiscordUserFromJSON(jsonValue),
+      UserProfileFromJSON(jsonValue),
     );
   }
 
@@ -107,7 +117,7 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
   async apiUserUserIdGet(
     requestParameters: ApiUserUserIdGetRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<DiscordUser> {
+  ): Promise<UserProfile> {
     const response = await this.apiUserUserIdGetRaw(
       requestParameters,
       initOverrides,
@@ -119,7 +129,7 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
    */
   async apiUsersSuggestionsGetRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<DiscordUser>>> {
+  ): Promise<runtime.ApiResponse<Array<UserProfile>>> {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
@@ -137,7 +147,7 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
     );
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
-      jsonValue.map(DiscordUserFromJSON),
+      jsonValue.map(UserProfileFromJSON),
     );
   }
 
@@ -145,8 +155,43 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
    */
   async apiUsersSuggestionsGet(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<DiscordUser>> {
+  ): Promise<Array<UserProfile>> {
     const response = await this.apiUsersSuggestionsGetRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async getMyLinkedIdentitiesRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LinkedIdentity>>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/me/identities`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LinkedIdentityFromJSON),
+    );
+  }
+
+  /**
+   */
+  async getMyLinkedIdentities(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LinkedIdentity>> {
+    const response = await this.getMyLinkedIdentitiesRaw(initOverrides);
     return await response.value();
   }
 
@@ -183,5 +228,50 @@ export class DiscordUserEndpointsApi extends runtime.BaseAPI {
   ): Promise<StorageUsageResponse> {
     const response = await this.getMyStorageUsageRaw(initOverrides);
     return await response.value();
+  }
+
+  /**
+   */
+  async unlinkMyIdentityRaw(
+    requestParameters: UnlinkMyIdentityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["provider"] == null) {
+      throw new runtime.RequiredError(
+        "provider",
+        'Required parameter "provider" was null or undefined when calling unlinkMyIdentity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/me/identities/{provider}`;
+    urlPath = urlPath.replace(
+      `{${"provider"}}`,
+      encodeURIComponent(String(requestParameters["provider"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "DELETE",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async unlinkMyIdentity(
+    requestParameters: UnlinkMyIdentityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.unlinkMyIdentityRaw(requestParameters, initOverrides);
   }
 }

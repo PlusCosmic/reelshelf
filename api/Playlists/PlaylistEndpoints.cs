@@ -49,7 +49,7 @@ public static class PlaylistEndpoints
     {
         try
         {
-            Playlist playlist = await playlistService.CreatePlaylist(request.Name, request.Description, user.DiscordId);
+            Playlist playlist = await playlistService.CreatePlaylist(request.Name, request.Description, user.Id);
             return TypedResults.Created($"/api/playlists/{playlist.Id}", playlist);
         }
         catch (BadRequestException ex)
@@ -75,7 +75,7 @@ public static class PlaylistEndpoints
             PlaylistWithDetails playlist = await gamingSessionPlaylistService.CreateGamingSessionPlaylist(
                 request.Participants,
                 request.CategoryId,
-                user.DiscordId,
+                user.Id,
                 category.Name);
 
             return TypedResults.Created($"/api/playlists/{playlist.Id}", playlist);
@@ -98,7 +98,7 @@ public static class PlaylistEndpoints
                 request.SessionDate,
                 request.ClipIds,
                 request.Timezone,
-                user.DiscordId);
+                user.Id);
 
             return TypedResults.Ok(playlist);
         }
@@ -112,7 +112,7 @@ public static class PlaylistEndpoints
         PlaylistService playlistService,
         AuthenticatedUser user)
     {
-        List<PlaylistSummary> playlists = await playlistService.GetPlaylistsForUser(user.DiscordId);
+        List<PlaylistSummary> playlists = await playlistService.GetPlaylistsForUser(user.Id);
         return TypedResults.Ok(playlists);
     }
 
@@ -121,7 +121,7 @@ public static class PlaylistEndpoints
         Guid id,
         AuthenticatedUser user)
     {
-        PlaylistWithDetails? playlist = await playlistService.GetPlaylistById(id, user.DiscordId);
+        PlaylistWithDetails? playlist = await playlistService.GetPlaylistById(id, user.Id);
         if (playlist is null)
         {
             return TypedResults.NotFound();
@@ -138,7 +138,7 @@ public static class PlaylistEndpoints
     {
         try
         {
-            Playlist? playlist = await playlistService.UpdatePlaylist(id, user.DiscordId, request.Name, request.Description);
+            Playlist? playlist = await playlistService.UpdatePlaylist(id, user.Id, request.Name, request.Description);
             if (playlist is null)
             {
                 return TypedResults.NotFound();
@@ -157,7 +157,7 @@ public static class PlaylistEndpoints
         Guid id,
         AuthenticatedUser user)
     {
-        bool deleted = await playlistService.DeletePlaylist(id, user.DiscordId);
+        bool deleted = await playlistService.DeletePlaylist(id, user.Id);
         if (!deleted)
         {
             return TypedResults.NotFound();
@@ -178,11 +178,11 @@ public static class PlaylistEndpoints
 
             if (request.ClipId.HasValue)
             {
-                playlist = await playlistService.AddClipToPlaylist(id, request.ClipId.Value, user.DiscordId);
+                playlist = await playlistService.AddClipToPlaylist(id, request.ClipId.Value, user.Id);
             }
             else if (request.ClipIds is { Count: > 0 })
             {
-                playlist = await playlistService.AddClipsToPlaylist(id, request.ClipIds, user.DiscordId);
+                playlist = await playlistService.AddClipsToPlaylist(id, request.ClipIds, user.Id);
             }
             else
             {
@@ -208,7 +208,7 @@ public static class PlaylistEndpoints
         Guid clipId,
         AuthenticatedUser user)
     {
-        bool removed = await playlistService.RemoveClipFromPlaylist(id, clipId, user.DiscordId);
+        bool removed = await playlistService.RemoveClipFromPlaylist(id, clipId, user.Id);
         if (!removed)
         {
             return TypedResults.NotFound();
@@ -228,7 +228,7 @@ public static class PlaylistEndpoints
             return TypedResults.BadRequest("clipOrdering must be provided and cannot be empty");
         }
 
-        PlaylistWithDetails? playlist = await playlistService.ReorderPlaylistClips(id, request.ClipOrdering, user.DiscordId);
+        PlaylistWithDetails? playlist = await playlistService.ReorderPlaylistClips(id, request.ClipOrdering, user.Id);
         if (playlist is null)
         {
             return TypedResults.NotFound();
@@ -252,7 +252,7 @@ public static class PlaylistEndpoints
         {
             List<PlaylistCollaborator>? collaborators = await playlistService.AddCollaborator(
                 id,
-                user.DiscordId,
+                user.Id,
                 request.UserId,
                 request.Username
             );
@@ -278,7 +278,7 @@ public static class PlaylistEndpoints
     {
         try
         {
-            bool removed = await playlistService.RemoveCollaborator(id, userId, user.DiscordId);
+            bool removed = await playlistService.RemoveCollaborator(id, userId, user.Id);
             if (!removed)
             {
                 return TypedResults.NotFound();
@@ -297,7 +297,7 @@ public static class PlaylistEndpoints
         Guid id,
         AuthenticatedUser user)
     {
-        List<PlaylistCollaborator>? collaborators = await playlistService.GetCollaborators(id, user.DiscordId);
+        List<PlaylistCollaborator>? collaborators = await playlistService.GetCollaborators(id, user.Id);
         if (collaborators is null)
         {
             return TypedResults.NotFound();

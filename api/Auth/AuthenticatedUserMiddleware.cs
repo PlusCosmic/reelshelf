@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Reelshelf.Discord;
+using Reelshelf.Users;
 
 namespace Reelshelf.Auth;
 
@@ -39,26 +39,31 @@ public class AuthenticatedUserMiddleware(RequestDelegate next, WhitelistService 
             return;
         }
 
-        // Skip if not authenticated
-        string? discordId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(discordId))
+        // Skip if not authenticated. The cookie carries the account id; sessions issued before linked
+        // identities carried a Discord id instead and simply need a fresh sign-in.
+        string? subject = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(subject) || !Guid.TryParse(subject, out Guid userId))
         {
             await next(context);
             return;
         }
 
         // Resolve the user from the database and cache in HttpContext.Items
-        DiscordStatements discordStatements = context.RequestServices.GetRequiredService<DiscordStatements>();
-        DiscordStatements.DiscordUserRow? dbUser = await discordStatements.GetUserByDiscordId(discordId);
+        UserStatements userStatements = context.RequestServices.GetRequiredService<UserStatements>();
+        UserStatements.UserRow? dbUser = await userStatements.GetUserById(userId);
 
         if (dbUser is not null)
         {
+            List<UserIdentityRef> identities = (await userStatements.GetIdentitiesForUser(dbUser.Id))
+                .Select(identity => identity.ToRef())
+                .ToList();
+
             // Determine the effective role:
-            // 1. If whitelist.json pins a role, use it and persist it (flagged as whitelist-driven).
+            // 1. If whitelist.json pins a role for any linked identity, use it and persist it (flagged as whitelist-driven).
             // 2. If the stored role was pinned by the whitelist but the entry is gone, revoke it: fall back
             //    to the default role so removing an override actually removes the privileges.
             // 3. Otherwise use the stored role (default, or set by some other mechanism).
-            UserRole? whitelistRole = whitelistService.GetRole(discordId);
+            UserRole? whitelistRole = whitelistService.GetRole(identities);
             UserRole dbRole = ParseRole(dbUser.Role);
             UserRole effectiveRole;
 
@@ -67,13 +72,13 @@ public class AuthenticatedUserMiddleware(RequestDelegate next, WhitelistService 
                 effectiveRole = pinnedRole;
                 if (dbRole != pinnedRole || !dbUser.RoleFromWhitelist)
                 {
-                    await discordStatements.UpdateUserRole(dbUser.Id, pinnedRole.ToString(), roleFromWhitelist: true);
+                    await userStatements.UpdateUserRole(dbUser.Id, pinnedRole.ToString(), roleFromWhitelist: true);
                 }
             }
             else if (dbUser.RoleFromWhitelist)
             {
                 effectiveRole = DefaultRole;
-                await discordStatements.UpdateUserRole(dbUser.Id, DefaultRole.ToString(), roleFromWhitelist: false);
+                await userStatements.UpdateUserRole(dbUser.Id, DefaultRole.ToString(), roleFromWhitelist: false);
             }
             else
             {
@@ -81,22 +86,22 @@ public class AuthenticatedUserMiddleware(RequestDelegate next, WhitelistService 
             }
 
             // Load additional permissions
-            List<string> additionalPermissions = await discordStatements.GetUserAdditionalPermissions(dbUser.Id);
+            List<string> additionalPermissions = await userStatements.GetUserAdditionalPermissions(dbUser.Id);
 
             context.Items[AuthenticatedUser.HttpContextKey] = new AuthenticatedUser(
                 dbUser.Id,
-                dbUser.DiscordId,
                 dbUser.Username,
                 dbUser.GlobalName,
-                dbUser.Avatar,
+                dbUser.AvatarUrl,
                 effectiveRole,
-                new HashSet<string>(additionalPermissions));
+                new HashSet<string>(additionalPermissions),
+                identities);
         }
 
         await next(context);
     }
 
-    /// <summary>Role for accounts with no whitelist override; matches the discord_user.role column default.</summary>
+    /// <summary>Role for accounts with no whitelist override; matches the app_user.role column default.</summary>
     private const UserRole DefaultRole = UserRole.Editor;
 
     /// <summary>

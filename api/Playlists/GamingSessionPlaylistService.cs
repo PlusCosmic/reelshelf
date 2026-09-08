@@ -1,6 +1,6 @@
 using Reelshelf.Core;
 using Reelshelf.Core.Models;
-using Reelshelf.Discord;
+using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.Playlists.Models;
 
@@ -9,8 +9,7 @@ namespace Reelshelf.Playlists;
 public class GamingSessionPlaylistService(
     PlaylistService playlistService,
     PlaylistStatements playlistStatements,
-    PlaylistAccess playlistAccess,
-    DiscordStatements discordStatements,
+    UserStatements userStatements,
     ClipService clipService)
 {
     private const int SessionLookbackDays = 1;
@@ -21,11 +20,10 @@ public class GamingSessionPlaylistService(
     public async Task<PlaylistWithDetails> CreateGamingSessionPlaylist(
         List<Guid> participantIds,
         Guid gameCategoryId,
-        string discordUserId,
+        Guid userId,
         string categoryName)
     {
-        DiscordStatements.DiscordUserRow currentUser = await playlistAccess.GetUser(discordUserId);
-        List<Guid> participants = IncludeCurrentUser(participantIds, currentUser.Id);
+                List<Guid> participants = IncludeCurrentUser(participantIds, userId);
         if (participants.Count > MaxParticipants)
         {
             throw new BadRequestException($"A session can include at most {MaxParticipants} participants");
@@ -34,10 +32,10 @@ public class GamingSessionPlaylistService(
         // A session pulls each participant's recent clips into a playlist the caller controls, so a
         // participant must have opted in: they must have added the caller to a collection they created.
         // Anything the caller can do alone (creating a playlist, adding a collaborator) does not count.
-        HashSet<Guid> allowedParticipants = (await discordStatements.GetUsersWhoAddedMe(currentUser.Id))
+        HashSet<Guid> allowedParticipants = (await userStatements.GetUsersWhoAddedMe(userId))
             .Select(peer => peer.Id)
             .ToHashSet();
-        allowedParticipants.Add(currentUser.Id);
+        allowedParticipants.Add(userId);
         if (participants.Any(participantId => !allowedParticipants.Contains(participantId)))
         {
             throw new BadRequestException(
@@ -45,7 +43,7 @@ public class GamingSessionPlaylistService(
         }
 
         string playlistName = $"{categoryName} Session - {DateTimeOffset.UtcNow:MMMM dd}";
-        Playlist playlist = await playlistService.CreatePlaylist(playlistName, string.Empty, discordUserId);
+        Playlist playlist = await playlistService.CreatePlaylist(playlistName, string.Empty, userId);
 
         DateTimeOffset sessionStart = DateTimeOffset.UtcNow.AddDays(-SessionLookbackDays);
         DateTimeOffset sessionEnd = DateTimeOffset.UtcNow;
@@ -53,20 +51,20 @@ public class GamingSessionPlaylistService(
 
         foreach (Guid participantId in participants)
         {
-            DiscordStatements.DiscordUserRow? participant = await discordStatements.GetUserById(participantId);
+            UserStatements.UserRow? participant = await userStatements.GetUserById(participantId);
             if (participant == null)
             {
                 continue;
             }
 
-            if (participant.Id != currentUser.Id)
+            if (participant.Id != userId)
             {
-                await playlistStatements.AddCollaborator(playlist.Id, participant.Id, currentUser.Id);
+                await playlistStatements.AddCollaborator(playlist.Id, participant.Id, userId);
             }
 
             clips.AddRange(await GetSessionClipsForParticipant(
                 gameCategoryId,
-                participant.DiscordId,
+                participant.Id,
                 sessionStart,
                 sessionEnd));
         }
@@ -78,16 +76,16 @@ public class GamingSessionPlaylistService(
 
         if (orderedClipIds.Count > 0)
         {
-            await AddClipsToPlaylist(playlist.Id, orderedClipIds, currentUser.Id);
+            await AddClipsToPlaylist(playlist.Id, orderedClipIds, userId);
         }
 
-        return await playlistService.GetPlaylistById(playlist.Id, discordUserId)
+        return await playlistService.GetPlaylistById(playlist.Id, userId)
                ?? throw new InvalidOperationException("Failed to retrieve created playlist");
     }
 
     private async Task<List<Clip>> GetSessionClipsForParticipant(
         Guid gameCategoryId,
-        string discordUserId,
+        Guid userId,
         DateTimeOffset sessionStart,
         DateTimeOffset sessionEnd)
     {
@@ -99,7 +97,7 @@ public class GamingSessionPlaylistService(
         {
             PagedClipsResponse pageResult = await clipService.GetClipsForCategory(
                 gameCategoryId,
-                discordUserId,
+                userId,
                 page,
                 ClipPageSize,
                 null,

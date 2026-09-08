@@ -1,12 +1,37 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import {
+  LinkedAccounts,
+  describeLinkResult,
+} from "@/components/Reelshelf/LinkedAccounts";
 import { useCurrentUser } from "@/hooks/queries";
+
+type SettingsSearch = {
+  linked?: string;
+  link_error?: string;
+};
 
 export const Route = createFileRoute("/settings")({
   component: SettingsRoute,
+  validateSearch: (search: Record<string, unknown>): SettingsSearch => ({
+    linked: typeof search.linked === "string" ? search.linked : undefined,
+    link_error:
+      typeof search.link_error === "string" ? search.link_error : undefined,
+  }),
 });
 
 function SettingsRoute() {
   const { data: user } = useCurrentUser();
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const notice = describeLinkResult(search);
+
+  useEffect(() => {
+    // The link result arrives as query parameters; drop them once shown so a refresh doesn't repeat it.
+    if (search.linked || search.link_error) {
+      void navigate({ to: "/settings", search: {}, replace: true });
+    }
+  }, [navigate, search.linked, search.link_error]);
 
   return (
     <>
@@ -37,12 +62,12 @@ function SettingsRoute() {
           </div>
         </div>
         <aside className="rs-sidebar-panel">
-          <h2 className="rs-eyebrow">Preference storage</h2>
+          <h2 className="rs-eyebrow">Linked accounts</h2>
           <p className="rs-sidebar-copy">
-            The UI design includes theme and density preferences. The backend
-            preference API can store simple settings, but this migration leaves
-            these controls presentational until product defaults are confirmed.
+            Sign in with any linked account. Your name and avatar follow the
+            primary one.
           </p>
+          <LinkedAccounts notice={notice} />
         </aside>
       </section>
     </>
