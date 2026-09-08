@@ -35,6 +35,10 @@ internal static class AuthenticationSetup
     {
         IConfiguration configuration = builder.Configuration;
 
+        ProviderCredentials discord = ProviderCredentials.Read(configuration, "DiscordClientId", "DiscordClientSecret");
+        ProviderCredentials twitch = ProviderCredentials.Read(configuration, "TwitchClientId", "TwitchClientSecret");
+        RequireCredentials(builder.Environment, discord, twitch);
+
         builder.Services.AddAuthentication(options =>
             {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -79,8 +83,8 @@ internal static class AuthenticationSetup
                 options.TokenEndpoint = "https://discord.com/api/oauth2/token";
                 options.UserInformationEndpoint = "https://discord.com/api/users/@me";
 
-                options.ClientId = configuration["DiscordClientId"] ?? "";
-                options.ClientSecret = configuration["DiscordClientSecret"] ?? "";
+                options.ClientId = discord.ClientId;
+                options.ClientSecret = discord.ClientSecret;
 
                 options.CallbackPath = new PathString("/auth/discord/callback");
 
@@ -122,8 +126,8 @@ internal static class AuthenticationSetup
                 options.TokenEndpoint = "https://id.twitch.tv/oauth2/token";
                 options.UserInformationEndpoint = "https://api.twitch.tv/helix/users";
 
-                options.ClientId = configuration["TwitchClientId"] ?? "";
-                options.ClientSecret = configuration["TwitchClientSecret"] ?? "";
+                options.ClientId = twitch.ClientId;
+                options.ClientSecret = twitch.ClientSecret;
 
                 options.CallbackPath = new PathString("/auth/twitch/callback");
 
@@ -169,6 +173,57 @@ internal static class AuthenticationSetup
             });
 
         builder.Services.AddAuthorization();
+    }
+
+    /// <summary>Client id and secret for one provider, with the configuration keys they were read from.</summary>
+    private readonly record struct ProviderCredentials(string IdKey, string SecretKey, string ClientId, string ClientSecret)
+    {
+        public static ProviderCredentials Read(IConfiguration configuration, string idKey, string secretKey)
+        {
+            return new ProviderCredentials(
+                idKey,
+                secretKey,
+                configuration[idKey]?.Trim() ?? "",
+                configuration[secretKey]?.Trim() ?? "");
+        }
+
+        public IEnumerable<string> MissingKeys()
+        {
+            if (ClientId.Length == 0)
+            {
+                yield return IdKey;
+            }
+
+            if (ClientSecret.Length == 0)
+            {
+                yield return SecretKey;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Blank credentials otherwise surface as a 500 out of <c>OAuthOptions.Validate</c> on the first sign-in
+    /// attempt, long after a misconfigured deployment started and reported itself healthy. Fail on startup
+    /// instead, naming every key that still needs a value. Document generation builds the app without any
+    /// secrets, so the "OpenApi" environment is exempt.
+    /// </summary>
+    private static void RequireCredentials(IHostEnvironment environment, params ProviderCredentials[] providers)
+    {
+        if (environment.IsEnvironment("OpenApi"))
+        {
+            return;
+        }
+
+        string[] missing = providers.SelectMany(provider => provider.MissingKeys()).ToArray();
+        if (missing.Length == 0)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Sign-in is not configured. Missing or empty: {string.Join(", ", missing)}. " +
+            "Set each one as an environment variable of the same name (or a user secret when running " +
+            "locally) before starting the API.");
     }
 
     public static string DiscordAvatarUrl(string discordId, string avatarHash)
