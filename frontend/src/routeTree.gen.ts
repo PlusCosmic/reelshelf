@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlaylistsIndexRouteImport } from './routes/playlists/index'
@@ -21,6 +22,11 @@ import { Route as GamesSlugClipIdRouteImport } from './routes/games/$slug/$clipI
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
   path: '/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -62,6 +68,7 @@ const GamesSlugClipIdRoute = GamesSlugClipIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/sign-in': typeof SignInRoute
   '/upload': typeof UploadRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/share/$token': typeof ShareTokenRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/sign-in': typeof SignInRoute
   '/upload': typeof UploadRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/share/$token': typeof ShareTokenRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/sign-in': typeof SignInRoute
   '/upload': typeof UploadRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/share/$token': typeof ShareTokenRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/settings'
+    | '/sign-in'
     | '/upload'
     | '/playlists/$playlistId'
     | '/share/$token'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/settings'
+    | '/sign-in'
     | '/upload'
     | '/playlists/$playlistId'
     | '/share/$token'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/settings'
+    | '/sign-in'
     | '/upload'
     | '/playlists/$playlistId'
     | '/share/$token'
@@ -126,6 +138,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRoute: typeof SettingsRoute
+  SignInRoute: typeof SignInRoute
   UploadRoute: typeof UploadRoute
   PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
   ShareTokenRoute: typeof ShareTokenRoute
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/upload'
       fullPath: '/upload'
       preLoaderRoute: typeof UploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -198,6 +218,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRoute: SettingsRoute,
+  SignInRoute: SignInRoute,
   UploadRoute: UploadRoute,
   PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,
   ShareTokenRoute: ShareTokenRoute,
