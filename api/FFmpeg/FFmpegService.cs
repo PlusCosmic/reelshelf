@@ -41,23 +41,35 @@ public class FFmpegService
     /// <returns>Path to the downloaded video file</returns>
     public async Task<string> DownloadHlsVideoAsync(Guid videoId, CancellationToken cancellationToken = default)
     {
-        SemaphoreSlim globalDownloads = _globalDownloads!;
-        if (!await globalDownloads.WaitAsync(QueueWait, cancellationToken))
+        // Take the per-video gate first: duplicate requests for one video queue here without holding
+        // any process-wide capacity, so they cannot starve downloads of other videos.
+        SemaphoreSlim videoLock = PerVideoLocks.GetOrAdd(videoId, _ => new SemaphoreSlim(1, 1));
+        if (!await videoLock.WaitAsync(QueueWait, cancellationToken))
         {
-            throw new ServiceUnavailableException("Too many downloads are in progress. Try again in a moment.");
+            throw new ServiceUnavailableException("This clip is already being downloaded. Try again in a moment.");
         }
 
-        // Requests for the same video run one at a time rather than racing several ffmpeg processes.
-        SemaphoreSlim videoLock = PerVideoLocks.GetOrAdd(videoId, _ => new SemaphoreSlim(1, 1));
-        await videoLock.WaitAsync(cancellationToken);
         try
         {
-            return await DownloadHlsVideoCoreAsync(videoId, cancellationToken);
+            SemaphoreSlim globalDownloads = _globalDownloads!;
+            if (!await globalDownloads.WaitAsync(QueueWait, cancellationToken))
+            {
+                throw new ServiceUnavailableException("Too many downloads are in progress. Try again in a moment.");
+            }
+
+            try
+            {
+                return await DownloadHlsVideoCoreAsync(videoId, cancellationToken);
+            }
+            finally
+            {
+                globalDownloads.Release();
+            }
         }
         finally
         {
+            // Every exit after the video gate was taken (timeout, cancellation, ffmpeg failure) releases it.
             videoLock.Release();
-            globalDownloads.Release();
         }
     }
 
