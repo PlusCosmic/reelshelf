@@ -10,7 +10,7 @@ import {
   IconSettings,
   IconSun,
 } from "@tabler/icons-react";
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
@@ -20,38 +20,73 @@ import { useCurrentUser, useLogout, useStorageUsage } from "@/hooks/queries";
 
 type ReelshelfTheme = "light" | "dark";
 
-function getInitialTheme(): ReelshelfTheme {
-  const stored = window.localStorage.getItem("reelshelf-theme");
-  if (stored === "light" || stored === "dark") return stored;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+// Only an explicit pick from a theme toggle is stored; until then the OS setting is followed.
+// index.html reads the same key to apply the theme before first paint.
+const themeStorageKey = "reelshelf-theme-preference";
+const darkSchemeQuery = "(prefers-color-scheme: dark)";
+
+function getStoredTheme(): ReelshelfTheme | null {
+  const stored = window.localStorage.getItem(themeStorageKey);
+  return stored === "light" || stored === "dark" ? stored : null;
+}
+
+function getSystemTheme(): ReelshelfTheme {
+  return window.matchMedia(darkSchemeQuery).matches ? "dark" : "light";
+}
+
+// Sticky bars further down the page sit beneath the topbar, whose height changes with the layout.
+function trackTopbarHeight(topbar: HTMLElement | null) {
+  if (!topbar) return;
+  const observer = new ResizeObserver(() => {
+    document.documentElement.style.setProperty(
+      "--rs-topbar-height",
+      `${topbar.offsetHeight}px`,
+    );
+  });
+  observer.observe(topbar);
+  return () => observer.disconnect();
 }
 
 function RootComponent() {
-  const [theme, setTheme] = useState<ReelshelfTheme>(getInitialTheme);
+  const [theme, setTheme] = useState<ReelshelfTheme>(
+    () => getStoredTheme() ?? getSystemTheme(),
+  );
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem("reelshelf-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    const query = window.matchMedia(darkSchemeQuery);
+    const followSystem = () => {
+      if (!getStoredTheme()) setTheme(getSystemTheme());
+    };
+    query.addEventListener("change", followSystem);
+    return () => query.removeEventListener("change", followSystem);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    window.localStorage.setItem(themeStorageKey, next);
+    setTheme(next);
+  };
+
   if (pathname.startsWith("/share/") || pathname === "/sign-in") {
-    return <PublicShell theme={theme} setTheme={setTheme} />;
+    return <PublicShell theme={theme} onToggleTheme={toggleTheme} />;
   }
 
-  return <AuthenticatedShell theme={theme} setTheme={setTheme} />;
+  return <AuthenticatedShell theme={theme} onToggleTheme={toggleTheme} />;
 }
 
 function AuthenticatedShell({
   theme,
-  setTheme,
+  onToggleTheme,
 }: {
   theme: ReelshelfTheme;
-  setTheme: Dispatch<SetStateAction<ReelshelfTheme>>;
+  onToggleTheme: () => void;
 }) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const pathname = useRouterState({
@@ -71,19 +106,12 @@ function AuthenticatedShell({
   }
 
   if (!user || isError) {
-    return (
-      <LandingPage
-        theme={theme}
-        onToggleTheme={() =>
-          setTheme((value) => (value === "dark" ? "light" : "dark"))
-        }
-      />
-    );
+    return <LandingPage theme={theme} onToggleTheme={onToggleTheme} />;
   }
 
   return (
     <div className="rs-app">
-      <header className="rs-topbar">
+      <header className="rs-topbar" ref={trackTopbarHeight}>
         <Link to="/" className="rs-brand" aria-label="Reelshelf library">
           <BrandLogo />
         </Link>
@@ -149,7 +177,7 @@ function AuthenticatedShell({
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    setTheme((value) => (value === "dark" ? "light" : "dark"));
+                    onToggleTheme();
                     setProfileMenuOpen(false);
                   }}
                 >
@@ -186,10 +214,10 @@ function AuthenticatedShell({
 
 function PublicShell({
   theme,
-  setTheme,
+  onToggleTheme,
 }: {
   theme: ReelshelfTheme;
-  setTheme: Dispatch<SetStateAction<ReelshelfTheme>>;
+  onToggleTheme: () => void;
 }) {
   const nextTheme = theme === "dark" ? "light" : "dark";
 
@@ -198,7 +226,7 @@ function PublicShell({
       <button
         className="rs-icon-button rs-public-theme-toggle"
         type="button"
-        onClick={() => setTheme(nextTheme)}
+        onClick={onToggleTheme}
         aria-label={`Switch to ${nextTheme} mode`}
         title={`Switch to ${nextTheme} mode`}
       >

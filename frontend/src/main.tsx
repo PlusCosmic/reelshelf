@@ -3,6 +3,10 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/inter/wght-italic.css";
+import "@fontsource-variable/gelasio";
+import "@fontsource-variable/gelasio/wght-italic.css";
 import "./styles/reelshelf.css";
 
 // Create a new router instance

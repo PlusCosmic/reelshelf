@@ -113,8 +113,9 @@ export function formatDate(date: Date | string | undefined) {
   return shortDateFormatter.format(new Date(date));
 }
 
+// Non-breaking spaces keep the number and unit on one line when a stats line wraps.
 export function formatSize(bytes = 0) {
-  if (!bytes) return "0 MB";
+  if (!bytes) return "0\u00a0MB";
   const units = ["B", "KB", "MB", "GB", "TB"];
   let value = bytes;
   let unit = 0;
@@ -122,5 +123,5 @@ export function formatSize(bytes = 0) {
     value /= 1024;
     unit += 1;
   }
-  return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[unit]}`;
+  return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)}\u00a0${units[unit]}`;
 }

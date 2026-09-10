@@ -72,6 +72,14 @@ function LibraryRoute() {
     () => makeGameShelf(categories, categoryTotals),
     [categories, categoryTotals],
   );
+  // Every game with clips gets a filter chip, busiest first; empty games only appear on the shelf.
+  const filterGames = useMemo(
+    () =>
+      shelf
+        .filter((game) => game.clipCount > 0)
+        .sort((a, b) => b.clipCount - a.clipCount),
+    [shelf],
+  );
   const tags = (useTopTags().data ?? []).slice(0, 8);
   // The grid queries the API, so let typing settle before asking for a new page of results.
   const search = useDebouncedValue(state.query);
@@ -199,49 +207,51 @@ function LibraryRoute() {
       </section>
 
       <section className="rs-filterbar">
-        <span className="rs-eyebrow rs-filter-label">Filter</span>
-        <Chip
-          active={!state.gameId}
-          onClick={() => dispatch({ type: "setGameId", value: null })}
-        >
-          All games
-        </Chip>
-        {shelf.slice(0, 6).map((game) => (
+        <div className="rs-filter-chips">
+          <span className="rs-eyebrow rs-filter-label">Filter</span>
           <Chip
-            key={game.id}
-            active={state.gameId === game.id}
-            onClick={() =>
-              dispatch({
-                type: "setGameId",
-                value: state.gameId === game.id ? null : game.id,
-              })
-            }
+            active={!state.gameId}
+            onClick={() => dispatch({ type: "setGameId", value: null })}
           >
-            {game.name} <span className="rs-muted-count">{game.clipCount}</span>
+            All games
           </Chip>
-        ))}
-        <span className="rs-filter-divider" />
-        <Chip
-          active={!state.tag}
-          onClick={() => dispatch({ type: "setTag", value: null })}
-        >
-          All tags
-        </Chip>
-        {tags.map((tag) => (
+          {filterGames.map((game) => (
+            <Chip
+              key={game.id}
+              active={state.gameId === game.id}
+              onClick={() =>
+                dispatch({
+                  type: "setGameId",
+                  value: state.gameId === game.id ? null : game.id,
+                })
+              }
+            >
+              {game.name}{" "}
+              <span className="rs-muted-count">{game.clipCount}</span>
+            </Chip>
+          ))}
+          <span className="rs-filter-divider" />
           <Chip
-            key={tag.name}
-            active={state.tag === tag.name}
-            onClick={() =>
-              dispatch({
-                type: "setTag",
-                value: state.tag === tag.name ? null : tag.name,
-              })
-            }
+            active={!state.tag}
+            onClick={() => dispatch({ type: "setTag", value: null })}
           >
-            #{tag.name} <span className="rs-muted-count">{tag.count}</span>
+            All tags
           </Chip>
-        ))}
-        <div className="rs-filter-spacer" />
+          {tags.map((tag) => (
+            <Chip
+              key={tag.name}
+              active={state.tag === tag.name}
+              onClick={() =>
+                dispatch({
+                  type: "setTag",
+                  value: state.tag === tag.name ? null : tag.name,
+                })
+              }
+            >
+              #{tag.name} <span className="rs-muted-count">{tag.count}</span>
+            </Chip>
+          ))}
+        </div>
         <SearchBox
           value={state.query}
           onChange={(value) => dispatch({ type: "setQuery", value })}
