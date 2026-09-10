@@ -14,7 +14,7 @@ export type ClipTotals = {
 export function StatLine({ totals }: { totals: ClipTotals }) {
   return (
     <span>
-      {totals.clipCount} clips - {formatDuration(totals.durationSeconds)} -{" "}
+      {totals.clipCount}&nbsp;clips - {formatDuration(totals.durationSeconds)} -{" "}
       {formatSize(totals.storageBytes)}
     </span>
   );

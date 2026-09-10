@@ -27,10 +27,17 @@ type SelectProps = {
 };
 
 type SelectPosition = {
+  bottom?: number;
   left: number;
-  top: number;
+  maxHeight: number;
+  top?: number;
   width: number;
 };
+
+// Matches .rs-ui-select-list's max-height in reelshelf.css.
+const listMaxHeight = 320;
+const listGap = 6;
+const viewportMargin = 12;
 
 export function Select({
   "aria-label": ariaLabel,
@@ -58,10 +65,18 @@ export function Select({
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
+      const spaceBelow =
+        window.innerHeight - rect.bottom - listGap - viewportMargin;
+      const spaceAbove = rect.top - listGap - viewportMargin;
+      // Open upwards when the list won't fit below the trigger and there's more room above it.
+      const openUp = spaceBelow < listMaxHeight && spaceAbove > spaceBelow;
       setPosition({
         left: rect.left,
-        top: rect.bottom + 6,
         width: rect.width,
+        maxHeight: Math.min(listMaxHeight, openUp ? spaceAbove : spaceBelow),
+        ...(openUp
+          ? { bottom: window.innerHeight - rect.top + listGap }
+          : { top: rect.bottom + listGap }),
       });
     };
 
@@ -149,6 +164,7 @@ export function Select({
       >
         <span
           className={selectedOption ? undefined : "rs-ui-select-placeholder"}
+          title={selectedOption?.label}
         >
           {selectedOption?.label ?? placeholder}
         </span>
@@ -163,7 +179,9 @@ export function Select({
               id={`${id}-listbox`}
               role="listbox"
               style={{
+                bottom: position.bottom,
                 left: position.left,
+                maxHeight: position.maxHeight,
                 top: position.top,
                 width: position.width,
               }}

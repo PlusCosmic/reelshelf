@@ -7,6 +7,17 @@
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
         <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
         <title>Reelshelf</title>
+        <script>
+            // Apply the theme before first paint so dark-mode visitors don't get a flash of the
+            // light background. Keep the storage key in sync with routes/__root.tsx.
+            try {
+                var theme = localStorage.getItem("reelshelf-theme-preference");
+                if (theme !== "light" && theme !== "dark") {
+                    theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+                }
+                document.documentElement.dataset.theme = theme;
+            } catch (error) {}
+        </script>
     </head>
     <body>
         <div id="app"></div>

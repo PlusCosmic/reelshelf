@@ -13,6 +13,8 @@
     "generate:api-client": "openapi-generator-cli generate -i src/api-client/Reelshelf.json -g typescript-fetch -o src/api-client --global-property apiDocs=false,modelDocs=false --additional-properties=supportsES6=true,typescriptThreePlus=true,withSeparateModelsAndApi=true,apiPackage=apis,modelPackage=models"
   },
   "dependencies": {
+    "@fontsource-variable/gelasio": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
     "@tabler/icons-react": "^3.36.1",
     "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-router": "^1.159.5",

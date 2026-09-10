@@ -14,6 +14,7 @@ import {
   formatSize,
   getGameColors,
   playerUrl,
+  thumbnailUrl,
 } from "@/components/Reelshelf/reelshelf-model";
 import { useClip, useMarkAsViewed } from "@/hooks/queries";
 import { useClipsInfinite } from "@/hooks/clips.queries";
@@ -60,7 +61,14 @@ function ClipDetailRoute() {
     >
       <BackToLibrary to={`/games/${slug}`} />
 
-      <div className="rs-player">
+      {/* The clip's thumbnail sits behind the embed so loading looks like the video arriving;
+          the game gradient underneath covers a missing thumbnail. */}
+      <div
+        className="rs-player"
+        style={{
+          backgroundImage: `url("${thumbnailUrl(clip)}"), linear-gradient(135deg, var(--game-a), var(--game-b))`,
+        }}
+      >
         <iframe
           src={playerUrl(clip)}
           loading="lazy"
