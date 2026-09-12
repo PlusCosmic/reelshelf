@@ -131,7 +131,6 @@ export function ClipGrid({
               params={{ slug: clip.categorySlug, clipId: clip.clipId }}
             >
               <span className="rs-display rs-row-index">
-                {String(index + 1).padStart(2, "0")}
               </span>
               <ClipThumb clip={clip} category={category} compact />
               <span>
