@@ -1,4 +1,5 @@
 import type { GameCategoryResponse } from "@/api-client";
+import { LoadMore } from "@/components/ui";
 import { useClipsInfinite, type ClipsFilters } from "@/hooks/clips.queries";
 import { ClipGrid } from "./primitives/ClipViews";
 
@@ -17,36 +18,18 @@ export function PagedClipGrid({
   variant?: "poster" | "grid" | "filmstrip";
   enabled?: boolean;
 }) {
-  const {
-    data,
-    isLoading,
-    isError,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-  } = useClipsInfinite(filters, enabled);
+  const query = useClipsInfinite(filters, enabled);
+  const clips = query.data?.pages.flatMap((page) => page.clips) ?? [];
 
-  if (isLoading) return <div className="rs-empty">Loading clips…</div>;
-  if (isError)
+  if (query.isLoading) return <div className="rs-empty">Loading clips…</div>;
+  // A page that fails partway through keeps the clips already on screen; LoadMore offers the retry.
+  if (query.isError && clips.length === 0)
     return <div className="rs-empty">Clips could not be loaded.</div>;
-
-  const clips = data?.pages.flatMap((page) => page.clips) ?? [];
 
   return (
     <>
       <ClipGrid clips={clips} categories={categories} variant={variant} />
-      {hasNextPage ? (
-        <div className="rs-load-more">
-          <button
-            className="rs-chip"
-            type="button"
-            disabled={isFetchingNextPage}
-            onClick={() => fetchNextPage()}
-          >
-            {isFetchingNextPage ? "Loading…" : "Load more clips"}
-          </button>
-        </div>
-      ) : null}
+      <LoadMore label="clips" query={query} />
     </>
   );
 }

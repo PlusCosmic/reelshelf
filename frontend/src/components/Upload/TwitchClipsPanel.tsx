@@ -17,6 +17,7 @@ import {
   Checkbox,
   Field,
   Input,
+  LoadMore,
   Select,
   type SelectOption,
 } from "@/components/ui";
@@ -51,7 +52,7 @@ export function TwitchClipsPanel({ notice }: { notice: LinkNotice | null }) {
         </p>
       ) : null}
 
-      {controller.clipsQuery.isError ? (
+      {controller.clipsQuery.isError && !controller.clipsQuery.data ? (
         <div className="rs-upload-error" role="alert">
           Your Twitch clips could not be loaded.{" "}
           <button
@@ -243,18 +244,7 @@ function TwitchClipList({
         </div>
       ) : null}
 
-      {controller.clipsQuery.hasNextPage ? (
-        <div className="rs-twitch-more">
-          <Button
-            disabled={controller.clipsQuery.isFetchingNextPage}
-            onClick={() => void controller.clipsQuery.fetchNextPage()}
-          >
-            {controller.clipsQuery.isFetchingNextPage
-              ? "Loading…"
-              : "Load more clips"}
-          </Button>
-        </div>
-      ) : null}
+      <LoadMore label="clips" query={controller.clipsQuery} />
     </>
   );
 }

@@ -121,7 +121,7 @@ export function ClipGrid({
   if (variant === "filmstrip") {
     return (
       <div className="rs-filmstrip">
-        {clips.map((clip, index) => {
+        {clips.map((clip) => {
           const category = categoryForClip(clip, categories);
           return (
             <Link
@@ -130,9 +130,7 @@ export function ClipGrid({
               to="/games/$slug/$clipId"
               params={{ slug: clip.categorySlug, clipId: clip.clipId }}
             >
-              <span className="rs-display rs-row-index">
-                {String(index + 1).padStart(2, "0")}
-              </span>
+              <span className="rs-display rs-row-index"></span>
               <ClipThumb clip={clip} category={category} compact />
               <span>
                 <strong className="rs-row-title">{clip.video.title}</strong>
