@@ -2819,15 +2819,25 @@ a {
   text-align: center;
 }
 
+/* Sentinel at the end of a paged list: it loads the next page as it nears the viewport, so this is
+   usually just a spinner. The button only appears after a failed page or without IntersectionObserver. */
 .rs-load-more {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 12px;
+  min-height: 24px;
   padding: 24px 0 4px;
 }
 
 .rs-load-more button:disabled {
   cursor: default;
   opacity: 0.6;
+}
+
+.rs-load-more-error {
+  color: var(--fg-soft);
+  font-size: 13px;
 }
 
 .rs-split {
@@ -3074,12 +3084,6 @@ a {
 .rs-twitch-card-status small {
   width: 100%;
   color: var(--danger, #c2410c);
-}
-
-.rs-twitch-more {
-  display: flex;
-  justify-content: center;
-  padding-top: 8px;
 }
 
 @media (max-width: 900px) {
