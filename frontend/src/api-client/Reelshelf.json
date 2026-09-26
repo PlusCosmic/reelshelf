@@ -202,6 +202,7 @@
             "name": "sortOrder",
             "in": "query",
             "schema": {
+              "default": 0,
               "$ref": "#/components/schemas/ClipSortOrder"
             }
           },
@@ -2202,8 +2203,7 @@
         }
       },
       "ClipSortOrder": {
-        "type": "integer",
-        "default": 0
+        "type": "integer"
       },
       "CreateClipResponse": {
         "required": [
