@@ -7,7 +7,9 @@ import {
   cachedShare,
   confidenceTone,
   countByFilter,
+  formatAccuracy,
   formatConfidence,
+  labelVerdict,
   matchesFilter,
   needsReview,
   reviewTone,
@@ -50,7 +52,10 @@ function run(overrides: Partial<LegendDetectionRun> = {}): LegendDetectionRun {
   };
 }
 
-function clip(latestRun: LegendDetectionRun | null): LegendDetectionReviewClip {
+function clip(
+  latestRun: LegendDetectionRun | null,
+  label: LegendDetectionReviewClip["label"] = null,
+): LegendDetectionReviewClip {
   return {
     clipId: "clip",
     title: "Clip",
@@ -60,6 +65,7 @@ function clip(latestRun: LegendDetectionRun | null): LegendDetectionReviewClip {
     frameUrls: [],
     latestRun,
     runCount: latestRun ? 1 : 0,
+    label,
   };
 }
 
@@ -125,11 +131,73 @@ describe("filters", () => {
       failed: 1,
       active: 1,
       "not-run": 1,
+      unlabelled: 2,
+      wrong: 0,
     });
+  });
+
+  it("finds labelled clips the latest run got wrong", () => {
+    const labelled = clip(run(), {
+      playerLegend: "Horizon",
+      teammateLegends: ["Wraith"],
+      labelledAt: new Date(),
+    });
+    expect(matchesFilter(labelled, "wrong")).toBe(true);
+    expect(matchesFilter(labelled, "unlabelled")).toBe(false);
   });
 
   it("does not treat an in-progress run as needing review", () => {
     expect(matchesFilter(clips[3], "needs-review")).toBe(false);
+  });
+});
+
+describe("labelVerdict", () => {
+  const label = (playerLegend: string | null, teammateLegends: string[]) => ({
+    playerLegend,
+    teammateLegends,
+    labelledAt: new Date(),
+  });
+
+  it("matches the owner's legend exactly and teammates in any order", () => {
+    const squad = run({
+      teammates: [
+        {
+          slot: 1,
+          name: null,
+          legend: "Wraith",
+          nameConfidence: 0,
+          legendConfidence: 0.9,
+        },
+        {
+          slot: 2,
+          name: null,
+          legend: "Gibraltar",
+          nameConfidence: 0,
+          legendConfidence: 0.9,
+        },
+      ],
+    });
+    expect(labelVerdict(squad, label("Horizon", ["Gibraltar", "Wraith"]))).toBe(
+      "correct",
+    );
+    expect(labelVerdict(squad, label("Ash", ["Gibraltar", "Wraith"]))).toBe(
+      "wrong",
+    );
+    expect(labelVerdict(squad, label("Horizon", ["Wraith"]))).toBe("wrong");
+  });
+
+  it("treats an unidentifiable owner and no teammates as a match for an empty result", () => {
+    expect(
+      labelVerdict(run({ playerLegend: null, teammates: [] }), label(null, [])),
+    ).toBe("correct");
+  });
+
+  it("has no verdict without a label or a succeeded run", () => {
+    expect(labelVerdict(run(), null)).toBeNull();
+    expect(
+      labelVerdict(run({ status: "failed" }), label("Horizon", [])),
+    ).toBeNull();
+    expect(labelVerdict(null, label("Horizon", []))).toBeNull();
   });
 });
 
@@ -163,6 +231,11 @@ describe("formatting", () => {
     expect(confidenceTone(0.95)).toBe("accent");
     expect(confidenceTone(0.7)).toBe("neutral");
     expect(confidenceTone(0.3)).toBe("danger");
+  });
+
+  it("formats accuracy only once something is labelled", () => {
+    expect(formatAccuracy(46, 50)).toBe("92%");
+    expect(formatAccuracy(0, 0)).toBe("–");
   });
 
   it("reports the cached share of input tokens", () => {
