@@ -54,7 +54,7 @@
 - `.github/workflows/ci.yml` runs on every PR and on pushes to `main`: `Frontend` (`bun run check`), `API` (`dotnet build` + `dotnet test` on `Reelshelf.sln`), and `API client drift` (`bun run check:api-client-drift`). All three must pass locally before opening a PR.
 - `main` is protected by the "Protect main" repository ruleset: no direct pushes, force pushes, or deletions; changes land only via PRs with the three CI checks green. Repository admins can bypass only from the PR merge box, and GitHub records every bypass.
 - `.github/workflows/publish-app-images.yml` builds GHCR images on `main` changes touching `api/`, `frontend/`, `migrations/`, `Dockerfile`, `package.json`, or `bun.lock`.
-- The workflow also opens an infrastructure PR bumping image tags in `PlusCosmic/infrastructure`; migration-only changes build the migrations image, and app-impacting changes build the app image.
+- The workflow also opens an infrastructure PR bumping image tags in `PlusCosmic/infrastructure`, closing any older open bump PR. It decides what to build by diffing against the commits of the images currently deployed in that repo's `services/clips.yml`, not the previous push, so a superseded bump PR can't drop a migration; migration changes build the migrations image, and app-impacting changes build the app image. Runs are serialized.
 
 ## Agent skills
 
