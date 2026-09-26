@@ -20,6 +20,13 @@ import {
   LegendDetectionRunToJSON,
   LegendDetectionRunToJSONTyped,
 } from "./LegendDetectionRun";
+import type { LegendDetectionLabel } from "./LegendDetectionLabel";
+import {
+  LegendDetectionLabelFromJSON,
+  LegendDetectionLabelFromJSONTyped,
+  LegendDetectionLabelToJSON,
+  LegendDetectionLabelToJSONTyped,
+} from "./LegendDetectionLabel";
 
 /**
  *
@@ -75,6 +82,12 @@ export interface LegendDetectionReviewClip {
    * @memberof LegendDetectionReviewClip
    */
   runCount: number;
+  /**
+   *
+   * @type {LegendDetectionLabel}
+   * @memberof LegendDetectionReviewClip
+   */
+  label: LegendDetectionLabel | null;
 }
 
 /**
@@ -92,6 +105,7 @@ export function instanceOfLegendDetectionReviewClip(
   if (!("frameUrls" in value) || value["frameUrls"] === undefined) return false;
   if (!("latestRun" in value) || value["latestRun"] === undefined) return false;
   if (!("runCount" in value) || value["runCount"] === undefined) return false;
+  if (!("label" in value) || value["label"] === undefined) return false;
   return true;
 }
 
@@ -117,6 +131,7 @@ export function LegendDetectionReviewClipFromJSONTyped(
     frameUrls: json["frame_urls"],
     latestRun: LegendDetectionRunFromJSON(json["latest_run"]),
     runCount: json["run_count"],
+    label: LegendDetectionLabelFromJSON(json["label"]),
   };
 }
 
@@ -143,5 +158,6 @@ export function LegendDetectionReviewClipToJSONTyped(
     frame_urls: value["frameUrls"],
     latest_run: LegendDetectionRunToJSON(value["latestRun"]),
     run_count: value["runCount"],
+    label: LegendDetectionLabelToJSON(value["label"]),
   };
 }

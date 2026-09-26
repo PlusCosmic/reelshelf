@@ -1,5 +1,6 @@
 import type {
   DetectedTeammate,
+  LegendDetectionLabel,
   LegendDetectionReviewClip,
   LegendDetectionRun,
   LegendDetectionUsage,
@@ -8,6 +9,7 @@ import { createLegendDetectionApi } from "./apiClients";
 
 export type {
   DetectedTeammate,
+  LegendDetectionLabel,
   LegendDetectionReviewClip,
   LegendDetectionRun,
   LegendDetectionUsage,
@@ -53,6 +55,27 @@ export async function archiveLegendRuns(): Promise<number> {
   const response =
     await createLegendDetectionApi().archiveLegendDetectionRuns();
   return response.archived;
+}
+
+/** The legends on the reference sheet, spelled as labels and results use them. */
+export async function fetchLegendNames(): Promise<string[]> {
+  return createLegendDetectionApi().getLegendDetectionLegends();
+}
+
+/** Records the legends actually in a clip; a null player legend means it can't be identified. */
+export async function setLegendLabel(
+  clipId: string,
+  playerLegend: string | null,
+  teammateLegends: string[],
+): Promise<void> {
+  await createLegendDetectionApi().setLegendDetectionLabel({
+    clipId,
+    setLegendDetectionLabelRequest: { playerLegend, teammateLegends },
+  });
+}
+
+export async function deleteLegendLabel(clipId: string): Promise<void> {
+  await createLegendDetectionApi().deleteLegendDetectionLabel({ clipId });
 }
 
 export function isRunActive(run: LegendDetectionRun | null | undefined) {

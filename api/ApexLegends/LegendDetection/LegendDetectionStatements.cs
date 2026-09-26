@@ -193,15 +193,45 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Run counts and token totals per provider, model and prompt version, with each archived batch kept apart
-    /// from the current runs. Current runs come first; archived groups that never ran are left out.
+    /// Run counts, token totals and accuracy per provider, model and prompt version, with each archived batch
+    /// kept apart from the current runs. Current runs come first; archived groups that never ran are left out.
+    /// Accuracy covers succeeded runs on labelled clips: the owner's legend must match exactly, and teammates as
+    /// an unordered set. A confident mistake is any wrong legend reported at <paramref name="confidentAt"/> or above.
     /// </summary>
-    public async Task<List<UsageRow>> GetUsageAsync()
+    public async Task<List<UsageRow>> GetUsageAsync(double confidentAt)
     {
         const string sql = """
+            WITH scored AS (
+                SELECT run.*,
+                       -- A run has no prompt version until it reaches the model, so queued runs and runs that
+                       -- failed before then count towards their batch's latest version instead of a row of their own.
+                       COALESCE(run.prompt_version, FIRST_VALUE(run.prompt_version) OVER (
+                           PARTITION BY run.provider, run.model, run.archived_at
+                           ORDER BY run.prompt_version IS NULL, run.created_at DESC)) AS batch_prompt_version,
+                       run.status = 'succeeded' AND label.clip_id IS NOT NULL AS labelled,
+                       run.player_legend IS NOT DISTINCT FROM label.player_legend AS player_correct,
+                       ARRAY(SELECT teammate ->> 'legend'
+                             FROM jsonb_array_elements(COALESCE(run.teammates, '[]'::jsonb)) teammate
+                             WHERE teammate ->> 'legend' IS NOT NULL
+                             ORDER BY 1)
+                           = ARRAY(SELECT legend FROM unnest(label.teammate_legends) legend ORDER BY 1)
+                           AS teammates_correct,
+                       (run.player_legend IS DISTINCT FROM label.player_legend
+                            AND run.player_legend IS NOT NULL
+                            AND run.player_legend_confidence >= @ConfidentAt)
+                           OR EXISTS (
+                               SELECT 1
+                               FROM jsonb_array_elements(COALESCE(run.teammates, '[]'::jsonb)) teammate
+                               WHERE teammate ->> 'legend' IS NOT NULL
+                                 AND (teammate ->> 'legend_confidence')::float8 >= @ConfidentAt
+                                 AND NOT (teammate ->> 'legend' = ANY(label.teammate_legends)))
+                           AS confident_mistake
+                FROM legend_detection_run run
+                LEFT JOIN legend_detection_label label ON label.clip_id = run.clip_id
+            )
             SELECT provider,
                    model,
-                   prompt_version,
+                   batch_prompt_version AS prompt_version,
                    COUNT(*) FILTER (WHERE status = 'succeeded') AS succeeded,
                    COUNT(*) FILTER (WHERE status = 'failed') AS failed,
                    COUNT(*) FILTER (WHERE status IN ('pending', 'running') AND archived_at IS NULL) AS queued,
@@ -209,13 +239,65 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                    COALESCE(SUM(cached_input_tokens), 0) AS cached_input_tokens,
                    COALESCE(SUM(output_tokens), 0) AS output_tokens,
                    AVG(duration_ms)::int AS average_duration_ms,
+                   COUNT(*) FILTER (WHERE labelled) AS labelled,
+                   COUNT(*) FILTER (WHERE labelled AND player_correct) AS player_correct,
+                   COUNT(*) FILTER (WHERE labelled AND teammates_correct) AS teammates_correct,
+                   COUNT(*) FILTER (WHERE labelled AND confident_mistake) AS confident_mistakes,
                    archived_at
-            FROM legend_detection_run
-            GROUP BY provider, model, prompt_version, archived_at
+            FROM scored
+            GROUP BY provider, model, batch_prompt_version, archived_at
             HAVING archived_at IS NULL OR COUNT(*) FILTER (WHERE status IN ('succeeded', 'failed')) > 0
             ORDER BY archived_at DESC NULLS FIRST, MAX(created_at) DESC
             """;
-        return (await connection.QueryAsync<UsageRow>(sql)).ToList();
+        return (await connection.QueryAsync<UsageRow>(sql, new { ConfidentAt = confidentAt })).ToList();
+    }
+
+    public async Task SetLabelAsync(Guid clipId, string? playerLegend, string[] teammateLegends, Guid labelledBy)
+    {
+        const string sql = """
+            INSERT INTO legend_detection_label (clip_id, player_legend, teammate_legends, labelled_by)
+            VALUES (@ClipId, @PlayerLegend, @TeammateLegends, @LabelledBy)
+            ON CONFLICT (clip_id) DO UPDATE
+            SET player_legend = EXCLUDED.player_legend,
+                teammate_legends = EXCLUDED.teammate_legends,
+                labelled_by = EXCLUDED.labelled_by,
+                labelled_at = now()
+            """;
+        await connection.ExecuteAsync(sql, new
+        {
+            ClipId = clipId,
+            PlayerLegend = playerLegend,
+            TeammateLegends = teammateLegends,
+            LabelledBy = labelledBy
+        });
+    }
+
+    public async Task DeleteLabelAsync(Guid clipId)
+    {
+        await connection.ExecuteAsync("DELETE FROM legend_detection_label WHERE clip_id = @ClipId", new { ClipId = clipId });
+    }
+
+    public async Task<List<LabelRow>> GetLabelsAsync(List<Guid> clipIds)
+    {
+        if (clipIds.Count == 0)
+        {
+            return [];
+        }
+
+        const string sql = """
+            SELECT clip_id, player_legend, teammate_legends, labelled_at
+            FROM legend_detection_label
+            WHERE clip_id = ANY(@ClipIds)
+            """;
+        return (await connection.QueryAsync<LabelRow>(sql, new { ClipIds = clipIds })).ToList();
+    }
+
+    public class LabelRow
+    {
+        public Guid ClipId { get; set; }
+        public string? PlayerLegend { get; set; }
+        public string[] TeammateLegends { get; set; } = [];
+        public DateTimeOffset LabelledAt { get; set; }
     }
 
     public class ReviewClipRow
@@ -244,6 +326,10 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public long CachedInputTokens { get; set; }
         public long OutputTokens { get; set; }
         public int? AverageDurationMs { get; set; }
+        public long Labelled { get; set; }
+        public long PlayerCorrect { get; set; }
+        public long TeammatesCorrect { get; set; }
+        public long ConfidentMistakes { get; set; }
         public DateTimeOffset? ArchivedAt { get; set; }
     }
 

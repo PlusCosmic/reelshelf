@@ -22,6 +22,9 @@ public class LegendDetectionService(
 
     private const string ApexLegendsSlug = "apex-legends";
 
+    /// <summary>A wrong legend reported at or above this confidence counts as a confident mistake.</summary>
+    private const double ConfidentAt = 0.8;
+
     /// <summary>Retry a failed attempt after this long, so a brief provider or CDN outage is not retried at once.</summary>
     private static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
 
@@ -101,9 +104,11 @@ public class LegendDetectionService(
         }
 
         List<LegendDetectionStatements.ReviewClipRow> clips = await statements.GetClipsForReviewAsync(apex.Id, ownerId);
+        List<Guid> clipIds = clips.Select(clip => clip.Id).ToList();
         Dictionary<Guid, LegendDetectionStatements.LatestRunRow> latestRuns =
-            (await statements.GetLatestRunsAsync(clips.Select(clip => clip.Id).ToList()))
-            .ToDictionary(run => run.ClipId);
+            (await statements.GetLatestRunsAsync(clipIds)).ToDictionary(run => run.ClipId);
+        Dictionary<Guid, LegendDetectionStatements.LabelRow> labels =
+            (await statements.GetLabelsAsync(clipIds)).ToDictionary(label => label.ClipId);
 
         string cdnBaseUrl = CdnBaseUrl();
         string libraryId = configuration["BunnyLibraryId"]
@@ -112,6 +117,7 @@ public class LegendDetectionService(
         return clips.Select(clip =>
         {
             latestRuns.TryGetValue(clip.Id, out LegendDetectionStatements.LatestRunRow? latest);
+            labels.TryGetValue(clip.Id, out LegendDetectionStatements.LabelRow? label);
             return new LegendDetectionReviewClip(
                 clip.Id,
                 clip.Title ?? "Untitled",
@@ -120,13 +126,44 @@ public class LegendDetectionService(
                 $"https://player.mediadelivery.net/embed/{libraryId}/{clip.VideoId}?autoplay=false",
                 ThumbnailUrls(cdnBaseUrl, clip.VideoId),
                 latest is null ? null : LegendDetectionRun.From(latest),
-                (int)(latest?.RunCount ?? 0));
+                (int)(latest?.RunCount ?? 0),
+                label is null
+                    ? null
+                    : new LegendDetectionLabel(label.PlayerLegend, label.TeammateLegends.ToList(), label.LabelledAt));
         }).ToList();
+    }
+
+    /// <summary>
+    /// Records the legends actually in a clip. Names are matched to the reference sheet's spelling; a null player
+    /// legend means the owner's legend can't be identified from the clip.
+    /// </summary>
+    public async Task SetLabelAsync(Guid clipId, string? playerLegend, List<string> teammateLegends, Guid labelledBy)
+    {
+        if (teammateLegends.Count > 2)
+        {
+            throw new BadRequestException("A squad has at most two teammates");
+        }
+
+        string? player = playerLegend is null ? null : CanonicalLegend(playerLegend);
+        string[] teammates = teammateLegends.Select(CanonicalLegend).ToArray();
+        _ = await clipsStatements.GetClipById(clipId) ?? throw new NotFoundException("Clip", clipId);
+        await statements.SetLabelAsync(clipId, player, teammates, labelledBy);
+    }
+
+    public async Task DeleteLabelAsync(Guid clipId)
+    {
+        await statements.DeleteLabelAsync(clipId);
+    }
+
+    private static string CanonicalLegend(string legend)
+    {
+        return ApexLegendNames.Canonicalize(legend)
+               ?? throw new BadRequestException($"'{legend}' is not a legend on the reference sheet");
     }
 
     public async Task<List<LegendDetectionUsage>> GetUsageAsync()
     {
-        return (await statements.GetUsageAsync())
+        return (await statements.GetUsageAsync(ConfidentAt))
             .Select(row => new LegendDetectionUsage(
                 row.Provider,
                 row.Model,
@@ -138,6 +175,10 @@ public class LegendDetectionService(
                 row.CachedInputTokens,
                 row.OutputTokens,
                 row.AverageDurationMs,
+                (int)row.Labelled,
+                (int)row.PlayerCorrect,
+                (int)row.TeammatesCorrect,
+                (int)row.ConfidentMistakes,
                 row.ArchivedAt))
             .ToList();
     }
