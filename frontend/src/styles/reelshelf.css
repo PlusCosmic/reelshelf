@@ -3364,3 +3364,363 @@ a {
     font-size: 16px;
   }
 }
+
+/* Legend detection review (admin): a clip list beside the frames, player and detected result. */
+.rs-legend-page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 32px 80px;
+}
+
+.rs-legend-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.rs-legend-backfill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rs-legend-error {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.rs-legend-usage {
+  overflow-x: auto;
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-soft);
+}
+
+.rs-legend-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-legend-table th,
+.rs-legend-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.rs-legend-table tr:last-child > * {
+  border-bottom: 0;
+}
+
+.rs-legend-table thead th {
+  color: var(--fg-soft);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.rs-legend-filters {
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.rs-legend-hint {
+  margin-left: auto;
+}
+
+.rs-legend-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.rs-legend-list {
+  position: sticky;
+  top: calc(var(--rs-topbar-height, 0px) + 16px);
+  display: grid;
+  gap: 4px;
+  max-height: calc(100vh - var(--rs-topbar-height, 0px) - 32px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-legend-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  padding: 6px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rs-legend-row:hover {
+  background: var(--bg-soft);
+}
+
+.rs-legend-row.selected {
+  border-color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 8%, var(--bg));
+}
+
+.rs-legend-row-thumb {
+  width: 64px;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  background: var(--bg-soft);
+  object-fit: cover;
+}
+
+.rs-legend-row-text {
+  display: grid;
+  min-width: 0;
+}
+
+.rs-legend-row-text strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-legend-detail {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.rs-legend-detail .rs-eyebrow {
+  margin: 8px 0 0;
+}
+
+.rs-legend-detail-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.rs-legend-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.rs-legend-detail-heading .rs-meta {
+  display: flex;
+  gap: 12px;
+}
+
+.rs-legend-open-clip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Six frames in one row: the same view the model gets, big enough to read the squad HUD when opened. */
+.rs-legend-frames {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.rs-legend-frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  background: var(--bg-soft);
+}
+
+.rs-legend-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rs-legend-frame span {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-width: 18px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.rs-legend-frame.is-missing img {
+  visibility: hidden;
+}
+
+.rs-legend-frame.is-missing::after {
+  content: "Missing";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--fg-soft);
+  font-size: 12px;
+}
+
+.rs-legend-result {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  padding: 16px;
+}
+
+.rs-legend-result-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rs-legend-result-heading .rs-eyebrow {
+  margin: 0 4px 0 0;
+}
+
+.rs-legend-result .rs-legend-table th[scope="row"] {
+  color: var(--fg-soft);
+  font-weight: 600;
+}
+
+.rs-legend-detected {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  white-space: pre;
+}
+
+.rs-legend-run-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.rs-legend-run-meta dt {
+  color: var(--fg-soft);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.rs-legend-run-meta dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-legend-raw summary {
+  color: var(--fg-soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rs-legend-raw pre {
+  overflow-x: auto;
+  margin: 8px 0 0;
+  border-radius: 6px;
+  background: var(--bg);
+  padding: 12px;
+  font-size: 12px;
+}
+
+.rs-legend-rerun {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rs-legend-rerun .rs-ui-input {
+  width: min(280px, 100%);
+}
+
+.rs-legend-runs {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-legend-run {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  padding: 6px 10px;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rs-legend-run.selected {
+  border-color: var(--accent);
+}
+
+.rs-legend-run-legend {
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .rs-legend-page {
+    padding: 20px 16px 60px;
+  }
+
+  .rs-legend-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .rs-legend-list {
+    position: static;
+    max-height: 40vh;
+  }
+
+  .rs-legend-frames {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .rs-legend-hint {
+    display: none;
+  }
+
+  .rs-legend-run {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}

@@ -11,7 +11,8 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     private const string RunColumns = """
         id, clip_id, trigger, provider, model, prompt_version, status, attempts, frame_count, hud_detected,
         player_legend, player_legend_confidence, player_name, player_name_confidence, teammates::text AS teammates,
-        raw_response, input_tokens, output_tokens, duration_ms, error, created_at, started_at, completed_at
+        raw_response, input_tokens, cached_input_tokens, output_tokens, duration_ms, error, created_at, started_at,
+        completed_at
         """;
 
     /// <summary>Queues a clip's automatic run. Returns false when the clip already has one.</summary>
@@ -94,6 +95,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                 teammates = @Teammates::jsonb,
                 raw_response = @RawResponse,
                 input_tokens = @InputTokens,
+                cached_input_tokens = @CachedInputTokens,
                 output_tokens = @OutputTokens,
                 duration_ms = @DurationMs,
                 error = NULL,
@@ -114,6 +116,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
             Teammates = result.TeammatesJson(),
             recognition.RawResponse,
             InputTokens = (int?)recognition.InputTokens,
+            CachedInputTokens = (int?)recognition.CachedInputTokens,
             OutputTokens = (int?)recognition.OutputTokens,
             DurationMs = durationMs
         });
@@ -152,6 +155,84 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         return (await connection.QueryAsync<LegendDetectionRunRow>(sql, new { ClipId = clipId })).ToList();
     }
 
+    public async Task<List<ReviewClipRow>> GetClipsForReviewAsync(Guid gameCategoryId, Guid ownerId)
+    {
+        const string sql = """
+            SELECT id, video_id, title, length, created_at
+            FROM clip
+            WHERE game_category_id = @GameCategoryId AND owner_id = @OwnerId
+            ORDER BY created_at DESC
+            """;
+        return (await connection.QueryAsync<ReviewClipRow>(sql,
+            new { GameCategoryId = gameCategoryId, OwnerId = ownerId })).ToList();
+    }
+
+    /// <summary>The most recent run for each clip, with how many runs the clip has had in total.</summary>
+    public async Task<List<LatestRunRow>> GetLatestRunsAsync(List<Guid> clipIds)
+    {
+        if (clipIds.Count == 0)
+        {
+            return [];
+        }
+
+        string sql = $"""
+            SELECT DISTINCT ON (clip_id) {RunColumns}, COUNT(*) OVER (PARTITION BY clip_id) AS run_count
+            FROM legend_detection_run
+            WHERE clip_id = ANY(@ClipIds)
+            ORDER BY clip_id, created_at DESC
+            """;
+        return (await connection.QueryAsync<LatestRunRow>(sql, new { ClipIds = clipIds })).ToList();
+    }
+
+    /// <summary>Run counts and token totals per provider, model and prompt version, newest first.</summary>
+    public async Task<List<UsageRow>> GetUsageAsync()
+    {
+        const string sql = """
+            SELECT provider,
+                   model,
+                   prompt_version,
+                   COUNT(*) FILTER (WHERE status = 'succeeded') AS succeeded,
+                   COUNT(*) FILTER (WHERE status = 'failed') AS failed,
+                   COUNT(*) FILTER (WHERE status IN ('pending', 'running')) AS queued,
+                   COALESCE(SUM(input_tokens), 0) AS input_tokens,
+                   COALESCE(SUM(cached_input_tokens), 0) AS cached_input_tokens,
+                   COALESCE(SUM(output_tokens), 0) AS output_tokens,
+                   AVG(duration_ms)::int AS average_duration_ms
+            FROM legend_detection_run
+            GROUP BY provider, model, prompt_version
+            ORDER BY MAX(created_at) DESC
+            """;
+        return (await connection.QueryAsync<UsageRow>(sql)).ToList();
+    }
+
+    public class ReviewClipRow
+    {
+        public Guid Id { get; set; }
+        public Guid VideoId { get; set; }
+        public string? Title { get; set; }
+        public int? Length { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+    }
+
+    public class LatestRunRow : LegendDetectionRunRow
+    {
+        public long RunCount { get; set; }
+    }
+
+    public class UsageRow
+    {
+        public string Provider { get; set; } = "";
+        public string Model { get; set; } = "";
+        public string? PromptVersion { get; set; }
+        public long Succeeded { get; set; }
+        public long Failed { get; set; }
+        public long Queued { get; set; }
+        public long InputTokens { get; set; }
+        public long CachedInputTokens { get; set; }
+        public long OutputTokens { get; set; }
+        public int? AverageDurationMs { get; set; }
+    }
+
     public class ClaimedRunRow
     {
         public Guid Id { get; set; }
@@ -181,6 +262,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public string? Teammates { get; set; }
         public string? RawResponse { get; set; }
         public int? InputTokens { get; set; }
+        public int? CachedInputTokens { get; set; }
         public int? OutputTokens { get; set; }
         public int? DurationMs { get; set; }
         public string? Error { get; set; }

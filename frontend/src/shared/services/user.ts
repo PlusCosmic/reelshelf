@@ -13,6 +13,7 @@ export interface CurrentUser {
   email: string | null;
   suggestedEmail: string | null;
   needsOnboarding: boolean;
+  isAdmin: boolean;
 }
 
 export async function fetchMe(): Promise<CurrentUser | null> {
@@ -50,5 +51,6 @@ function fromCurrentUserResponse(user: CurrentUserResponse): CurrentUser {
     email: user.email ?? null,
     suggestedEmail: user.suggestedEmail ?? null,
     needsOnboarding: user.needsOnboarding,
+    isAdmin: user.isAdmin,
   };
 }

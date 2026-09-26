@@ -11,9 +11,23 @@ public static class LegendDetectionEndpoints
             .RequireAuthorization()
             .RequirePermission(Permissions.AdminUsers);
 
+        group.MapGet("clips", GetClipsForReview).WithName("GetLegendDetectionReviewClips");
+        group.MapGet("usage", GetUsage).WithName("GetLegendDetectionUsage");
         group.MapPost("backfill", Backfill).WithName("BackfillLegendDetection");
         group.MapPost("clips/{clipId:guid}/runs", QueueRun).WithName("QueueLegendDetectionRun");
         group.MapGet("clips/{clipId:guid}/runs", GetRuns).WithName("GetLegendDetectionRuns");
+    }
+
+    public static async Task<List<LegendDetectionReviewClip>> GetClipsForReview(
+        AuthenticatedUser user,
+        LegendDetectionService service)
+    {
+        return await service.GetClipsForReviewAsync(user.Id);
+    }
+
+    public static async Task<List<LegendDetectionUsage>> GetUsage(LegendDetectionService service)
+    {
+        return await service.GetUsageAsync();
     }
 
     public static async Task<LegendDetectionBackfillResponse> Backfill(LegendDetectionService service)
@@ -40,6 +54,30 @@ public sealed record QueueLegendDetectionRunRequest(string? Provider, string? Mo
 
 public sealed record LegendDetectionBackfillResponse(int Queued);
 
+/// <summary>A clip to check a detection against: the frames the model is sent and a player for the full clip.</summary>
+public sealed record LegendDetectionReviewClip(
+    Guid ClipId,
+    string Title,
+    DateTimeOffset CreatedAt,
+    int? LengthSeconds,
+    string EmbedUrl,
+    List<string> FrameUrls,
+    LegendDetectionRun? LatestRun,
+    int RunCount);
+
+/// <summary>Totals for one provider, model and prompt version. Cached input tokens are part of the input total.</summary>
+public sealed record LegendDetectionUsage(
+    string Provider,
+    string Model,
+    string? PromptVersion,
+    int Succeeded,
+    int Failed,
+    int Queued,
+    long InputTokens,
+    long CachedInputTokens,
+    long OutputTokens,
+    int? AverageDurationMs);
+
 public sealed record LegendDetectionRun(
     Guid Id,
     Guid ClipId,
@@ -58,6 +96,7 @@ public sealed record LegendDetectionRun(
     List<DetectedTeammate> Teammates,
     string? RawResponse,
     int? InputTokens,
+    int? CachedInputTokens,
     int? OutputTokens,
     int? DurationMs,
     string? Error,
@@ -84,6 +123,7 @@ public sealed record LegendDetectionRun(
             row.Teammates is null ? [] : LegendDetectionResult.ParseTeammates(row.Teammates),
             row.RawResponse,
             row.InputTokens,
+            row.CachedInputTokens,
             row.OutputTokens,
             row.DurationMs,
             row.Error,

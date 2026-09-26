@@ -15,14 +15,20 @@
 import * as runtime from "../runtime";
 import type {
   LegendDetectionBackfillResponse,
+  LegendDetectionReviewClip,
   LegendDetectionRun,
+  LegendDetectionUsage,
   QueueLegendDetectionRunRequest,
 } from "../models/index";
 import {
   LegendDetectionBackfillResponseFromJSON,
   LegendDetectionBackfillResponseToJSON,
+  LegendDetectionReviewClipFromJSON,
+  LegendDetectionReviewClipToJSON,
   LegendDetectionRunFromJSON,
   LegendDetectionRunToJSON,
+  LegendDetectionUsageFromJSON,
+  LegendDetectionUsageToJSON,
   QueueLegendDetectionRunRequestFromJSON,
   QueueLegendDetectionRunRequestToJSON,
 } from "../models/index";
@@ -77,6 +83,41 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
 
   /**
    */
+  async getLegendDetectionReviewClipsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LegendDetectionReviewClip>>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/clips`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LegendDetectionReviewClipFromJSON),
+    );
+  }
+
+  /**
+   */
+  async getLegendDetectionReviewClips(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LegendDetectionReviewClip>> {
+    const response = await this.getLegendDetectionReviewClipsRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
   async getLegendDetectionRunsRaw(
     requestParameters: GetLegendDetectionRunsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -123,6 +164,41 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
       requestParameters,
       initOverrides,
     );
+    return await response.value();
+  }
+
+  /**
+   */
+  async getLegendDetectionUsageRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LegendDetectionUsage>>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/usage`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LegendDetectionUsageFromJSON),
+    );
+  }
+
+  /**
+   */
+  async getLegendDetectionUsage(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LegendDetectionUsage>> {
+    const response = await this.getLegendDetectionUsageRaw(initOverrides);
     return await response.value();
   }
 

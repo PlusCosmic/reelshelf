@@ -7,6 +7,7 @@ import {
 import {
   IconLogout,
   IconMoon,
+  IconScan,
   IconSettings,
   IconSun,
 } from "@tabler/icons-react";
@@ -172,6 +173,17 @@ function AuthenticatedShell({
                   <IconSettings size={16} />
                   Settings
                 </Link>
+                {user.isAdmin ? (
+                  <Link
+                    to="/legend-detection"
+                    className="rs-menu-item"
+                    role="menuitem"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <IconScan size={16} />
+                    Legend detection
+                  </Link>
+                ) : null}
                 <button
                   className="rs-menu-item"
                   type="button"

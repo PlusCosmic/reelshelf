@@ -89,10 +89,12 @@ public sealed record DetectedPlayer(string? Name, string? Legend, double NameCon
 
 public sealed record DetectedTeammate(int Slot, string? Name, string? Legend, double NameConfidence, double LegendConfidence);
 
+/// <remarks><see cref="CachedInputTokens"/> is the part of <see cref="InputTokens"/> served from the provider's cache.</remarks>
 public sealed record LegendRecognition(
     LegendDetectionResult Result,
     string RawResponse,
     long? InputTokens,
+    long? CachedInputTokens,
     long? OutputTokens);
 
 /// <summary>Identifies legends and player names from a clip's frames using one particular model.</summary>
@@ -148,7 +150,8 @@ public sealed class ChatClientLegendRecognizer(IChatClient chatClient, LegendDet
             throw;
         }
 
-        return new LegendRecognition(result, raw, response.Usage?.InputTokenCount, response.Usage?.OutputTokenCount);
+        return new LegendRecognition(result, raw, response.Usage?.InputTokenCount,
+            response.Usage?.CachedInputTokenCount, response.Usage?.OutputTokenCount);
     }
 }
 
