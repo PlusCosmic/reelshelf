@@ -54,7 +54,7 @@ public class OpenAIRequestTests
     {
         RecordingHandler handler = new(ResponseJson);
         LegendDetectionResources resources = new();
-        ChatClientLegendRecognizer recognizer = new(CreateClient(handler, "implicit"), resources);
+        ChatClientLegendRecognizer recognizer = new(CreateClient(handler, "explicit"), resources);
 
         LegendRecognition recognition = await recognizer.RecognizeAsync(
             [new LegendFrame([1, 2, 3], "image/jpeg"), new LegendFrame([4, 5, 6], "image/jpeg")],
@@ -67,7 +67,7 @@ public class OpenAIRequestTests
         Assert.EndsWith("/responses", handler.RequestUri!.AbsolutePath);
         JsonElement request = handler.RequestBody!.Value;
         Assert.Equal("gpt-6-luna", request.GetProperty("model").GetString());
-        Assert.Equal("implicit", request.GetProperty("prompt_cache_options").GetProperty("mode").GetString());
+        Assert.Equal("explicit", request.GetProperty("prompt_cache_options").GetProperty("mode").GetString());
         Assert.Equal("reelshelf-legend-detection", request.GetProperty("prompt_cache_key").GetString());
         Assert.False(request.GetProperty("store").GetBoolean());
 
@@ -80,17 +80,46 @@ public class OpenAIRequestTests
         string body = request.GetRawText();
         Assert.Equal(3, CountOccurrences(body, "\"input_image\""));
         Assert.Contains("Screenshot 2 of 2:", body);
+
+        // One breakpoint, directly after the reference sheet: everything before it is identical for every clip.
+        List<JsonElement> parts = UserContentParts(request);
+        int breakpoint = parts.FindIndex(part => part.TryGetProperty("prompt_cache_breakpoint", out _));
+        Assert.Equal(1, parts.Count(part => part.TryGetProperty("prompt_cache_breakpoint", out _)));
+        Assert.Equal("explicit", parts[breakpoint].GetProperty("prompt_cache_breakpoint").GetProperty("mode").GetString());
+        Assert.Equal("input_image", parts[breakpoint - 1].GetProperty("type").GetString());
+        Assert.Equal(1, parts.Take(breakpoint).Count(part => part.GetProperty("type").GetString() == "input_image"));
+    }
+
+    [Fact]
+    public async Task ImplicitMode_SendsNoBreakpoints()
+    {
+        RecordingHandler handler = new(ResponseJson);
+        ChatClientLegendRecognizer recognizer = new(CreateClient(handler, "implicit"), new LegendDetectionResources());
+
+        await recognizer.RecognizeAsync([new LegendFrame([1], "image/jpeg")], CancellationToken.None);
+
+        Assert.Equal("implicit", handler.RequestBody!.Value.GetProperty("prompt_cache_options").GetProperty("mode").GetString());
+        Assert.DoesNotContain("prompt_cache_breakpoint", handler.RequestBody!.Value.GetRawText());
+    }
+
+    private static List<JsonElement> UserContentParts(JsonElement request)
+    {
+        return request.GetProperty("input").EnumerateArray()
+            .Where(item => item.TryGetProperty("role", out JsonElement role) && role.GetString() == "user")
+            .SelectMany(item => item.GetProperty("content").EnumerateArray())
+            .ToList();
     }
 
     [Fact]
     public async Task EmptyCacheMode_SendsNoCachingOptions()
     {
         RecordingHandler handler = new(ResponseJson);
-        IChatClient client = CreateClient(handler, "");
+        ChatClientLegendRecognizer recognizer = new(CreateClient(handler, ""), new LegendDetectionResources());
 
-        await client.GetResponseAsync("hello");
+        await recognizer.RecognizeAsync([new LegendFrame([1], "image/jpeg")], CancellationToken.None);
 
         Assert.False(handler.RequestBody!.Value.TryGetProperty("prompt_cache_options", out _));
+        Assert.DoesNotContain("prompt_cache_breakpoint", handler.RequestBody!.Value.GetRawText());
         Assert.Equal("reelshelf-legend-detection", handler.RequestBody!.Value.GetProperty("prompt_cache_key").GetString());
     }
 
