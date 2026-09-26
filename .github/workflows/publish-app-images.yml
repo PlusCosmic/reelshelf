@@ -28,6 +28,12 @@ permissions:
   contents: read
   packages: write
 
+# One run at a time, in push order, so an older run can never close a newer run's bump PR and replace it.
+# A queued run is superseded by a newer push, which is safe: every run diffs against what is deployed.
+concurrency:
+  group: publish-app-images
+  cancel-in-progress: false
+
 jobs:
   detect:
     runs-on: ubuntu-latest
@@ -43,6 +49,8 @@ jobs:
       - name: Detect changed services
         id: filter
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.INFRASTRUCTURE_PR_TOKEN }}
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             case "${{ inputs.service }}" in
@@ -62,23 +70,34 @@ jobs:
             exit 0
           fi
 
-          before="${{ github.event.before }}"
-          if [[ "$before" =~ ^0+$ ]]; then
-            changed_files="$(git diff-tree --no-commit-id --name-only -r HEAD)"
-          else
-            changed_files="$(git diff --name-only "$before" "${{ github.sha }}")"
-          fi
+          # Diff against the images the infrastructure repo actually deploys, not the previous push. A bump PR
+          # can be superseded or closed without merging; diffing push-to-push would then drop its changes,
+          # which once left production on app code whose migration never ran.
+          compose="$(gh api repos/PlusCosmic/infrastructure/contents/services/clips.yml \
+            -H 'Accept: application/vnd.github.raw')"
 
-          clips=false
-          migrations=false
+          # Prints "true" when files matching the pattern changed between the deployed image's commit and this
+          # one, or when the deployed commit can't be found here (no tag, or history rewritten).
+          needs_build() {
+            local image="$1" pattern="$2" deployed
+            deployed="$(grep -oE "ghcr\.io/pluscosmic/${image}:sha-[0-9a-f]{40}" <<< "$compose" | head -n 1 | sed 's/.*:sha-//')"
+            if [[ -z "$deployed" ]] || ! git cat-file -e "${deployed}^{commit}" 2>/dev/null; then
+              echo "::notice::${image}: deployed commit '${deployed}' not found; building" >&2
+              echo true
+              return
+            fi
+            changed="$(git diff --name-only "$deployed" "${{ github.sha }}" | grep -E "$pattern" || true)"
+            if [[ -n "$changed" ]]; then
+              echo "::notice::${image}: deployed ${deployed:0:7}; changed since: $(tr '\n' ' ' <<< "$changed" | cut -c1-500)" >&2
+              echo true
+            else
+              echo "::notice::${image}: deployed ${deployed:0:7}; nothing relevant changed" >&2
+              echo false
+            fi
+          }
 
-          if grep -Eq '^(api/|frontend/|migrations/|Dockerfile|package.json|bun.lock|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
-            clips=true
-          fi
-
-          if grep -Eq '^(migrations/|package.json|\.github/workflows/publish-app-images\.yml)' <<< "$changed_files"; then
-            migrations=true
-          fi
+          clips="$(needs_build reelshelf '^(api/|frontend/|migrations/|Dockerfile|package.json|bun.lock|\.github/workflows/publish-app-images\.yml)')"
+          migrations="$(needs_build reelshelf-migrations '^(migrations/|package.json|\.github/workflows/publish-app-images\.yml)')"
 
           echo "clips=${clips}" >> "$GITHUB_OUTPUT"
           echo "migrations=${migrations}" >> "$GITHUB_OUTPUT"
