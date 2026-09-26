@@ -221,8 +221,7 @@ describe("BulkUploadQueue", () => {
     );
 
     const firstCall = clipUploadMocks.createTusClipUpload.mock.calls[0]?.[0] as
-      | { onSuccess: () => void }
-      | undefined;
+      { onSuccess: () => void } | undefined;
     firstCall?.onSuccess();
 
     await waitFor(() =>

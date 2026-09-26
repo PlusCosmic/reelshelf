@@ -10,8 +10,7 @@ import {
 import { ApiError } from "@/shared/services/apiError";
 
 export type LinkNotice =
-  | { tone: "success"; text: string }
-  | { tone: "error"; text: string };
+  { tone: "success"; text: string } | { tone: "error"; text: string };
 
 const linkErrorMessages: Record<string, string> = {
   session_expired:
