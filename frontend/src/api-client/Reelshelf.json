@@ -1558,6 +1558,52 @@
         }
       }
     },
+    "/api/legend-detection/clips": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendDetectionReviewClips",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LegendDetectionReviewClip"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legend-detection/usage": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendDetectionUsage",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LegendDetectionUsage"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/legend-detection/backfill": {
       "post": {
         "tags": [
@@ -2350,7 +2396,8 @@
           "avatar",
           "email",
           "suggested_email",
-          "needs_onboarding"
+          "needs_onboarding",
+          "is_admin"
         ],
         "type": "object",
         "properties": {
@@ -2386,6 +2433,9 @@
             ]
           },
           "needs_onboarding": {
+            "type": "boolean"
+          },
+          "is_admin": {
             "type": "boolean"
           }
         }
@@ -2623,6 +2673,62 @@
           }
         }
       },
+      "LegendDetectionReviewClip": {
+        "required": [
+          "clip_id",
+          "title",
+          "created_at",
+          "length_seconds",
+          "embed_url",
+          "frame_urls",
+          "latest_run",
+          "run_count"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "length_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "embed_url": {
+            "type": "string"
+          },
+          "frame_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "latest_run": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LegendDetectionRun"
+              }
+            ]
+          },
+          "run_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "LegendDetectionRun": {
         "required": [
           "id",
@@ -2642,6 +2748,7 @@
           "teammates",
           "raw_response",
           "input_tokens",
+          "cached_input_tokens",
           "output_tokens",
           "duration_ms",
           "error",
@@ -2738,6 +2845,13 @@
             ],
             "format": "int32"
           },
+          "cached_input_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "output_tokens": {
             "type": [
               "null",
@@ -2768,6 +2882,66 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "LegendDetectionUsage": {
+        "required": [
+          "provider",
+          "model",
+          "prompt_version",
+          "succeeded",
+          "failed",
+          "queued",
+          "input_tokens",
+          "cached_input_tokens",
+          "output_tokens",
+          "average_duration_ms"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "prompt_version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "succeeded": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "queued": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cached_input_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "average_duration_ms": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },

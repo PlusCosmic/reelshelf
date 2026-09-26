@@ -78,6 +78,59 @@ public class LegendDetectionService(
         return await statements.GetRunsForClipAsync(clipId);
     }
 
+    /// <summary>
+    /// The owner's Apex Legends clips with their latest run, the thumbnails the model is sent and a player to
+    /// check the result against.
+    /// </summary>
+    public async Task<List<LegendDetectionReviewClip>> GetClipsForReviewAsync(Guid ownerId)
+    {
+        GameCategory? apex = await gameCategoryStatements.GetBySlugAsync(ApexLegendsSlug);
+        if (apex is null)
+        {
+            return [];
+        }
+
+        List<LegendDetectionStatements.ReviewClipRow> clips = await statements.GetClipsForReviewAsync(apex.Id, ownerId);
+        Dictionary<Guid, LegendDetectionStatements.LatestRunRow> latestRuns =
+            (await statements.GetLatestRunsAsync(clips.Select(clip => clip.Id).ToList()))
+            .ToDictionary(run => run.ClipId);
+
+        string cdnBaseUrl = CdnBaseUrl();
+        string libraryId = configuration["BunnyLibraryId"]
+                           ?? throw new InvalidOperationException("Bunny API library ID not configured");
+
+        return clips.Select(clip =>
+        {
+            latestRuns.TryGetValue(clip.Id, out LegendDetectionStatements.LatestRunRow? latest);
+            return new LegendDetectionReviewClip(
+                clip.Id,
+                clip.Title ?? "Untitled",
+                clip.CreatedAt,
+                clip.Length,
+                $"https://player.mediadelivery.net/embed/{libraryId}/{clip.VideoId}?autoplay=false",
+                ThumbnailUrls(cdnBaseUrl, clip.VideoId),
+                latest is null ? null : LegendDetectionRun.From(latest),
+                (int)(latest?.RunCount ?? 0));
+        }).ToList();
+    }
+
+    public async Task<List<LegendDetectionUsage>> GetUsageAsync()
+    {
+        return (await statements.GetUsageAsync())
+            .Select(row => new LegendDetectionUsage(
+                row.Provider,
+                row.Model,
+                row.PromptVersion,
+                (int)row.Succeeded,
+                (int)row.Failed,
+                (int)row.Queued,
+                row.InputTokens,
+                row.CachedInputTokens,
+                row.OutputTokens,
+                row.AverageDurationMs))
+            .ToList();
+    }
+
     /// <summary>Processes the next queued run. Returns false when there was nothing to do.</summary>
     public async Task<bool> ProcessNextRunAsync(CancellationToken cancellationToken)
     {
@@ -147,8 +200,7 @@ public class LegendDetectionService(
 
     private async Task<List<LegendFrame>> DownloadFramesAsync(Guid videoId, CancellationToken cancellationToken)
     {
-        string cdnBaseUrl = configuration["BunnyCdnBaseUrl"]
-                            ?? throw new InvalidOperationException("BunnyCdnBaseUrl is not configured");
+        string cdnBaseUrl = CdnBaseUrl();
         HttpClient client = httpClientFactory.CreateClient(FramesHttpClientName);
 
         LegendFrame?[] frames = await Task.WhenAll(ThumbnailUrls(cdnBaseUrl, videoId).Select(async url =>
@@ -174,6 +226,12 @@ public class LegendDetectionService(
         }));
 
         return frames.OfType<LegendFrame>().ToList();
+    }
+
+    private string CdnBaseUrl()
+    {
+        return configuration["BunnyCdnBaseUrl"]
+               ?? throw new InvalidOperationException("BunnyCdnBaseUrl is not configured");
     }
 
     private (string Provider, string Model) Resolve(string? provider, string? model)

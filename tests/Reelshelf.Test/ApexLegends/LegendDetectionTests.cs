@@ -107,6 +107,7 @@ public class LegendDetectionTests
         Assert.Equal("Mad Maggie", recognition.Result.Player.Legend);
         Assert.Equal(ValidResponse, recognition.RawResponse);
         Assert.Equal(1200, recognition.InputTokens);
+        Assert.Equal(900, recognition.CachedInputTokens);
 
         List<ChatMessage> messages = chatClient.Messages!;
         Assert.Equal(ChatRole.System, messages[0].Role);
@@ -148,7 +149,7 @@ public class LegendDetectionTests
             Options = options;
             return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText))
             {
-                Usage = new UsageDetails { InputTokenCount = 1200, OutputTokenCount = 150 }
+                Usage = new UsageDetails { InputTokenCount = 1200, CachedInputTokenCount = 900, OutputTokenCount = 150 }
             });
         }
 

@@ -40,7 +40,8 @@ public static class UserEndpoints
             user.AvatarUrl,
             user.Email,
             suggestedEmail,
-            NeedsOnboarding: !user.OnboardingCompleted));
+            NeedsOnboarding: !user.OnboardingCompleted,
+            IsAdmin: user.HasPermission(Permissions.AdminUsers)));
     }
 
     private static async Task<Results<NoContent, BadRequest<string>>> SetEmail(
@@ -125,7 +126,8 @@ public sealed record CurrentUserResponse(
     string? Avatar,
     string? Email,
     string? SuggestedEmail,
-    bool NeedsOnboarding);
+    bool NeedsOnboarding,
+    bool IsAdmin);
 
 /// <summary>An empty or null email clears the address; onboarding still counts as completed.</summary>
 public sealed record SetEmailRequest(string? Email);

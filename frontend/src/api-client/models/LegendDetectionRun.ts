@@ -134,6 +134,12 @@ export interface LegendDetectionRun {
    * @type {number}
    * @memberof LegendDetectionRun
    */
+  cachedInputTokens: number | null;
+  /**
+   *
+   * @type {number}
+   * @memberof LegendDetectionRun
+   */
   outputTokens: number | null;
   /**
    *
@@ -199,6 +205,11 @@ export function instanceOfLegendDetectionRun(
     return false;
   if (!("inputTokens" in value) || value["inputTokens"] === undefined)
     return false;
+  if (
+    !("cachedInputTokens" in value) ||
+    value["cachedInputTokens"] === undefined
+  )
+    return false;
   if (!("outputTokens" in value) || value["outputTokens"] === undefined)
     return false;
   if (!("durationMs" in value) || value["durationMs"] === undefined)
@@ -239,6 +250,7 @@ export function LegendDetectionRunFromJSONTyped(
     teammates: (json["teammates"] as Array<any>).map(DetectedTeammateFromJSON),
     rawResponse: json["raw_response"],
     inputTokens: json["input_tokens"],
+    cachedInputTokens: json["cached_input_tokens"],
     outputTokens: json["output_tokens"],
     durationMs: json["duration_ms"],
     error: json["error"],
@@ -278,6 +290,7 @@ export function LegendDetectionRunToJSONTyped(
     teammates: (value["teammates"] as Array<any>).map(DetectedTeammateToJSON),
     raw_response: value["rawResponse"],
     input_tokens: value["inputTokens"],
+    cached_input_tokens: value["cachedInputTokens"],
     output_tokens: value["outputTokens"],
     duration_ms: value["durationMs"],
     error: value["error"],
