@@ -7,6 +7,7 @@ import {
 } from "@/components/Reelshelf/reelshelf-model";
 import { Badge, Button, Input } from "@/components/ui";
 import { useLegendRuns, useQueueLegendRun } from "@/hooks/queries";
+import { LegendLabelEditor } from "./LegendLabelEditor";
 import type {
   LegendDetectionReviewClip,
   LegendDetectionRun,
@@ -86,6 +87,13 @@ export function LegendReviewDetail({
       </div>
 
       {run ? <RunResult run={run} /> : <p className="rs-meta">Not run yet.</p>}
+
+      {/* Re-keyed when the label or shown run changes, so the fields start from the latest values. */}
+      <LegendLabelEditor
+        key={`${clip.label?.labelledAt.toISOString() ?? "unlabelled"}/${run?.id ?? "none"}`}
+        clip={clip}
+        run={run}
+      />
 
       <RerunForm clipId={clip.clipId} />
 

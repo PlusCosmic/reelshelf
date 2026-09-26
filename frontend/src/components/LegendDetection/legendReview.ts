@@ -1,4 +1,5 @@
 import type {
+  LegendDetectionLabel,
   LegendDetectionReviewClip,
   LegendDetectionRun,
   LegendDetectionUsage,
@@ -9,7 +10,14 @@ import { isRunActive } from "@/shared/services/legendDetection";
 export const reviewConfidence = 0.9;
 
 export type ReviewFilter =
-  "all" | "needs-review" | "confident" | "failed" | "active" | "not-run";
+  | "all"
+  | "needs-review"
+  | "confident"
+  | "failed"
+  | "active"
+  | "not-run"
+  | "unlabelled"
+  | "wrong";
 
 export const reviewFilters: Array<{ value: ReviewFilter; label: string }> = [
   { value: "all", label: "All" },
@@ -18,7 +26,44 @@ export const reviewFilters: Array<{ value: ReviewFilter; label: string }> = [
   { value: "failed", label: "Failed" },
   { value: "active", label: "In progress" },
   { value: "not-run", label: "Not run" },
+  { value: "unlabelled", label: "Unlabelled" },
+  { value: "wrong", label: "Labelled wrong" },
 ];
+
+/** The detected legends as a label: the owner's legend and every teammate legend that was identified. */
+export function labelFromRun(run: LegendDetectionRun) {
+  return {
+    playerLegend: run.playerLegend,
+    teammateLegends: run.teammates
+      .map((teammate) => teammate.legend)
+      .filter((legend): legend is string => legend !== null),
+  };
+}
+
+function sameLegends(a: string[], b: string[]) {
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return (
+    sortedA.length === sortedB.length &&
+    sortedA.every((legend, index) => legend === sortedB[index])
+  );
+}
+
+/**
+ * Whether a succeeded run matches the clip's label: the owner's legend exactly and teammates as an unordered
+ * set, the same rule the usage table scores by. Null when there is nothing to compare.
+ */
+export function labelVerdict(
+  run: LegendDetectionRun | null,
+  label: LegendDetectionLabel | null,
+): "correct" | "wrong" | null {
+  if (!run || run.status !== "succeeded" || !label) return null;
+  const detected = labelFromRun(run);
+  return detected.playerLegend === label.playerLegend &&
+    sameLegends(detected.teammateLegends, label.teammateLegends)
+    ? "correct"
+    : "wrong";
+}
 
 /**
  * A succeeded run needs a look when the HUD was missed, any legend is missing, or any legend is below the
@@ -53,6 +98,10 @@ export function matchesFilter(
       return run?.status === "succeeded" && needsReview(run);
     case "confident":
       return run?.status === "succeeded" && !needsReview(run);
+    case "unlabelled":
+      return run?.status === "succeeded" && clip.label === null;
+    case "wrong":
+      return labelVerdict(run, clip.label) === "wrong";
   }
 }
 
@@ -92,6 +141,11 @@ export function formatTokens(tokens: number | null) {
   return tokens >= 10_000
     ? `${(tokens / 1000).toFixed(0)}k`
     : tokens.toLocaleString();
+}
+
+/** "92%" for 46 correct of 50 labelled runs; a dash until anything is labelled. */
+export function formatAccuracy(correct: number, labelled: number) {
+  return labelled > 0 ? `${Math.round((correct / labelled) * 100)}%` : "–";
 }
 
 /** Share of input tokens the provider served from its prompt cache. */

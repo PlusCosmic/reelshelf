@@ -81,6 +81,30 @@ export interface LegendDetectionUsage {
   averageDurationMs: number | null;
   /**
    *
+   * @type {number}
+   * @memberof LegendDetectionUsage
+   */
+  labelled: number;
+  /**
+   *
+   * @type {number}
+   * @memberof LegendDetectionUsage
+   */
+  playerCorrect: number;
+  /**
+   *
+   * @type {number}
+   * @memberof LegendDetectionUsage
+   */
+  teammatesCorrect: number;
+  /**
+   *
+   * @type {number}
+   * @memberof LegendDetectionUsage
+   */
+  confidentMistakes: number;
+  /**
+   *
    * @type {Date}
    * @memberof LegendDetectionUsage
    */
@@ -114,6 +138,16 @@ export function instanceOfLegendDetectionUsage(
     value["averageDurationMs"] === undefined
   )
     return false;
+  if (!("labelled" in value) || value["labelled"] === undefined) return false;
+  if (!("playerCorrect" in value) || value["playerCorrect"] === undefined)
+    return false;
+  if (!("teammatesCorrect" in value) || value["teammatesCorrect"] === undefined)
+    return false;
+  if (
+    !("confidentMistakes" in value) ||
+    value["confidentMistakes"] === undefined
+  )
+    return false;
   if (!("archivedAt" in value) || value["archivedAt"] === undefined)
     return false;
   return true;
@@ -141,6 +175,10 @@ export function LegendDetectionUsageFromJSONTyped(
     cachedInputTokens: json["cached_input_tokens"],
     outputTokens: json["output_tokens"],
     averageDurationMs: json["average_duration_ms"],
+    labelled: json["labelled"],
+    playerCorrect: json["player_correct"],
+    teammatesCorrect: json["teammates_correct"],
+    confidentMistakes: json["confident_mistakes"],
     archivedAt:
       json["archived_at"] == null ? null : new Date(json["archived_at"]),
   };
@@ -169,6 +207,10 @@ export function LegendDetectionUsageToJSONTyped(
     cached_input_tokens: value["cachedInputTokens"],
     output_tokens: value["outputTokens"],
     average_duration_ms: value["averageDurationMs"],
+    labelled: value["labelled"],
+    player_correct: value["playerCorrect"],
+    teammates_correct: value["teammatesCorrect"],
+    confident_mistakes: value["confidentMistakes"],
     archived_at:
       value["archivedAt"] == null
         ? value["archivedAt"]

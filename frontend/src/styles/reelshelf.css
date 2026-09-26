@@ -3728,3 +3728,49 @@ a {
 .rs-legend-archived {
   color: var(--fg-soft);
 }
+
+.rs-legend-row-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rs-legend-verdict.correct {
+  color: var(--accent-ink);
+}
+
+.rs-legend-verdict.wrong {
+  color: var(--danger);
+}
+
+.rs-legend-label {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.rs-legend-label-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rs-legend-label-fields label {
+  display: grid;
+  gap: 4px;
+}
+
+.rs-legend-label-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .rs-legend-label-fields {
+    grid-template-columns: 1fr;
+  }
+}
