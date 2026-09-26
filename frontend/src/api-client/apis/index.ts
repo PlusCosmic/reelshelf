@@ -6,6 +6,7 @@ export * from "./BunnyWebhookEndpointsApi";
 export * from "./ClipsEndpointsApi";
 export * from "./FFmpegEndpointsApi";
 export * from "./GameCategoryEndpointsApi";
+export * from "./LegendDetectionEndpointsApi";
 export * from "./PlaylistEndpointsApi";
 export * from "./ReelshelfApi";
 export * from "./SharedClipsEndpointsApi";

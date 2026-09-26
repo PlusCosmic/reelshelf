@@ -9,6 +9,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using Npgsql;
 using Reelshelf.ApexLegends;
+using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Auth;
 using Reelshelf.Bunny;
 using Reelshelf.Core;
@@ -70,6 +71,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapBunnyWebhookEndpoints();
         apiGroup.MapGameCategoryEndpoints();
         apiGroup.MapApexEndpoints();
+        apiGroup.MapLegendDetectionEndpoints();
         apiGroup.MapUserEndpoints();
         apiGroup.MapTwitchClipsEndpoints();
 
@@ -258,12 +260,23 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<MapService>();
         builder.Services.AddScoped<IApexMapCacheService, ApexMapCacheService>();
 
+        // Legend detection stays idle until a provider API key and model are configured.
+        builder.Services.Configure<LegendDetectionOptions>(
+            builder.Configuration.GetSection(LegendDetectionOptions.SectionName));
+        builder.Services.AddSingleton<LegendDetectionResources>();
+        builder.Services.AddSingleton<ILegendRecognizerFactory, LegendRecognizerFactory>();
+        builder.Services.AddScoped<LegendDetectionStatements>();
+        builder.Services.AddScoped<LegendDetectionService>();
+        builder.Services.AddHttpClient(LegendDetectionService.FramesHttpClientName,
+            client => client.Timeout = TimeSpan.FromSeconds(30));
+
         // Background services should not run during explicit OpenAPI document generation.
         if (!builder.Environment.IsEnvironment("OpenApi"))
         {
             builder.Services.AddHostedService<ClipStatusRefreshService>();
             builder.Services.AddHostedService<MapRefreshService>();
             builder.Services.AddHostedService<GameCategoryAssetRefreshService>();
+            builder.Services.AddHostedService<LegendDetectionBackgroundService>();
         }
     }
 }

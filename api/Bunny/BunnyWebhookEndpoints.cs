@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Bunny.Models;
 using Reelshelf.Core;
 
@@ -17,6 +18,7 @@ public static class BunnyWebhookEndpoints
         ClipsStatements clipsStatements,
         BunnyService bunnyService,
         ClipsBackfillStatements backfillStatements,
+        LegendDetectionService legendDetectionService,
         IConfiguration configuration,
         HttpContext context,
         ILoggerFactory loggerFactory)
@@ -88,6 +90,19 @@ public static class BunnyWebhookEndpoints
         catch (Exception ex)
         {
             logger.LogError(ex, "[WEBHOOK] Error updating clip metadata for ClipId: {ClipId}", clip.Id);
+        }
+
+        if (video.Status is (int)BunnyVideoStatus.Finished or (int)BunnyVideoStatus.ResolutionFinished)
+        {
+            try
+            {
+                await legendDetectionService.QueueForEncodedClipAsync(clip);
+            }
+            catch (Exception ex)
+            {
+                // Detection is optional; failing to queue it must not make Bunny retry the webhook.
+                logger.LogError(ex, "[WEBHOOK] Error queueing legend detection for ClipId: {ClipId}", clip.Id);
+            }
         }
 
         logger.LogInformation("[WEBHOOK] Webhook processing complete for VideoGuid: {VideoGuid}, returning OK", update.VideoGuid);
