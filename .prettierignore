@@ -1,1 +1,3 @@
 frontend/src/routeTree.gen.ts
+# Sent to the model verbatim; formatting it would change the prompt and its version hash.
+api/ApexLegends/LegendDetection/Resources/prompt.md
