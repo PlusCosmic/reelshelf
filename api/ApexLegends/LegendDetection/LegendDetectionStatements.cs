@@ -203,6 +203,11 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         const string sql = """
             WITH scored AS (
                 SELECT run.*,
+                       -- A run has no prompt version until it reaches the model, so queued runs and runs that
+                       -- failed before then count towards their batch's latest version instead of a row of their own.
+                       COALESCE(run.prompt_version, FIRST_VALUE(run.prompt_version) OVER (
+                           PARTITION BY run.provider, run.model, run.archived_at
+                           ORDER BY run.prompt_version IS NULL, run.created_at DESC)) AS batch_prompt_version,
                        run.status = 'succeeded' AND label.clip_id IS NOT NULL AS labelled,
                        run.player_legend IS NOT DISTINCT FROM label.player_legend AS player_correct,
                        ARRAY(SELECT teammate ->> 'legend'
@@ -226,7 +231,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
             )
             SELECT provider,
                    model,
-                   prompt_version,
+                   batch_prompt_version AS prompt_version,
                    COUNT(*) FILTER (WHERE status = 'succeeded') AS succeeded,
                    COUNT(*) FILTER (WHERE status = 'failed') AS failed,
                    COUNT(*) FILTER (WHERE status IN ('pending', 'running') AND archived_at IS NULL) AS queued,
@@ -240,7 +245,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                    COUNT(*) FILTER (WHERE labelled AND confident_mistake) AS confident_mistakes,
                    archived_at
             FROM scored
-            GROUP BY provider, model, prompt_version, archived_at
+            GROUP BY provider, model, batch_prompt_version, archived_at
             HAVING archived_at IS NULL OR COUNT(*) FILTER (WHERE status IN ('succeeded', 'failed')) > 0
             ORDER BY archived_at DESC NULLS FIRST, MAX(created_at) DESC
             """;
