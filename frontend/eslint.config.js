@@ -4,7 +4,14 @@ import { globalIgnores } from "eslint/config";
 import tseslint from "typescript-eslint";
 
 export default [
-  globalIgnores(["dist/**", "coverage/**", "node_modules/**"]),
+  globalIgnores([
+    "dist/**",
+    "coverage/**",
+    "node_modules/**",
+    // Generated code; regenerate instead of editing (see AGENTS.md).
+    "src/api-client/**",
+    "src/routeTree.gen.ts",
+  ]),
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
