@@ -23,11 +23,9 @@ public static class LegendDetectionEndpoints
         group.MapGet("legends", GetLegends).WithName("GetLegendDetectionLegends");
     }
 
-    public static async Task<List<LegendDetectionReviewClip>> GetClipsForReview(
-        AuthenticatedUser user,
-        LegendDetectionService service)
+    public static async Task<List<LegendDetectionReviewClip>> GetClipsForReview(LegendDetectionService service)
     {
-        return await service.GetClipsForReviewAsync(user.Id);
+        return await service.GetClipsForReviewAsync();
     }
 
     public static async Task<List<LegendDetectionUsage>> GetUsage(LegendDetectionService service)
@@ -98,6 +96,7 @@ public sealed record LegendDetectionLabel(string? PlayerLegend, List<string> Tea
 public sealed record LegendDetectionReviewClip(
     Guid ClipId,
     string Title,
+    string OwnerName,
     DateTimeOffset CreatedAt,
     int? LengthSeconds,
     string EmbedUrl,

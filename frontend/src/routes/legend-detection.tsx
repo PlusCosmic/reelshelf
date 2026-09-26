@@ -200,7 +200,7 @@ function LegendReview() {
       ) : clipsQuery.isError ? (
         <div className="rs-empty">Clips could not be loaded.</div>
       ) : clips.length === 0 ? (
-        <div className="rs-empty">You have no Apex Legends clips.</div>
+        <div className="rs-empty">There are no Apex Legends clips.</div>
       ) : (
         <div className="rs-legend-layout">
           <ol className="rs-legend-list">
@@ -253,7 +253,9 @@ function ClipRow({
       />
       <span className="rs-legend-row-text">
         <strong>{clip.title}</strong>
-        <span className="rs-meta">{formatDate(clip.createdAt)}</span>
+        <span className="rs-meta">
+          {clip.ownerName} · {formatDate(clip.createdAt)}
+        </span>
       </span>
       <span className="rs-legend-row-status">
         {run === null ? (

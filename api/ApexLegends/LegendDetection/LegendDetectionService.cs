@@ -95,7 +95,7 @@ public class LegendDetectionService(
     /// The owner's Apex Legends clips with their latest run, the thumbnails the model is sent and a player to
     /// check the result against.
     /// </summary>
-    public async Task<List<LegendDetectionReviewClip>> GetClipsForReviewAsync(Guid ownerId)
+    public async Task<List<LegendDetectionReviewClip>> GetClipsForReviewAsync()
     {
         GameCategory? apex = await gameCategoryStatements.GetBySlugAsync(ApexLegendsSlug);
         if (apex is null)
@@ -103,7 +103,7 @@ public class LegendDetectionService(
             return [];
         }
 
-        List<LegendDetectionStatements.ReviewClipRow> clips = await statements.GetClipsForReviewAsync(apex.Id, ownerId);
+        List<LegendDetectionStatements.ReviewClipRow> clips = await statements.GetClipsForReviewAsync(apex.Id);
         List<Guid> clipIds = clips.Select(clip => clip.Id).ToList();
         Dictionary<Guid, LegendDetectionStatements.LatestRunRow> latestRuns =
             (await statements.GetLatestRunsAsync(clipIds)).ToDictionary(run => run.ClipId);
@@ -121,6 +121,7 @@ public class LegendDetectionService(
             return new LegendDetectionReviewClip(
                 clip.Id,
                 clip.Title ?? "Untitled",
+                clip.OwnerName,
                 clip.CreatedAt,
                 clip.Length,
                 $"https://player.mediadelivery.net/embed/{libraryId}/{clip.VideoId}?autoplay=false",
