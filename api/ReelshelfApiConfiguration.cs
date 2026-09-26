@@ -9,7 +9,6 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using Npgsql;
 using Reelshelf.ApexLegends;
-using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Auth;
 using Reelshelf.Bunny;
 using Reelshelf.Core;
@@ -71,7 +70,6 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapBunnyWebhookEndpoints();
         apiGroup.MapGameCategoryEndpoints();
         apiGroup.MapApexEndpoints();
-        apiGroup.MapApexDetectionEndpoints();
         apiGroup.MapUserEndpoints();
         apiGroup.MapTwitchClipsEndpoints();
 
@@ -257,11 +255,8 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<TwitchClipService>();
         builder.Services.AddScoped<GameCategoryService>();
 
-        builder.Services.AddScoped<ApexStatements>();
         builder.Services.AddScoped<MapService>();
         builder.Services.AddScoped<IApexMapCacheService, ApexMapCacheService>();
-        builder.Services.AddScoped<IApexDetectionQueueService, ApexDetectionQueueService>();
-        builder.Services.AddScoped<ApexDetectionWorkflow>();
 
         // Background services should not run during explicit OpenAPI document generation.
         if (!builder.Environment.IsEnvironment("OpenApi"))
@@ -269,7 +264,6 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<ClipStatusRefreshService>();
             builder.Services.AddHostedService<MapRefreshService>();
             builder.Services.AddHostedService<GameCategoryAssetRefreshService>();
-            builder.Services.AddHostedService<ApexDetectionBackgroundService>();
         }
     }
 }

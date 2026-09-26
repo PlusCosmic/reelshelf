@@ -46,5 +46,4 @@ export * from "./TwitchClipsState";
 export * from "./UpdatePlaylistRequest";
 export * from "./UpdateTitleRequest";
 export * from "./UserProfile";
-export * from "./VideoDetectionRequest";
 export * from "./VideoProgressUpdate";
