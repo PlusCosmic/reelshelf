@@ -1624,6 +1624,26 @@
         }
       }
     },
+    "/api/legend-detection/archive": {
+      "post": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "ArchiveLegendDetectionRuns",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegendDetectionArchiveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/legend-detection/clips/{clipId}/runs": {
       "post": {
         "tags": [
@@ -2661,6 +2681,18 @@
           }
         }
       },
+      "LegendDetectionArchiveResponse": {
+        "required": [
+          "archived"
+        ],
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "LegendDetectionBackfillResponse": {
         "required": [
           "queued"
@@ -2896,7 +2928,8 @@
           "input_tokens",
           "cached_input_tokens",
           "output_tokens",
-          "average_duration_ms"
+          "average_duration_ms",
+          "archived_at"
         ],
         "type": "object",
         "properties": {
@@ -2942,6 +2975,13 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "archived_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },

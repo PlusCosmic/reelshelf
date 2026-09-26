@@ -53,7 +53,17 @@ public class LegendDetectionService(
         }
     }
 
-    /// <summary>Queues the automatic run for every Apex Legends clip that has never had one.</summary>
+    /// <summary>
+    /// Archives every run so detection can start again from scratch; usage totals keep the archived runs.
+    /// </summary>
+    public async Task<int> ArchiveAllRunsAsync()
+    {
+        int archived = await statements.ArchiveAllRunsAsync();
+        logger.LogInformation("Archived {Count} legend detection runs", archived);
+        return archived;
+    }
+
+    /// <summary>Queues the automatic run for every Apex Legends clip without an unarchived one.</summary>
     public async Task<int> BackfillAsync()
     {
         (string provider, string model) = Resolve(null, null);
@@ -127,7 +137,8 @@ public class LegendDetectionService(
                 row.InputTokens,
                 row.CachedInputTokens,
                 row.OutputTokens,
-                row.AverageDurationMs))
+                row.AverageDurationMs,
+                row.ArchivedAt))
             .ToList();
     }
 

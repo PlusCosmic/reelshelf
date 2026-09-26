@@ -48,6 +48,13 @@ export async function backfillLegendDetection(): Promise<number> {
   return response.queued;
 }
 
+/** Archives every run so the backfill starts from scratch; usage totals keep the archived runs. */
+export async function archiveLegendRuns(): Promise<number> {
+  const response =
+    await createLegendDetectionApi().archiveLegendDetectionRuns();
+  return response.archived;
+}
+
 export function isRunActive(run: LegendDetectionRun | null | undefined) {
   return run?.status === "pending" || run?.status === "running";
 }

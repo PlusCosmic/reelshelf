@@ -26,6 +26,7 @@ export * from "./GameCategoryResponse";
 export * from "./GameSearchResult";
 export * from "./ImportTwitchClipRequest";
 export * from "./ImportedTwitchClipResponse";
+export * from "./LegendDetectionArchiveResponse";
 export * from "./LegendDetectionBackfillResponse";
 export * from "./LegendDetectionReviewClip";
 export * from "./LegendDetectionRun";

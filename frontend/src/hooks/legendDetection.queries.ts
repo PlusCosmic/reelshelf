@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  archiveLegendRuns,
   backfillLegendDetection,
   fetchLegendReviewClips,
   fetchLegendRuns,
@@ -64,6 +65,14 @@ export function useQueueLegendRun() {
   return useMutation({
     mutationFn: ({ clipId, model }: { clipId: string; model: string | null }) =>
       queueLegendRun(clipId, model),
+    onSuccess: invalidate,
+  });
+}
+
+export function useArchiveLegendRuns() {
+  const invalidate = useInvalidateLegendDetection();
+  return useMutation({
+    mutationFn: archiveLegendRuns,
     onSuccess: invalidate,
   });
 }
