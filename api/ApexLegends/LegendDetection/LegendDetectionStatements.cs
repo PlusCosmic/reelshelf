@@ -15,18 +15,18 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         completed_at
         """;
 
-    /// <summary>Queues a clip's automatic run. Returns false when the clip already has one.</summary>
+    /// <summary>Queues a clip's automatic run. Returns false when the clip already has an unarchived one.</summary>
     public async Task<bool> QueueAutoRunAsync(Guid clipId, string provider, string model)
     {
         const string sql = """
             INSERT INTO legend_detection_run (clip_id, trigger, provider, model)
             VALUES (@ClipId, 'auto', @Provider, @Model)
-            ON CONFLICT (clip_id) WHERE trigger = 'auto' DO NOTHING
+            ON CONFLICT (clip_id) WHERE trigger = 'auto' AND archived_at IS NULL DO NOTHING
             """;
         return await connection.ExecuteAsync(sql, new { ClipId = clipId, Provider = provider, Model = model }) > 0;
     }
 
-    /// <summary>Queues an automatic run for every clip in the category that has never had one.</summary>
+    /// <summary>Queues an automatic run for every clip in the category without an unarchived one.</summary>
     public async Task<int> QueueAutoRunsForCategoryAsync(Guid gameCategoryId, string provider, string model)
     {
         const string sql = """
@@ -34,7 +34,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
             SELECT id, 'auto', @Provider, @Model
             FROM clip
             WHERE game_category_id = @GameCategoryId
-            ON CONFLICT (clip_id) WHERE trigger = 'auto' DO NOTHING
+            ON CONFLICT (clip_id) WHERE trigger = 'auto' AND archived_at IS NULL DO NOTHING
             """;
         return await connection.ExecuteAsync(sql,
             new { GameCategoryId = gameCategoryId, Provider = provider, Model = model });
@@ -65,8 +65,9 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
             WHERE clip.id = run.clip_id
               AND run.id = (
                   SELECT id FROM legend_detection_run
-                  WHERE (status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
-                     OR (status = 'running' AND started_at < now() - @StaleAfter)
+                  WHERE archived_at IS NULL
+                    AND ((status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
+                      OR (status = 'running' AND started_at < now() - @StaleAfter))
                   ORDER BY created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
@@ -144,12 +145,19 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         });
     }
 
+    /// <summary>Archives every unarchived run, including queued ones, which will then never be processed.</summary>
+    public async Task<int> ArchiveAllRunsAsync()
+    {
+        const string sql = "UPDATE legend_detection_run SET archived_at = now() WHERE archived_at IS NULL";
+        return await connection.ExecuteAsync(sql);
+    }
+
     public async Task<List<LegendDetectionRunRow>> GetRunsForClipAsync(Guid clipId)
     {
         string sql = $"""
             SELECT {RunColumns}
             FROM legend_detection_run
-            WHERE clip_id = @ClipId
+            WHERE clip_id = @ClipId AND archived_at IS NULL
             ORDER BY created_at DESC
             """;
         return (await connection.QueryAsync<LegendDetectionRunRow>(sql, new { ClipId = clipId })).ToList();
@@ -178,13 +186,16 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         string sql = $"""
             SELECT DISTINCT ON (clip_id) {RunColumns}, COUNT(*) OVER (PARTITION BY clip_id) AS run_count
             FROM legend_detection_run
-            WHERE clip_id = ANY(@ClipIds)
+            WHERE clip_id = ANY(@ClipIds) AND archived_at IS NULL
             ORDER BY clip_id, created_at DESC
             """;
         return (await connection.QueryAsync<LatestRunRow>(sql, new { ClipIds = clipIds })).ToList();
     }
 
-    /// <summary>Run counts and token totals per provider, model and prompt version, newest first.</summary>
+    /// <summary>
+    /// Run counts and token totals per provider, model and prompt version, with each archived batch kept apart
+    /// from the current runs. Current runs come first; archived groups that never ran are left out.
+    /// </summary>
     public async Task<List<UsageRow>> GetUsageAsync()
     {
         const string sql = """
@@ -193,14 +204,16 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                    prompt_version,
                    COUNT(*) FILTER (WHERE status = 'succeeded') AS succeeded,
                    COUNT(*) FILTER (WHERE status = 'failed') AS failed,
-                   COUNT(*) FILTER (WHERE status IN ('pending', 'running')) AS queued,
+                   COUNT(*) FILTER (WHERE status IN ('pending', 'running') AND archived_at IS NULL) AS queued,
                    COALESCE(SUM(input_tokens), 0) AS input_tokens,
                    COALESCE(SUM(cached_input_tokens), 0) AS cached_input_tokens,
                    COALESCE(SUM(output_tokens), 0) AS output_tokens,
-                   AVG(duration_ms)::int AS average_duration_ms
+                   AVG(duration_ms)::int AS average_duration_ms,
+                   archived_at
             FROM legend_detection_run
-            GROUP BY provider, model, prompt_version
-            ORDER BY MAX(created_at) DESC
+            GROUP BY provider, model, prompt_version, archived_at
+            HAVING archived_at IS NULL OR COUNT(*) FILTER (WHERE status IN ('succeeded', 'failed')) > 0
+            ORDER BY archived_at DESC NULLS FIRST, MAX(created_at) DESC
             """;
         return (await connection.QueryAsync<UsageRow>(sql)).ToList();
     }
@@ -231,6 +244,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public long CachedInputTokens { get; set; }
         public long OutputTokens { get; set; }
         public int? AverageDurationMs { get; set; }
+        public DateTimeOffset? ArchivedAt { get; set; }
     }
 
     public class ClaimedRunRow

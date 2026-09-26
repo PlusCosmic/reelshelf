@@ -14,6 +14,7 @@
 
 import * as runtime from "../runtime";
 import type {
+  LegendDetectionArchiveResponse,
   LegendDetectionBackfillResponse,
   LegendDetectionReviewClip,
   LegendDetectionRun,
@@ -21,6 +22,8 @@ import type {
   QueueLegendDetectionRunRequest,
 } from "../models/index";
 import {
+  LegendDetectionArchiveResponseFromJSON,
+  LegendDetectionArchiveResponseToJSON,
   LegendDetectionBackfillResponseFromJSON,
   LegendDetectionBackfillResponseToJSON,
   LegendDetectionReviewClipFromJSON,
@@ -46,6 +49,41 @@ export interface QueueLegendDetectionRunOperationRequest {
  *
  */
 export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
+  /**
+   */
+  async archiveLegendDetectionRunsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LegendDetectionArchiveResponse>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/archive`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LegendDetectionArchiveResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async archiveLegendDetectionRuns(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LegendDetectionArchiveResponse> {
+    const response = await this.archiveLegendDetectionRunsRaw(initOverrides);
+    return await response.value();
+  }
+
   /**
    */
   async backfillLegendDetectionRaw(

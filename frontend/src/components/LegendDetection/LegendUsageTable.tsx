@@ -1,7 +1,17 @@
 import type { LegendDetectionUsage } from "@/shared/services/legendDetection";
 import { cachedShare, formatTokens } from "./legendReview";
 
-/** Runs and tokens per model and prompt version, covering every user's clips. */
+const archivedFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/**
+ * Runs and tokens per model and prompt version, covering every user's clips. Each "Start fresh" leaves its
+ * runs as an archived batch, so backfills can be compared.
+ */
 export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
   if (usage.length === 0) return null;
 
@@ -10,6 +20,7 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
       <table className="rs-legend-table">
         <thead>
           <tr>
+            <th scope="col">Batch</th>
             <th scope="col">Model</th>
             <th scope="col">Prompt</th>
             <th scope="col">Succeeded</th>
@@ -23,7 +34,15 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
         </thead>
         <tbody>
           {usage.map((row) => (
-            <tr key={`${row.provider}/${row.model}/${row.promptVersion}`}>
+            <tr
+              key={`${row.provider}/${row.model}/${row.promptVersion}/${row.archivedAt?.toISOString() ?? "current"}`}
+              className={row.archivedAt ? "rs-legend-archived" : undefined}
+            >
+              <td>
+                {row.archivedAt
+                  ? `Archived ${archivedFormatter.format(row.archivedAt)}`
+                  : "Current"}
+              </td>
               <td>{row.model}</td>
               <td>{row.promptVersion ?? "–"}</td>
               <td>{row.succeeded}</td>

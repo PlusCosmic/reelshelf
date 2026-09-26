@@ -14,6 +14,7 @@ import {
   type ReviewFilter,
 } from "@/components/LegendDetection/legendReview";
 import {
+  useArchiveLegendRuns,
   useBackfillLegendDetection,
   useCurrentUser,
   useLegendReviewClips,
@@ -61,6 +62,7 @@ function LegendReview() {
   const anyActive = clips.some((clip) => isRunActive(clip.latestRun));
   const usage = useLegendUsage(true, anyActive);
   const backfill = useBackfillLegendDetection();
+  const archive = useArchiveLegendRuns();
 
   const counts = useMemo(() => countByFilter(clips), [clips]);
   const visible = useMemo(
@@ -119,6 +121,13 @@ function LegendReview() {
     if (confirmed) backfill.mutate();
   }
 
+  function onArchive() {
+    const confirmed = window.confirm(
+      "Archive every detection run, including any still queued? Clips will show as not run and the next backfill queues them all again. Usage totals are kept.",
+    );
+    if (confirmed) archive.mutate();
+  }
+
   return (
     <div className="rs-legend-page">
       <header className="rs-legend-header">
@@ -127,6 +136,9 @@ function LegendReview() {
           <h1 className="rs-display rs-h2">Check what the model saw.</h1>
         </div>
         <div className="rs-legend-backfill">
+          <Button onClick={onArchive} disabled={archive.isPending}>
+            {archive.isPending ? "Archiving…" : "Start fresh"}
+          </Button>
           <Button
             variant="primary"
             onClick={onBackfill}
@@ -138,6 +150,14 @@ function LegendReview() {
             <span className="rs-meta">
               Queued {backfill.data} {backfill.data === 1 ? "clip" : "clips"}.
             </span>
+          ) : null}
+          {archive.isSuccess ? (
+            <span className="rs-meta">
+              Archived {archive.data} {archive.data === 1 ? "run" : "runs"}.
+            </span>
+          ) : null}
+          {archive.isError ? (
+            <span className="rs-legend-error">{archive.error.message}</span>
           ) : null}
           {backfill.isError ? (
             <span className="rs-legend-error">{backfill.error.message}</span>

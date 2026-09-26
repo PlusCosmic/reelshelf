@@ -14,6 +14,7 @@ public static class LegendDetectionEndpoints
         group.MapGet("clips", GetClipsForReview).WithName("GetLegendDetectionReviewClips");
         group.MapGet("usage", GetUsage).WithName("GetLegendDetectionUsage");
         group.MapPost("backfill", Backfill).WithName("BackfillLegendDetection");
+        group.MapPost("archive", ArchiveAllRuns).WithName("ArchiveLegendDetectionRuns");
         group.MapPost("clips/{clipId:guid}/runs", QueueRun).WithName("QueueLegendDetectionRun");
         group.MapGet("clips/{clipId:guid}/runs", GetRuns).WithName("GetLegendDetectionRuns");
     }
@@ -35,6 +36,11 @@ public static class LegendDetectionEndpoints
         return new LegendDetectionBackfillResponse(await service.BackfillAsync());
     }
 
+    public static async Task<LegendDetectionArchiveResponse> ArchiveAllRuns(LegendDetectionService service)
+    {
+        return new LegendDetectionArchiveResponse(await service.ArchiveAllRunsAsync());
+    }
+
     public static async Task<LegendDetectionRun> QueueRun(
         Guid clipId,
         QueueLegendDetectionRunRequest request,
@@ -54,6 +60,8 @@ public sealed record QueueLegendDetectionRunRequest(string? Provider, string? Mo
 
 public sealed record LegendDetectionBackfillResponse(int Queued);
 
+public sealed record LegendDetectionArchiveResponse(int Archived);
+
 /// <summary>A clip to check a detection against: the frames the model is sent and a player for the full clip.</summary>
 public sealed record LegendDetectionReviewClip(
     Guid ClipId,
@@ -65,7 +73,10 @@ public sealed record LegendDetectionReviewClip(
     LegendDetectionRun? LatestRun,
     int RunCount);
 
-/// <summary>Totals for one provider, model and prompt version. Cached input tokens are part of the input total.</summary>
+/// <summary>
+/// Totals for one provider, model and prompt version; <c>ArchivedAt</c> is set for a batch of archived runs.
+/// Cached input tokens are part of the input total.
+/// </summary>
 public sealed record LegendDetectionUsage(
     string Provider,
     string Model,
@@ -76,7 +87,8 @@ public sealed record LegendDetectionUsage(
     long InputTokens,
     long CachedInputTokens,
     long OutputTokens,
-    int? AverageDurationMs);
+    int? AverageDurationMs,
+    DateTimeOffset? ArchivedAt);
 
 public sealed record LegendDetectionRun(
     Guid Id,

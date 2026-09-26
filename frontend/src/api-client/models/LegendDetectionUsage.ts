@@ -79,6 +79,12 @@ export interface LegendDetectionUsage {
    * @memberof LegendDetectionUsage
    */
   averageDurationMs: number | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof LegendDetectionUsage
+   */
+  archivedAt: Date | null;
 }
 
 /**
@@ -108,6 +114,8 @@ export function instanceOfLegendDetectionUsage(
     value["averageDurationMs"] === undefined
   )
     return false;
+  if (!("archivedAt" in value) || value["archivedAt"] === undefined)
+    return false;
   return true;
 }
 
@@ -133,6 +141,8 @@ export function LegendDetectionUsageFromJSONTyped(
     cachedInputTokens: json["cached_input_tokens"],
     outputTokens: json["output_tokens"],
     averageDurationMs: json["average_duration_ms"],
+    archivedAt:
+      json["archived_at"] == null ? null : new Date(json["archived_at"]),
   };
 }
 
@@ -159,5 +169,9 @@ export function LegendDetectionUsageToJSONTyped(
     cached_input_tokens: value["cachedInputTokens"],
     output_tokens: value["outputTokens"],
     average_duration_ms: value["averageDurationMs"],
+    archived_at:
+      value["archivedAt"] == null
+        ? value["archivedAt"]
+        : value["archivedAt"].toISOString(),
   };
 }
