@@ -59,6 +59,7 @@ function clip(
   return {
     clipId: "clip",
     title: "Clip",
+    ownerName: "Owner",
     createdAt: new Date(),
     lengthSeconds: 30,
     embedUrl: "https://player.example/embed",

@@ -48,6 +48,12 @@ export interface LegendDetectionReviewClip {
   title: string;
   /**
    *
+   * @type {string}
+   * @memberof LegendDetectionReviewClip
+   */
+  ownerName: string;
+  /**
+   *
    * @type {Date}
    * @memberof LegendDetectionReviewClip
    */
@@ -98,6 +104,7 @@ export function instanceOfLegendDetectionReviewClip(
 ): value is LegendDetectionReviewClip {
   if (!("clipId" in value) || value["clipId"] === undefined) return false;
   if (!("title" in value) || value["title"] === undefined) return false;
+  if (!("ownerName" in value) || value["ownerName"] === undefined) return false;
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   if (!("lengthSeconds" in value) || value["lengthSeconds"] === undefined)
     return false;
@@ -125,6 +132,7 @@ export function LegendDetectionReviewClipFromJSONTyped(
   return {
     clipId: json["clip_id"],
     title: json["title"],
+    ownerName: json["owner_name"],
     createdAt: new Date(json["created_at"]),
     lengthSeconds: json["length_seconds"],
     embedUrl: json["embed_url"],
@@ -152,6 +160,7 @@ export function LegendDetectionReviewClipToJSONTyped(
   return {
     clip_id: value["clipId"],
     title: value["title"],
+    owner_name: value["ownerName"],
     created_at: value["createdAt"].toISOString(),
     length_seconds: value["lengthSeconds"],
     embed_url: value["embedUrl"],

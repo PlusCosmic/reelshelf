@@ -163,16 +163,18 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         return (await connection.QueryAsync<LegendDetectionRunRow>(sql, new { ClipId = clipId })).ToList();
     }
 
-    public async Task<List<ReviewClipRow>> GetClipsForReviewAsync(Guid gameCategoryId, Guid ownerId)
+    /// <summary>Every owner's clips in the category, since a backfill runs against all of them.</summary>
+    public async Task<List<ReviewClipRow>> GetClipsForReviewAsync(Guid gameCategoryId)
     {
         const string sql = """
-            SELECT id, video_id, title, length, created_at
+            SELECT clip.id, clip.video_id, clip.title, clip.length, clip.created_at,
+                   COALESCE(owner.global_name, owner.username) AS owner_name
             FROM clip
-            WHERE game_category_id = @GameCategoryId AND owner_id = @OwnerId
-            ORDER BY created_at DESC
+            JOIN app_user owner ON owner.id = clip.owner_id
+            WHERE clip.game_category_id = @GameCategoryId
+            ORDER BY clip.created_at DESC
             """;
-        return (await connection.QueryAsync<ReviewClipRow>(sql,
-            new { GameCategoryId = gameCategoryId, OwnerId = ownerId })).ToList();
+        return (await connection.QueryAsync<ReviewClipRow>(sql, new { GameCategoryId = gameCategoryId })).ToList();
     }
 
     /// <summary>The most recent run for each clip, with how many runs the clip has had in total.</summary>
@@ -307,6 +309,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public string? Title { get; set; }
         public int? Length { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
+        public string OwnerName { get; set; } = "";
     }
 
     public class LatestRunRow : LegendDetectionRunRow
