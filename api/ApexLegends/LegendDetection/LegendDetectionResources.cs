@@ -7,8 +7,8 @@ namespace Reelshelf.ApexLegends.LegendDetection;
 
 /// <summary>
 /// The prompt, response schema and reference sheet embedded from <c>Resources/</c>. They are identical on every
-/// request, so they are loaded once. <see cref="PromptVersion"/> is a hash of all three, recorded on each run so
-/// results from different prompts are never compared as if they were the same.
+/// request, so they are loaded once. <see cref="PromptVersion"/> is a hash of all three and the recognizer's
+/// request layout, recorded on each run so results from different prompts are never compared as the same.
 /// </summary>
 public sealed class LegendDetectionResources
 {
@@ -33,6 +33,7 @@ public sealed class LegendDetectionResources
         hash.AppendData(prompt);
         hash.AppendData(schema);
         hash.AppendData(ReferenceSheet);
+        hash.AppendData(Encoding.UTF8.GetBytes(ChatClientLegendRecognizer.RequestLayoutVersion));
         PromptVersion = Convert.ToHexStringLower(hash.GetHashAndReset())[..12];
     }
 

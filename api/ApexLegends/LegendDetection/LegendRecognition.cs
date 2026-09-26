@@ -32,9 +32,11 @@ public sealed class LegendDetectionProviderOptions
 
     /// <summary>
     /// OpenAI only: <c>prompt_cache_options.mode</c>, which GPT-5.6 and later need before they cache a prompt.
-    /// <c>implicit</c> lets OpenAI place the cache breakpoint; empty sends no caching options.
+    /// <c>explicit</c> places a breakpoint after the reference sheet, so every clip reuses the prompt and sheet;
+    /// <c>implicit</c> lets OpenAI place one at the end of the last user message, after the clip's own frames,
+    /// where it is never reused. Empty sends no caching options.
     /// </summary>
-    public string PromptCacheMode { get; set; } = "implicit";
+    public string PromptCacheMode { get; set; } = "explicit";
 }
 
 /// <summary>One image sent to the model.</summary>
@@ -112,11 +114,20 @@ public interface ILegendRecognizer
 
 /// <summary>
 /// Works with any provider that has a Microsoft.Extensions.AI <see cref="IChatClient"/>. The prompt and reference
-/// sheet come first and never change, so providers that cache prompt prefixes only bill the frames in full.
+/// sheet come first and never change, then a text part flagged with <see cref="CacheBreakpointKey"/> marks the end
+/// of that shared prefix for providers whose caching needs breakpoints; each provider's client translates it.
 /// </summary>
 public sealed class ChatClientLegendRecognizer(IChatClient chatClient, LegendDetectionResources resources)
     : ILegendRecognizer
 {
+    public const string CacheBreakpointKey = "reelshelf.cache_breakpoint";
+
+    /// <summary>
+    /// Bump whenever the request built here changes in a way the model sees, so runs are told apart by
+    /// <see cref="LegendDetectionResources.PromptVersion"/> just as a changed prompt file would be.
+    /// </summary>
+    public const string RequestLayoutVersion = "2";
+
     public async Task<LegendRecognition> RecognizeAsync(
         IReadOnlyList<LegendFrame> frames,
         CancellationToken cancellationToken)
@@ -124,7 +135,11 @@ public sealed class ChatClientLegendRecognizer(IChatClient chatClient, LegendDet
         List<AIContent> content =
         [
             new TextContent("Reference sheet:"),
-            new DataContent(resources.ReferenceSheet, "image/png")
+            new DataContent(resources.ReferenceSheet, "image/png"),
+            new TextContent("Screenshots from the clip follow.")
+            {
+                AdditionalProperties = new AdditionalPropertiesDictionary { [CacheBreakpointKey] = true }
+            }
         ];
         for (int i = 0; i < frames.Count; i++)
         {
@@ -217,10 +232,18 @@ public sealed class LegendRecognizerFactory(
         OpenAIClientOptions clientOptions)
     {
         string cacheMode = providerOptions.PromptCacheMode.Trim();
-        return new OpenAIClient(new System.ClientModel.ApiKeyCredential(providerOptions.ApiKey), clientOptions)
+        ChatClientBuilder builder = new OpenAIClient(
+                new System.ClientModel.ApiKeyCredential(providerOptions.ApiKey),
+                clientOptions)
             .GetResponsesClient()
             .AsIChatClient(model)
-            .AsBuilder()
+            .AsBuilder();
+        if (cacheMode == "explicit")
+        {
+            builder.Use(inner => new OpenAICacheBreakpointChatClient(inner));
+        }
+
+        return builder
             .ConfigureOptions(chatOptions => chatOptions.RawRepresentationFactory = _ =>
             {
 #pragma warning disable SCME0001 // JsonPatch: the SDK has no property for prompt_cache_options yet.
@@ -237,6 +260,50 @@ public sealed class LegendRecognizerFactory(
                 return request;
             })
             .Build();
+    }
+
+    /// <summary>
+    /// Turns text flagged with <see cref="ChatClientLegendRecognizer.CacheBreakpointKey"/> into an input_text part
+    /// carrying <c>prompt_cache_breakpoint: { "mode": "explicit" }</c>, which the SDK can't express yet.
+    /// </summary>
+    private sealed class OpenAICacheBreakpointChatClient(IChatClient inner) : DelegatingChatClient(inner)
+    {
+        public override Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            return base.GetResponseAsync(messages.Select(WithBreakpoints), options, cancellationToken);
+        }
+
+        private static ChatMessage WithBreakpoints(ChatMessage message)
+        {
+            if (!message.Contents.Any(IsBreakpoint))
+            {
+                return message;
+            }
+
+            ChatMessage copy = message.Clone();
+            copy.Contents = message.Contents
+                .Select(content => IsBreakpoint(content) ? Breakpoint((TextContent)content) : content)
+                .ToList();
+            return copy;
+        }
+
+        private static bool IsBreakpoint(AIContent content)
+        {
+            return content is TextContent
+                   && content.AdditionalProperties?.ContainsKey(ChatClientLegendRecognizer.CacheBreakpointKey) == true;
+        }
+
+        private static TextContent Breakpoint(TextContent content)
+        {
+#pragma warning disable SCME0001
+            ResponseContentPart part = ResponseContentPart.CreateInputTextPart(content.Text);
+            part.Patch.Set("$.prompt_cache_breakpoint.mode"u8, "explicit");
+#pragma warning restore SCME0001
+            return new TextContent(content.Text) { RawRepresentation = part };
+        }
     }
 #pragma warning restore OPENAI001
 
