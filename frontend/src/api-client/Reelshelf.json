@@ -1558,62 +1558,6 @@
         }
       }
     },
-    "/api/apexdetection/enqueue": {
-      "post": {
-        "tags": [
-          "ApexDetectionEndpoints"
-        ],
-        "operationId": "QueueDetection",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VideoDetectionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/apexdetection/enqueue-all": {
-      "post": {
-        "tags": [
-          "ApexDetectionEndpoints"
-        ],
-        "operationId": "QueueAllUnprocessedItems",
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/me": {
       "get": {
         "tags": [
@@ -3165,25 +3109,6 @@
           }
         }
       },
-      "VideoDetectionRequest": {
-        "required": [
-          "clip_id",
-          "screenshot_urls"
-        ],
-        "type": "object",
-        "properties": {
-          "clip_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "screenshot_urls": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
       "VideoProgressUpdate": {
         "required": [
           "VideoLibraryId",
@@ -3238,9 +3163,6 @@
     },
     {
       "name": "ApexEndpoints"
-    },
-    {
-      "name": "ApexDetectionEndpoints"
     },
     {
       "name": "TwitchClipsEndpoints"

@@ -48,8 +48,3 @@ public record SharedClipResponse(
     int DurationSeconds,
     DateTimeOffset UploadedAt,
     string EmbedUrl);
-
-public record ApexClipMetadata(
-    string? DetectedLegend,
-    string? DetectedLegendCard
-);

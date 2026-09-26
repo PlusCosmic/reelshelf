@@ -1,6 +1,5 @@
 /* tslint:disable */
 /* eslint-disable */
-export * from "./ApexDetectionEndpointsApi";
 export * from "./ApexEndpointsApi";
 export * from "./AuthEndpointsApi";
 export * from "./BunnyWebhookEndpointsApi";
