@@ -1,12 +1,7 @@
 import { ResponseError as ClipsResponseError } from "@/api-client";
 
 export type ApiErrorKind =
-  | "auth"
-  | "forbidden"
-  | "validation"
-  | "conflict"
-  | "not-found"
-  | "unexpected";
+  "auth" | "forbidden" | "validation" | "conflict" | "not-found" | "unexpected";
 
 export class ApiError extends Error {
   readonly status: number;
