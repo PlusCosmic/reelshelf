@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using OpenAI;
+using OpenAI.Responses;
 
 namespace Reelshelf.ApexLegends.LegendDetection;
 
@@ -28,6 +29,12 @@ public sealed class LegendDetectionOptions
 public sealed class LegendDetectionProviderOptions
 {
     public string ApiKey { get; set; } = "";
+
+    /// <summary>
+    /// OpenAI only: <c>prompt_cache_options.mode</c>, which GPT-5.6 and later need before they cache a prompt.
+    /// <c>implicit</c> lets OpenAI place the cache breakpoint; empty sends no caching options.
+    /// </summary>
+    public string PromptCacheMode { get; set; } = "implicit";
 }
 
 /// <summary>One image sent to the model.</summary>
@@ -186,26 +193,62 @@ public sealed class LegendRecognizerFactory(
             throw new InvalidOperationException($"Legend detection provider '{provider}' is not supported or has no API key");
         }
 
-        return new ChatClientLegendRecognizer(CreateChatClient(provider, model, ApiKey(provider)!), resources);
-    }
-
-    private static IChatClient CreateChatClient(string provider, string model, string apiKey)
-    {
-        return provider.ToLowerInvariant() switch
+        LegendDetectionProviderOptions providerOptions = ProviderOptions(provider)!;
+        IChatClient chatClient = provider.ToLowerInvariant() switch
         {
-            OpenAI => new OpenAIClient(
-                    new System.ClientModel.ApiKeyCredential(apiKey),
-                    new OpenAIClientOptions { NetworkTimeout = TimeSpan.FromMinutes(2) })
-                .GetChatClient(model)
-                .AsIChatClient(),
+            OpenAI => CreateOpenAIChatClient(
+                model,
+                providerOptions,
+                new OpenAIClientOptions { NetworkTimeout = TimeSpan.FromMinutes(2) }),
             _ => throw new InvalidOperationException($"Unknown legend detection provider '{provider}'")
         };
+        return new ChatClientLegendRecognizer(chatClient, resources);
     }
+
+    /// <summary>
+    /// Uses the Responses API, where OpenAI documents prompt caching for current models. Every request carries
+    /// the same cache key so they are routed to the same cache, and asks OpenAI not to store the response.
+    /// </summary>
+    // OPENAI001: the SDK still marks its Responses API client as evaluation-only.
+#pragma warning disable OPENAI001
+    internal static IChatClient CreateOpenAIChatClient(
+        string model,
+        LegendDetectionProviderOptions providerOptions,
+        OpenAIClientOptions clientOptions)
+    {
+        string cacheMode = providerOptions.PromptCacheMode.Trim();
+        return new OpenAIClient(new System.ClientModel.ApiKeyCredential(providerOptions.ApiKey), clientOptions)
+            .GetResponsesClient()
+            .AsIChatClient(model)
+            .AsBuilder()
+            .ConfigureOptions(chatOptions => chatOptions.RawRepresentationFactory = _ =>
+            {
+#pragma warning disable SCME0001 // JsonPatch: the SDK has no property for prompt_cache_options yet.
+                CreateResponseOptions request = new()
+                {
+                    PromptCacheKey = "reelshelf-legend-detection",
+                    StoredOutputEnabled = false
+                };
+                if (cacheMode.Length > 0)
+                {
+                    request.Patch.Set("$.prompt_cache_options.mode"u8, cacheMode);
+                }
+#pragma warning restore SCME0001
+                return request;
+            })
+            .Build();
+    }
+#pragma warning restore OPENAI001
 
     private string? ApiKey(string provider)
     {
+        return ProviderOptions(provider)?.ApiKey;
+    }
+
+    private LegendDetectionProviderOptions? ProviderOptions(string provider)
+    {
         return options.CurrentValue.Providers.TryGetValue(provider, out LegendDetectionProviderOptions? providerOptions)
-            ? providerOptions.ApiKey
+            ? providerOptions
             : null;
     }
 }
