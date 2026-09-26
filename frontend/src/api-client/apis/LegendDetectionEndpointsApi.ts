@@ -20,6 +20,7 @@ import type {
   LegendDetectionRun,
   LegendDetectionUsage,
   QueueLegendDetectionRunRequest,
+  SetLegendDetectionLabelRequest,
 } from "../models/index";
 import {
   LegendDetectionArchiveResponseFromJSON,
@@ -34,7 +35,13 @@ import {
   LegendDetectionUsageToJSON,
   QueueLegendDetectionRunRequestFromJSON,
   QueueLegendDetectionRunRequestToJSON,
+  SetLegendDetectionLabelRequestFromJSON,
+  SetLegendDetectionLabelRequestToJSON,
 } from "../models/index";
+
+export interface DeleteLegendDetectionLabelRequest {
+  clipId: string;
+}
 
 export interface GetLegendDetectionRunsRequest {
   clipId: string;
@@ -43,6 +50,11 @@ export interface GetLegendDetectionRunsRequest {
 export interface QueueLegendDetectionRunOperationRequest {
   clipId: string;
   queueLegendDetectionRunRequest: QueueLegendDetectionRunRequest;
+}
+
+export interface SetLegendDetectionLabelOperationRequest {
+  clipId: string;
+  setLegendDetectionLabelRequest: SetLegendDetectionLabelRequest;
 }
 
 /**
@@ -116,6 +128,84 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<LegendDetectionBackfillResponse> {
     const response = await this.backfillLegendDetectionRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async deleteLegendDetectionLabelRaw(
+    requestParameters: DeleteLegendDetectionLabelRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["clipId"] == null) {
+      throw new runtime.RequiredError(
+        "clipId",
+        'Required parameter "clipId" was null or undefined when calling deleteLegendDetectionLabel().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/clips/{clipId}/label`;
+    urlPath = urlPath.replace(
+      `{${"clipId"}}`,
+      encodeURIComponent(String(requestParameters["clipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "DELETE",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async deleteLegendDetectionLabel(
+    requestParameters: DeleteLegendDetectionLabelRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteLegendDetectionLabelRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   */
+  async getLegendDetectionLegendsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<string>>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/legends`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse<any>(response);
+  }
+
+  /**
+   */
+  async getLegendDetectionLegends(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<string>> {
+    const response = await this.getLegendDetectionLegendsRaw(initOverrides);
     return await response.value();
   }
 
@@ -301,5 +391,62 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
       initOverrides,
     );
     return await response.value();
+  }
+
+  /**
+   */
+  async setLegendDetectionLabelRaw(
+    requestParameters: SetLegendDetectionLabelOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["clipId"] == null) {
+      throw new runtime.RequiredError(
+        "clipId",
+        'Required parameter "clipId" was null or undefined when calling setLegendDetectionLabel().',
+      );
+    }
+
+    if (requestParameters["setLegendDetectionLabelRequest"] == null) {
+      throw new runtime.RequiredError(
+        "setLegendDetectionLabelRequest",
+        'Required parameter "setLegendDetectionLabelRequest" was null or undefined when calling setLegendDetectionLabel().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/legend-detection/clips/{clipId}/label`;
+    urlPath = urlPath.replace(
+      `{${"clipId"}}`,
+      encodeURIComponent(String(requestParameters["clipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "PUT",
+        headers: headerParameters,
+        query: queryParameters,
+        body: SetLegendDetectionLabelRequestToJSON(
+          requestParameters["setLegendDetectionLabelRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async setLegendDetectionLabel(
+    requestParameters: SetLegendDetectionLabelOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.setLegendDetectionLabelRaw(requestParameters, initOverrides);
   }
 }

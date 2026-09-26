@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
 
 namespace Reelshelf.ApexLegends.LegendDetection;
@@ -17,6 +18,9 @@ public static class LegendDetectionEndpoints
         group.MapPost("archive", ArchiveAllRuns).WithName("ArchiveLegendDetectionRuns");
         group.MapPost("clips/{clipId:guid}/runs", QueueRun).WithName("QueueLegendDetectionRun");
         group.MapGet("clips/{clipId:guid}/runs", GetRuns).WithName("GetLegendDetectionRuns");
+        group.MapPut("clips/{clipId:guid}/label", SetLabel).WithName("SetLegendDetectionLabel");
+        group.MapDelete("clips/{clipId:guid}/label", DeleteLabel).WithName("DeleteLegendDetectionLabel");
+        group.MapGet("legends", GetLegends).WithName("GetLegendDetectionLegends");
     }
 
     public static async Task<List<LegendDetectionReviewClip>> GetClipsForReview(
@@ -49,6 +53,28 @@ public static class LegendDetectionEndpoints
         return LegendDetectionRun.From(await service.QueueManualRunAsync(clipId, request.Provider, request.Model));
     }
 
+    public static async Task<NoContent> SetLabel(
+        Guid clipId,
+        SetLegendDetectionLabelRequest request,
+        AuthenticatedUser user,
+        LegendDetectionService service)
+    {
+        await service.SetLabelAsync(clipId, request.PlayerLegend, request.TeammateLegends, user.Id);
+        return TypedResults.NoContent();
+    }
+
+    public static async Task<NoContent> DeleteLabel(Guid clipId, LegendDetectionService service)
+    {
+        await service.DeleteLabelAsync(clipId);
+        return TypedResults.NoContent();
+    }
+
+    /// <summary>The legends on the reference sheet, in the spelling labels and results use.</summary>
+    public static IReadOnlyList<string> GetLegends()
+    {
+        return ApexLegendNames.All;
+    }
+
     public static async Task<List<LegendDetectionRun>> GetRuns(Guid clipId, LegendDetectionService service)
     {
         return (await service.GetRunsAsync(clipId)).Select(LegendDetectionRun.From).ToList();
@@ -62,6 +88,12 @@ public sealed record LegendDetectionBackfillResponse(int Queued);
 
 public sealed record LegendDetectionArchiveResponse(int Archived);
 
+/// <summary>A null <c>PlayerLegend</c> means the clip owner's legend can't be identified from the clip.</summary>
+public sealed record SetLegendDetectionLabelRequest(string? PlayerLegend, List<string> TeammateLegends);
+
+/// <summary>The legends actually in a clip, as set by an admin. Teammates are unordered.</summary>
+public sealed record LegendDetectionLabel(string? PlayerLegend, List<string> TeammateLegends, DateTimeOffset LabelledAt);
+
 /// <summary>A clip to check a detection against: the frames the model is sent and a player for the full clip.</summary>
 public sealed record LegendDetectionReviewClip(
     Guid ClipId,
@@ -71,11 +103,13 @@ public sealed record LegendDetectionReviewClip(
     string EmbedUrl,
     List<string> FrameUrls,
     LegendDetectionRun? LatestRun,
-    int RunCount);
+    int RunCount,
+    LegendDetectionLabel? Label);
 
 /// <summary>
 /// Totals for one provider, model and prompt version; <c>ArchivedAt</c> is set for a batch of archived runs.
-/// Cached input tokens are part of the input total.
+/// Cached input tokens are part of the input total. <c>Labelled</c> counts succeeded runs on labelled clips,
+/// which the correct and confident-mistake counts are out of.
 /// </summary>
 public sealed record LegendDetectionUsage(
     string Provider,
@@ -88,6 +122,10 @@ public sealed record LegendDetectionUsage(
     long CachedInputTokens,
     long OutputTokens,
     int? AverageDurationMs,
+    int Labelled,
+    int PlayerCorrect,
+    int TeammatesCorrect,
+    int ConfidentMistakes,
     DateTimeOffset? ArchivedAt);
 
 public sealed record LegendDetectionRun(

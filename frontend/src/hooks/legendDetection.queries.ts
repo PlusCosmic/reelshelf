@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   archiveLegendRuns,
   backfillLegendDetection,
+  deleteLegendLabel,
+  fetchLegendNames,
+  setLegendLabel,
   fetchLegendReviewClips,
   fetchLegendRuns,
   fetchLegendUsage,
@@ -65,6 +68,40 @@ export function useQueueLegendRun() {
   return useMutation({
     mutationFn: ({ clipId, model }: { clipId: string; model: string | null }) =>
       queueLegendRun(clipId, model),
+    onSuccess: invalidate,
+  });
+}
+
+export function useLegendNames(enabled = true) {
+  return useQuery({
+    queryKey: [...legendDetectionQueryKey, "legends"],
+    queryFn: fetchLegendNames,
+    enabled,
+    retry: false,
+    staleTime: Infinity,
+  });
+}
+
+export function useSetLegendLabel() {
+  const invalidate = useInvalidateLegendDetection();
+  return useMutation({
+    mutationFn: ({
+      clipId,
+      playerLegend,
+      teammateLegends,
+    }: {
+      clipId: string;
+      playerLegend: string | null;
+      teammateLegends: string[];
+    }) => setLegendLabel(clipId, playerLegend, teammateLegends),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteLegendLabel() {
+  const invalidate = useInvalidateLegendDetection();
+  return useMutation({
+    mutationFn: deleteLegendLabel,
     onSuccess: invalidate,
   });
 }

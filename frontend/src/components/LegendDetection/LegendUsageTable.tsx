@@ -1,5 +1,5 @@
 import type { LegendDetectionUsage } from "@/shared/services/legendDetection";
-import { cachedShare, formatTokens } from "./legendReview";
+import { cachedShare, formatAccuracy, formatTokens } from "./legendReview";
 
 const archivedFormatter = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -30,6 +30,18 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
             <th scope="col">Cached</th>
             <th scope="col">Output tokens</th>
             <th scope="col">Avg time</th>
+            <th scope="col" title="Succeeded runs on labelled clips">
+              Labelled
+            </th>
+            <th scope="col" title="Your legend correct">
+              You
+            </th>
+            <th scope="col" title="Every teammate legend correct">
+              Squad
+            </th>
+            <th scope="col" title="Wrong legends reported at 80%+ confidence">
+              Confident mistakes
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -56,6 +68,10 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
                   ? "–"
                   : `${(row.averageDurationMs / 1000).toFixed(1)}s`}
               </td>
+              <td>{row.labelled}</td>
+              <td>{formatAccuracy(row.playerCorrect, row.labelled)}</td>
+              <td>{formatAccuracy(row.teammatesCorrect, row.labelled)}</td>
+              <td>{row.labelled > 0 ? row.confidentMistakes : "–"}</td>
             </tr>
           ))}
         </tbody>

@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useMemo } from "react";
 import { Chip } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
@@ -8,6 +9,8 @@ import { LegendUsageTable } from "@/components/LegendDetection/LegendUsageTable"
 import {
   countByFilter,
   formatConfidence,
+  labelFromRun,
+  labelVerdict,
   matchesFilter,
   reviewFilters,
   reviewTone,
@@ -19,6 +22,7 @@ import {
   useCurrentUser,
   useLegendReviewClips,
   useLegendUsage,
+  useSetLegendLabel,
 } from "@/hooks/queries";
 import {
   isRunActive,
@@ -63,6 +67,8 @@ function LegendReview() {
   const usage = useLegendUsage(true, anyActive);
   const backfill = useBackfillLegendDetection();
   const archive = useArchiveLegendRuns();
+  const setLabel = useSetLegendLabel();
+  const mutateLabel = setLabel.mutate;
 
   const counts = useMemo(() => countByFilter(clips), [clips]);
   const visible = useMemo(
@@ -79,10 +85,11 @@ function LegendReview() {
       replace: true,
     });
 
-  // j and k step through the visible list, as in most review tools.
+  // j and k step through the visible list, as in most review tools; c confirms the latest result as the
+  // clip's label and moves on, so labelling a run of correct answers is one key each.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "j" && event.key !== "k") return;
+      if (event.key !== "j" && event.key !== "k" && event.key !== "c") return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (
         event.target instanceof HTMLElement &&
@@ -92,7 +99,13 @@ function LegendReview() {
       const index = visible.findIndex(
         (clip) => clip.clipId === selected?.clipId,
       );
-      const next = visible[index + (event.key === "j" ? 1 : -1)];
+      if (event.key === "c") {
+        const run = selected?.latestRun;
+        if (!selected || run?.status !== "succeeded") return;
+        const detected = labelFromRun(run);
+        mutateLabel({ clipId: selected.clipId, ...detected });
+      }
+      const next = visible[index + (event.key === "k" ? -1 : 1)];
       if (next) {
         event.preventDefault();
         void navigate({
@@ -103,7 +116,7 @@ function LegendReview() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigate, selected?.clipId, visible]);
+  }, [mutateLabel, navigate, selected, visible]);
 
   // Keyed on the id so a poll refreshing the clip data does not scroll the list back.
   const selectedId = selected?.clipId;
@@ -177,7 +190,9 @@ function LegendReview() {
             {label} · {counts[value]}
           </Chip>
         ))}
-        <span className="rs-meta rs-legend-hint">j / k to move</span>
+        <span className="rs-meta rs-legend-hint">
+          j / k to move · c marks correct
+        </span>
       </div>
 
       {clipsQuery.isLoading ? (
@@ -221,6 +236,7 @@ function ClipRow({
   onSelect: () => void;
 }) {
   const run = clip.latestRun;
+  const verdict = labelVerdict(run, clip.label);
   return (
     <button
       type="button"
@@ -254,6 +270,19 @@ function ClipRow({
             {run.status}
           </Badge>
         )}
+        {verdict === "correct" ? (
+          <IconCheck
+            size={16}
+            className="rs-legend-verdict correct"
+            aria-label="Matches label"
+          />
+        ) : verdict === "wrong" ? (
+          <IconX
+            size={16}
+            className="rs-legend-verdict wrong"
+            aria-label="Doesn't match label"
+          />
+        ) : null}
       </span>
     </button>
   );

@@ -1717,6 +1717,85 @@
         }
       }
     },
+    "/api/legend-detection/clips/{clipId}/label": {
+      "put": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "SetLegendDetectionLabel",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLegendDetectionLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "DeleteLegendDetectionLabel",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/legend-detection/legends": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendDetectionLegends",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/me": {
       "get": {
         "tags": [
@@ -2705,6 +2784,32 @@
           }
         }
       },
+      "LegendDetectionLabel": {
+        "required": [
+          "player_legend",
+          "teammate_legends",
+          "labelled_at"
+        ],
+        "type": "object",
+        "properties": {
+          "player_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "teammate_legends": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "labelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "LegendDetectionReviewClip": {
         "required": [
           "clip_id",
@@ -2714,7 +2819,8 @@
           "embed_url",
           "frame_urls",
           "latest_run",
-          "run_count"
+          "run_count",
+          "label"
         ],
         "type": "object",
         "properties": {
@@ -2758,6 +2864,16 @@
           "run_count": {
             "type": "integer",
             "format": "int32"
+          },
+          "label": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LegendDetectionLabel"
+              }
+            ]
           }
         }
       },
@@ -2929,6 +3045,10 @@
           "cached_input_tokens",
           "output_tokens",
           "average_duration_ms",
+          "labelled",
+          "player_correct",
+          "teammates_correct",
+          "confident_mistakes",
           "archived_at"
         ],
         "type": "object",
@@ -2974,6 +3094,22 @@
               "null",
               "integer"
             ],
+            "format": "int32"
+          },
+          "labelled": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "player_correct": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "teammates_correct": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "confident_mistakes": {
+            "type": "integer",
             "format": "int32"
           },
           "archived_at": {
@@ -3389,6 +3525,27 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SetLegendDetectionLabelRequest": {
+        "required": [
+          "player_legend",
+          "teammate_legends"
+        ],
+        "type": "object",
+        "properties": {
+          "player_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "teammate_legends": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
