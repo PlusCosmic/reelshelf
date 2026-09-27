@@ -78,9 +78,9 @@ public class OpenAIRequestTests
             format.GetProperty("schema").GetProperty("required").GetRawText());
 
         string body = request.GetRawText();
-        Assert.Equal(4, CountOccurrences(body, "\"input_image\""));
-        Assert.Contains("Full screenshot, for context:", body);
-        Assert.Contains("screenshot 2 of 2:", body);
+        Assert.Equal(5, CountOccurrences(body, "\"input_image\""));
+        Assert.Contains("Screenshot 2 of 2, full screen:", body);
+        Assert.Contains("Screenshot 2 of 2, close-up of the bottom-left HUD panel:", body);
 
         // One breakpoint, directly after the reference sheet: everything before it is identical for every clip.
         List<JsonElement> parts = UserContentParts(request);
@@ -103,9 +103,9 @@ public class OpenAIRequestTests
         Assert.DoesNotContain("prompt_cache_breakpoint", handler.RequestBody!.Value.GetRawText());
     }
 
-    private static LegendClipImages Images(params LegendFrame[] panels)
+    private static List<LegendScreenshot> Images(params LegendFrame[] panels)
     {
-        return new LegendClipImages(new LegendFrame([0], "image/jpeg"), panels);
+        return panels.Select(panel => new LegendScreenshot(new LegendFrame([0], "image/jpeg"), panel)).ToList();
     }
 
     private static List<JsonElement> UserContentParts(JsonElement request)

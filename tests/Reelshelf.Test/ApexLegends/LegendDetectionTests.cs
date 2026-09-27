@@ -143,16 +143,18 @@ public class LegendDetectionTests
     }
 
     [Fact]
-    public async Task Recognizer_SendsPromptThenReferenceSheetThenContextThenPanels_WithTheSchema()
+    public async Task Recognizer_SendsPromptThenReferenceSheetThenEachOverviewAndPanel_WithTheSchema()
     {
         LegendDetectionResources resources = new();
         RecordingChatClient chatClient = new(ValidResponse);
         ChatClientLegendRecognizer recognizer = new(chatClient, resources);
-        LegendClipImages images = new(
-            new LegendFrame([9, 9, 9], "image/jpeg"),
-            [new LegendFrame([1, 2, 3], "image/jpeg"), new LegendFrame([4, 5, 6], "image/jpeg")]);
+        LegendScreenshot[] screenshots =
+        [
+            new(new LegendFrame([1, 1], "image/jpeg"), new LegendFrame([1, 2], "image/jpeg")),
+            new(new LegendFrame([2, 1], "image/jpeg"), new LegendFrame([2, 2], "image/jpeg"))
+        ];
 
-        LegendRecognition recognition = await recognizer.RecognizeAsync(images, CancellationToken.None);
+        LegendRecognition recognition = await recognizer.RecognizeAsync(screenshots, CancellationToken.None);
 
         Assert.Equal("Mad Maggie", recognition.Result.Player.Legend);
         Assert.Equal(ValidResponse, recognition.RawResponse);
@@ -164,14 +166,15 @@ public class LegendDetectionTests
         Assert.Equal(resources.Prompt, messages[0].Text);
 
         List<DataContent> sent = messages[1].Contents.OfType<DataContent>().ToList();
-        Assert.Equal(4, sent.Count);
+        Assert.Equal(5, sent.Count);
         Assert.Equal("image/png", sent[0].MediaType);
         Assert.Equal(resources.ReferenceSheet, sent[0].Data.ToArray());
-        Assert.Equal(new byte[] { 9, 9, 9 }, sent[1].Data.ToArray());
-        Assert.Equal(new byte[] { 1, 2, 3 }, sent[2].Data.ToArray());
-        Assert.Equal(new byte[] { 4, 5, 6 }, sent[3].Data.ToArray());
-        Assert.Contains(messages[1].Contents.OfType<TextContent>(),
-            text => text.Text == "Close-up of the clip owner's HUD panel, screenshot 2 of 2:");
+        Assert.Equal(
+            [[1, 1], [1, 2], [2, 1], [2, 2]],
+            sent.Skip(1).Select(image => image.Data.ToArray()).ToList());
+        List<string> labels = messages[1].Contents.OfType<TextContent>().Select(text => text.Text).ToList();
+        Assert.Contains("Screenshot 2 of 2, full screen:", labels);
+        Assert.Contains("Screenshot 2 of 2, close-up of the bottom-left HUD panel:", labels);
 
         ChatResponseFormatJson format = Assert.IsType<ChatResponseFormatJson>(chatClient.Options!.ResponseFormat);
         Assert.Equal(resources.ResponseSchema.GetRawText(), format.Schema!.Value.GetRawText());
@@ -188,9 +191,9 @@ public class LegendDetectionTests
         Assert.Equal("oops", ex.Data["RawResponse"]);
     }
 
-    private static LegendClipImages Images(params LegendFrame[] panels)
+    private static List<LegendScreenshot> Images(params LegendFrame[] panels)
     {
-        return new LegendClipImages(new LegendFrame([0], "image/jpeg"), panels);
+        return panels.Select(panel => new LegendScreenshot(new LegendFrame([0], "image/jpeg"), panel)).ToList();
     }
 
     private sealed class RecordingChatClient(string responseText) : IChatClient
