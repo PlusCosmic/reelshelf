@@ -56,6 +56,10 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Install ffmpeg
+        # Legend detection crops frames with ffmpeg, and its tests run the real binary.
+        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
+
       - name: Restore
         run: dotnet restore Reelshelf.sln
 

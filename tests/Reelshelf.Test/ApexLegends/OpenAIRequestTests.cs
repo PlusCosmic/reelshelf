@@ -57,7 +57,7 @@ public class OpenAIRequestTests
         ChatClientLegendRecognizer recognizer = new(CreateClient(handler, "explicit"), resources);
 
         LegendRecognition recognition = await recognizer.RecognizeAsync(
-            [new LegendFrame([1, 2, 3], "image/jpeg"), new LegendFrame([4, 5, 6], "image/jpeg")],
+            Images(new LegendFrame([1, 2, 3], "image/jpeg"), new LegendFrame([4, 5, 6], "image/jpeg")),
             CancellationToken.None);
 
         Assert.Equal("Horizon", recognition.Result.Player.Legend);
@@ -78,8 +78,9 @@ public class OpenAIRequestTests
             format.GetProperty("schema").GetProperty("required").GetRawText());
 
         string body = request.GetRawText();
-        Assert.Equal(3, CountOccurrences(body, "\"input_image\""));
-        Assert.Contains("Screenshot 2 of 2:", body);
+        Assert.Equal(4, CountOccurrences(body, "\"input_image\""));
+        Assert.Contains("Full screenshot, for context:", body);
+        Assert.Contains("screenshot 2 of 2:", body);
 
         // One breakpoint, directly after the reference sheet: everything before it is identical for every clip.
         List<JsonElement> parts = UserContentParts(request);
@@ -96,10 +97,15 @@ public class OpenAIRequestTests
         RecordingHandler handler = new(ResponseJson);
         ChatClientLegendRecognizer recognizer = new(CreateClient(handler, "implicit"), new LegendDetectionResources());
 
-        await recognizer.RecognizeAsync([new LegendFrame([1], "image/jpeg")], CancellationToken.None);
+        await recognizer.RecognizeAsync(Images(new LegendFrame([1], "image/jpeg")), CancellationToken.None);
 
         Assert.Equal("implicit", handler.RequestBody!.Value.GetProperty("prompt_cache_options").GetProperty("mode").GetString());
         Assert.DoesNotContain("prompt_cache_breakpoint", handler.RequestBody!.Value.GetRawText());
+    }
+
+    private static LegendClipImages Images(params LegendFrame[] panels)
+    {
+        return new LegendClipImages(new LegendFrame([0], "image/jpeg"), panels);
     }
 
     private static List<JsonElement> UserContentParts(JsonElement request)
@@ -116,7 +122,7 @@ public class OpenAIRequestTests
         RecordingHandler handler = new(ResponseJson);
         ChatClientLegendRecognizer recognizer = new(CreateClient(handler, ""), new LegendDetectionResources());
 
-        await recognizer.RecognizeAsync([new LegendFrame([1], "image/jpeg")], CancellationToken.None);
+        await recognizer.RecognizeAsync(Images(new LegendFrame([1], "image/jpeg")), CancellationToken.None);
 
         Assert.False(handler.RequestBody!.Value.TryGetProperty("prompt_cache_options", out _));
         Assert.DoesNotContain("prompt_cache_breakpoint", handler.RequestBody!.Value.GetRawText());
@@ -128,13 +134,13 @@ public class OpenAIRequestTests
     {
         RecordingHandler withEffort = new(ResponseJson);
         await new ChatClientLegendRecognizer(CreateClient(withEffort, "explicit", "minimal"), new LegendDetectionResources())
-            .RecognizeAsync([new LegendFrame([1], "image/jpeg")], CancellationToken.None);
+            .RecognizeAsync(Images(new LegendFrame([1], "image/jpeg")), CancellationToken.None);
         Assert.Equal("minimal",
             withEffort.RequestBody!.Value.GetProperty("reasoning").GetProperty("effort").GetString());
 
         RecordingHandler withoutEffort = new(ResponseJson);
         await new ChatClientLegendRecognizer(CreateClient(withoutEffort, "explicit"), new LegendDetectionResources())
-            .RecognizeAsync([new LegendFrame([1], "image/jpeg")], CancellationToken.None);
+            .RecognizeAsync(Images(new LegendFrame([1], "image/jpeg")), CancellationToken.None);
         Assert.False(withoutEffort.RequestBody!.Value.TryGetProperty("reasoning", out _));
     }
 
