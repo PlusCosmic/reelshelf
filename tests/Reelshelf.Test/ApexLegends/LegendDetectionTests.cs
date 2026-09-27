@@ -70,6 +70,36 @@ public class LegendDetectionTests
     }
 
     [Theory]
+    [InlineData("auto", "gpt-6-luna", true, "Horizon", 0.86, true)]
+    [InlineData("auto", "gpt-6-luna", true, null, 0.0, true)]
+    [InlineData("auto", "gpt-6-luna", true, "Horizon", 0.9, false)]
+    [InlineData("auto", "gpt-6-luna", false, null, 0.0, false)]
+    [InlineData("manual", "gpt-6-luna", true, "Horizon", 0.5, false)]
+    [InlineData("escalation", "gpt-6-sol", true, "Horizon", 0.5, false)]
+    [InlineData("auto", "GPT-6-SOL", true, "Horizon", 0.5, false)]
+    public void ShouldEscalate_OnlyUnsureAutomaticRunsThatSawTheHud(
+        string trigger,
+        string model,
+        bool hudDetected,
+        string? legend,
+        double confidence,
+        bool expected)
+    {
+        LegendDetectionResult result = new(hudDetected, new DetectedPlayer(legend, confidence));
+        LegendDetectionOptions options = new() { EscalationModel = "gpt-6-sol", EscalateBelow = 0.9 };
+
+        Assert.Equal(expected, LegendDetectionService.ShouldEscalate(trigger, model, result, options));
+    }
+
+    [Fact]
+    public void ShouldEscalate_IsOff_WithoutAnEscalationModel()
+    {
+        LegendDetectionResult result = new(true, new DetectedPlayer(null, 0));
+
+        Assert.False(LegendDetectionService.ShouldEscalate("auto", "gpt-6-luna", result, new LegendDetectionOptions()));
+    }
+
+    [Theory]
     [InlineData("wraith", "Wraith")]
     [InlineData("MAD MAGGIE", "Mad Maggie")]
     [InlineData("Mad-Maggie", "Mad Maggie")]
