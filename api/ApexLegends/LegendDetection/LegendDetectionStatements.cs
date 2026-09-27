@@ -67,9 +67,26 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Claims the oldest pending run, or a running one whose worker stopped before finishing, and counts the
-    /// attempt. A run that already failed an attempt waits <paramref name="retryAfter"/> before it is retried.
-    /// SKIP LOCKED keeps two API instances from claiming the same run.
+    /// Queues a stronger model's run for a clip whose automatic run was unsure; see
+    /// <see cref="LegendDetectionOptions.EscalationModel"/>.
+    /// </summary>
+    public async Task QueueEscalationRunAsync(Guid clipId, string provider, string model, string? reasoningEffort)
+    {
+        const string sql = """
+            INSERT INTO legend_detection_run (clip_id, trigger, provider, model, reasoning_effort)
+            VALUES (@ClipId, 'escalation', @Provider, @Model, @ReasoningEffort)
+            """;
+        await connection.ExecuteAsync(sql, new
+        {
+            ClipId = clipId, Provider = provider, Model = model, ReasoningEffort = reasoningEffort
+        });
+    }
+
+    /// <summary>
+    /// Claims the next pending run, or a running one whose worker stopped before finishing, and counts the
+    /// attempt. Manual and escalation runs go before automatic ones, so they never wait behind a backfill;
+    /// otherwise the oldest goes first. A run that already failed an attempt waits <paramref name="retryAfter"/>
+    /// before it is retried. SKIP LOCKED keeps two API instances from claiming the same run.
     /// </summary>
     public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter)
     {
@@ -83,10 +100,11 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                   WHERE archived_at IS NULL
                     AND ((status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
                       OR (status = 'running' AND started_at < now() - @StaleAfter))
-                  ORDER BY created_at
+                  ORDER BY trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, clip.video_id, run.provider, run.model, run.reasoning_effort, run.attempts
+            RETURNING run.id, run.clip_id, clip.video_id, run.trigger, run.provider, run.model, run.reasoning_effort,
+                      run.attempts
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql, new { RetryAfter = retryAfter, StaleAfter = staleAfter });
     }
@@ -361,6 +379,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public Guid Id { get; set; }
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
+        public string Trigger { get; set; } = "";
         public string Provider { get; set; } = "";
         public string Model { get; set; } = "";
         public string? ReasoningEffort { get; set; }

@@ -234,6 +234,7 @@ public class LegendDetectionService(
             return true;
         }
 
+        LegendDetectionResult? completed = null;
         try
         {
             LegendFrame[] ownerPanels = await Task.WhenAll(
@@ -244,6 +245,7 @@ public class LegendDetectionService(
                 new LegendClipImages(frames[0], ownerPanels), cancellationToken);
             await statements.CompleteRunAsync(run.Id, resources.PromptVersion, frames.Count, recognition,
                 (int)stopwatch.ElapsedMilliseconds);
+            completed = recognition.Result;
 
             logger.LogInformation(
                 "Legend detection for clip {ClipId} with {Provider}/{Model} ({ReasoningEffort}): {Legend} ({Confidence:0.00})",
@@ -259,7 +261,53 @@ public class LegendDetectionService(
             await statements.FailRunAsync(run.Id, ex.Message, resources.PromptVersion, rawResponse, canRetry);
         }
 
+        // Outside the try: the run has already succeeded, so a failure here must not mark it failed.
+        if (completed is not null && ShouldEscalate(run.Trigger, run.Model, completed, options.CurrentValue))
+        {
+            await QueueEscalationAsync(run);
+        }
+
         return true;
+    }
+
+    /// <summary>
+    /// Whether a run's answer should be handed to <see cref="LegendDetectionOptions.EscalationModel"/>: only
+    /// automatic runs, only when the clip owner's panel was seen (a missing HUD is reliably right and a stronger
+    /// model cannot see more), and only when the legend is missing or below
+    /// <see cref="LegendDetectionOptions.EscalateBelow"/>. Manual and escalation runs never escalate.
+    /// </summary>
+    public static bool ShouldEscalate(
+        string trigger,
+        string model,
+        LegendDetectionResult result,
+        LegendDetectionOptions options)
+    {
+        return trigger == "auto"
+               && !string.IsNullOrWhiteSpace(options.EscalationModel)
+               && !string.Equals(model, options.EscalationModel.Trim(), StringComparison.OrdinalIgnoreCase)
+               && result.HudDetected
+               && (result.Player.Legend is null || result.Player.LegendConfidence < options.EscalateBelow);
+    }
+
+    private async Task QueueEscalationAsync(LegendDetectionStatements.ClaimedRunRow run)
+    {
+        LegendDetectionOptions current = options.CurrentValue;
+        string? reasoningEffort;
+        try
+        {
+            reasoningEffort = LegendReasoningEffort.Normalize(current.EscalationReasoningEffort);
+        }
+        catch (ArgumentException ex)
+        {
+            logger.LogWarning("Not escalating legend detection: LegendDetection:EscalationReasoningEffort is invalid. {Error}",
+                ex.Message);
+            return;
+        }
+
+        string model = current.EscalationModel.Trim();
+        await statements.QueueEscalationRunAsync(run.ClipId, run.Provider, model, reasoningEffort);
+        logger.LogInformation("Escalated legend detection for clip {ClipId} from {Model} to {EscalationModel}",
+            run.ClipId, run.Model, model);
     }
 
     /// <summary>

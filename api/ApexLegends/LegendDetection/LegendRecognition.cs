@@ -28,6 +28,17 @@ public sealed class LegendDetectionOptions
 
     public int MaxAttempts { get; set; } = 3;
 
+    /// <summary>
+    /// A stronger model to fall back on, on the same provider, when an automatic run sees the clip owner's panel
+    /// but returns no legend or one below <see cref="EscalateBelow"/>. Empty turns the fallback off.
+    /// </summary>
+    public string EscalationModel { get; set; } = "";
+
+    /// <summary>Reasoning effort for fallback runs, like <see cref="ReasoningEffort"/>.</summary>
+    public string EscalationReasoningEffort { get; set; } = "";
+
+    public double EscalateBelow { get; set; } = 0.9;
+
     /// <summary>How many runs each API instance sends to the model at once. Read when the API starts.</summary>
     public int Concurrency { get; set; } = 4;
 
