@@ -78,8 +78,14 @@ public static class LegendReasoningEffort
 /// <summary>One image sent to the model.</summary>
 public sealed record LegendFrame(byte[] Data, string MediaType);
 
-/// <summary>The model's answer, in the shape of <c>Resources/response-schema.json</c>.</summary>
-public sealed record LegendDetectionResult(bool HudDetected, DetectedPlayer Player, List<DetectedTeammate> Teammates)
+/// <summary>
+/// The model's answer, in the shape of <c>Resources/response-schema.json</c>. Earlier prompts also asked for names
+/// and teammates; <see cref="Teammates"/> is null when the prompt did not, so old answers still parse.
+/// </summary>
+public sealed record LegendDetectionResult(
+    bool HudDetected,
+    DetectedPlayer Player,
+    List<DetectedTeammate>? Teammates = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -94,16 +100,16 @@ public sealed record LegendDetectionResult(bool HudDetected, DetectedPlayer Play
     {
         LegendDetectionResult result = JsonSerializer.Deserialize<LegendDetectionResult>(json, JsonOptions)
                                        ?? throw new JsonException("Response was null");
-        if (result.Player is null || result.Teammates is null)
+        if (result.Player is null)
         {
-            throw new JsonException("Response is missing player or teammates");
+            throw new JsonException("Response is missing the player");
         }
 
         (string? playerLegend, double playerConfidence) = OnSheet(result.Player.Legend, result.Player.LegendConfidence);
         return result with
         {
             Player = result.Player with { Legend = playerLegend, LegendConfidence = playerConfidence },
-            Teammates = result.Teammates
+            Teammates = result.Teammates?
                 .Select(teammate =>
                 {
                     (string? legend, double confidence) = OnSheet(teammate.Legend, teammate.LegendConfidence);
@@ -119,9 +125,9 @@ public sealed record LegendDetectionResult(bool HudDetected, DetectedPlayer Play
         return (canonical, canonical is null ? 0 : confidence);
     }
 
-    public string TeammatesJson()
+    public string? TeammatesJson()
     {
-        return JsonSerializer.Serialize(Teammates, JsonOptions);
+        return Teammates is null ? null : JsonSerializer.Serialize(Teammates, JsonOptions);
     }
 
     public static List<DetectedTeammate> ParseTeammates(string json)
@@ -130,7 +136,11 @@ public sealed record LegendDetectionResult(bool HudDetected, DetectedPlayer Play
     }
 }
 
-public sealed record DetectedPlayer(string? Name, string? Legend, double NameConfidence, double LegendConfidence);
+public sealed record DetectedPlayer(
+    string? Legend,
+    double LegendConfidence,
+    string? Name = null,
+    double? NameConfidence = null);
 
 public sealed record DetectedTeammate(int Slot, string? Name, string? Legend, double NameConfidence, double LegendConfidence);
 
@@ -142,7 +152,7 @@ public sealed record LegendRecognition(
     long? CachedInputTokens,
     long? OutputTokens);
 
-/// <summary>Identifies legends and player names from a clip's frames using one particular model.</summary>
+/// <summary>Identifies the clip owner's legend from a clip's frames using one particular model.</summary>
 public interface ILegendRecognizer
 {
     Task<LegendRecognition> RecognizeAsync(IReadOnlyList<LegendFrame> frames, CancellationToken cancellationToken);

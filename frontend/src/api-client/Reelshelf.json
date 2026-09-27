@@ -3033,7 +3033,10 @@
             "format": "float"
           },
           "teammates": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/DetectedTeammate"
             }
@@ -3106,6 +3109,7 @@
           "average_duration_ms",
           "labelled",
           "player_correct",
+          "squad_labelled",
           "teammates_correct",
           "confident_mistakes",
           "archived_at"
@@ -3166,6 +3170,10 @@
             "format": "int32"
           },
           "player_correct": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "squad_labelled": {
             "type": "integer",
             "format": "int32"
           },

@@ -32,7 +32,7 @@ public class OpenAIRequestTests
                 {
                   "type": "output_text",
                   "annotations": [],
-                  "text": "{\"hud_detected\":true,\"player\":{\"name\":\"Cosmic\",\"legend\":\"Horizon\",\"name_confidence\":0.99,\"legend_confidence\":0.99},\"teammates\":[]}"
+                  "text": "{\"hud_detected\":true,\"player\":{\"legend\":\"Horizon\",\"legend_confidence\":0.99}}"
                 }
               ]
             }

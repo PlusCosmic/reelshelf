@@ -7,6 +7,11 @@ namespace Reelshelf.Test.ApexLegends;
 
 public class LegendDetectionTests
 {
+    private const string PlayerOnlyResponse = """
+        { "hud_detected": true, "player": { "legend": "wraith", "legend_confidence": 0.93 } }
+        """;
+
+    /// <summary>The shape earlier prompts asked for, with names and teammates.</summary>
     private const string ValidResponse = """
         {
           "hud_detected": true,
@@ -27,10 +32,23 @@ public class LegendDetectionTests
         Assert.Equal("PlusCosmic", result.Player.Name);
         Assert.Equal("Mad Maggie", result.Player.Legend);
         Assert.Equal(0.92, result.Player.LegendConfidence);
-        Assert.Equal("[TAG] Mate", result.Teammates[0].Name);
+        Assert.Equal("[TAG] Mate", result.Teammates![0].Name);
         Assert.Equal("Wraith", result.Teammates[0].Legend);
         Assert.Null(result.Teammates[1].Legend);
         Assert.Equal(0, result.Teammates[1].LegendConfidence);
+    }
+
+    [Fact]
+    public void Parse_AcceptsAPlayerOnlyAnswer_WithNoNameOrTeammates()
+    {
+        LegendDetectionResult result = LegendDetectionResult.Parse(PlayerOnlyResponse);
+
+        Assert.Equal("Wraith", result.Player.Legend);
+        Assert.Equal(0.93, result.Player.LegendConfidence);
+        Assert.Null(result.Player.Name);
+        Assert.Null(result.Player.NameConfidence);
+        Assert.Null(result.Teammates);
+        Assert.Null(result.TeammatesJson());
     }
 
     [Theory]
@@ -46,7 +64,7 @@ public class LegendDetectionTests
     {
         LegendDetectionResult result = LegendDetectionResult.Parse(ValidResponse);
 
-        List<DetectedTeammate> stored = LegendDetectionResult.ParseTeammates(result.TeammatesJson());
+        List<DetectedTeammate> stored = LegendDetectionResult.ParseTeammates(result.TeammatesJson()!);
 
         Assert.Equal(result.Teammates, stored);
     }

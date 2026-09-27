@@ -102,6 +102,12 @@ export interface LegendDetectionUsage {
    * @type {number}
    * @memberof LegendDetectionUsage
    */
+  squadLabelled: number;
+  /**
+   *
+   * @type {number}
+   * @memberof LegendDetectionUsage
+   */
   teammatesCorrect: number;
   /**
    *
@@ -149,6 +155,8 @@ export function instanceOfLegendDetectionUsage(
   if (!("labelled" in value) || value["labelled"] === undefined) return false;
   if (!("playerCorrect" in value) || value["playerCorrect"] === undefined)
     return false;
+  if (!("squadLabelled" in value) || value["squadLabelled"] === undefined)
+    return false;
   if (!("teammatesCorrect" in value) || value["teammatesCorrect"] === undefined)
     return false;
   if (
@@ -186,6 +194,7 @@ export function LegendDetectionUsageFromJSONTyped(
     averageDurationMs: json["average_duration_ms"],
     labelled: json["labelled"],
     playerCorrect: json["player_correct"],
+    squadLabelled: json["squad_labelled"],
     teammatesCorrect: json["teammates_correct"],
     confidentMistakes: json["confident_mistakes"],
     archivedAt:
@@ -219,6 +228,7 @@ export function LegendDetectionUsageToJSONTyped(
     average_duration_ms: value["averageDurationMs"],
     labelled: value["labelled"],
     player_correct: value["playerCorrect"],
+    squad_labelled: value["squadLabelled"],
     teammates_correct: value["teammatesCorrect"],
     confident_mistakes: value["confidentMistakes"],
     archived_at:

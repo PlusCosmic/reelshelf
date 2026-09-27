@@ -30,11 +30,14 @@ export const reviewFilters: Array<{ value: ReviewFilter; label: string }> = [
   { value: "wrong", label: "Labelled wrong" },
 ];
 
-/** The detected legends as a label: the owner's legend and every teammate legend that was identified. */
+/**
+ * The detected legends as a label: the owner's legend and every teammate legend that was identified. Runs whose
+ * prompt did not ask for teammates have none.
+ */
 export function labelFromRun(run: LegendDetectionRun) {
   return {
     playerLegend: run.playerLegend,
-    teammateLegends: run.teammates
+    teammateLegends: (run.teammates ?? [])
       .map((teammate) => teammate.legend)
       .filter((legend): legend is string => legend !== null),
   };
@@ -51,7 +54,8 @@ function sameLegends(a: string[], b: string[]) {
 
 /**
  * Whether a succeeded run matches the clip's label: the owner's legend exactly and teammates as an unordered
- * set, the same rule the usage table scores by. Null when there is nothing to compare.
+ * set, the same rule the usage table scores by. Teammates only count when the run's prompt asked for them.
+ * Null when there is nothing to compare.
  */
 export function labelVerdict(
   run: LegendDetectionRun | null,
@@ -60,7 +64,8 @@ export function labelVerdict(
   if (!run || run.status !== "succeeded" || !label) return null;
   const detected = labelFromRun(run);
   return detected.playerLegend === label.playerLegend &&
-    sameLegends(detected.teammateLegends, label.teammateLegends)
+    (run.teammates === null ||
+      sameLegends(detected.teammateLegends, label.teammateLegends))
     ? "correct"
     : "wrong";
 }
@@ -73,7 +78,7 @@ export function needsReview(run: LegendDetectionRun) {
   if (!run.hudDetected || !run.playerLegend) return true;
   const confidences = [
     run.playerLegendConfidence ?? 0,
-    ...run.teammates
+    ...(run.teammates ?? [])
       .filter((teammate) => teammate.legend !== null)
       .map((teammate) => teammate.legendConfidence),
   ];

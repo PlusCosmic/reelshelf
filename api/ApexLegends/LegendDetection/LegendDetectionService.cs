@@ -197,6 +197,7 @@ public class LegendDetectionService(
                 row.AverageDurationMs,
                 (int)row.Labelled,
                 (int)row.PlayerCorrect,
+                (int)row.SquadLabelled,
                 (int)row.TeammatesCorrect,
                 (int)row.ConfidentMistakes,
                 row.ArchivedAt))

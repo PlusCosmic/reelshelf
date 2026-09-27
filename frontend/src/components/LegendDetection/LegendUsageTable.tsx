@@ -42,7 +42,10 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
             <th scope="col" title="Your legend correct">
               You
             </th>
-            <th scope="col" title="Every teammate legend correct">
+            <th
+              scope="col"
+              title="Every teammate legend correct, for prompts that ask for teammates"
+            >
               Squad
             </th>
             <th scope="col" title="Wrong legends reported at 80%+ confidence">
@@ -77,7 +80,7 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
               </td>
               <td>{row.labelled}</td>
               <td>{formatAccuracy(row.playerCorrect, row.labelled)}</td>
-              <td>{formatAccuracy(row.teammatesCorrect, row.labelled)}</td>
+              <td>{formatAccuracy(row.teammatesCorrect, row.squadLabelled)}</td>
               <td>{row.labelled > 0 ? row.confidentMistakes : "–"}</td>
             </tr>
           ))}
