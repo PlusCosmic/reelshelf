@@ -122,7 +122,7 @@ export interface LegendDetectionRun {
    * @type {Array<DetectedTeammate>}
    * @memberof LegendDetectionRun
    */
-  teammates: Array<DetectedTeammate>;
+  teammates: Array<DetectedTeammate> | null;
   /**
    *
    * @type {string}
@@ -256,7 +256,10 @@ export function LegendDetectionRunFromJSONTyped(
     playerLegendConfidence: json["player_legend_confidence"],
     playerName: json["player_name"],
     playerNameConfidence: json["player_name_confidence"],
-    teammates: (json["teammates"] as Array<any>).map(DetectedTeammateFromJSON),
+    teammates:
+      json["teammates"] == null
+        ? null
+        : (json["teammates"] as Array<any>).map(DetectedTeammateFromJSON),
     rawResponse: json["raw_response"],
     inputTokens: json["input_tokens"],
     cachedInputTokens: json["cached_input_tokens"],
@@ -297,7 +300,10 @@ export function LegendDetectionRunToJSONTyped(
     player_legend_confidence: value["playerLegendConfidence"],
     player_name: value["playerName"],
     player_name_confidence: value["playerNameConfidence"],
-    teammates: (value["teammates"] as Array<any>).map(DetectedTeammateToJSON),
+    teammates:
+      value["teammates"] == null
+        ? null
+        : (value["teammates"] as Array<any>).map(DetectedTeammateToJSON),
     raw_response: value["rawResponse"],
     input_tokens: value["inputTokens"],
     cached_input_tokens: value["cachedInputTokens"],

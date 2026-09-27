@@ -76,6 +76,14 @@ describe("needsReview", () => {
     expect(needsReview(run())).toBe(false);
   });
 
+  it("passes a confident player-only run", () => {
+    expect(
+      needsReview(
+        run({ playerName: null, playerNameConfidence: null, teammates: null }),
+      ),
+    ).toBe(false);
+  });
+
   it("flags a missed HUD, a missing player legend, or a low-confidence legend", () => {
     expect(needsReview(run({ hudDetected: false }))).toBe(true);
     expect(needsReview(run({ playerLegend: null }))).toBe(true);
@@ -192,6 +200,14 @@ describe("labelVerdict", () => {
     expect(
       labelVerdict(run({ playerLegend: null, teammates: [] }), label(null, [])),
     ).toBe("correct");
+  });
+
+  it("judges only the owner's legend when the prompt did not ask for teammates", () => {
+    const playerOnly = run({ teammates: null });
+    expect(labelVerdict(playerOnly, label("Horizon", ["Wraith"]))).toBe(
+      "correct",
+    );
+    expect(labelVerdict(playerOnly, label("Ash", ["Wraith"]))).toBe("wrong");
   });
 
   it("has no verdict without a label or a succeeded run", () => {

@@ -125,7 +125,8 @@ public sealed record LegendDetectionReviewClip(
 /// Totals for one provider, model, reasoning effort and prompt version; <c>ArchivedAt</c> is set for a batch of
 /// archived runs. A null <c>ReasoningEffort</c> is the model's default.
 /// Cached input tokens are part of the input total. <c>Labelled</c> counts succeeded runs on labelled clips,
-/// which the correct and confident-mistake counts are out of.
+/// which the player-correct and confident-mistake counts are out of; <c>SquadLabelled</c> is the subset whose
+/// prompt asked for teammates, which <c>TeammatesCorrect</c> is out of.
 /// </summary>
 public sealed record LegendDetectionUsage(
     string Provider,
@@ -141,6 +142,7 @@ public sealed record LegendDetectionUsage(
     int? AverageDurationMs,
     int Labelled,
     int PlayerCorrect,
+    int SquadLabelled,
     int TeammatesCorrect,
     int ConfidentMistakes,
     DateTimeOffset? ArchivedAt);
@@ -161,7 +163,7 @@ public sealed record LegendDetectionRun(
     float? PlayerLegendConfidence,
     string? PlayerName,
     float? PlayerNameConfidence,
-    List<DetectedTeammate> Teammates,
+    List<DetectedTeammate>? Teammates,
     string? RawResponse,
     int? InputTokens,
     int? CachedInputTokens,
@@ -189,7 +191,7 @@ public sealed record LegendDetectionRun(
             row.PlayerLegendConfidence,
             row.PlayerName,
             row.PlayerNameConfidence,
-            row.Teammates is null ? [] : LegendDetectionResult.ParseTeammates(row.Teammates),
+            row.Teammates is null ? null : LegendDetectionResult.ParseTeammates(row.Teammates),
             row.RawResponse,
             row.InputTokens,
             row.CachedInputTokens,

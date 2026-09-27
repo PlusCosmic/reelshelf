@@ -143,7 +143,7 @@ function RunResult({ run }: { run: LegendDetectionRun }) {
       name: run.playerName,
       nameConfidence: run.playerNameConfidence,
     },
-    ...[...run.teammates]
+    ...[...(run.teammates ?? [])]
       .sort((a, b) => a.slot - b.slot)
       .map((teammate) => ({
         label: `Teammate ${teammate.slot}`,

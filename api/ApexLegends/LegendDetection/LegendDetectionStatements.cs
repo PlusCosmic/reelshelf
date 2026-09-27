@@ -128,7 +128,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
             PlayerLegend = result.Player.Legend,
             PlayerLegendConfidence = (float)result.Player.LegendConfidence,
             PlayerName = result.Player.Name,
-            PlayerNameConfidence = (float)result.Player.NameConfidence,
+            PlayerNameConfidence = (float?)result.Player.NameConfidence,
             Teammates = result.TeammatesJson(),
             recognition.RawResponse,
             InputTokens = (int?)recognition.InputTokens,
@@ -213,7 +213,8 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     /// Run counts, token totals and accuracy per provider, model, reasoning effort and prompt version, with each archived batch
     /// kept apart from the current runs. Current runs come first; archived groups that never ran are left out.
     /// Accuracy covers succeeded runs on labelled clips: the owner's legend must match exactly, and teammates as
-    /// an unordered set. A confident mistake is any wrong legend reported at <paramref name="confidentAt"/> or above.
+    /// an unordered set, scored only for runs whose prompt asked for teammates (their <c>teammates</c> is not
+    /// null). A confident mistake is any wrong legend reported at <paramref name="confidentAt"/> or above.
     /// </summary>
     public async Task<List<UsageRow>> GetUsageAsync(double confidentAt)
     {
@@ -259,7 +260,8 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                    AVG(duration_ms)::int AS average_duration_ms,
                    COUNT(*) FILTER (WHERE labelled) AS labelled,
                    COUNT(*) FILTER (WHERE labelled AND player_correct) AS player_correct,
-                   COUNT(*) FILTER (WHERE labelled AND teammates_correct) AS teammates_correct,
+                   COUNT(*) FILTER (WHERE labelled AND teammates IS NOT NULL) AS squad_labelled,
+                   COUNT(*) FILTER (WHERE labelled AND teammates IS NOT NULL AND teammates_correct) AS teammates_correct,
                    COUNT(*) FILTER (WHERE labelled AND confident_mistake) AS confident_mistakes,
                    archived_at
             FROM scored
@@ -348,6 +350,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public int? AverageDurationMs { get; set; }
         public long Labelled { get; set; }
         public long PlayerCorrect { get; set; }
+        public long SquadLabelled { get; set; }
         public long TeammatesCorrect { get; set; }
         public long ConfidentMistakes { get; set; }
         public DateTimeOffset? ArchivedAt { get; set; }
