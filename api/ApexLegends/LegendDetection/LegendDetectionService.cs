@@ -237,12 +237,11 @@ public class LegendDetectionService(
         LegendDetectionResult? completed = null;
         try
         {
-            LegendFrame[] ownerPanels = await Task.WhenAll(
-                frames.Select(frame => LegendHudCropper.CropOwnerPanelAsync(frame, cancellationToken)));
+            LegendScreenshot[] screenshots = await Task.WhenAll(
+                frames.Select(frame => LegendHudCropper.PrepareAsync(frame, cancellationToken)));
             Stopwatch stopwatch = Stopwatch.StartNew();
             ILegendRecognizer recognizer = recognizerFactory.Create(run.Provider, run.Model, run.ReasoningEffort);
-            LegendRecognition recognition = await recognizer.RecognizeAsync(
-                new LegendClipImages(frames[0], ownerPanels), cancellationToken);
+            LegendRecognition recognition = await recognizer.RecognizeAsync(screenshots, cancellationToken);
             await statements.CompleteRunAsync(run.Id, resources.PromptVersion, frames.Count, recognition,
                 (int)stopwatch.ElapsedMilliseconds);
             completed = recognition.Result;

@@ -24,6 +24,18 @@ public class LegendHudCropperTests
     }
 
     [Fact]
+    public async Task Overview_HalvesA1080pFrame_AndLeavesSmallerFramesAlone()
+    {
+        LegendFrame overview = await LegendHudCropper.OverviewAsync(await GenerateFrameAsync(1920, 1080), CancellationToken.None);
+        IMediaAnalysis analysis = await FFProbe.AnalyseAsync(new MemoryStream(overview.Data));
+        Assert.Equal(960, analysis.PrimaryVideoStream!.Width);
+        Assert.Equal(540, analysis.PrimaryVideoStream.Height);
+
+        LegendFrame small = await LegendHudCropper.OverviewAsync(await GenerateFrameAsync(640, 360), CancellationToken.None);
+        Assert.Equal(640, (await FFProbe.AnalyseAsync(new MemoryStream(small.Data))).PrimaryVideoStream!.Width);
+    }
+
+    [Fact]
     public async Task CropOwnerPanel_Throws_WhenTheFrameIsNotAnImage()
     {
         await Assert.ThrowsAnyAsync<Exception>(() =>
