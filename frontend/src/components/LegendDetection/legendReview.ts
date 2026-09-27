@@ -156,3 +156,8 @@ export function cachedShare(
     ? usage.cachedInputTokens / usage.inputTokens
     : 0;
 }
+
+/** A run's reasoning effort, where null is the model's default. */
+export function formatReasoningEffort(effort: string | null | undefined) {
+  return effort ?? "default";
+}

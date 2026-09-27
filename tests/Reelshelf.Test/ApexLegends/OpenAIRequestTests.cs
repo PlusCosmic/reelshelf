@@ -123,11 +123,27 @@ public class OpenAIRequestTests
         Assert.Equal("reelshelf-legend-detection", handler.RequestBody!.Value.GetProperty("prompt_cache_key").GetString());
     }
 
-    private static IChatClient CreateClient(RecordingHandler handler, string cacheMode)
+    [Fact]
+    public async Task ReasoningEffort_IsSentOnlyWhenGiven()
+    {
+        RecordingHandler withEffort = new(ResponseJson);
+        await new ChatClientLegendRecognizer(CreateClient(withEffort, "explicit", "minimal"), new LegendDetectionResources())
+            .RecognizeAsync([new LegendFrame([1], "image/jpeg")], CancellationToken.None);
+        Assert.Equal("minimal",
+            withEffort.RequestBody!.Value.GetProperty("reasoning").GetProperty("effort").GetString());
+
+        RecordingHandler withoutEffort = new(ResponseJson);
+        await new ChatClientLegendRecognizer(CreateClient(withoutEffort, "explicit"), new LegendDetectionResources())
+            .RecognizeAsync([new LegendFrame([1], "image/jpeg")], CancellationToken.None);
+        Assert.False(withoutEffort.RequestBody!.Value.TryGetProperty("reasoning", out _));
+    }
+
+    private static IChatClient CreateClient(RecordingHandler handler, string cacheMode, string? reasoningEffort = null)
     {
         return LegendRecognizerFactory.CreateOpenAIChatClient(
             "gpt-6-luna",
             new LegendDetectionProviderOptions { ApiKey = "test", PromptCacheMode = cacheMode },
+            reasoningEffort,
             new OpenAIClientOptions { Transport = new HttpClientPipelineTransport(new HttpClient(handler)) });
     }
 

@@ -50,7 +50,18 @@ public class LegendDetectionService(
             return;
         }
 
-        if (await statements.QueueAutoRunAsync(clip.Id, current.Provider, current.Model))
+        string? reasoningEffort;
+        try
+        {
+            reasoningEffort = LegendReasoningEffort.Normalize(current.ReasoningEffort);
+        }
+        catch (ArgumentException ex)
+        {
+            logger.LogWarning("Not queueing legend detection: LegendDetection:ReasoningEffort is invalid. {Error}", ex.Message);
+            return;
+        }
+
+        if (await statements.QueueAutoRunAsync(clip.Id, current.Provider, current.Model, reasoningEffort))
         {
             logger.LogInformation("Queued legend detection for clip {ClipId}", clip.Id);
         }
@@ -66,24 +77,31 @@ public class LegendDetectionService(
         return archived;
     }
 
-    /// <summary>Queues the automatic run for every Apex Legends clip without an unarchived one.</summary>
-    public async Task<int> BackfillAsync()
+    /// <summary>
+    /// Queues the automatic run for every Apex Legends clip without an unarchived one, at
+    /// <paramref name="reasoningEffort"/> or the configured default when it is empty.
+    /// </summary>
+    public async Task<int> BackfillAsync(string? reasoningEffort)
     {
-        (string provider, string model) = Resolve(null, null);
+        (string provider, string model, string? effort) = Resolve(null, null, reasoningEffort);
         GameCategory apex = await gameCategoryStatements.GetBySlugAsync(ApexLegendsSlug)
                             ?? throw new BadRequestException("Apex Legends category not found");
-        return await statements.QueueAutoRunsForCategoryAsync(apex.Id, provider, model);
+        return await statements.QueueAutoRunsForCategoryAsync(apex.Id, provider, model, effort);
     }
 
-    /// <summary>Queues an extra run for one clip, optionally with a different provider or model to compare against.</summary>
+    /// <summary>
+    /// Queues an extra run for one clip, optionally with a different provider, model or reasoning effort to compare
+    /// against.
+    /// </summary>
     public async Task<LegendDetectionStatements.LegendDetectionRunRow> QueueManualRunAsync(
         Guid clipId,
         string? provider,
-        string? model)
+        string? model,
+        string? reasoningEffort)
     {
-        (string resolvedProvider, string resolvedModel) = Resolve(provider, model);
+        (string resolvedProvider, string resolvedModel, string? effort) = Resolve(provider, model, reasoningEffort);
         _ = await clipsStatements.GetClipById(clipId) ?? throw new NotFoundException("Clip", clipId);
-        return await statements.QueueManualRunAsync(clipId, resolvedProvider, resolvedModel);
+        return await statements.QueueManualRunAsync(clipId, resolvedProvider, resolvedModel, effort);
     }
 
     public async Task<List<LegendDetectionStatements.LegendDetectionRunRow>> GetRunsAsync(Guid clipId)
@@ -168,6 +186,7 @@ public class LegendDetectionService(
             .Select(row => new LegendDetectionUsage(
                 row.Provider,
                 row.Model,
+                row.ReasoningEffort,
                 row.PromptVersion,
                 (int)row.Succeeded,
                 (int)row.Failed,
@@ -217,14 +236,15 @@ public class LegendDetectionService(
         Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
-            ILegendRecognizer recognizer = recognizerFactory.Create(run.Provider, run.Model);
+            ILegendRecognizer recognizer = recognizerFactory.Create(run.Provider, run.Model, run.ReasoningEffort);
             LegendRecognition recognition = await recognizer.RecognizeAsync(frames, cancellationToken);
             await statements.CompleteRunAsync(run.Id, resources.PromptVersion, frames.Count, recognition,
                 (int)stopwatch.ElapsedMilliseconds);
 
             logger.LogInformation(
-                "Legend detection for clip {ClipId} with {Provider}/{Model}: {Legend} ({Confidence:0.00})",
-                run.ClipId, run.Provider, run.Model, recognition.Result.Player.Legend ?? "none",
+                "Legend detection for clip {ClipId} with {Provider}/{Model} ({ReasoningEffort}): {Legend} ({Confidence:0.00})",
+                run.ClipId, run.Provider, run.Model, run.ReasoningEffort ?? "default effort",
+                recognition.Result.Player.Legend ?? "none",
                 recognition.Result.Player.LegendConfidence);
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
@@ -287,7 +307,13 @@ public class LegendDetectionService(
                ?? throw new InvalidOperationException("BunnyCdnBaseUrl is not configured");
     }
 
-    private (string Provider, string Model) Resolve(string? provider, string? model)
+    /// <summary>
+    /// The provider, model and reasoning effort for a run, each falling back to configuration when not given.
+    /// </summary>
+    private (string Provider, string Model, string? ReasoningEffort) Resolve(
+        string? provider,
+        string? model,
+        string? reasoningEffort)
     {
         LegendDetectionOptions current = options.CurrentValue;
         string resolvedProvider = string.IsNullOrWhiteSpace(provider) ? current.Provider : provider.Trim();
@@ -303,6 +329,17 @@ public class LegendDetectionService(
             throw new BadRequestException("No legend detection model given and LegendDetection:Model is not set");
         }
 
-        return (resolvedProvider.ToLowerInvariant(), resolvedModel);
+        string? resolvedEffort;
+        try
+        {
+            resolvedEffort = LegendReasoningEffort.Normalize(
+                string.IsNullOrWhiteSpace(reasoningEffort) ? current.ReasoningEffort : reasoningEffort);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new BadRequestException(ex.Message);
+        }
+
+        return (resolvedProvider.ToLowerInvariant(), resolvedModel, resolvedEffort);
     }
 }

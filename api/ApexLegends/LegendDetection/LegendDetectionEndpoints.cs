@@ -21,6 +21,7 @@ public static class LegendDetectionEndpoints
         group.MapPut("clips/{clipId:guid}/label", SetLabel).WithName("SetLegendDetectionLabel");
         group.MapDelete("clips/{clipId:guid}/label", DeleteLabel).WithName("DeleteLegendDetectionLabel");
         group.MapGet("legends", GetLegends).WithName("GetLegendDetectionLegends");
+        group.MapGet("reasoning-efforts", GetReasoningEfforts).WithName("GetLegendDetectionReasoningEfforts");
     }
 
     public static async Task<List<LegendDetectionReviewClip>> GetClipsForReview(LegendDetectionService service)
@@ -33,9 +34,11 @@ public static class LegendDetectionEndpoints
         return await service.GetUsageAsync();
     }
 
-    public static async Task<LegendDetectionBackfillResponse> Backfill(LegendDetectionService service)
+    public static async Task<LegendDetectionBackfillResponse> Backfill(
+        BackfillLegendDetectionRequest request,
+        LegendDetectionService service)
     {
-        return new LegendDetectionBackfillResponse(await service.BackfillAsync());
+        return new LegendDetectionBackfillResponse(await service.BackfillAsync(request.ReasoningEffort));
     }
 
     public static async Task<LegendDetectionArchiveResponse> ArchiveAllRuns(LegendDetectionService service)
@@ -48,7 +51,8 @@ public static class LegendDetectionEndpoints
         QueueLegendDetectionRunRequest request,
         LegendDetectionService service)
     {
-        return LegendDetectionRun.From(await service.QueueManualRunAsync(clipId, request.Provider, request.Model));
+        return LegendDetectionRun.From(await service.QueueManualRunAsync(clipId, request.Provider, request.Model,
+            request.ReasoningEffort));
     }
 
     public static async Task<NoContent> SetLabel(
@@ -73,14 +77,26 @@ public static class LegendDetectionEndpoints
         return ApexLegendNames.All;
     }
 
+    /// <summary>The reasoning efforts a run can ask for; not every model accepts every one.</summary>
+    public static IReadOnlyList<string> GetReasoningEfforts()
+    {
+        return LegendReasoningEffort.All;
+    }
+
     public static async Task<List<LegendDetectionRun>> GetRuns(Guid clipId, LegendDetectionService service)
     {
         return (await service.GetRunsAsync(clipId)).Select(LegendDetectionRun.From).ToList();
     }
 }
 
-/// <summary>Leave <c>Provider</c> or <c>Model</c> empty to use the configured default.</summary>
-public sealed record QueueLegendDetectionRunRequest(string? Provider, string? Model);
+/// <summary>
+/// Leave <c>Provider</c>, <c>Model</c> or <c>ReasoningEffort</c> empty to use the configured default. The effort
+/// is one of the values from <c>GET /api/legend-detection/reasoning-efforts</c>.
+/// </summary>
+public sealed record QueueLegendDetectionRunRequest(string? Provider, string? Model, string? ReasoningEffort);
+
+/// <summary>Leave <c>ReasoningEffort</c> empty to use the configured default.</summary>
+public sealed record BackfillLegendDetectionRequest(string? ReasoningEffort);
 
 public sealed record LegendDetectionBackfillResponse(int Queued);
 
@@ -106,13 +122,15 @@ public sealed record LegendDetectionReviewClip(
     LegendDetectionLabel? Label);
 
 /// <summary>
-/// Totals for one provider, model and prompt version; <c>ArchivedAt</c> is set for a batch of archived runs.
+/// Totals for one provider, model, reasoning effort and prompt version; <c>ArchivedAt</c> is set for a batch of
+/// archived runs. A null <c>ReasoningEffort</c> is the model's default.
 /// Cached input tokens are part of the input total. <c>Labelled</c> counts succeeded runs on labelled clips,
 /// which the correct and confident-mistake counts are out of.
 /// </summary>
 public sealed record LegendDetectionUsage(
     string Provider,
     string Model,
+    string? ReasoningEffort,
     string? PromptVersion,
     int Succeeded,
     int Failed,
@@ -133,6 +151,7 @@ public sealed record LegendDetectionRun(
     string Trigger,
     string Provider,
     string Model,
+    string? ReasoningEffort,
     string? PromptVersion,
     string Status,
     int Attempts,
@@ -160,6 +179,7 @@ public sealed record LegendDetectionRun(
             row.Trigger,
             row.Provider,
             row.Model,
+            row.ReasoningEffort,
             row.PromptVersion,
             row.Status,
             row.Attempts,

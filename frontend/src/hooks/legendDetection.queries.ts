@@ -4,6 +4,7 @@ import {
   backfillLegendDetection,
   deleteLegendLabel,
   fetchLegendNames,
+  fetchLegendReasoningEfforts,
   setLegendLabel,
   fetchLegendReviewClips,
   fetchLegendRuns,
@@ -66,8 +67,15 @@ function useInvalidateLegendDetection() {
 export function useQueueLegendRun() {
   const invalidate = useInvalidateLegendDetection();
   return useMutation({
-    mutationFn: ({ clipId, model }: { clipId: string; model: string | null }) =>
-      queueLegendRun(clipId, model),
+    mutationFn: ({
+      clipId,
+      model,
+      reasoningEffort,
+    }: {
+      clipId: string;
+      model: string | null;
+      reasoningEffort: string | null;
+    }) => queueLegendRun(clipId, model, reasoningEffort),
     onSuccess: invalidate,
   });
 }
@@ -76,6 +84,16 @@ export function useLegendNames(enabled = true) {
   return useQuery({
     queryKey: [...legendDetectionQueryKey, "legends"],
     queryFn: fetchLegendNames,
+    enabled,
+    retry: false,
+    staleTime: Infinity,
+  });
+}
+
+export function useLegendReasoningEfforts(enabled = true) {
+  return useQuery({
+    queryKey: [...legendDetectionQueryKey, "reasoning-efforts"],
+    queryFn: fetchLegendReasoningEfforts,
     enabled,
     retry: false,
     staleTime: Infinity,

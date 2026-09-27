@@ -19,7 +19,17 @@ public sealed class LegendDetectionOptions
 
     public string Provider { get; set; } = LegendRecognizerFactory.OpenAI;
     public string Model { get; set; } = "";
+
+    /// <summary>
+    /// Reasoning effort for automatic runs, one of <see cref="LegendReasoningEffort.All"/>. Empty leaves it to the
+    /// model's default.
+    /// </summary>
+    public string ReasoningEffort { get; set; } = "";
+
     public int MaxAttempts { get; set; } = 3;
+
+    /// <summary>How many runs each API instance sends to the model at once. Read when the API starts.</summary>
+    public int Concurrency { get; set; } = 4;
 
     /// <summary>Credentials per provider, e.g. <c>LegendDetection:Providers:openai:ApiKey</c>.</summary>
     public Dictionary<string, LegendDetectionProviderOptions> Providers { get; set; } =
@@ -37,6 +47,32 @@ public sealed class LegendDetectionProviderOptions
     /// where it is never reused. Empty sends no caching options.
     /// </summary>
     public string PromptCacheMode { get; set; } = "explicit";
+}
+
+/// <summary>
+/// The reasoning efforts a run can ask for, as OpenAI names them. Not every model accepts every level; a model that
+/// rejects one fails the run with the provider's error.
+/// </summary>
+public static class LegendReasoningEffort
+{
+    public static readonly IReadOnlyList<string> All = ["none", "minimal", "low", "medium", "high", "xhigh"];
+
+    /// <summary>
+    /// The effort in <see cref="All"/>'s spelling, or null for the model's default when <paramref name="effort"/>
+    /// is empty. Throws <see cref="ArgumentException"/> for anything else.
+    /// </summary>
+    public static string? Normalize(string? effort)
+    {
+        if (string.IsNullOrWhiteSpace(effort))
+        {
+            return null;
+        }
+
+        string normalized = effort.Trim().ToLowerInvariant();
+        return All.Contains(normalized)
+            ? normalized
+            : throw new ArgumentException($"Unknown reasoning effort '{effort}'; expected one of {string.Join(", ", All)}");
+    }
 }
 
 /// <summary>One image sent to the model.</summary>
@@ -184,7 +220,8 @@ public sealed class ChatClientLegendRecognizer(IChatClient chatClient, LegendDet
 public interface ILegendRecognizerFactory
 {
     bool IsConfigured(string provider);
-    ILegendRecognizer Create(string provider, string model);
+    /// <param name="reasoningEffort">One of <see cref="LegendReasoningEffort.All"/>, or null for the model's default.</param>
+    ILegendRecognizer Create(string provider, string model, string? reasoningEffort);
 }
 
 public sealed class LegendRecognizerFactory(
@@ -201,7 +238,7 @@ public sealed class LegendRecognizerFactory(
                && !string.IsNullOrWhiteSpace(ApiKey(provider));
     }
 
-    public ILegendRecognizer Create(string provider, string model)
+    public ILegendRecognizer Create(string provider, string model, string? reasoningEffort)
     {
         if (!IsConfigured(provider))
         {
@@ -214,6 +251,7 @@ public sealed class LegendRecognizerFactory(
             OpenAI => CreateOpenAIChatClient(
                 model,
                 providerOptions,
+                reasoningEffort,
                 new OpenAIClientOptions { NetworkTimeout = TimeSpan.FromMinutes(2) }),
             _ => throw new InvalidOperationException($"Unknown legend detection provider '{provider}'")
         };
@@ -223,12 +261,14 @@ public sealed class LegendRecognizerFactory(
     /// <summary>
     /// Uses the Responses API, where OpenAI documents prompt caching for current models. Every request carries
     /// the same cache key so they are routed to the same cache, and asks OpenAI not to store the response.
+    /// Microsoft.Extensions.AI's own reasoning option has no <c>minimal</c>, so the effort is set on the request.
     /// </summary>
     // OPENAI001: the SDK still marks its Responses API client as evaluation-only.
 #pragma warning disable OPENAI001
     internal static IChatClient CreateOpenAIChatClient(
         string model,
         LegendDetectionProviderOptions providerOptions,
+        string? reasoningEffort,
         OpenAIClientOptions clientOptions)
     {
         string cacheMode = providerOptions.PromptCacheMode.Trim();
@@ -252,6 +292,14 @@ public sealed class LegendRecognizerFactory(
                     PromptCacheKey = "reelshelf-legend-detection",
                     StoredOutputEnabled = false
                 };
+                if (reasoningEffort is not null)
+                {
+                    request.ReasoningOptions = new ResponseReasoningOptions
+                    {
+                        ReasoningEffortLevel = new ResponseReasoningEffortLevel(reasoningEffort)
+                    };
+                }
+
                 if (cacheMode.Length > 0)
                 {
                     request.Patch.Set("$.prompt_cache_options.mode"u8, cacheMode);

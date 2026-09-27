@@ -1610,6 +1610,16 @@
           "LegendDetectionEndpoints"
         ],
         "operationId": "BackfillLegendDetection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackfillLegendDetectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -1779,6 +1789,29 @@
           "LegendDetectionEndpoints"
         ],
         "operationId": "GetLegendDetectionLegends",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legend-detection/reasoning-efforts": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendDetectionReasoningEfforts",
         "responses": {
           "200": {
             "description": "OK",
@@ -2105,6 +2138,20 @@
         "properties": {
           "tag": {
             "type": "string"
+          }
+        }
+      },
+      "BackfillLegendDetectionRequest": {
+        "required": [
+          "reasoning_effort"
+        ],
+        "type": "object",
+        "properties": {
+          "reasoning_effort": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2888,6 +2935,7 @@
           "trigger",
           "provider",
           "model",
+          "reasoning_effort",
           "prompt_version",
           "status",
           "attempts",
@@ -2925,6 +2973,12 @@
           },
           "model": {
             "type": "string"
+          },
+          "reasoning_effort": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "prompt_version": {
             "type": [
@@ -3041,6 +3095,7 @@
         "required": [
           "provider",
           "model",
+          "reasoning_effort",
           "prompt_version",
           "succeeded",
           "failed",
@@ -3062,6 +3117,12 @@
           },
           "model": {
             "type": "string"
+          },
+          "reasoning_effort": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "prompt_version": {
             "type": [
@@ -3471,7 +3532,8 @@
       "QueueLegendDetectionRunRequest": {
         "required": [
           "provider",
-          "model"
+          "model",
+          "reasoning_effort"
         ],
         "type": "object",
         "properties": {
@@ -3482,6 +3544,12 @@
             ]
           },
           "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reasoning_effort": {
             "type": [
               "null",
               "string"

@@ -5,6 +5,7 @@ export * from "./AddCollaboratorRequest";
 export * from "./AddCustomCategoryRequest";
 export * from "./AddGameFromIgdbRequest";
 export * from "./AddTagRequest";
+export * from "./BackfillLegendDetectionRequest";
 export * from "./BackfillResult";
 export * from "./BunnyVideo";
 export * from "./Clip";
