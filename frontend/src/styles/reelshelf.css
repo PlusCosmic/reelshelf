@@ -3774,3 +3774,7 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+.rs-legend-effort {
+  min-width: 170px;
+}

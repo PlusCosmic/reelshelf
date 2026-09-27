@@ -36,6 +36,12 @@ export interface LegendDetectionUsage {
    * @type {string}
    * @memberof LegendDetectionUsage
    */
+  reasoningEffort: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof LegendDetectionUsage
+   */
   promptVersion: string | null;
   /**
    *
@@ -119,6 +125,8 @@ export function instanceOfLegendDetectionUsage(
 ): value is LegendDetectionUsage {
   if (!("provider" in value) || value["provider"] === undefined) return false;
   if (!("model" in value) || value["model"] === undefined) return false;
+  if (!("reasoningEffort" in value) || value["reasoningEffort"] === undefined)
+    return false;
   if (!("promptVersion" in value) || value["promptVersion"] === undefined)
     return false;
   if (!("succeeded" in value) || value["succeeded"] === undefined) return false;
@@ -167,6 +175,7 @@ export function LegendDetectionUsageFromJSONTyped(
   return {
     provider: json["provider"],
     model: json["model"],
+    reasoningEffort: json["reasoning_effort"],
     promptVersion: json["prompt_version"],
     succeeded: json["succeeded"],
     failed: json["failed"],
@@ -199,6 +208,7 @@ export function LegendDetectionUsageToJSONTyped(
   return {
     provider: value["provider"],
     model: value["model"],
+    reasoning_effort: value["reasoningEffort"],
     prompt_version: value["promptVersion"],
     succeeded: value["succeeded"],
     failed: value["failed"],

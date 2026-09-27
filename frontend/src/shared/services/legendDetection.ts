@@ -15,7 +15,7 @@ export type {
   LegendDetectionUsage,
 };
 
-/** The signed-in admin's Apex Legends clips, each with its latest detection run. */
+/** Every owner's Apex Legends clips, each with its latest detection run. */
 export async function fetchLegendReviewClips(): Promise<
   LegendDetectionReviewClip[]
 > {
@@ -33,21 +33,34 @@ export async function fetchLegendUsage(): Promise<LegendDetectionUsage[]> {
   return createLegendDetectionApi().getLegendDetectionUsage();
 }
 
-/** Queues another run for a clip; an empty model uses the configured default. */
+/** Queues another run for a clip; a null model or reasoning effort uses the configured default. */
 export async function queueLegendRun(
   clipId: string,
   model: string | null,
+  reasoningEffort: string | null,
 ): Promise<LegendDetectionRun> {
   return createLegendDetectionApi().queueLegendDetectionRun({
     clipId,
-    queueLegendDetectionRunRequest: { provider: null, model },
+    queueLegendDetectionRunRequest: { provider: null, model, reasoningEffort },
   });
 }
 
-/** Queues the automatic run for every Apex Legends clip that has never had one. */
-export async function backfillLegendDetection(): Promise<number> {
-  const response = await createLegendDetectionApi().backfillLegendDetection();
+/**
+ * Queues the automatic run for every Apex Legends clip that has never had one, at the given reasoning effort or
+ * the configured default when null.
+ */
+export async function backfillLegendDetection(
+  reasoningEffort: string | null,
+): Promise<number> {
+  const response = await createLegendDetectionApi().backfillLegendDetection({
+    backfillLegendDetectionRequest: { reasoningEffort },
+  });
   return response.queued;
+}
+
+/** The reasoning efforts a run can ask for; not every model accepts every one. */
+export async function fetchLegendReasoningEfforts(): Promise<string[]> {
+  return createLegendDetectionApi().getLegendDetectionReasoningEfforts();
 }
 
 /** Archives every run so the backfill starts from scratch; usage totals keep the archived runs. */

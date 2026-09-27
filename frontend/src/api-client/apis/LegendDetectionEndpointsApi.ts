@@ -14,6 +14,7 @@
 
 import * as runtime from "../runtime";
 import type {
+  BackfillLegendDetectionRequest,
   LegendDetectionArchiveResponse,
   LegendDetectionBackfillResponse,
   LegendDetectionReviewClip,
@@ -23,6 +24,8 @@ import type {
   SetLegendDetectionLabelRequest,
 } from "../models/index";
 import {
+  BackfillLegendDetectionRequestFromJSON,
+  BackfillLegendDetectionRequestToJSON,
   LegendDetectionArchiveResponseFromJSON,
   LegendDetectionArchiveResponseToJSON,
   LegendDetectionBackfillResponseFromJSON,
@@ -38,6 +41,10 @@ import {
   SetLegendDetectionLabelRequestFromJSON,
   SetLegendDetectionLabelRequestToJSON,
 } from "../models/index";
+
+export interface BackfillLegendDetectionOperationRequest {
+  backfillLegendDetectionRequest: BackfillLegendDetectionRequest;
+}
 
 export interface DeleteLegendDetectionLabelRequest {
   clipId: string;
@@ -99,11 +106,21 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
   /**
    */
   async backfillLegendDetectionRaw(
+    requestParameters: BackfillLegendDetectionOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<LegendDetectionBackfillResponse>> {
+    if (requestParameters["backfillLegendDetectionRequest"] == null) {
+      throw new runtime.RequiredError(
+        "backfillLegendDetectionRequest",
+        'Required parameter "backfillLegendDetectionRequest" was null or undefined when calling backfillLegendDetection().',
+      );
+    }
+
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
 
     let urlPath = `/api/legend-detection/backfill`;
 
@@ -113,6 +130,9 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
         method: "POST",
         headers: headerParameters,
         query: queryParameters,
+        body: BackfillLegendDetectionRequestToJSON(
+          requestParameters["backfillLegendDetectionRequest"],
+        ),
       },
       initOverrides,
     );
@@ -125,9 +145,13 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
   /**
    */
   async backfillLegendDetection(
+    requestParameters: BackfillLegendDetectionOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<LegendDetectionBackfillResponse> {
-    const response = await this.backfillLegendDetectionRaw(initOverrides);
+    const response = await this.backfillLegendDetectionRaw(
+      requestParameters,
+      initOverrides,
+    );
     return await response.value();
   }
 
@@ -206,6 +230,40 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<string>> {
     const response = await this.getLegendDetectionLegendsRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async getLegendDetectionReasoningEffortsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<string>>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/reasoning-efforts`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse<any>(response);
+  }
+
+  /**
+   */
+  async getLegendDetectionReasoningEfforts(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<string>> {
+    const response =
+      await this.getLegendDetectionReasoningEffortsRaw(initOverrides);
     return await response.value();
   }
 

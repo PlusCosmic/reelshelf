@@ -9,46 +9,61 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     public const string ManualTrigger = "manual";
 
     private const string RunColumns = """
-        id, clip_id, trigger, provider, model, prompt_version, status, attempts, frame_count, hud_detected,
+        id, clip_id, trigger, provider, model, reasoning_effort, prompt_version, status, attempts, frame_count, hud_detected,
         player_legend, player_legend_confidence, player_name, player_name_confidence, teammates::text AS teammates,
         raw_response, input_tokens, cached_input_tokens, output_tokens, duration_ms, error, created_at, started_at,
         completed_at
         """;
 
     /// <summary>Queues a clip's automatic run. Returns false when the clip already has an unarchived one.</summary>
-    public async Task<bool> QueueAutoRunAsync(Guid clipId, string provider, string model)
+    public async Task<bool> QueueAutoRunAsync(Guid clipId, string provider, string model, string? reasoningEffort)
     {
         const string sql = """
-            INSERT INTO legend_detection_run (clip_id, trigger, provider, model)
-            VALUES (@ClipId, 'auto', @Provider, @Model)
+            INSERT INTO legend_detection_run (clip_id, trigger, provider, model, reasoning_effort)
+            VALUES (@ClipId, 'auto', @Provider, @Model, @ReasoningEffort)
             ON CONFLICT (clip_id) WHERE trigger = 'auto' AND archived_at IS NULL DO NOTHING
             """;
-        return await connection.ExecuteAsync(sql, new { ClipId = clipId, Provider = provider, Model = model }) > 0;
+        return await connection.ExecuteAsync(sql, new
+        {
+            ClipId = clipId, Provider = provider, Model = model, ReasoningEffort = reasoningEffort
+        }) > 0;
     }
 
     /// <summary>Queues an automatic run for every clip in the category without an unarchived one.</summary>
-    public async Task<int> QueueAutoRunsForCategoryAsync(Guid gameCategoryId, string provider, string model)
+    public async Task<int> QueueAutoRunsForCategoryAsync(
+        Guid gameCategoryId,
+        string provider,
+        string model,
+        string? reasoningEffort)
     {
         const string sql = """
-            INSERT INTO legend_detection_run (clip_id, trigger, provider, model)
-            SELECT id, 'auto', @Provider, @Model
+            INSERT INTO legend_detection_run (clip_id, trigger, provider, model, reasoning_effort)
+            SELECT id, 'auto', @Provider, @Model, @ReasoningEffort
             FROM clip
             WHERE game_category_id = @GameCategoryId
             ON CONFLICT (clip_id) WHERE trigger = 'auto' AND archived_at IS NULL DO NOTHING
             """;
-        return await connection.ExecuteAsync(sql,
-            new { GameCategoryId = gameCategoryId, Provider = provider, Model = model });
+        return await connection.ExecuteAsync(sql, new
+        {
+            GameCategoryId = gameCategoryId, Provider = provider, Model = model, ReasoningEffort = reasoningEffort
+        });
     }
 
-    public async Task<LegendDetectionRunRow> QueueManualRunAsync(Guid clipId, string provider, string model)
+    public async Task<LegendDetectionRunRow> QueueManualRunAsync(
+        Guid clipId,
+        string provider,
+        string model,
+        string? reasoningEffort)
     {
         string sql = $"""
-            INSERT INTO legend_detection_run (clip_id, trigger, provider, model)
-            VALUES (@ClipId, 'manual', @Provider, @Model)
+            INSERT INTO legend_detection_run (clip_id, trigger, provider, model, reasoning_effort)
+            VALUES (@ClipId, 'manual', @Provider, @Model, @ReasoningEffort)
             RETURNING {RunColumns}
             """;
-        return await connection.QuerySingleAsync<LegendDetectionRunRow>(sql,
-            new { ClipId = clipId, Provider = provider, Model = model });
+        return await connection.QuerySingleAsync<LegendDetectionRunRow>(sql, new
+        {
+            ClipId = clipId, Provider = provider, Model = model, ReasoningEffort = reasoningEffort
+        });
     }
 
     /// <summary>
@@ -71,7 +86,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                   ORDER BY created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, clip.video_id, run.provider, run.model, run.attempts
+            RETURNING run.id, run.clip_id, clip.video_id, run.provider, run.model, run.reasoning_effort, run.attempts
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql, new { RetryAfter = retryAfter, StaleAfter = staleAfter });
     }
@@ -195,7 +210,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Run counts, token totals and accuracy per provider, model and prompt version, with each archived batch
+    /// Run counts, token totals and accuracy per provider, model, reasoning effort and prompt version, with each archived batch
     /// kept apart from the current runs. Current runs come first; archived groups that never ran are left out.
     /// Accuracy covers succeeded runs on labelled clips: the owner's legend must match exactly, and teammates as
     /// an unordered set. A confident mistake is any wrong legend reported at <paramref name="confidentAt"/> or above.
@@ -208,7 +223,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                        -- A run has no prompt version until it reaches the model, so queued runs and runs that
                        -- failed before then count towards their batch's latest version instead of a row of their own.
                        COALESCE(run.prompt_version, FIRST_VALUE(run.prompt_version) OVER (
-                           PARTITION BY run.provider, run.model, run.archived_at
+                           PARTITION BY run.provider, run.model, run.reasoning_effort, run.archived_at
                            ORDER BY run.prompt_version IS NULL, run.created_at DESC)) AS batch_prompt_version,
                        run.status = 'succeeded' AND label.clip_id IS NOT NULL AS labelled,
                        run.player_legend IS NOT DISTINCT FROM label.player_legend AS player_correct,
@@ -233,6 +248,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
             )
             SELECT provider,
                    model,
+                   reasoning_effort,
                    batch_prompt_version AS prompt_version,
                    COUNT(*) FILTER (WHERE status = 'succeeded') AS succeeded,
                    COUNT(*) FILTER (WHERE status = 'failed') AS failed,
@@ -247,7 +263,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                    COUNT(*) FILTER (WHERE labelled AND confident_mistake) AS confident_mistakes,
                    archived_at
             FROM scored
-            GROUP BY provider, model, batch_prompt_version, archived_at
+            GROUP BY provider, model, reasoning_effort, batch_prompt_version, archived_at
             HAVING archived_at IS NULL OR COUNT(*) FILTER (WHERE status IN ('succeeded', 'failed')) > 0
             ORDER BY archived_at DESC NULLS FIRST, MAX(created_at) DESC
             """;
@@ -321,6 +337,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     {
         public string Provider { get; set; } = "";
         public string Model { get; set; } = "";
+        public string? ReasoningEffort { get; set; }
         public string? PromptVersion { get; set; }
         public long Succeeded { get; set; }
         public long Failed { get; set; }
@@ -343,6 +360,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public Guid VideoId { get; set; }
         public string Provider { get; set; } = "";
         public string Model { get; set; } = "";
+        public string? ReasoningEffort { get; set; }
         public int Attempts { get; set; }
     }
 
@@ -353,6 +371,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public string Trigger { get; set; } = "";
         public string Provider { get; set; } = "";
         public string Model { get; set; } = "";
+        public string? ReasoningEffort { get; set; }
         public string? PromptVersion { get; set; }
         public string Status { get; set; } = "";
         public int Attempts { get; set; }

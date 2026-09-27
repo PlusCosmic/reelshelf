@@ -62,6 +62,12 @@ export interface LegendDetectionRun {
    * @type {string}
    * @memberof LegendDetectionRun
    */
+  reasoningEffort: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof LegendDetectionRun
+   */
   promptVersion: string | null;
   /**
    *
@@ -178,6 +184,8 @@ export function instanceOfLegendDetectionRun(
   if (!("trigger" in value) || value["trigger"] === undefined) return false;
   if (!("provider" in value) || value["provider"] === undefined) return false;
   if (!("model" in value) || value["model"] === undefined) return false;
+  if (!("reasoningEffort" in value) || value["reasoningEffort"] === undefined)
+    return false;
   if (!("promptVersion" in value) || value["promptVersion"] === undefined)
     return false;
   if (!("status" in value) || value["status"] === undefined) return false;
@@ -238,6 +246,7 @@ export function LegendDetectionRunFromJSONTyped(
     trigger: json["trigger"],
     provider: json["provider"],
     model: json["model"],
+    reasoningEffort: json["reasoning_effort"],
     promptVersion: json["prompt_version"],
     status: json["status"],
     attempts: json["attempts"],
@@ -278,6 +287,7 @@ export function LegendDetectionRunToJSONTyped(
     trigger: value["trigger"],
     provider: value["provider"],
     model: value["model"],
+    reasoning_effort: value["reasoningEffort"],
     prompt_version: value["promptVersion"],
     status: value["status"],
     attempts: value["attempts"],

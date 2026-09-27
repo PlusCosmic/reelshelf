@@ -1,5 +1,10 @@
 import type { LegendDetectionUsage } from "@/shared/services/legendDetection";
-import { cachedShare, formatAccuracy, formatTokens } from "./legendReview";
+import {
+  cachedShare,
+  formatAccuracy,
+  formatReasoningEffort,
+  formatTokens,
+} from "./legendReview";
 
 const archivedFormatter = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -9,7 +14,7 @@ const archivedFormatter = new Intl.DateTimeFormat(undefined, {
 });
 
 /**
- * Runs and tokens per model and prompt version, covering every user's clips. Each "Start fresh" leaves its
+ * Runs and tokens per model, reasoning effort and prompt version, covering every user's clips. Each "Start fresh" leaves its
  * runs as an archived batch, so backfills can be compared.
  */
 export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
@@ -22,6 +27,7 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
           <tr>
             <th scope="col">Batch</th>
             <th scope="col">Model</th>
+            <th scope="col">Reasoning</th>
             <th scope="col">Prompt</th>
             <th scope="col">Succeeded</th>
             <th scope="col">Failed</th>
@@ -47,7 +53,7 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
         <tbody>
           {usage.map((row) => (
             <tr
-              key={`${row.provider}/${row.model}/${row.promptVersion}/${row.archivedAt?.toISOString() ?? "current"}`}
+              key={`${row.provider}/${row.model}/${row.reasoningEffort}/${row.promptVersion}/${row.archivedAt?.toISOString() ?? "current"}`}
               className={row.archivedAt ? "rs-legend-archived" : undefined}
             >
               <td>
@@ -56,6 +62,7 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
                   : "Current"}
               </td>
               <td>{row.model}</td>
+              <td>{formatReasoningEffort(row.reasoningEffort)}</td>
               <td>{row.promptVersion ?? "–"}</td>
               <td>{row.succeeded}</td>
               <td>{row.failed}</td>

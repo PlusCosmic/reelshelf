@@ -170,4 +170,20 @@ public class LegendDetectionTests
         {
         }
     }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData(" High ", "high")]
+    [InlineData("xhigh", "xhigh")]
+    public void ReasoningEffort_Normalizes(string? effort, string? expected)
+    {
+        Assert.Equal(expected, LegendReasoningEffort.Normalize(effort));
+    }
+
+    [Fact]
+    public void ReasoningEffort_RejectsUnknownLevels()
+    {
+        Assert.Throws<ArgumentException>(() => LegendReasoningEffort.Normalize("extreme"));
+    }
 }

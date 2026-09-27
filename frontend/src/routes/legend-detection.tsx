@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { IconCheck, IconX } from "@tabler/icons-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Chip } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
 import { Badge, Button } from "@/components/ui";
 import { LegendReviewDetail } from "@/components/LegendDetection/LegendReviewDetail";
 import { LegendUsageTable } from "@/components/LegendDetection/LegendUsageTable";
+import { ReasoningEffortSelect } from "@/components/LegendDetection/ReasoningEffortSelect";
 import {
   countByFilter,
   formatConfidence,
@@ -66,6 +67,7 @@ function LegendReview() {
   const anyActive = clips.some((clip) => isRunActive(clip.latestRun));
   const usage = useLegendUsage(true, anyActive);
   const backfill = useBackfillLegendDetection();
+  const [backfillEffort, setBackfillEffort] = useState("");
   const archive = useArchiveLegendRuns();
   const setLabel = useSetLegendLabel();
   const mutateLabel = setLabel.mutate;
@@ -128,10 +130,13 @@ function LegendReview() {
   }, [selectedId]);
 
   function onBackfill() {
+    const effort = backfillEffort
+      ? `${backfillEffort} reasoning`
+      : "the default reasoning";
     const confirmed = window.confirm(
-      "Queue a detection run for every Apex Legends clip that has never had one? Each run is a paid model call.",
+      `Queue a detection run at ${effort} for every Apex Legends clip that has never had one? Each run is a paid model call.`,
     );
-    if (confirmed) backfill.mutate();
+    if (confirmed) backfill.mutate(backfillEffort || null);
   }
 
   function onArchive() {
@@ -152,6 +157,10 @@ function LegendReview() {
           <Button onClick={onArchive} disabled={archive.isPending}>
             {archive.isPending ? "Archiving…" : "Start fresh"}
           </Button>
+          <ReasoningEffortSelect
+            value={backfillEffort}
+            onValueChange={setBackfillEffort}
+          />
           <Button
             variant="primary"
             onClick={onBackfill}

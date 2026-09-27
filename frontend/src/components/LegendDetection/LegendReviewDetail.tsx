@@ -12,7 +12,13 @@ import type {
   LegendDetectionReviewClip,
   LegendDetectionRun,
 } from "@/shared/services/legendDetection";
-import { confidenceTone, formatConfidence, formatTokens } from "./legendReview";
+import {
+  confidenceTone,
+  formatConfidence,
+  formatReasoningEffort,
+  formatTokens,
+} from "./legendReview";
+import { ReasoningEffortSelect } from "./ReasoningEffortSelect";
 
 /** One clip: the frames the model is sent, the full clip to check against, and every run's answer. */
 export function LegendReviewDetail({
@@ -109,7 +115,9 @@ export function LegendReviewDetail({
                   onClick={() => setChosenRunId(item.id)}
                 >
                   <Badge tone={statusTone(item.status)}>{item.status}</Badge>
-                  <span>{item.model}</span>
+                  <span>
+                    {item.model} · {formatReasoningEffort(item.reasoningEffort)}
+                  </span>
                   <span className="rs-meta">
                     {item.trigger} · {formatDate(item.createdAt)}
                   </span>
@@ -194,6 +202,10 @@ function RunResult({ run }: { run: LegendDetectionRun }) {
           </dd>
         </div>
         <div>
+          <dt>Reasoning</dt>
+          <dd>{formatReasoningEffort(run.reasoningEffort)}</dd>
+        </div>
+        <div>
           <dt>Prompt</dt>
           <dd>{run.promptVersion ?? "–"}</dd>
         </div>
@@ -256,11 +268,16 @@ function Detected({
 
 function RerunForm({ clipId }: { clipId: string }) {
   const [model, setModel] = useState("");
+  const [reasoningEffort, setReasoningEffort] = useState("");
   const queue = useQueueLegendRun();
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    queue.mutate({ clipId, model: model.trim() || null });
+    queue.mutate({
+      clipId,
+      model: model.trim() || null,
+      reasoningEffort: reasoningEffort || null,
+    });
   }
 
   return (
@@ -271,6 +288,10 @@ function RerunForm({ clipId }: { clipId: string }) {
         onChange={(event) => setModel(event.target.value)}
         placeholder="Model (default if empty)"
         aria-label="Model to run"
+      />
+      <ReasoningEffortSelect
+        value={reasoningEffort}
+        onValueChange={setReasoningEffort}
       />
       <Button type="submit" size="sm" disabled={queue.isPending}>
         {queue.isPending ? "Queueing…" : "Run again"}

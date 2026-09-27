@@ -31,6 +31,12 @@ export interface QueueLegendDetectionRunRequest {
    * @memberof QueueLegendDetectionRunRequest
    */
   model: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof QueueLegendDetectionRunRequest
+   */
+  reasoningEffort: string | null;
 }
 
 /**
@@ -41,6 +47,8 @@ export function instanceOfQueueLegendDetectionRunRequest(
 ): value is QueueLegendDetectionRunRequest {
   if (!("provider" in value) || value["provider"] === undefined) return false;
   if (!("model" in value) || value["model"] === undefined) return false;
+  if (!("reasoningEffort" in value) || value["reasoningEffort"] === undefined)
+    return false;
   return true;
 }
 
@@ -60,6 +68,7 @@ export function QueueLegendDetectionRunRequestFromJSONTyped(
   return {
     provider: json["provider"],
     model: json["model"],
+    reasoningEffort: json["reasoning_effort"],
   };
 }
 
@@ -80,5 +89,6 @@ export function QueueLegendDetectionRunRequestToJSONTyped(
   return {
     provider: value["provider"],
     model: value["model"],
+    reasoning_effort: value["reasoningEffort"],
   };
 }

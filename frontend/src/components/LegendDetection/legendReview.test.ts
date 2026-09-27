@@ -22,6 +22,7 @@ function run(overrides: Partial<LegendDetectionRun> = {}): LegendDetectionRun {
     trigger: "auto",
     provider: "openai",
     model: "gpt-6-luna",
+    reasoningEffort: null,
     promptVersion: "abc",
     status: "succeeded",
     attempts: 1,
