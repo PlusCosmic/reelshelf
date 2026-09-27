@@ -1,8 +1,9 @@
 # Legend detection resources
 
 These files are embedded in the API and sent to the model on every detection request: `prompt.md` as the
-system message, then `reference-sheet.png`, then the clip's six Bunny thumbnails, with the reply constrained
-to `response-schema.json`.
+system message, then `reference-sheet.png`, then the clip's first Bunny thumbnail in full and a close-up of the
+owner's HUD panel from each of its six thumbnails (see `LegendHudCropper`), with the reply constrained to
+`response-schema.json`.
 
 - `prompt.md`: the instructions given to the model.
 - `response-schema.json`: the JSON Schema for the structured output.

@@ -79,6 +79,12 @@ public static class LegendReasoningEffort
 public sealed record LegendFrame(byte[] Data, string MediaType);
 
 /// <summary>
+/// What the model is shown of a clip: one full screenshot for context, then a close-up of the clip owner's HUD
+/// panel from each screenshot (see <see cref="LegendHudCropper"/>).
+/// </summary>
+public sealed record LegendClipImages(LegendFrame Context, IReadOnlyList<LegendFrame> OwnerPanels);
+
+/// <summary>
 /// The model's answer, in the shape of <c>Resources/response-schema.json</c>. Earlier prompts also asked for names
 /// and teammates; <see cref="Teammates"/> is null when the prompt did not, so old answers still parse.
 /// </summary>
@@ -155,7 +161,7 @@ public sealed record LegendRecognition(
 /// <summary>Identifies the clip owner's legend from a clip's frames using one particular model.</summary>
 public interface ILegendRecognizer
 {
-    Task<LegendRecognition> RecognizeAsync(IReadOnlyList<LegendFrame> frames, CancellationToken cancellationToken);
+    Task<LegendRecognition> RecognizeAsync(LegendClipImages images, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -172,25 +178,28 @@ public sealed class ChatClientLegendRecognizer(IChatClient chatClient, LegendDet
     /// Bump whenever the request built here changes in a way the model sees, so runs are told apart by
     /// <see cref="LegendDetectionResources.PromptVersion"/> just as a changed prompt file would be.
     /// </summary>
-    public const string RequestLayoutVersion = "2";
+    public const string RequestLayoutVersion = "3";
 
     public async Task<LegendRecognition> RecognizeAsync(
-        IReadOnlyList<LegendFrame> frames,
+        LegendClipImages images,
         CancellationToken cancellationToken)
     {
         List<AIContent> content =
         [
             new TextContent("Reference sheet:"),
             new DataContent(resources.ReferenceSheet, "image/png"),
-            new TextContent("Screenshots from the clip follow.")
+            new TextContent("Images from the clip follow.")
             {
                 AdditionalProperties = new AdditionalPropertiesDictionary { [CacheBreakpointKey] = true }
-            }
+            },
+            new TextContent("Full screenshot, for context:"),
+            new DataContent(images.Context.Data, images.Context.MediaType)
         ];
-        for (int i = 0; i < frames.Count; i++)
+        int count = images.OwnerPanels.Count;
+        for (int i = 0; i < count; i++)
         {
-            content.Add(new TextContent($"Screenshot {i + 1} of {frames.Count}:"));
-            content.Add(new DataContent(frames[i].Data, frames[i].MediaType));
+            content.Add(new TextContent($"Close-up of the clip owner's HUD panel, screenshot {i + 1} of {count}:"));
+            content.Add(new DataContent(images.OwnerPanels[i].Data, images.OwnerPanels[i].MediaType));
         }
 
         List<ChatMessage> messages =
