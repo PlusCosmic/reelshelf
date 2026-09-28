@@ -61,6 +61,12 @@ export interface GameCategoryResponse {
    * @memberof GameCategoryResponse
    */
   isCustom: boolean;
+  /**
+   *
+   * @type {string}
+   * @memberof GameCategoryResponse
+   */
+  clothColor: string | null;
 }
 
 /**
@@ -77,6 +83,8 @@ export function instanceOfGameCategoryResponse(
   if (!("gameLogoUrl" in value) || value["gameLogoUrl"] === undefined)
     return false;
   if (!("isCustom" in value) || value["isCustom"] === undefined) return false;
+  if (!("clothColor" in value) || value["clothColor"] === undefined)
+    return false;
   return true;
 }
 
@@ -99,6 +107,7 @@ export function GameCategoryResponseFromJSONTyped(
     keyArtUrl: json["key_art_url"],
     gameLogoUrl: json["game_logo_url"],
     isCustom: json["is_custom"],
+    clothColor: json["cloth_color"],
   };
 }
 
@@ -122,5 +131,6 @@ export function GameCategoryResponseToJSONTyped(
     key_art_url: value["keyArtUrl"],
     game_logo_url: value["gameLogoUrl"],
     is_custom: value["isCustom"],
+    cloth_color: value["clothColor"],
   };
 }

@@ -2690,7 +2690,8 @@
           "cover_url",
           "key_art_url",
           "game_logo_url",
-          "is_custom"
+          "is_custom",
+          "cloth_color"
         ],
         "type": "object",
         "properties": {
@@ -2724,6 +2725,12 @@
           },
           "is_custom": {
             "type": "boolean"
+          },
+          "cloth_color": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

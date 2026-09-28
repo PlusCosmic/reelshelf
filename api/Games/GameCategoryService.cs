@@ -4,7 +4,8 @@ namespace Reelshelf.Games;
 
 public partial class GameCategoryService(
     GameCategoryStatements statements,
-    IgdbService igdbService)
+    IgdbService igdbService,
+    GameCoverColors coverColors)
 {
     public async Task<List<GameCategoryResponse>> GetAllCategoriesAsync()
     {
@@ -52,6 +53,8 @@ public partial class GameCategoryService(
                 }
             }
 
+            existing = await EnsureClothColorAsync(existing);
+
             // Just add the user subscription
             await statements.AddUserCategoryAsync(userId, existing.Id);
             return ToResponse(existing);
@@ -70,6 +73,7 @@ public partial class GameCategoryService(
             gameDetails.KeyArtUrl,
             gameDetails.GameLogoUrl
         ));
+        category = await EnsureClothColorAsync(category);
 
         // Add user subscription
         await statements.AddUserCategoryAsync(userId, category.Id);
@@ -112,6 +116,21 @@ public partial class GameCategoryService(
         return true;
     }
 
+    /// <summary>
+    /// Works out the cloth colour when it is missing, so a newly added game's book arrives bound. Best effort: a
+    /// cover that cannot be read leaves it null for <see cref="GameCategoryClothColorService"/> to retry.
+    /// </summary>
+    private async Task<GameCategory> EnsureClothColorAsync(GameCategory category)
+    {
+        if (category.ClothColor != null || category.CoverUrl == null) return category;
+
+        string? clothColor = await coverColors.TryGetClothColorAsync(category.CoverUrl, CancellationToken.None);
+        if (clothColor == null) return category;
+
+        await statements.SetClothColorAsync(category.Id, category.CoverUrl, clothColor);
+        return (await statements.GetByIdAsync(category.Id)) ?? category;
+    }
+
     private static GameCategoryResponse ToResponse(GameCategory category) =>
         new(
             category.Id,
@@ -120,7 +139,8 @@ public partial class GameCategoryService(
             category.CoverUrl,
             category.KeyArtUrl,
             category.GameLogoUrl,
-            category.IsCustom
+            category.IsCustom,
+            category.ClothColor
         );
 
     private static string GenerateSlug(string name)

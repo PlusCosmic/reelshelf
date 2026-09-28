@@ -256,6 +256,9 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddSingleton<TwitchApiClient>();
         builder.Services.AddScoped<TwitchClipService>();
         builder.Services.AddScoped<GameCategoryService>();
+        builder.Services.AddHttpClient(GameCoverColors.HttpClientName,
+            client => client.Timeout = TimeSpan.FromSeconds(15));
+        builder.Services.AddScoped<GameCoverColors>();
 
         builder.Services.AddScoped<MapService>();
         builder.Services.AddScoped<IApexMapCacheService, ApexMapCacheService>();
@@ -276,6 +279,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<ClipStatusRefreshService>();
             builder.Services.AddHostedService<MapRefreshService>();
             builder.Services.AddHostedService<GameCategoryAssetRefreshService>();
+            builder.Services.AddHostedService<GameCategoryClothColorService>();
             builder.Services.AddHostedService<LegendDetectionBackgroundService>();
         }
     }
