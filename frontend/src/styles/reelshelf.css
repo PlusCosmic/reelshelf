@@ -2467,12 +2467,6 @@ html:has(.rs-library-route) {
   filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.36));
 }
 
-.rs-player-page {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 28px 32px 80px;
-}
-
 .rs-player {
   position: relative;
   overflow: hidden;
@@ -2498,6 +2492,573 @@ html:has(.rs-library-route) {
 
 .rs-player-actions {
   margin-top: 18px;
+}
+
+/* A clip's page. --cloth is its game's binding, set on .rs-watch. */
+.rs-watch {
+  padding-bottom: 80px;
+}
+
+.rs-watch-strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 0 32px;
+  background: var(--bg-soft);
+}
+
+.rs-watch-strip::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 3px;
+  background: var(--cloth);
+}
+
+.rs-watch-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.rs-watch-back img {
+  width: 28px;
+  height: 37px;
+  border-radius: 2px;
+  object-fit: cover;
+}
+
+.rs-watch-back small {
+  display: block;
+  color: var(--fg-soft);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.rs-watch-back .rs-display {
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.rs-watch-back:hover .rs-display {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.rs-watch-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--fg-soft);
+  font-size: 13.5px;
+}
+
+.rs-watch-counts strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--fg);
+}
+
+.rs-watch-counts strong::before {
+  content: "·";
+  margin-right: 1px;
+  color: var(--fg-soft);
+  font-weight: 400;
+}
+
+.rs-watch-counts .rs-stitched-dot,
+.rs-watch-meta .rs-stitched-dot,
+.rs-session-card-top .rs-stitched-dot {
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+}
+
+.rs-watch-theatre {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin-left: 20px;
+  padding: 0 12px;
+  border: 1px solid var(--track-bg);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rs-watch-theatre:hover {
+  border-color: var(--fg-soft);
+}
+
+.rs-watch-theatre[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.rs-watch-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 368px;
+  grid-template-areas:
+    "stage more"
+    "details more"
+    "session more";
+  align-items: start;
+  column-gap: 40px;
+  padding: 36px 32px 0;
+}
+
+.rs-watch-stage {
+  grid-area: stage;
+  position: relative;
+  isolation: isolate;
+}
+
+.rs-watch-stage-art,
+.rs-watch-neighbour,
+.rs-watch-facts,
+.rs-watch-more-full {
+  display: none;
+}
+
+.rs-watch-details {
+  grid-area: details;
+  min-width: 0;
+  margin-top: 26px;
+}
+
+.rs-watch-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.rs-watch-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 10px;
+  color: var(--fg-soft);
+  font-size: 14px;
+}
+
+.rs-watch-meta strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg);
+}
+
+.rs-watch-details .rs-chip {
+  cursor: default;
+}
+
+.rs-watch-details .rs-player-actions {
+  margin-top: 22px;
+}
+
+.rs-watch-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 16px;
+  color: var(--fg-soft);
+  font-size: 13.5px;
+}
+
+.rs-watch-section-head h2 {
+  margin: 0;
+  color: var(--fg);
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.rs-watch-session {
+  grid-area: session;
+  min-width: 0;
+  margin-top: 44px;
+}
+
+.rs-session-cards {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 3 * 20px) / 4);
+  gap: 20px;
+  overflow-x: auto;
+  /* Room for the current card's ring, which the scroller would otherwise clip. */
+  padding: 6px;
+  margin: -6px;
+  scrollbar-width: thin;
+}
+
+.rs-session-card {
+  display: block;
+  min-width: 0;
+  color: var(--fg);
+}
+
+.rs-session-card[aria-current="page"] .rs-thumb {
+  outline: 3px solid var(--cloth);
+  outline-offset: 3px;
+}
+
+.rs-session-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--fg-soft);
+  font-size: 12.5px;
+}
+
+.rs-session-card-top > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rs-session-card-top .rs-display {
+  color: var(--fg);
+  font-size: 19px;
+  font-weight: 500;
+}
+
+.rs-session-card-now {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rs-session-card-title {
+  display: block;
+  margin-top: 2px;
+  color: var(--fg-soft);
+  font-size: 12.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.rs-session-card:hover .rs-session-card-title {
+  color: var(--fg);
+}
+
+.rs-watch-more {
+  grid-area: more;
+  min-width: 0;
+}
+
+.rs-watch-more h2 {
+  margin: 0 0 10px;
+}
+
+.rs-watch-more .rs-filmstrip {
+  border-top: 1px solid var(--line);
+}
+
+.rs-watch-more .rs-row,
+.rs-watch-more .rs-row.no-game {
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.rs-watch-more .rs-row-title {
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.rs-watch-more .rs-row-duration {
+  display: none;
+}
+
+.rs-watch-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  margin-top: 14px;
+  border: 1px solid var(--track-bg);
+  border-radius: var(--radius);
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rs-watch-all:hover {
+  border-color: var(--fg-soft);
+}
+
+.rs-watch-all-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Theatre mode: the player on a stage in the game's cloth, everything else underneath. Phones
+   already give the player the full width, so it only applies on wider screens. */
+@media (min-width: 901px) {
+  .rs-watch.theatre .rs-watch-layout {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-areas:
+      "stage stage"
+      "details facts"
+      "session session"
+      "full full";
+    column-gap: 56px;
+    padding-top: 0;
+  }
+
+  .rs-watch.theatre .rs-watch-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    margin: 0 -32px;
+    padding: 44px 32px;
+    overflow: hidden;
+    background: var(--scrim);
+  }
+
+  .rs-watch.theatre .rs-watch-stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(ellipse at 50% 55%, rgb(5 12 8 / 0.55), transparent 70%),
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--cloth) 55%, transparent),
+        color-mix(in oklab, var(--cloth) 30%, var(--bg)) 70%,
+        var(--bg)
+      );
+  }
+
+  .rs-watch.theatre .rs-watch-stage-art {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 30%;
+    opacity: 0.35;
+    filter: saturate(0.7) blur(1px);
+  }
+
+  .rs-watch.theatre .rs-player {
+    flex: none;
+    width: min(1040px, 100% - 2 * (128px + 28px));
+    box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 128px;
+    padding: 10px 8px;
+    box-sizing: border-box;
+    border: 1px solid rgb(255 255 255 / 0.14);
+    border-radius: var(--radius);
+    background: rgb(10 20 14 / 0.55);
+    color: #f4f7f4;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour.none {
+    visibility: hidden;
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour:hover {
+    border-color: rgb(255 255 255 / 0.4);
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour.newer {
+    flex-direction: column-reverse;
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour img {
+    width: 112px;
+    aspect-ratio: 16 / 9;
+    border-radius: 2px;
+    object-fit: cover;
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour small {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  .rs-watch.theatre .rs-watch-details {
+    margin-top: 30px;
+  }
+
+  .rs-watch.theatre .rs-watch-facts {
+    display: block;
+    grid-area: facts;
+    margin-top: 30px;
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--bg-soft);
+  }
+
+  .rs-watch.theatre .rs-session-cards {
+    gap: 29px;
+    grid-auto-columns: calc((100% - 3 * 29px) / 4);
+  }
+
+  .rs-watch.theatre .rs-watch-more {
+    display: none;
+  }
+
+  .rs-watch.theatre .rs-watch-more-full {
+    display: block;
+    grid-area: full;
+    margin-top: 48px;
+  }
+}
+
+.rs-watch-facts dl {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  row-gap: 12px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.rs-watch-facts dt {
+  color: var(--fg-soft);
+}
+
+.rs-watch-facts dd {
+  margin: 0;
+}
+
+.rs-watch-facts-game {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.rs-watch-facts-game img {
+  width: 18px;
+  height: 24px;
+  border-radius: 1px;
+  object-fit: cover;
+}
+
+@media (max-width: 900px) {
+  .rs-watch-strip {
+    min-height: 56px;
+    padding: 0 16px;
+  }
+
+  .rs-watch-counts,
+  .rs-watch-theatre {
+    display: none;
+  }
+
+  .rs-watch-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "stage"
+      "details"
+      "session"
+      "more";
+    padding: 0;
+  }
+
+  .rs-watch-stage .rs-player {
+    border-radius: 0;
+  }
+
+  .rs-watch-details,
+  .rs-watch-more {
+    padding: 0 16px;
+  }
+
+  .rs-watch-details {
+    margin-top: 18px;
+  }
+
+  .rs-watch-title {
+    font-size: 24px;
+  }
+
+  .rs-watch-meta {
+    font-size: 13px;
+  }
+
+  .rs-watch-session {
+    margin-top: 30px;
+  }
+
+  .rs-watch-session .rs-watch-section-head {
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 16px;
+  }
+
+  .rs-watch-session .rs-watch-section-head h2 {
+    font-size: 21px;
+  }
+
+  .rs-session-cards {
+    grid-auto-columns: 200px;
+    gap: 14px;
+    margin: 0;
+    padding: 6px 16px;
+  }
+
+  .rs-watch-more {
+    margin-top: 30px;
+  }
+
+  .rs-watch-more .rs-row,
+  .rs-watch-more .rs-row.no-game {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
 }
 
 .rs-public-app {
@@ -2560,20 +3121,6 @@ html:has(.rs-library-route) {
   gap: 14px;
   color: var(--fg-soft);
   text-align: center;
-}
-
-.rs-player-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 48px;
-  margin-top: 28px;
-}
-
-.rs-sidebar-panel {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--bg-soft);
-  padding: 16px;
 }
 
 .rs-back-link {
@@ -3813,7 +4360,6 @@ html:has(.rs-library-route) {
   .rs-hero,
   .rs-section,
   .rs-filterbar,
-  .rs-player-page,
   .rs-public-page {
     padding-left: 16px;
     padding-right: 16px;
@@ -3823,7 +4369,6 @@ html:has(.rs-library-route) {
     grid-template-columns: 1fr;
   }
 
-  .rs-player-grid,
   .rs-split,
   .rs-collection-grid {
     grid-template-columns: 1fr;

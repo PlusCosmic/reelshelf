@@ -68,6 +68,69 @@ export function useClipsInfinite(filters: ClipsFilters = {}, enabled = true) {
 }
 
 /**
+ * The clips from the same game on the same day as this one, earliest first: the night's session.
+ * "Day" is the viewer's own calendar day, which is how the session collections are dated too.
+ */
+export function useClipSession(clip: Clip | null | undefined) {
+  const categoryId = clip?.gameCategoryId;
+  const start = clip ? new Date(clip.createdAt) : undefined;
+  start?.setHours(0, 0, 0, 0);
+  const end = start ? new Date(start) : undefined;
+  end?.setDate(end.getDate() + 1);
+
+  return useQuery({
+    queryKey: ["clips", "list", "session", categoryId, start?.toISOString()],
+    queryFn: async () => {
+      const page = await fetchClips({
+        page: 1,
+        pageSize: 100,
+        categoryId,
+        sortOrder: 1,
+        startDate: start,
+        endDate: new Date(end!.getTime() - 1),
+      });
+      return page.clips;
+    },
+    enabled: !!clip,
+    staleTime: 30_000,
+  });
+}
+
+/** The clips either side of this one in its game, by when they were recorded. */
+export function useClipNeighbours(clip: Clip | null | undefined) {
+  const categoryId = clip?.gameCategoryId;
+  const at = clip ? new Date(clip.createdAt) : undefined;
+
+  return useQuery({
+    queryKey: ["clips", "list", "neighbours", clip?.clipId],
+    queryFn: async () => {
+      // Two of each, so the clip itself can be dropped if it shares a timestamp with its neighbour.
+      const [older, newer] = await Promise.all([
+        fetchClips({
+          page: 1,
+          pageSize: 2,
+          categoryId,
+          sortOrder: 0,
+          endDate: at,
+        }),
+        fetchClips({
+          page: 1,
+          pageSize: 2,
+          categoryId,
+          sortOrder: 1,
+          startDate: at,
+        }),
+      ]);
+      const other = (clips: Clip[]) =>
+        clips.find((item) => item.clipId !== clip!.clipId) ?? null;
+      return { older: other(older.clips), newer: other(newer.clips) };
+    },
+    enabled: !!clip,
+    staleTime: 30_000,
+  });
+}
+
+/**
  * Tag counts across the owner's clips, or one category's. Counted in the database, so the chips do not
  * shrink as you page.
  */
