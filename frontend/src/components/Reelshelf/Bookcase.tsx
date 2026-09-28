@@ -13,7 +13,8 @@ type BookcaseProps = {
   selectedId: string | null;
   onSelect: (game: GameShelfItem) => void;
   onPutBack: () => void;
-  onAddGame: () => void;
+  /** Leave out for a shelf that only shows games, like the landing page's example. */
+  onAddGame?: () => void;
 };
 
 function plural(count: number, one: string, many: string) {
@@ -161,15 +162,17 @@ export function Bookcase({
               />
             ),
           )}
-          <button
-            type="button"
-            className="rs-book-add"
-            onClick={onAddGame}
-            aria-label="Add a game or category"
-          >
-            <IconPlus size={20} aria-hidden="true" />
-            <span>Add a game</span>
-          </button>
+          {onAddGame ? (
+            <button
+              type="button"
+              className="rs-book-add"
+              onClick={onAddGame}
+              aria-label="Add a game or category"
+            >
+              <IconPlus size={20} aria-hidden="true" />
+              <span>Add a game</span>
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="rs-bookcase-plank" aria-hidden="true" />

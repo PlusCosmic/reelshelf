@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   IconArrowRight,
@@ -12,90 +13,76 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
+import { Bookcase } from "./Bookcase";
+import type { GameShelfItem } from "./reelshelf-model";
+
+/** Example games for the shelf, bound in the kind of cloth colours real covers give. */
+const shelfBooks: GameShelfItem[] = [
+  ["Apex Legends", 142, 31, "#b06c51"],
+  ["Helldivers 2", 58, 0, "#8a7a2e"],
+  ["Rocket League", 91, 4, "#326295"],
+  ["Baldur's Gate 3", 23, 0, "#6e4435"],
+  ["Deep Rock Galactic", 37, 2, "#927d5e"],
+  ["Valorant", 64, 0, "#9a4a4f"],
+].map(([name, clipCount, unviewedCount, clothColor]) => {
+  const slug = (name as string).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return {
+    id: slug,
+    name: name as string,
+    slug,
+    coverUrl: null,
+    keyArtUrl: null,
+    gameLogoUrl: null,
+    isCustom: false,
+    clothColor: clothColor as string,
+    clipCount: clipCount as number,
+    unviewedCount: unviewedCount as number,
+    durationSeconds: 0,
+    sizeBytes: 0,
+    colorA: clothColor as string,
+    colorB: clothColor as string,
+  };
+});
+
+const clothOf = (slug: string) =>
+  shelfBooks.find((book) => book.slug === slug)?.clothColor ?? "#1f6b45";
 
 const previewClips = [
   {
     id: "valorant",
     tag: "clutch",
     duration: "0:38",
-    colorA: "oklch(0.56 0.16 24)",
-    colorB: "oklch(0.31 0.08 350)",
     x: -220,
     y: 20,
     rot: -6,
     width: 180,
   },
   {
-    id: "helldivers",
+    id: "helldivers-2",
     tag: "fail",
     duration: "0:47",
-    colorA: "oklch(0.58 0.13 82)",
-    colorB: "oklch(0.34 0.07 52)",
     x: -60,
     y: 0,
     rot: 2,
     width: 200,
   },
   {
-    id: "rocket",
+    id: "rocket-league",
     tag: "highlight",
     duration: "0:09",
-    colorA: "oklch(0.54 0.14 288)",
-    colorB: "oklch(0.32 0.09 312)",
     x: 80,
     y: 30,
     rot: -3,
     width: 170,
   },
   {
-    id: "bg3",
+    id: "apex-legends",
     tag: "story",
     duration: "2:04",
-    colorA: "oklch(0.59 0.12 116)",
-    colorB: "oklch(0.32 0.07 92)",
     x: 220,
     y: 10,
     rot: 5,
     width: 180,
-  },
-];
-
-const shelfBooks = [
-  {
-    name: "Apex Legends",
-    count: 142,
-    a: "oklch(0.56 0.16 24)",
-    b: "oklch(0.31 0.08 350)",
-  },
-  {
-    name: "Helldivers 2",
-    count: 58,
-    a: "oklch(0.58 0.13 82)",
-    b: "oklch(0.34 0.07 52)",
-  },
-  {
-    name: "Rocket League",
-    count: 91,
-    a: "oklch(0.54 0.14 288)",
-    b: "oklch(0.32 0.09 312)",
-  },
-  {
-    name: "Baldur's Gate 3",
-    count: 23,
-    a: "oklch(0.59 0.12 116)",
-    b: "oklch(0.32 0.07 92)",
-  },
-  {
-    name: "Deep Rock Galactic",
-    count: 37,
-    a: "oklch(0.6 0.13 55)",
-    b: "oklch(0.33 0.07 35)",
-  },
-  {
-    name: "Valorant",
-    count: 64,
-    a: "oklch(0.52 0.12 210)",
-    b: "oklch(0.3 0.06 230)",
   },
 ];
 
@@ -159,6 +146,7 @@ export function LandingPage({
   onToggleTheme?: () => void;
 }) {
   const nextTheme = theme === "dark" ? "light" : "dark";
+  const [pulledOut, setPulledOut] = useState<string | null>("apex-legends");
 
   return (
     <div className="rs-landing">
@@ -197,8 +185,8 @@ export function LandingPage({
                 key={clip.id}
                 style={
                   {
-                    "--game-a": clip.colorA,
-                    "--game-b": clip.colorB,
+                    "--game-a": clothOf(clip.id),
+                    "--game-b": `color-mix(in oklab, ${clothOf(clip.id)} 45%, black)`,
                     "--preview-width": `${clip.width}px`,
                     "--preview-x": `${clip.x}px`,
                     "--preview-y": `${clip.y}px`,
@@ -243,26 +231,15 @@ export function LandingPage({
           <div className="rs-landing-shelf-demo-head">
             <span className="rs-eyebrow">Your archive</span>
             <span className="rs-landing-shelf-demo-stat">
-              415 clips across 6 games
+              415 clips across 6 games. Pull one out.
             </span>
           </div>
-          <div className="rs-shelf">
-            <div className="rs-shelf-track">
-              {shelfBooks.map((book) => (
-                <div
-                  key={book.name}
-                  className="rs-spine rs-landing-spine"
-                  style={
-                    { "--game-a": book.a, "--game-b": book.b } as CSSProperties
-                  }
-                  title={book.name}
-                >
-                  <span>{book.name}</span>
-                  <span>{book.count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Bookcase
+            shelf={shelfBooks}
+            selectedId={pulledOut}
+            onSelect={(game) => setPulledOut(game.id)}
+            onPutBack={() => setPulledOut(null)}
+          />
         </section>
 
         <section className="rs-landing-section" id="features">

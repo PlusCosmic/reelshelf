@@ -238,11 +238,17 @@ export function SharedIndicator({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function BackToLibrary({ to = "/" }: { to?: string }) {
+export function BackToLibrary({
+  to = "/",
+  label = "Library",
+}: {
+  to?: string;
+  label?: string;
+}) {
   return (
     <Link to={to} className="rs-small-button rs-back-link">
       <IconChevronLeft size={14} />
-      Library
+      {label}
     </Link>
   );
 }

@@ -46,7 +46,7 @@ function PlaylistRoute() {
   return (
     <>
       <section className="rs-hero">
-        <BackToLibrary to="/playlists" />
+        <BackToLibrary to="/playlists" label="Collections" />
         <div className="rs-eyebrow">
           Collection - {clips.length} clips - Updated{" "}
           {formatDate(playlist.updatedAt)}
