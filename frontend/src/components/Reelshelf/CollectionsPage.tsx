@@ -81,7 +81,7 @@ function LedgerRow({
 
   return (
     <Link
-      to="/playlists/$playlistId"
+      to="/collections/$playlistId"
       params={{ playlistId: playlist.id }}
       className="rs-ledger-row"
     >
@@ -89,9 +89,6 @@ function LedgerRow({
       <span className="rs-ledger-body">
         <span className="rs-ledger-name">
           <span className="rs-display">{playlist.name}</span>
-          {playlist.isGamingSession ? (
-            <span className="rs-ledger-badge">Session</span>
-          ) : null}
         </span>
         {playlist.description ? (
           <span className="rs-ledger-description">{playlist.description}</span>
@@ -257,15 +254,17 @@ export function CollectionsPage() {
             className="rs-ledger-group"
             aria-labelledby={`rs-ledger-${group.key}`}
           >
-            <h2 id={`rs-ledger-${group.key}`} className="rs-ledger-heading">
-              <span className="rs-display">{group.title}</span>
-              <span className="rs-ledger-heading-count">
-                {group.items.length}
-              </span>
+            <div>
+              <h2 id={`rs-ledger-${group.key}`} className="rs-ledger-heading">
+                <span className="rs-display">{group.title}</span>
+                <span className="rs-ledger-heading-count">
+                  {group.items.length}
+                </span>
+              </h2>
               {group.note ? (
-                <span className="rs-ledger-heading-note">{group.note}</span>
+                <p className="rs-ledger-heading-note">{group.note}</p>
               ) : null}
-            </h2>
+            </div>
             {group.items.map((playlist) => (
               <LedgerRow
                 key={playlist.id}

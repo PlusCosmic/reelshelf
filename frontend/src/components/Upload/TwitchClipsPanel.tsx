@@ -346,7 +346,7 @@ function TwitchClipCard({
           {row.status === "saved" && row.sessionPlaylistId ? (
             <Link
               className="rs-bulk-session-link"
-              to="/playlists/$playlistId"
+              to="/collections/$playlistId"
               params={{ playlistId: row.sessionPlaylistId }}
             >
               Open collection

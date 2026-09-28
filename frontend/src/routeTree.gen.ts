@@ -9,20 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LibraryRouteImport } from './routes/_library'
 import { Route as LegendDetectionRouteImport } from './routes/legend-detection'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as UploadRouteImport } from './routes/upload'
+import { Route as LibraryIndexRouteImport } from './routes/_library/index'
+import { Route as CollectionsIndexRouteImport } from './routes/collections/index'
+import { Route as CollectionsPlaylistIdRouteImport } from './routes/collections/$playlistId'
 import { Route as PlaylistsIndexRouteImport } from './routes/playlists/index'
 import { Route as PlaylistsPlaylistIdRouteImport } from './routes/playlists/$playlistId'
 import { Route as ShareTokenRouteImport } from './routes/share/$token'
-import { Route as GamesSlugIndexRouteImport } from './routes/games/$slug/index'
 import { Route as GamesSlugClipIdRouteImport } from './routes/games/$slug/$clipId'
+import { Route as LibraryGamesSlugIndexRouteImport } from './routes/_library/games/$slug/index'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/_library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LegendDetectionRoute = LegendDetectionRouteImport.update({
@@ -45,6 +47,21 @@ const UploadRoute = UploadRouteImport.update({
   path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LibraryIndexRoute = LibraryIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LibraryRoute,
+} as any)
+const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
+  id: '/collections/',
+  path: '/collections/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectionsPlaylistIdRoute = CollectionsPlaylistIdRouteImport.update({
+  id: '/collections/$playlistId',
+  path: '/collections/$playlistId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlaylistsIndexRoute = PlaylistsIndexRouteImport.update({
   id: '/playlists/',
   path: '/playlists/',
@@ -60,53 +77,60 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
   path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GamesSlugIndexRoute = GamesSlugIndexRouteImport.update({
-  id: '/games/$slug/',
-  path: '/games/$slug/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const GamesSlugClipIdRoute = GamesSlugClipIdRouteImport.update({
   id: '/games/$slug/$clipId',
   path: '/games/$slug/$clipId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LibraryGamesSlugIndexRoute = LibraryGamesSlugIndexRouteImport.update({
+  id: '/games/$slug/',
+  path: '/games/$slug/',
+  getParentRoute: () => LibraryRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof LibraryIndexRoute
   '/legend-detection': typeof LegendDetectionRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/upload': typeof UploadRoute
+  '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/share/$token': typeof ShareTokenRoute
+  '/collections/': typeof CollectionsIndexRoute
   '/playlists/': typeof PlaylistsIndexRoute
   '/games/$slug/$clipId': typeof GamesSlugClipIdRoute
-  '/games/$slug/': typeof GamesSlugIndexRoute
+  '/games/$slug/': typeof LibraryGamesSlugIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/legend-detection': typeof LegendDetectionRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/upload': typeof UploadRoute
+  '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/share/$token': typeof ShareTokenRoute
+  '/': typeof LibraryIndexRoute
+  '/collections': typeof CollectionsIndexRoute
   '/playlists': typeof PlaylistsIndexRoute
   '/games/$slug/$clipId': typeof GamesSlugClipIdRoute
-  '/games/$slug': typeof GamesSlugIndexRoute
+  '/games/$slug': typeof LibraryGamesSlugIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_library': typeof LibraryRouteWithChildren
   '/legend-detection': typeof LegendDetectionRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/upload': typeof UploadRoute
+  '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/share/$token': typeof ShareTokenRoute
+  '/_library/': typeof LibraryIndexRoute
+  '/collections/': typeof CollectionsIndexRoute
   '/playlists/': typeof PlaylistsIndexRoute
   '/games/$slug/$clipId': typeof GamesSlugClipIdRoute
-  '/games/$slug/': typeof GamesSlugIndexRoute
+  '/_library/games/$slug/': typeof LibraryGamesSlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -116,57 +140,65 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sign-in'
     | '/upload'
+    | '/collections/$playlistId'
     | '/playlists/$playlistId'
     | '/share/$token'
+    | '/collections/'
     | '/playlists/'
     | '/games/$slug/$clipId'
     | '/games/$slug/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/legend-detection'
     | '/settings'
     | '/sign-in'
     | '/upload'
+    | '/collections/$playlistId'
     | '/playlists/$playlistId'
     | '/share/$token'
+    | '/'
+    | '/collections'
     | '/playlists'
     | '/games/$slug/$clipId'
     | '/games/$slug'
   id:
     | '__root__'
-    | '/'
+    | '/_library'
     | '/legend-detection'
     | '/settings'
     | '/sign-in'
     | '/upload'
+    | '/collections/$playlistId'
     | '/playlists/$playlistId'
     | '/share/$token'
+    | '/_library/'
+    | '/collections/'
     | '/playlists/'
     | '/games/$slug/$clipId'
-    | '/games/$slug/'
+    | '/_library/games/$slug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  LibraryRoute: typeof LibraryRouteWithChildren
   LegendDetectionRoute: typeof LegendDetectionRoute
   SettingsRoute: typeof SettingsRoute
   SignInRoute: typeof SignInRoute
   UploadRoute: typeof UploadRoute
+  CollectionsPlaylistIdRoute: typeof CollectionsPlaylistIdRoute
   PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  CollectionsIndexRoute: typeof CollectionsIndexRoute
   PlaylistsIndexRoute: typeof PlaylistsIndexRoute
   GamesSlugClipIdRoute: typeof GamesSlugClipIdRoute
-  GamesSlugIndexRoute: typeof GamesSlugIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
+    '/_library': {
+      id: '/_library'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/legend-detection': {
@@ -197,6 +229,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_library/': {
+      id: '/_library/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof LibraryIndexRouteImport
+      parentRoute: typeof LibraryRoute
+    }
+    '/collections/': {
+      id: '/collections/'
+      path: '/collections'
+      fullPath: '/collections/'
+      preLoaderRoute: typeof CollectionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collections/$playlistId': {
+      id: '/collections/$playlistId'
+      path: '/collections/$playlistId'
+      fullPath: '/collections/$playlistId'
+      preLoaderRoute: typeof CollectionsPlaylistIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/playlists/': {
       id: '/playlists/'
       path: '/playlists'
@@ -218,13 +271,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/games/$slug/': {
-      id: '/games/$slug/'
-      path: '/games/$slug'
-      fullPath: '/games/$slug/'
-      preLoaderRoute: typeof GamesSlugIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/games/$slug/$clipId': {
       id: '/games/$slug/$clipId'
       path: '/games/$slug/$clipId'
@@ -232,20 +278,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamesSlugClipIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_library/games/$slug/': {
+      id: '/_library/games/$slug/'
+      path: '/games/$slug'
+      fullPath: '/games/$slug/'
+      preLoaderRoute: typeof LibraryGamesSlugIndexRouteImport
+      parentRoute: typeof LibraryRoute
+    }
   }
 }
 
+interface LibraryRouteChildren {
+  LibraryIndexRoute: typeof LibraryIndexRoute
+  LibraryGamesSlugIndexRoute: typeof LibraryGamesSlugIndexRoute
+}
+
+const LibraryRouteChildren: LibraryRouteChildren = {
+  LibraryIndexRoute: LibraryIndexRoute,
+  LibraryGamesSlugIndexRoute: LibraryGamesSlugIndexRoute,
+}
+
+const LibraryRouteWithChildren =
+  LibraryRoute._addFileChildren(LibraryRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  LibraryRoute: LibraryRouteWithChildren,
   LegendDetectionRoute: LegendDetectionRoute,
   SettingsRoute: SettingsRoute,
   SignInRoute: SignInRoute,
   UploadRoute: UploadRoute,
+  CollectionsPlaylistIdRoute: CollectionsPlaylistIdRoute,
   PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,
   ShareTokenRoute: ShareTokenRoute,
+  CollectionsIndexRoute: CollectionsIndexRoute,
   PlaylistsIndexRoute: PlaylistsIndexRoute,
   GamesSlugClipIdRoute: GamesSlugClipIdRoute,
-  GamesSlugIndexRoute: GamesSlugIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

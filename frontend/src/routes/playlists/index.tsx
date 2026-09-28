@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { CollectionsPage } from "@/components/Reelshelf/CollectionsPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// Collections lived at /playlists before; old links still land in the right place.
 export const Route = createFileRoute("/playlists/")({
-  component: CollectionsPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/collections", replace: true });
+  },
 });
