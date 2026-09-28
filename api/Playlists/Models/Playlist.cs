@@ -47,5 +47,6 @@ public record PlaylistSummary(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     int ClipCount,
-    int CollaboratorCount
+    int CollaboratorCount,
+    bool IsGamingSession
 );

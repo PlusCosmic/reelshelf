@@ -55,7 +55,8 @@ public class PlaylistStatements(NpgsqlConnection connection)
                 p.created_at,
                 p.updated_at,
                 COUNT(DISTINCT pc.clip_id) as clip_count,
-                COUNT(DISTINCT pcollab.user_id) as collaborator_count
+                (SELECT COUNT(*) FROM playlist_collaborators everyone WHERE everyone.playlist_id = p.id) as collaborator_count,
+                EXISTS (SELECT 1 FROM playlist_gaming_sessions gs WHERE gs.playlist_id = p.id) as is_gaming_session
             FROM playlists p
             INNER JOIN playlist_collaborators pcollab ON p.id = pcollab.playlist_id
             LEFT JOIN playlist_clips pc ON p.id = pc.playlist_id
@@ -318,6 +319,7 @@ public class PlaylistStatements(NpgsqlConnection connection)
         public DateTimeOffset UpdatedAt { get; set; }
         public int ClipCount { get; set; }
         public int CollaboratorCount { get; set; }
+        public bool IsGamingSession { get; set; }
     }
 
     public class PlaylistCollaboratorRow

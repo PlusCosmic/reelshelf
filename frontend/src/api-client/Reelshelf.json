@@ -3453,7 +3453,8 @@
           "created_at",
           "updated_at",
           "clip_count",
-          "collaborator_count"
+          "collaborator_count",
+          "is_gaming_session"
         ],
         "type": "object",
         "properties": {
@@ -3489,6 +3490,9 @@
           "collaborator_count": {
             "type": "integer",
             "format": "int32"
+          },
+          "is_gaming_session": {
+            "type": "boolean"
           }
         }
       },
