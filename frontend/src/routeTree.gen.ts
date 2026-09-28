@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LibraryRouteImport } from './routes/_library'
+import { Route as ClipTranscriptionRouteImport } from './routes/clip-transcription'
 import { Route as LegendDetectionRouteImport } from './routes/legend-detection'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignInRouteImport } from './routes/sign-in'
@@ -25,6 +26,11 @@ import { Route as LibraryGamesSlugIndexRouteImport } from './routes/_library/gam
 
 const LibraryRoute = LibraryRouteImport.update({
   id: '/_library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClipTranscriptionRoute = ClipTranscriptionRouteImport.update({
+  id: '/clip-transcription',
+  path: '/clip-transcription',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LegendDetectionRoute = LegendDetectionRouteImport.update({
@@ -90,6 +96,7 @@ const LibraryGamesSlugIndexRoute = LibraryGamesSlugIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof LibraryIndexRoute
+  '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/games/$slug/': typeof LibraryGamesSlugIndexRoute
 }
 export interface FileRoutesByTo {
+  '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_library': typeof LibraryRouteWithChildren
+  '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/clip-transcription'
     | '/legend-detection'
     | '/settings'
     | '/sign-in'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/games/$slug/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/clip-transcription'
     | '/legend-detection'
     | '/settings'
     | '/sign-in'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_library'
+    | '/clip-transcription'
     | '/legend-detection'
     | '/settings'
     | '/sign-in'
@@ -180,6 +192,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRouteWithChildren
+  ClipTranscriptionRoute: typeof ClipTranscriptionRoute
   LegendDetectionRoute: typeof LegendDetectionRoute
   SettingsRoute: typeof SettingsRoute
   SignInRoute: typeof SignInRoute
@@ -199,6 +212,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clip-transcription': {
+      id: '/clip-transcription'
+      path: '/clip-transcription'
+      fullPath: '/clip-transcription'
+      preLoaderRoute: typeof ClipTranscriptionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/legend-detection': {
@@ -303,6 +323,7 @@ const LibraryRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRouteWithChildren,
+  ClipTranscriptionRoute: ClipTranscriptionRoute,
   LegendDetectionRoute: LegendDetectionRoute,
   SettingsRoute: SettingsRoute,
   SignInRoute: SignInRoute,

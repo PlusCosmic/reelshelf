@@ -1,5 +1,6 @@
 import {
   ClipsEndpointsApi,
+  ClipTranscriptionEndpointsApi,
   Configuration as ClipsConfiguration,
   UserEndpointsApi,
   GameCategoryEndpointsApi,
@@ -39,6 +40,12 @@ export function createPlaylistApi() {
 
 export function createLegendDetectionApi() {
   return new LegendDetectionEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createClipTranscriptionApi() {
+  return new ClipTranscriptionEndpointsApi(
+    new ClipsConfiguration(clientOptions),
+  );
 }
 
 export function createTwitchClipsApi() {

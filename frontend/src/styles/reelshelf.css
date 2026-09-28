@@ -5374,6 +5374,19 @@ html:has(.rs-library-route) {
   font-size: 12px;
 }
 
+/* Clip transcription review reuses the legend review layout; only the transcript and its prompt are new. */
+.rs-transcript {
+  margin: 0;
+  border-left: 3px solid var(--line);
+  padding: 4px 0 4px 12px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.rs-legend-raw pre.rs-transcript-prompt {
+  white-space: pre-wrap;
+}
+
 .rs-legend-rerun {
   display: flex;
   align-items: center;

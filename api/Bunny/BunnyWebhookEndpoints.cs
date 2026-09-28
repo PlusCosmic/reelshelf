@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Bunny.Models;
+using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
 
 namespace Reelshelf.Bunny;
@@ -19,6 +20,7 @@ public static class BunnyWebhookEndpoints
         BunnyService bunnyService,
         ClipsBackfillStatements backfillStatements,
         LegendDetectionService legendDetectionService,
+        ClipTranscriptionService clipTranscriptionService,
         IConfiguration configuration,
         HttpContext context,
         ILoggerFactory loggerFactory)
@@ -102,6 +104,16 @@ public static class BunnyWebhookEndpoints
             {
                 // Detection is optional; failing to queue it must not make Bunny retry the webhook.
                 logger.LogError(ex, "[WEBHOOK] Error queueing legend detection for ClipId: {ClipId}", clip.Id);
+            }
+
+            try
+            {
+                await clipTranscriptionService.QueueForEncodedClipAsync(clip, video.Status);
+            }
+            catch (Exception ex)
+            {
+                // Transcription is optional too; failing to queue it must not make Bunny retry the webhook.
+                logger.LogError(ex, "[WEBHOOK] Error queueing transcription for ClipId: {ClipId}", clip.Id);
             }
         }
 

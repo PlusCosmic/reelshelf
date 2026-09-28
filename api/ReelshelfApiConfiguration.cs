@@ -12,6 +12,7 @@ using Reelshelf.ApexLegends;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Auth;
 using Reelshelf.Bunny;
+using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
 using Reelshelf.Discord;
 using Reelshelf.Email;
@@ -72,6 +73,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapGameCategoryEndpoints();
         apiGroup.MapApexEndpoints();
         apiGroup.MapLegendDetectionEndpoints();
+        apiGroup.MapClipTranscriptionEndpoints();
         apiGroup.MapUserEndpoints();
         apiGroup.MapTwitchClipsEndpoints();
 
@@ -273,6 +275,15 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddHttpClient(LegendDetectionService.FramesHttpClientName,
             client => client.Timeout = TimeSpan.FromSeconds(30));
 
+        // Clip transcription stays idle until ClipTranscription:ApiKey is configured.
+        builder.Services.Configure<ClipTranscriptionOptions>(
+            builder.Configuration.GetSection(ClipTranscriptionOptions.SectionName));
+        builder.Services.AddSingleton<IClipTranscriber, OpenAIClipTranscriber>();
+        builder.Services.AddScoped<ClipTranscriptionStatements>();
+        builder.Services.AddScoped<ClipTranscriptionService>();
+        builder.Services.AddHttpClient(OpenAIClipTranscriber.HttpClientName,
+            client => client.Timeout = TimeSpan.FromMinutes(5));
+
         // Background services should not run during explicit OpenAPI document generation.
         if (!builder.Environment.IsEnvironment("OpenApi"))
         {
@@ -281,6 +292,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<GameCategoryAssetRefreshService>();
             builder.Services.AddHostedService<GameCategoryClothColorService>();
             builder.Services.AddHostedService<LegendDetectionBackgroundService>();
+            builder.Services.AddHostedService<ClipTranscriptionBackgroundService>();
         }
     }
 }
