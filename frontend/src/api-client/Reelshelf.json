@@ -1896,6 +1896,26 @@
         }
       }
     },
+    "/api/clip-transcription/retry-empty": {
+      "post": {
+        "tags": [
+          "ClipTranscriptionEndpoints"
+        ],
+        "operationId": "RetryEmptyClipTranscriptions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipTranscriptionBackfillResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clip-transcription/clips/{clipId}/runs": {
       "post": {
         "tags": [
@@ -2838,7 +2858,10 @@
             "format": "double"
           },
           "estimated_cost_usd": {
-            "type": "number",
+            "type": [
+              "null",
+              "number"
+            ],
             "format": "double"
           },
           "input_tokens": {

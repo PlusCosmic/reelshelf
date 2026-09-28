@@ -33,13 +33,28 @@ public sealed class ClipTranscriptionException(string message, bool retryable) :
 
 /// <summary>
 /// Calls OpenAI's <c>audio/transcriptions</c> endpoint directly: the SDK's typed options don't carry
-/// <c>gpt-transcribe</c>'s <c>keywords</c>, and the multipart form is small enough to own.
+/// <c>chunking_strategy</c> or <c>gpt-transcribe</c>'s <c>keywords</c>, and the multipart form is small enough
+/// to own.
 /// </summary>
+/// <remarks>
+/// Every request asks for <c>chunking_strategy=auto</c>, which normalises loudness and splits the audio on voice
+/// activity first. Without it, both <c>gpt-transcribe</c> and <c>gpt-4o-transcribe</c> often returned no text at
+/// all for clips where voices sit under loud game audio, and whether they did varied from one call to the next.
+/// </remarks>
 public sealed class OpenAIClipTranscriber(
     IHttpClientFactory httpClientFactory,
     IOptionsMonitor<ClipTranscriptionOptions> options) : IClipTranscriber
 {
     public const string HttpClientName = "clip-transcription";
+
+    /// <summary>Bumped when the request's shape changes, so runs made with an older shape keep their own version.</summary>
+    public const string RequestLayoutVersion = "chunking-auto";
+
+    /// <summary>Only the <c>gpt-transcribe</c> family accepts <c>keywords</c>.</summary>
+    public static bool SupportsKeywords(string model)
+    {
+        return model.StartsWith("gpt-transcribe", StringComparison.OrdinalIgnoreCase);
+    }
 
     public async Task<ClipTranscript> TranscribeAsync(
         string audioPath,
@@ -82,7 +97,8 @@ public sealed class OpenAIClipTranscriber(
             { file, "file", fileName },
             { new StringContent(model), "model" },
             { new StringContent("json"), "response_format" },
-            { new StringContent(prompt.Prompt), "prompt" }
+            { new StringContent(prompt.Prompt), "prompt" },
+            { new StringContent("auto"), "chunking_strategy" }
         };
         foreach (string keyword in prompt.Keywords)
         {

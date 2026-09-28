@@ -51,6 +51,8 @@ export function countByTranscriptionFilter(
   ) as Record<TranscriptionFilter, number>;
 }
 
-export function formatCost(usd: number) {
+/** A dash for a model with no price configured. */
+export function formatCost(usd: number | null) {
+  if (usd === null) return "–";
   return usd < 0.01 && usd > 0 ? "<$0.01" : `$${usd.toFixed(2)}`;
 }

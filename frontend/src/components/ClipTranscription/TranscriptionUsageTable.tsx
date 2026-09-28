@@ -27,7 +27,10 @@ export function TranscriptionUsageTable({
               No audio
             </th>
             <th scope="col">Audio</th>
-            <th scope="col" title="From ClipTranscription:CostPerMinuteUsd">
+            <th
+              scope="col"
+              title="From the model's price in ClipTranscription:CostPerMinuteUsd"
+            >
               Est. cost
             </th>
             <th scope="col">Input tokens</th>

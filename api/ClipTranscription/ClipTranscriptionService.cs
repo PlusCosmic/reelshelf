@@ -74,6 +74,20 @@ public class ClipTranscriptionService(
         return queued;
     }
 
+    /// <summary>
+    /// Queues a run with the configured model for every clip whose latest run succeeded with audio but no words,
+    /// made with a different model. Safe to repeat: once a clip's latest run uses the configured model, it is left
+    /// alone whatever that run found.
+    /// </summary>
+    public async Task<int> RetryEmptyAsync()
+    {
+        string model = ConfiguredModel();
+        int queued = await statements.QueueRetriesForEmptyRunsAsync(model);
+        logger.LogInformation("Queued {Count} transcription retries with {Model} for clips that came back empty",
+            queued, model);
+        return queued;
+    }
+
     /// <summary>Queues an extra run for one clip, optionally with a different model to compare against.</summary>
     public async Task<ClipTranscriptionStatements.ClipTranscriptionRunRow> QueueManualRunAsync(Guid clipId, string? model)
     {
@@ -121,7 +135,7 @@ public class ClipTranscriptionService(
 
     public async Task<List<ClipTranscriptionUsage>> GetUsageAsync()
     {
-        decimal costPerMinute = options.CurrentValue.CostPerMinuteUsd;
+        Dictionary<string, decimal> prices = options.CurrentValue.CostPerMinuteUsd;
         return (await statements.GetUsageAsync())
             .Select(row => new ClipTranscriptionUsage(
                 row.Model,
@@ -132,7 +146,9 @@ public class ClipTranscriptionService(
                 (int)row.WithoutAudio,
                 (int)row.WithoutSpeech,
                 Math.Round(row.AudioSeconds / 60, 1),
-                Math.Round((decimal)row.AudioSeconds / 60 * costPerMinute, 4),
+                prices.TryGetValue(row.Model, out decimal perMinute)
+                    ? Math.Round((decimal)row.AudioSeconds / 60 * perMinute, 4)
+                    : null,
                 row.InputTokens,
                 row.OutputTokens,
                 row.AverageDurationMs))
@@ -165,7 +181,7 @@ public class ClipTranscriptionService(
         }
 
         bool canRetry = run.Attempts < current.MaxAttempts;
-        TranscriptionPrompt prompt = TranscriptionPrompt.For(run.GameName, run.GameSlug);
+        TranscriptionPrompt prompt = TranscriptionPrompt.For(run.GameName, run.GameSlug, run.Model);
         string audioPath = Path.Combine(Path.GetTempPath(), "clip-transcription", $"{run.Id:N}.m4a");
         try
         {

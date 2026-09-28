@@ -7,6 +7,7 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
 {
     public const string AutoTrigger = "auto";
     public const string ManualTrigger = "manual";
+    public const string RetryTrigger = "retry";
 
     private const string RunColumns = """
         id, clip_id, trigger, model, prompt_version, prompt, keywords, status, attempts, has_audio, audio_seconds,
@@ -47,6 +48,28 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         return await connection.ExecuteAsync(sql, new { OwnerIds = ownerIds, Model = model });
     }
 
+    /// <summary>
+    /// Queues a <c>retry</c> run with <paramref name="model"/> for each clip whose latest run succeeded with audio
+    /// but returned no words, when that run used another model. A clip with a newer run queued is skipped.
+    /// </summary>
+    public async Task<int> QueueRetriesForEmptyRunsAsync(string model)
+    {
+        const string sql = """
+            INSERT INTO clip_transcription_run (clip_id, trigger, model)
+            SELECT latest.clip_id, 'retry', @Model
+            FROM (
+                SELECT DISTINCT ON (clip_id) clip_id, status, has_audio, transcript, model
+                FROM clip_transcription_run
+                ORDER BY clip_id, created_at DESC
+            ) latest
+            WHERE latest.status = 'succeeded'
+              AND latest.has_audio
+              AND latest.transcript = ''
+              AND latest.model <> @Model
+            """;
+        return await connection.ExecuteAsync(sql, new { Model = model });
+    }
+
     public async Task<ClipTranscriptionRunRow> QueueManualRunAsync(Guid clipId, string model)
     {
         string sql = $"""
@@ -59,8 +82,9 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
 
     /// <summary>
     /// Claims the next pending run, or a running one whose worker stopped before finishing, and counts the
-    /// attempt. Manual runs go before automatic ones, so they never wait behind a backfill; otherwise the oldest
-    /// goes first. A run that already failed an attempt waits <paramref name="retryAfter"/> before it is retried.
+    /// attempt. Manual and retry runs go before automatic ones, so they never wait behind a backfill; otherwise
+    /// the oldest goes first. A run that already failed an attempt waits <paramref name="retryAfter"/> before it
+    /// is retried.
     /// SKIP LOCKED keeps two API instances from claiming the same run.
     /// </summary>
     public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter)

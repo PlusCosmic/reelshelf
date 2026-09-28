@@ -45,6 +45,7 @@ public class OpenAIClipTranscriberTests
         Assert.Equal("Bearer test-key", handler.Authorization);
         Assert.Equal(["gpt-transcribe"], handler.Fields["model"]);
         Assert.Equal(["json"], handler.Fields["response_format"]);
+        Assert.Equal(["auto"], handler.Fields["chunking_strategy"]);
         Assert.Equal(["A gameplay clip from Apex Legends."], handler.Fields["prompt"]);
         Assert.Equal(["Apex Legends", "Wraith", "Mad Maggie"], handler.Fields["keywords[]"]);
         Assert.Equal([Path.GetFileName(audioPath)], handler.FileNames);
@@ -67,6 +68,17 @@ public class OpenAIClipTranscriberTests
         Assert.Equal(retryable, ex.Retryable);
         Assert.Contains("Audio file is too short", ex.Message);
         Assert.Contains(((int)status).ToString(), ex.Message);
+    }
+
+    [Fact]
+    public void Parse_ReadsDurationUsage_WithoutTokens()
+    {
+        ClipTranscript transcript = OpenAIClipTranscriber.Parse(
+            """{ "text": "", "languages": [], "usage": { "type": "duration", "seconds": 121 } }""");
+
+        Assert.Equal("", transcript.Text);
+        Assert.Null(transcript.InputTokens);
+        Assert.Null(transcript.OutputTokens);
     }
 
     [Fact]

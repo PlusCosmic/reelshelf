@@ -49,6 +49,15 @@ export async function backfillClipTranscription(): Promise<number> {
   return response.queued;
 }
 
+/**
+ * Re-runs, with the configured model, every clip whose latest run found audio but no words using another model.
+ */
+export async function retryEmptyTranscriptions(): Promise<number> {
+  const response =
+    await createClipTranscriptionApi().retryEmptyClipTranscriptions();
+  return response.queued;
+}
+
 export function isTranscriptionActive(
   run: ClipTranscriptionRun | null | undefined,
 ) {

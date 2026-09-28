@@ -72,7 +72,7 @@ export interface ClipTranscriptionUsage {
    * @type {number}
    * @memberof ClipTranscriptionUsage
    */
-  estimatedCostUsd: number;
+  estimatedCostUsd: number | null;
   /**
    *
    * @type {number}

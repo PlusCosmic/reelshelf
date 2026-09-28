@@ -14,6 +14,7 @@ public static class ClipTranscriptionEndpoints
         group.MapGet("clips", GetClipsForReview).WithName("GetClipTranscriptionReviewClips");
         group.MapGet("usage", GetUsage).WithName("GetClipTranscriptionUsage");
         group.MapPost("backfill", Backfill).WithName("BackfillClipTranscription");
+        group.MapPost("retry-empty", RetryEmpty).WithName("RetryEmptyClipTranscriptions");
         group.MapPost("clips/{clipId:guid}/runs", QueueRun).WithName("QueueClipTranscriptionRun");
         group.MapGet("clips/{clipId:guid}/runs", GetRuns).WithName("GetClipTranscriptionRuns");
     }
@@ -31,6 +32,11 @@ public static class ClipTranscriptionEndpoints
     public static async Task<ClipTranscriptionBackfillResponse> Backfill(ClipTranscriptionService service)
     {
         return new ClipTranscriptionBackfillResponse(await service.BackfillAsync());
+    }
+
+    public static async Task<ClipTranscriptionBackfillResponse> RetryEmpty(ClipTranscriptionService service)
+    {
+        return new ClipTranscriptionBackfillResponse(await service.RetryEmptyAsync());
     }
 
     public static async Task<ClipTranscriptionRun> QueueRun(
@@ -69,7 +75,7 @@ public sealed record ClipTranscriptionReviewClip(
 /// <summary>
 /// Totals for one model and prompt version. <c>WithoutAudio</c> counts clips with no audio track, which cost
 /// nothing; <c>WithoutSpeech</c> counts clips whose audio came back with no words. The cost is an estimate from
-/// <c>ClipTranscription:CostPerMinuteUsd</c>.
+/// the model's price in <c>ClipTranscription:CostPerMinuteUsd</c>, null for a model with no price listed.
 /// </summary>
 public sealed record ClipTranscriptionUsage(
     string Model,
@@ -80,7 +86,7 @@ public sealed record ClipTranscriptionUsage(
     int WithoutAudio,
     int WithoutSpeech,
     double AudioMinutes,
-    decimal EstimatedCostUsd,
+    decimal? EstimatedCostUsd,
     long InputTokens,
     long OutputTokens,
     int? AverageDurationMs);
