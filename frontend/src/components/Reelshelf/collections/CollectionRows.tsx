@@ -161,6 +161,7 @@ export function CollectionRows({
                 className={`rs-row${showGame ? "" : " no-game"}`}
                 to="/games/$slug/$clipId"
                 params={{ slug: clip.categorySlug, clipId: clip.clipId }}
+                search={{ collection: playlist.id }}
                 draggable={false}
               >
                 <ClipThumb clip={clip} category={category} compact />

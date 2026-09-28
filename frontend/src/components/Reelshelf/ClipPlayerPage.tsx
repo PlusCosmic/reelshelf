@@ -1,4 +1,5 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -6,14 +7,22 @@ import {
   IconChevronRight,
   IconLayoutSidebarRight,
   IconRectangle,
+  IconStack2,
 } from "@tabler/icons-react";
-import type { Clip, GameCategoryResponse } from "@/api-client";
+import type {
+  Clip,
+  GameCategoryResponse,
+  PlaylistWithDetails,
+} from "@/api-client";
 import {
   useClipNeighbours,
   useClipSession,
   useClipsInfinite,
 } from "@/hooks/clips.queries";
 import { useClip, useMarkAsViewed } from "@/hooks/queries";
+import { fetchPlaylistById } from "@/shared/services/playlists";
+import { collectionClips } from "./collections-model";
+import type { ClipLinkSearch } from "./primitives/ClipViews";
 import {
   ClipGrid,
   ClipThumb,
@@ -34,6 +43,56 @@ import { StitchedDot } from "./StitchedDot";
 import { useLibraryData } from "./useLibraryData";
 
 const THEATRE_KEY = "reelshelf.theatre";
+
+declare module "@tanstack/react-router" {
+  interface HistoryState {
+    /** Set when a collection moves on to its next clip by itself, so that clip starts playing. */
+    autoplay?: boolean;
+  }
+}
+
+/**
+ * Calls onEnded when the embedded video finishes. Bunny's player speaks the Player.js protocol over
+ * postMessage: once it says it is ready, ask it to report "ended".
+ */
+function usePlayerEnded(
+  frame: HTMLIFrameElement | null,
+  onEnded: (() => void) | null,
+) {
+  const latest = useRef(onEnded);
+  latest.current = onEnded;
+  useEffect(() => {
+    if (!frame) return;
+    const listen = (event: MessageEvent) => {
+      if (event.source !== frame.contentWindow) return;
+      let data: unknown = event.data;
+      try {
+        if (typeof data === "string") data = JSON.parse(data);
+      } catch {
+        return;
+      }
+      if (!data || typeof data !== "object") return;
+      const message = data as { context?: string; event?: string };
+      if (message.context !== "player.js") return;
+      if (message.event === "ready") {
+        frame.contentWindow?.postMessage(
+          JSON.stringify({
+            context: "player.js",
+            version: "0.0.11",
+            method: "addEventListener",
+            value: "ended",
+            listener: "ended",
+          }),
+          "*",
+        );
+      } else if (message.event === "ended") {
+        latest.current?.();
+      }
+    };
+    window.addEventListener("message", listen);
+    return () => window.removeEventListener("message", listen);
+  }, [frame]);
+}
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
   hour: "numeric",
@@ -74,28 +133,59 @@ function useTheatreMode() {
   return [theatre, toggle] as const;
 }
 
+type PlayThrough = {
+  playlist: PlaylistWithDetails;
+  clips: Clip[];
+  index: number;
+};
+
 function GameStrip({
   game,
   slug,
+  playThrough,
   theatre,
   onToggleTheatre,
 }: {
   game: GameShelfItem | undefined;
   slug: string;
+  playThrough: PlayThrough | null;
   theatre: boolean;
   onToggleTheatre: () => void;
 }) {
   return (
     <nav className="rs-watch-strip" aria-label="Where this clip lives">
-      <Link to="/games/$slug" params={{ slug }} className="rs-watch-back">
-        <IconChevronLeft size={18} aria-hidden="true" />
-        {game?.coverUrl ? <img src={game.coverUrl} alt="" /> : null}
-        <span>
-          <small>Back to</small>
-          <span className="rs-display">{game?.name ?? "the shelf"}</span>
+      {playThrough ? (
+        <Link
+          to="/collections/$playlistId"
+          params={{ playlistId: playThrough.playlist.id }}
+          className="rs-watch-back"
+        >
+          <IconChevronLeft size={18} aria-hidden="true" />
+          <IconStack2
+            className="rs-watch-back-mark"
+            size={26}
+            aria-hidden="true"
+          />
+          <span>
+            <small>Back to</small>
+            <span className="rs-display">{playThrough.playlist.name}</span>
+          </span>
+        </Link>
+      ) : (
+        <Link to="/games/$slug" params={{ slug }} className="rs-watch-back">
+          <IconChevronLeft size={18} aria-hidden="true" />
+          {game?.coverUrl ? <img src={game.coverUrl} alt="" /> : null}
+          <span>
+            <small>Back to</small>
+            <span className="rs-display">{game?.name ?? "the shelf"}</span>
+          </span>
+        </Link>
+      )}
+      {playThrough ? (
+        <span className="rs-watch-counts">
+          Clip {playThrough.index + 1} of {playThrough.clips.length}
         </span>
-      </Link>
-      {game ? (
+      ) : game ? (
         <span className="rs-watch-counts">
           {plural(game.clipCount, "clip", "clips")}
           {game.unviewedCount > 0 ? (
@@ -126,11 +216,20 @@ function GameStrip({
 function NeighbourLink({
   clip,
   direction,
+  inCollection,
 }: {
   clip: Clip | null | undefined;
   direction: "older" | "newer";
+  /** Playing through a collection, the neighbours are the clips before and after in its order. */
+  inCollection?: string;
 }) {
-  const label = direction === "older" ? "Older" : "Newer";
+  const label = inCollection
+    ? direction === "older"
+      ? "Previous"
+      : "Next"
+    : direction === "older"
+      ? "Older"
+      : "Newer";
   if (!clip)
     return (
       <span
@@ -142,6 +241,7 @@ function NeighbourLink({
     <Link
       to="/games/$slug/$clipId"
       params={{ slug: clip.categorySlug, clipId: clip.clipId }}
+      search={inCollection ? { collection: inCollection } : undefined}
       className={`rs-watch-neighbour ${direction}`}
       aria-label={`${label} clip: ${clip.video.title}`}
     >
@@ -277,11 +377,30 @@ function ClipFacts({
 export function ClipPlayerPage({
   slug,
   clipId,
+  collectionId,
 }: {
   slug: string;
   clipId: string;
+  /** Set when the clip is being played as part of a collection, in the collection's order. */
+  collectionId?: string;
 }) {
   const { data: clip, isLoading, isError } = useClip(clipId);
+  const navigate = useNavigate();
+  const autoplay = useRouterState({
+    select: (router) => router.location.state.autoplay === true,
+  });
+  const [frame, setFrame] = useState<HTMLIFrameElement | null>(null);
+  const { data: playlist } = useQuery({
+    queryKey: ["playlists", collectionId],
+    queryFn: () => fetchPlaylistById(collectionId!),
+    enabled: !!collectionId,
+  });
+  const playThrough = useMemo((): PlayThrough | null => {
+    if (!playlist) return null;
+    const clips = collectionClips(playlist).map(({ clip: item }) => item);
+    const index = clips.findIndex((item) => item.clipId === clipId);
+    return index === -1 ? null : { playlist, clips, index };
+  }, [playlist, clipId]);
   const { categories, categoryTotals } = useLibraryData();
   const markViewed = useMarkAsViewed();
   const [theatre, toggleTheatre] = useTheatreMode();
@@ -291,6 +410,22 @@ export function ClipPlayerPage({
   );
   const game = shelf.find((item) =>
     clip ? item.id === clip.gameCategoryId : item.slug === slug,
+  );
+  // Playing through a collection, the next clip follows on by itself.
+  const upNext = playThrough
+    ? (playThrough.clips[playThrough.index + 1] ?? null)
+    : null;
+  usePlayerEnded(
+    frame,
+    upNext && playThrough
+      ? () =>
+          void navigate({
+            to: "/games/$slug/$clipId",
+            params: { slug: upNext.categorySlug, clipId: upNext.clipId },
+            search: { collection: playThrough.playlist.id },
+            state: { autoplay: true },
+          })
+      : null,
   );
   const { data: sessionData } = useClipSession(clip);
   const session = useMemo(() => sessionData?.clips ?? [], [sessionData]);
@@ -317,6 +452,15 @@ export function ClipPlayerPage({
 
   const { cloth } = game ? bookBinding(game) : { cloth: "var(--accent)" };
   const gameName = game?.name ?? clip.video.category;
+  const collectionSearch: ClipLinkSearch | undefined = playThrough
+    ? { collection: playThrough.playlist.id }
+    : undefined;
+  const previous = playThrough
+    ? (playThrough.clips[playThrough.index - 1] ?? null)
+    : neighbours?.older;
+  const next = playThrough
+    ? (playThrough.clips[playThrough.index + 1] ?? null)
+    : neighbours?.newer;
 
   return (
     <div
@@ -332,6 +476,7 @@ export function ClipPlayerPage({
       <GameStrip
         game={game}
         slug={clip.categorySlug}
+        playThrough={playThrough}
         theatre={theatre}
         onToggleTheatre={toggleTheatre}
       />
@@ -341,7 +486,11 @@ export function ClipPlayerPage({
           {game?.keyArtUrl ? (
             <img className="rs-watch-stage-art" src={game.keyArtUrl} alt="" />
           ) : null}
-          <NeighbourLink clip={neighbours?.older} direction="older" />
+          <NeighbourLink
+            clip={previous}
+            direction="older"
+            inCollection={collectionSearch?.collection}
+          />
           {/* The thumbnail sits behind the embed so loading looks like the video arriving; the
               cloth gradient underneath covers a missing thumbnail. */}
           <div
@@ -351,7 +500,8 @@ export function ClipPlayerPage({
             }}
           >
             <iframe
-              src={playerUrl(clip)}
+              ref={setFrame}
+              src={playerUrl(clip, autoplay && !!playThrough)}
               loading="lazy"
               title={clip.video.title}
               className="rs-player-frame"
@@ -364,7 +514,11 @@ export function ClipPlayerPage({
               }}
             />
           </div>
-          <NeighbourLink clip={neighbours?.newer} direction="newer" />
+          <NeighbourLink
+            clip={next}
+            direction="newer"
+            inCollection={collectionSearch?.collection}
+          />
         </section>
 
         <section className="rs-watch-details">
@@ -399,7 +553,48 @@ export function ClipPlayerPage({
 
         <ClipFacts clip={clip} game={game} />
 
-        {session.length > 1 ? (
+        {playThrough ? (
+          <>
+            <aside
+              className="rs-watch-more"
+              aria-labelledby="rs-collection-heading-side"
+            >
+              <h2 id="rs-collection-heading-side" className="rs-eyebrow">
+                Up next in {playThrough.playlist.name}
+              </h2>
+              <ClipGrid
+                clips={playThrough.clips}
+                categories={categories}
+                variant="filmstrip"
+                showGame={false}
+                currentClipId={clipId}
+                linkSearch={collectionSearch}
+              />
+            </aside>
+            <section
+              className="rs-watch-more-full"
+              aria-labelledby="rs-collection-heading-full"
+            >
+              <div className="rs-watch-section-head">
+                <h2 id="rs-collection-heading-full" className="rs-display">
+                  {playThrough.playlist.name}
+                </h2>
+                <span>
+                  Clip {playThrough.index + 1} of {playThrough.clips.length}
+                </span>
+              </div>
+              <ClipGrid
+                clips={playThrough.clips}
+                categories={categories}
+                variant="filmstrip"
+                currentClipId={clipId}
+                linkSearch={collectionSearch}
+              />
+            </section>
+          </>
+        ) : null}
+
+        {!playThrough && session.length > 1 ? (
           <SameSession
             session={session}
             day={sessionData!.day}
@@ -408,7 +603,7 @@ export function ClipPlayerPage({
           />
         ) : null}
 
-        {more.length > 0 ? (
+        {!playThrough && more.length > 0 ? (
           <>
             <aside
               className="rs-watch-more"

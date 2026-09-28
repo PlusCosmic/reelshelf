@@ -164,8 +164,8 @@ export function thumbnailUrl(clip: Clip) {
   return `${apiConfig.bunnyBaseUrl}/${clip.video.guid}/thumbnail.jpg`;
 }
 
-export function playerUrl(clip: Clip) {
-  return `https://player.mediadelivery.net/embed/${clip.video.videoLibraryId}/${clip.video.guid}?autoplay=false`;
+export function playerUrl(clip: Clip, autoplay = false) {
+  return `https://player.mediadelivery.net/embed/${clip.video.videoLibraryId}/${clip.video.guid}?autoplay=${autoplay}`;
 }
 
 export function formatDuration(seconds = 0) {
