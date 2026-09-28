@@ -1,15 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQueries } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { IconLock, IconPlus } from "@tabler/icons-react";
-import type { PlaylistSummary, PlaylistWithDetails } from "@/api-client";
+import type { PlaylistSummary } from "@/api-client";
 import { useCurrentUser } from "@/hooks/auth.queries";
 import { useCreateCollection } from "@/hooks/playlists.queries";
-import { fetchPlaylistById } from "@/shared/services/playlists";
 import {
-  collectionClips,
-  collectionGames,
-  collectionMinutes,
+  gamesFromCounts,
+  minutesOf,
   sharingSummary,
 } from "./collections-model";
 import { CollectionFormDialog } from "./collections/CollectionFormDialog";
@@ -17,7 +14,7 @@ import { Avatar, SearchBox } from "./ReelshelfPrimitives";
 import {
   formatDate,
   makeGameShelf,
-  thumbnailUrl,
+  videoThumbnailUrl,
   type GameShelfItem,
 } from "./reelshelf-model";
 import { useLibraryData, usePlaylistsData } from "./useLibraryData";
@@ -28,25 +25,29 @@ function plural(count: number, one: string, many: string) {
 
 /** Up to four of the collection's clips, in its order, over a strip of each game's share. */
 function Mosaic({
-  details,
+  playlist,
   shelf,
 }: {
-  details: PlaylistWithDetails | undefined;
+  playlist: PlaylistSummary;
   shelf: GameShelfItem[];
 }) {
-  const clips = collectionClips(details).map(({ clip }) => clip);
-  const games = collectionGames(clips, shelf);
-  const shown = clips.slice(0, 4);
+  const games = gamesFromCounts(playlist.games, shelf);
+  const shown = playlist.previewClips;
 
   return (
     <span
-      className={`rs-ledger-mosaic${clips.length === 0 ? " empty" : ""}`}
+      className={`rs-ledger-mosaic${shown.length === 0 ? " empty" : ""}`}
       data-count={shown.length}
       aria-hidden="true"
     >
-      {details && clips.length === 0 ? <span>Empty</span> : null}
+      {shown.length === 0 ? <span>Empty</span> : null}
       {shown.map((clip) => (
-        <img key={clip.clipId} src={thumbnailUrl(clip)} alt="" loading="lazy" />
+        <img
+          key={clip.clipId}
+          src={videoThumbnailUrl(clip.videoId)}
+          alt=""
+          loading="lazy"
+        />
       ))}
       {games.length > 0 ? (
         <span className="rs-ledger-share">
@@ -64,18 +65,19 @@ function Mosaic({
 
 function LedgerRow({
   playlist,
-  details,
   shelf,
   viewerId,
 }: {
   playlist: PlaylistSummary;
-  details: PlaylistWithDetails | undefined;
   shelf: GameShelfItem[];
   viewerId: string | undefined;
 }) {
-  const clips = collectionClips(details).map(({ clip }) => clip);
-  const games = collectionGames(clips, shelf);
-  const sharing = details ? sharingSummary(details, viewerId) : null;
+  const games = gamesFromCounts(playlist.games, shelf);
+  const sharing = sharingSummary(
+    playlist.creatorUserId,
+    playlist.people,
+    viewerId,
+  );
   const clipCount =
     playlist.clipCount === 0
       ? "No clips yet"
@@ -87,7 +89,7 @@ function LedgerRow({
       params={{ playlistId: playlist.id }}
       className="rs-ledger-row"
     >
-      <Mosaic details={details} shelf={shelf} />
+      <Mosaic playlist={playlist} shelf={shelf} />
       <span className="rs-ledger-body">
         <span className="rs-ledger-name">
           <span className="rs-display">{playlist.name}</span>
@@ -112,36 +114,36 @@ function LedgerRow({
         </span>
       </span>
       <span className="rs-ledger-people">
-        {sharing ? (
-          sharing.people.length > 0 ? (
-            <>
-              <span className="rs-avatar-stack">
-                {sharing.people.slice(0, 3).map((person, index) => (
-                  <span
-                    key={person.userId}
-                    className={index === 0 ? undefined : "rs-avatar-offset"}
-                  >
-                    <Avatar
-                      name={person.username}
-                      src={person.avatarUrl}
-                      size={24}
-                    />
-                  </span>
-                ))}
-              </span>
-              {sharing.label}
-            </>
-          ) : (
-            <>
-              <IconLock size={14} aria-hidden="true" />
-              Private
-            </>
-          )
-        ) : null}
+        {sharing.people.length > 0 ? (
+          <>
+            <span className="rs-avatar-stack">
+              {sharing.people.slice(0, 3).map((person, index) => (
+                <span
+                  key={person.userId}
+                  className={index === 0 ? undefined : "rs-avatar-offset"}
+                >
+                  <Avatar
+                    name={person.username}
+                    src={person.avatarUrl}
+                    size={24}
+                  />
+                </span>
+              ))}
+            </span>
+            {sharing.label}
+          </>
+        ) : (
+          <>
+            <IconLock size={14} aria-hidden="true" />
+            Private
+          </>
+        )}
       </span>
       <span className="rs-ledger-count">
         <strong>{clipCount}</strong>
-        {clips.length > 0 ? <span>{collectionMinutes(clips)} min</span> : null}
+        {playlist.totalSeconds > 0 ? (
+          <span>{minutesOf(playlist.totalSeconds)} min</span>
+        ) : null}
       </span>
       <span className="rs-ledger-updated">
         <small>Updated</small>
@@ -166,18 +168,6 @@ export function CollectionsPage() {
   const shelf = useMemo(
     () => makeGameShelf(categories, categoryTotals),
     [categories, categoryTotals],
-  );
-  const detailQueries = useQueries({
-    queries: playlists.map((playlist) => ({
-      queryKey: ["playlists", playlist.id],
-      queryFn: () => fetchPlaylistById(playlist.id),
-      staleTime: 30_000,
-    })),
-  });
-  const detailsById = new Map(
-    detailQueries.flatMap((detail) =>
-      detail.data ? [[detail.data.id, detail.data] as const] : [],
-    ),
   );
 
   if (isLoading)
@@ -281,7 +271,6 @@ export function CollectionsPage() {
               <LedgerRow
                 key={playlist.id}
                 playlist={playlist}
-                details={detailsById.get(playlist.id)}
                 shelf={shelf}
                 viewerId={currentUser?.id}
               />

@@ -63,7 +63,11 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
   const clips = entries.map(({ clip }) => clip);
   const isOwner = playlist.creatorUserId === currentUser?.id;
   const games = collectionGames(clips, shelf);
-  const sharing = sharingSummary(playlist, currentUser?.id);
+  const sharing = sharingSummary(
+    playlist.creatorUserId,
+    playlist.collaborators,
+    currentUser?.id,
+  );
   const total = games.reduce((sum, game) => sum + game.count, 0);
 
   return (

@@ -54,6 +54,13 @@ public class PlaylistService(
     public async Task<List<PlaylistSummary>> GetPlaylistsForUser(Guid userId)
     {
         List<PlaylistStatements.PlaylistSummaryRow> playlistRows = await playlistStatements.GetPlaylistsByUserId(userId);
+        if (playlistRows.Count == 0) return [];
+
+        PlaylistStatements.PlaylistListExtras extras =
+            await playlistStatements.GetListExtras(playlistRows.Select(p => p.Id).ToArray());
+        ILookup<Guid, PlaylistStatements.PreviewClipRow> previews = extras.Previews.ToLookup(row => row.PlaylistId);
+        ILookup<Guid, PlaylistStatements.GameCountRow> games = extras.Games.ToLookup(row => row.PlaylistId);
+        ILookup<Guid, PlaylistStatements.PersonRow> people = extras.People.ToLookup(row => row.PlaylistId);
 
         return playlistRows.Select(p => new PlaylistSummary(
             p.Id,
@@ -64,7 +71,14 @@ public class PlaylistService(
             p.UpdatedAt,
             p.ClipCount,
             p.CollaboratorCount,
-            p.IsGamingSession
+            p.IsGamingSession,
+            games[p.Id].Sum(row => row.Seconds),
+            previews[p.Id].Select(row => new PlaylistPreviewClip(row.ClipId, row.VideoId)).ToList(),
+            games[p.Id]
+                .OrderByDescending(row => row.ClipCount)
+                .Select(row => new PlaylistGameCount(row.GameCategoryId, row.ClipCount))
+                .ToList(),
+            people[p.Id].Select(row => new PlaylistPerson(row.UserId, row.Username, row.AvatarUrl)).ToList()
         )).ToList();
     }
 

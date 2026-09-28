@@ -161,7 +161,12 @@ export function categoryForClip(
 }
 
 export function thumbnailUrl(clip: Clip) {
-  return `${apiConfig.bunnyBaseUrl}/${clip.video.guid}/thumbnail.jpg`;
+  return videoThumbnailUrl(clip.video.guid);
+}
+
+/** A clip's thumbnail from its video id alone, which is its Bunny video guid. */
+export function videoThumbnailUrl(videoId: string) {
+  return `${apiConfig.bunnyBaseUrl}/${videoId}/thumbnail.jpg`;
 }
 
 export function playerUrl(clip: Clip) {
