@@ -44,8 +44,6 @@ const shelfBooks: GameShelfItem[] = (
     unviewedCount,
     durationSeconds: 0,
     sizeBytes: 0,
-    colorA: clothColor,
-    colorB: clothColor,
   };
 });
 

@@ -10,19 +10,21 @@ export interface GameShelfItem extends GameCategoryResponse {
   unviewedCount: number;
   durationSeconds: number;
   sizeBytes: number;
-  colorA: string;
-  colorB: string;
 }
 
-const palette: Array<[string, string]> = [
-  ["oklch(0.56 0.16 24)", "oklch(0.31 0.08 350)"],
-  ["oklch(0.58 0.13 82)", "oklch(0.34 0.07 52)"],
-  ["oklch(0.53 0.13 202)", "oklch(0.32 0.08 235)"],
-  ["oklch(0.55 0.13 142)", "oklch(0.30 0.07 168)"],
-  ["oklch(0.54 0.14 288)", "oklch(0.32 0.09 312)"],
-  ["oklch(0.56 0.13 8)", "oklch(0.31 0.07 28)"],
-  ["oklch(0.55 0.11 245)", "oklch(0.28 0.07 260)"],
-  ["oklch(0.59 0.12 116)", "oklch(0.32 0.07 92)"],
+/**
+ * Cloths for books with no colour from a cover: custom categories, and games whose cover hasn't been
+ * read yet. Muted and mid-toned like the cloths the API takes from covers.
+ */
+const defaultCloths = [
+  "#6b4f3a",
+  "#3f5a4a",
+  "#4a4f6b",
+  "#6b3f45",
+  "#5c5a3a",
+  "#3f5660",
+  "#5e4a66",
+  "#7a6a4f",
 ];
 
 const shortDateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -31,10 +33,9 @@ const shortDateFormatter = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
 });
 
-export function getGameColors(id: string): [string, string] {
-  let hash = 0;
-  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return palette[hash % palette.length];
+/** The same book always gets the same default cloth. */
+export function defaultCloth(id: string) {
+  return defaultCloths[hashOf(id) % defaultCloths.length];
 }
 
 /**
@@ -51,21 +52,18 @@ export function makeGameShelf(
 
   return categories.map((category) => {
     const totals = totalsByCategory.get(category.id);
-    const [colorA, colorB] = getGameColors(category.id);
     return {
       ...category,
       clipCount: totals?.clipCount ?? 0,
       unviewedCount: totals?.unviewedCount ?? 0,
       durationSeconds: totals?.durationSeconds ?? 0,
       sizeBytes: totals?.storageBytes ?? 0,
-      colorA,
-      colorB,
     };
   });
 }
 
 export interface BookBinding {
-  /** Cloth colour: the cover-derived one from the API, else the game's fallback colour. */
+  /** Cloth colour: the cover-derived one from the API, else a default cloth for the book. */
   cloth: string;
   /** Title ink that reads on the cloth. */
   ink: string;
@@ -90,13 +88,13 @@ function contrast(a: number, b: number) {
 
 /**
  * How a game's book is bound. Custom categories and games whose cover has not been read yet have
- * no cloth colour; they fall back to the darker of their placeholder pair, which takes light ink.
+ * no cloth colour, and take a default cloth instead.
  */
-export function bookBinding(game: GameShelfItem): BookBinding {
-  const cloth = game.clothColor;
-  if (!cloth || !/^#[0-9a-f]{6}$/i.test(cloth)) {
-    return { cloth: game.colorB, ink: lightInk, light: false };
-  }
+export function bookBinding(game: GameCategoryResponse): BookBinding {
+  const cloth =
+    game.clothColor && /^#[0-9a-f]{6}$/i.test(game.clothColor)
+      ? game.clothColor
+      : defaultCloth(game.id);
   const luminance = relativeLuminance(cloth);
   const light =
     contrast(luminance, relativeLuminance(darkInk)) >

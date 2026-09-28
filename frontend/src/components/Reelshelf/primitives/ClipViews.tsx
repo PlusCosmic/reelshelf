@@ -3,11 +3,11 @@ import type { CSSProperties } from "react";
 import { IconPlayerPlayFilled } from "@tabler/icons-react";
 import type { Clip, GameCategoryResponse } from "@/api-client";
 import {
+  bookBinding,
   categoryForClip,
   formatDate,
   formatDuration,
   formatSize,
-  getGameColors,
   thumbnailUrl,
 } from "../reelshelf-model";
 import { StitchedDot } from "../StitchedDot";
@@ -27,7 +27,6 @@ export function ClipThumb({
   compact?: boolean;
   onClick?: () => void;
 }) {
-  const [colorA, colorB] = getGameColors(category?.id ?? clip.gameCategoryId);
   const firstTag = clip.tags[0];
   const Tag = onClick ? "button" : "span";
   return (
@@ -35,7 +34,12 @@ export function ClipThumb({
       {...(onClick ? { type: "button" as const } : {})}
       className="rs-thumb"
       onClick={onClick}
-      style={{ "--game-a": colorA, "--game-b": colorB } as CSSProperties}
+      // The game's cloth shows while the thumbnail loads, or instead of one that's missing.
+      style={
+        category
+          ? ({ background: bookBinding(category).cloth } as CSSProperties)
+          : undefined
+      }
       aria-label={onClick ? `Open ${clip.video.title}` : undefined}
     >
       <img
