@@ -1,4 +1,5 @@
 import {
+  type Playlist,
   type PlaylistSummary,
   type PlaylistWithDetails,
   type EnsureGamingSessionPlaylistRequest,
@@ -45,4 +46,20 @@ export async function addClipsToPlaylist(
     id: playlistId,
     addClipToPlaylistRequest: request,
   });
+}
+
+export async function createPlaylist(
+  name: string,
+  description: string | null,
+): Promise<Playlist> {
+  const api = getPlaylistApi();
+  return api.createPlaylist({ createPlaylistRequest: { name, description } });
+}
+
+export async function removeClipFromPlaylist(
+  playlistId: string,
+  clipId: string,
+): Promise<void> {
+  const api = getPlaylistApi();
+  await api.removeClipFromPlaylist({ id: playlistId, clipId });
 }
