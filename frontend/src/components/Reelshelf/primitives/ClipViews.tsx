@@ -10,6 +10,7 @@ import {
   getGameColors,
   thumbnailUrl,
 } from "../reelshelf-model";
+import { StitchedDot } from "../StitchedDot";
 import { SharedIndicator } from "./Navigation";
 
 export function ClipThumb({
@@ -105,14 +106,102 @@ function ClipCard({
   );
 }
 
+const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "long" });
+
+type FilmstripItem =
+  | { kind: "month"; key: string; month: string; year: number }
+  | { kind: "clip"; clip: Clip };
+
+/** Interleaves a month heading wherever the recording month changes. */
+function filmstripItems(clips: Clip[], groupByMonth: boolean): FilmstripItem[] {
+  if (!groupByMonth) return clips.map((clip) => ({ kind: "clip", clip }));
+
+  const items: FilmstripItem[] = [];
+  let lastKey = "";
+  for (const clip of clips) {
+    const recorded = new Date(clip.createdAt);
+    const key = `${recorded.getFullYear()}-${recorded.getMonth()}`;
+    if (key !== lastKey) {
+      items.push({
+        kind: "month",
+        key,
+        month: monthFormatter.format(recorded),
+        year: recorded.getFullYear(),
+      });
+      lastKey = key;
+    }
+    items.push({ kind: "clip", clip });
+  }
+  return items;
+}
+
+function ClipRow({
+  clip,
+  category,
+  showGame,
+}: {
+  clip: Clip;
+  category: GameCategoryResponse | undefined;
+  showGame: boolean;
+}) {
+  return (
+    <Link
+      className={`rs-row${showGame ? "" : " no-game"}`}
+      to="/games/$slug/$clipId"
+      params={{ slug: clip.categorySlug, clipId: clip.clipId }}
+    >
+      <ClipThumb clip={clip} category={category} compact />
+      <span className="rs-row-body">
+        <span className="rs-row-heading">
+          <strong className="rs-row-title">{clip.video.title}</strong>
+          {!clip.isViewed ? (
+            <>
+              <StitchedDot className="rs-row-new" />
+              <span className="rs-visually-hidden">Not watched yet</span>
+            </>
+          ) : null}
+        </span>
+        <span className="rs-meta">
+          {clip.tags
+            .slice(0, 3)
+            .map((tag) => `#${tag}`)
+            .join(" ")}
+          {clip.share.shared ? (
+            <span className="rs-row-shared">
+              <SharedIndicator />
+            </span>
+          ) : null}
+        </span>
+      </span>
+      {showGame ? (
+        <span className="wide-only rs-row-game">
+          {category?.coverUrl ? (
+            <img src={category.coverUrl} alt="" loading="lazy" />
+          ) : null}
+          {category?.name ?? "Game"}
+        </span>
+      ) : null}
+      <span className="wide-only rs-meta rs-row-duration">
+        {formatDuration(clip.video.length)}
+      </span>
+    </Link>
+  );
+}
+
 export function ClipGrid({
   clips,
   categories,
   variant = "poster",
+  groupByMonth = false,
+  showGame = true,
 }: {
   clips: Clip[];
   categories: GameCategoryResponse[];
   variant?: "poster" | "grid" | "filmstrip";
+  /** Filmstrip only: a heading before each month's clips, for lists in date order. */
+  groupByMonth?: boolean;
+  /** Filmstrip only: the game column, which a single game's list does not need. */
+  showGame?: boolean;
 }) {
   if (clips.length === 0) {
     return <div className="rs-empty">No clips match this view.</div>;
@@ -121,40 +210,21 @@ export function ClipGrid({
   if (variant === "filmstrip") {
     return (
       <div className="rs-filmstrip">
-        {clips.map((clip) => {
-          const category = categoryForClip(clip, categories);
-          return (
-            <Link
-              className="rs-row"
-              key={clip.clipId}
-              to="/games/$slug/$clipId"
-              params={{ slug: clip.categorySlug, clipId: clip.clipId }}
-            >
-              <span className="rs-display rs-row-index"></span>
-              <ClipThumb clip={clip} category={category} compact />
-              <span>
-                <strong className="rs-row-title">{clip.video.title}</strong>
-                <span className="rs-meta">
-                  {clip.tags
-                    .slice(0, 3)
-                    .map((tag) => `#${tag}`)
-                    .join(" ")}
-                  {clip.share.shared ? (
-                    <span className="rs-row-shared">
-                      <SharedIndicator />
-                    </span>
-                  ) : null}
-                </span>
-              </span>
-              <span className="wide-only rs-meta">
-                {category?.name ?? "Game"}
-              </span>
-              <span className="wide-only rs-meta">
-                {formatDuration(clip.video.length)}
-              </span>
-            </Link>
-          );
-        })}
+        {filmstripItems(clips, groupByMonth).map((item) =>
+          item.kind === "month" ? (
+            <h3 className="rs-month" key={item.key}>
+              <span className="rs-display">{item.month}</span>
+              <span className="rs-month-year">{item.year}</span>
+            </h3>
+          ) : (
+            <ClipRow
+              key={item.clip.clipId}
+              clip={item.clip}
+              category={categoryForClip(item.clip, categories)}
+              showGame={showGame}
+            />
+          ),
+        )}
       </div>
     );
   }
