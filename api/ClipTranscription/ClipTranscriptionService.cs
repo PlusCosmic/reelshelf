@@ -140,8 +140,17 @@ public class ClipTranscriptionService(
     }
 
     /// <summary>Processes the next queued run. Returns false when there was nothing to do.</summary>
+    /// <remarks>
+    /// An instance without an API key never claims a run: dev and prod share the queue, and only the instance
+    /// holding the key should process it. Its runs stay queued for one that can.
+    /// </remarks>
     public async Task<bool> ProcessNextRunAsync(CancellationToken cancellationToken)
     {
+        if (!options.CurrentValue.IsConfigured)
+        {
+            return false;
+        }
+
         ClipTranscriptionStatements.ClaimedRunRow? run = await statements.ClaimNextRunAsync(RetryAfter, StaleAfter);
         if (run is null)
         {
@@ -152,12 +161,6 @@ public class ClipTranscriptionService(
         if (run.Attempts > current.MaxAttempts)
         {
             await statements.FailRunAsync(run.Id, $"Gave up after {current.MaxAttempts} attempts", null, retry: false);
-            return true;
-        }
-
-        if (!current.IsConfigured)
-        {
-            await statements.FailRunAsync(run.Id, "Clip transcription is not configured", null, retry: false);
             return true;
         }
 
