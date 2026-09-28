@@ -162,8 +162,6 @@ export function LandingPage({
 
   return (
     <div className="rs-landing">
-      <div className="rs-landing-wash" />
-
       <header className="rs-landing-header">
         <div className="rs-brand" aria-label="Reelshelf">
           <BrandLogo />

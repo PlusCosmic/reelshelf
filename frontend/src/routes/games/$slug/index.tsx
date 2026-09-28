@@ -64,7 +64,7 @@ function GameCategoryRoute() {
             "--game-a": colorA,
             "--game-b": colorB,
             backgroundImage: category.keyArtUrl
-              ? `linear-gradient(90deg, rgba(15, 11, 8, 0.88), rgba(15, 11, 8, 0.46)), url("${category.keyArtUrl}")`
+              ? `linear-gradient(90deg, rgba(6, 16, 11, 0.88), rgba(6, 16, 11, 0.46)), url("${category.keyArtUrl}")`
               : undefined,
           } as CSSProperties
         }

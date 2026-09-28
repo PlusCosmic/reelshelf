@@ -178,7 +178,7 @@ function LibraryRoute() {
                     "--game-a": game.colorA,
                     "--game-b": game.colorB,
                     backgroundImage: game.coverUrl
-                      ? `linear-gradient(to bottom, rgba(12, 9, 6, 0.08), rgba(12, 9, 6, 0.42)), url("${game.coverUrl}")`
+                      ? `linear-gradient(to bottom, rgba(6, 16, 11, 0.08), rgba(6, 16, 11, 0.42)), url("${game.coverUrl}")`
                       : undefined,
                   } as CSSProperties
                 }
