@@ -9,6 +9,7 @@ import {
   IconLogout,
   IconMoon,
   IconScan,
+  IconMicrophone,
   IconSettings,
   IconSun,
 } from "@tabler/icons-react";
@@ -186,6 +187,17 @@ function AuthenticatedShell({
                   >
                     <IconScan size={16} />
                     Legend detection
+                  </Link>
+                ) : null}
+                {user.isAdmin ? (
+                  <Link
+                    to="/clip-transcription"
+                    className="rs-menu-item"
+                    role="menuitem"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <IconMicrophone size={16} />
+                    Transcription
                   </Link>
                 ) : null}
                 <button
