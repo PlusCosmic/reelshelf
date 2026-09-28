@@ -17,6 +17,14 @@
   /* Base for shadows and image scrims, mixed with transparent at the point of use. */
   --shadow: #14301f;
   --scrim: #06100b;
+  /* The bookcase: its back, uprights and plank, and the cloth of a book with no clips. */
+  --case-back: #dfe7e0;
+  --case-upright: #bfccc1;
+  --plank-top: #c9d6cb;
+  --plank-front: #9fb2a3;
+  --empty-cloth: #e9efea;
+  --tip-bg: #13261c;
+  --tip-ink: #eef2ee;
   --radius: 3px;
   --radius-lg: 4px;
   --font-sans:
@@ -47,6 +55,13 @@
   --danger: oklch(0.72 0.15 25);
   --shadow: #000000;
   --scrim: #06100b;
+  --case-back: #0c1813;
+  --case-upright: #213a2d;
+  --plank-top: #3d5e4b;
+  --plank-front: #27412f;
+  --empty-cloth: #10201a;
+  --tip-bg: #e4ebe6;
+  --tip-ink: #13241c;
 }
 
 * {
@@ -1176,12 +1191,6 @@ a {
   margin: 0 6px 0 0;
 }
 
-.rs-filter-divider {
-  width: 1px;
-  height: 18px;
-  margin: 0 6px;
-  background: var(--line);
-}
 
 .rs-filter-chips {
   display: flex;
@@ -1212,6 +1221,667 @@ a {
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
 }
 
+/* The library's top: the bookcase, then the pulled-out game's banner or the greeting. */
+.rs-library-top {
+  --book-scale: 1;
+  padding: 24px 32px 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rs-library-greeting {
+  margin-top: 28px;
+}
+
+.rs-bookcase-back {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: calc(334px * var(--book-scale));
+  border: 16px solid var(--case-upright);
+  border-top-width: 12px;
+  border-bottom: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--case-back);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.rs-bookcase-back::-webkit-scrollbar {
+  display: none;
+}
+
+.rs-bookcase-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
+  /* Room above the tallest book for the hover label and the lifted spine. */
+  padding: 64px 20px 0;
+}
+
+.rs-bookcase-plank {
+  position: relative;
+  height: 24px;
+  margin: 0 -6px;
+  background: linear-gradient(
+    to bottom,
+    var(--plank-top) 0 8px,
+    var(--plank-front) 8px
+  );
+  box-shadow: 0 10px 16px -8px color-mix(in oklab, var(--shadow) 55%, transparent);
+}
+
+/* A spine: the game's cloth with its cover woven faintly in. */
+.rs-book-spine {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(var(--book-w) * var(--book-scale));
+  height: calc(var(--book-h) * var(--book-scale));
+  padding: calc(16px * var(--book-scale)) 0 calc(12px * var(--book-scale));
+  border: 1px solid var(--cloth);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--cloth);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow:
+    inset -7px 0 0 rgba(0, 0, 0, 0.13),
+    inset 2px 0 0 rgba(255, 255, 255, 0.07);
+  transition: transform 0.2s ease;
+}
+
+.rs-book-spine::after {
+  /* The thread of the cloth. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 4px);
+  pointer-events: none;
+}
+
+.rs-book-spine:hover,
+.rs-book-spine:focus-visible {
+  z-index: 5;
+  transform: translateY(-10px);
+}
+
+.rs-book-spine:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.rs-book-weave {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  object-position: 50% 35%;
+  mix-blend-mode: luminosity;
+  filter: grayscale(1) contrast(1.3) brightness(0.6);
+  opacity: 0.26;
+  transition: opacity 0.25s ease;
+}
+
+.rs-book-spine.light .rs-book-weave {
+  filter: grayscale(1) contrast(0.8) brightness(1.2);
+  opacity: 0.16;
+}
+
+.rs-book-spine:hover .rs-book-weave,
+.rs-book-spine:focus-visible .rs-book-weave {
+  opacity: 0.4;
+}
+
+.rs-book-spine.light:hover .rs-book-weave,
+.rs-book-spine.light:focus-visible .rs-book-weave {
+  opacity: 0.26;
+}
+
+.rs-book-bands {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 62%;
+}
+
+.rs-book-bands::before,
+.rs-book-bands::after,
+.rs-book-rule {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: color-mix(in oklab, var(--ink) 55%, var(--cloth));
+}
+
+.rs-book-bands::after {
+  height: 1px;
+}
+
+.rs-book-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-height: calc(var(--book-h) * var(--book-scale) - 104px);
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  text-shadow:
+    0 0 3px var(--cloth),
+    0 0 8px var(--cloth);
+}
+
+.rs-book-series {
+  margin-left: 5px;
+  font-size: calc(11px * var(--book-scale));
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.rs-book-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-size: calc(var(--title-size) * var(--book-scale));
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  font-variation-settings:
+    "opsz" 72,
+    "SOFT" 100;
+}
+
+.rs-book-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.rs-book-rule {
+  width: 62%;
+  min-width: 26px;
+}
+
+.rs-book-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: calc(19px * var(--book-scale));
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: lining-nums;
+  font-variation-settings:
+    "opsz" 24,
+    "SOFT" 100;
+  text-shadow:
+    0 0 3px var(--cloth),
+    0 0 8px var(--cloth);
+}
+
+.rs-book-empty {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.rs-stitched-dot {
+  display: block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+}
+
+.rs-book-spine .rs-stitched-dot {
+  color: #8fc9a4;
+}
+
+.rs-book-spine.light .rs-stitched-dot {
+  color: #1f6b45;
+}
+
+.rs-book-spine.empty {
+  border: 2px solid color-mix(in oklab, var(--fg-soft) 45%, transparent);
+  border-bottom: 0;
+  background: var(--empty-cloth);
+  color: var(--fg-soft);
+  box-shadow: none;
+}
+
+.rs-book-spine.empty .rs-book-title {
+  text-shadow: none;
+}
+
+/* Shown on hover and keyboard focus: the only place a spine says how many clips are new. */
+.rs-book-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 3;
+  display: grid;
+  gap: 3px;
+  width: max-content;
+  max-width: 260px;
+  padding: 7px 11px 8px;
+  border-radius: var(--radius);
+  background: var(--tip-bg);
+  color: var(--tip-ink);
+  text-align: left;
+  box-shadow: 0 8px 18px -8px color-mix(in oklab, var(--shadow) 50%, transparent);
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  pointer-events: none;
+  writing-mode: horizontal-tb;
+}
+
+.rs-book-spine:hover .rs-book-tip,
+.rs-book-spine:focus-visible .rs-book-tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.rs-book-tip-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.rs-book-tip-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.rs-book-tip .rs-stitched-dot {
+  color: var(--tip-ink);
+}
+
+/* The pulled-out book, turned face-out on the shelf. */
+.rs-book-face {
+  position: relative;
+  flex: none;
+  width: calc(216px * var(--book-scale));
+  height: calc(278px * var(--book-scale));
+  margin: 0 calc(16px * var(--book-scale)) 0 calc(8px * var(--book-scale));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.rs-book-face:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+}
+
+.rs-book-face-shadow {
+  position: absolute;
+  left: 6px;
+  right: -26px;
+  bottom: -4px;
+  height: 12px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--shadow) 70%, transparent);
+  filter: blur(6px);
+}
+
+.rs-book-face-body {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  transform: perspective(1100px) rotateY(12deg);
+  transform-origin: 0 100%;
+  animation: rs-book-turn 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes rs-book-turn {
+  from {
+    transform: perspective(1100px) rotateY(68deg) translateY(-8px);
+  }
+}
+
+.rs-book-face-hinge {
+  display: block;
+  width: calc(11px * var(--book-scale));
+  height: calc(274px * var(--book-scale));
+  border-radius: var(--radius) 0 0 0;
+  background: var(--cloth);
+  box-shadow:
+    inset -3px 0 0 rgba(0, 0, 0, 0.3),
+    inset 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.rs-book-face-cover {
+  position: relative;
+  display: block;
+  width: calc(205px * var(--book-scale));
+  height: calc(274px * var(--book-scale));
+  overflow: hidden;
+  border-radius: 0 var(--radius) 0 0;
+  background: var(--cloth);
+  box-shadow: 10px 2px 18px -6px color-mix(in oklab, var(--shadow) 70%, transparent);
+}
+
+.rs-book-face-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rs-book-face-plain {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+  color: #f4f7f4;
+  font-size: 22px;
+  text-align: center;
+}
+
+.rs-book-face-tab {
+  position: absolute;
+  right: 22px;
+  top: -25px;
+  z-index: -1;
+  padding: 6px 9px 22px;
+  border-radius: 2px 2px 0 0;
+  background: var(--fill);
+  color: var(--fill-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  outline: 1px dashed rgba(255, 255, 255, 0.62);
+  outline-offset: -4px;
+}
+
+.rs-book-face.empty img {
+  filter: grayscale(0.7) brightness(0.6);
+}
+
+.rs-book-face-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 16px 14px;
+  background: color-mix(in oklab, var(--scrim) 62%, transparent);
+  color: #ffffff;
+  font-size: 19px;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.rs-book-add {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: calc(52px * var(--book-scale));
+  height: calc(206px * var(--book-scale));
+  margin-left: 12px;
+  padding-top: 16px;
+  box-sizing: border-box;
+  border: 1.5px dashed var(--fg-soft);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: transparent;
+  color: var(--fg-soft);
+  cursor: pointer;
+}
+
+.rs-book-add:hover,
+.rs-book-add:focus-visible {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.rs-book-add span {
+  writing-mode: vertical-rl;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The pulled-out game's header: key art behind a scrim, or its cloth laid flat. */
+.rs-game-banner {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  min-height: 156px;
+  margin-top: 16px;
+  padding: 24px 28px 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--scrim);
+  color: #ffffff;
+}
+
+.rs-game-banner.cloth {
+  border: 1px solid var(--cloth);
+  background: var(--cloth);
+  color: var(--ink);
+}
+
+.rs-game-banner-art,
+.rs-game-banner-weave {
+  position: absolute;
+  inset: 0;
+  /* Beneath the scrim, which sits at -1. */
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.rs-game-banner.with-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in oklab, var(--scrim) 64%, transparent);
+}
+
+.rs-game-banner-weave {
+  object-position: center 35%;
+  mix-blend-mode: luminosity;
+  filter: grayscale(1) contrast(1.3) brightness(0.6);
+  opacity: 0.2;
+}
+
+.rs-game-banner.light .rs-game-banner-weave {
+  filter: grayscale(1) contrast(0.8) brightness(1.2);
+  opacity: 0.12;
+}
+
+.rs-game-banner-cover {
+  flex: none;
+  width: 90px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 10px 18px -6px rgba(0, 0, 0, 0.6);
+}
+
+.rs-game-banner-cover.empty {
+  filter: grayscale(0.8) brightness(0.8);
+}
+
+.rs-game-banner-text {
+  min-width: 0;
+}
+
+.rs-game-banner .rs-eyebrow {
+  margin-bottom: 4px;
+  color: inherit;
+  opacity: 0.82;
+}
+
+.rs-game-banner h1 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.rs-game-banner-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+
+.rs-game-banner-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.rs-game-banner-new .rs-stitched-dot {
+  color: #8fc9a4;
+}
+
+.rs-game-banner.cloth.light .rs-game-banner-new .rs-stitched-dot {
+  color: #1f6b45;
+}
+
+.rs-game-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.rs-game-banner-actions .rs-primary {
+  min-height: 44px;
+  padding: 0 18px 0 14px;
+  font-size: 14px;
+}
+
+.rs-game-banner-back {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .rs-library-top {
+    --book-scale: 0.7;
+    padding: 16px 0 20px;
+  }
+
+  .rs-library-greeting,
+  .rs-game-banner {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+
+  .rs-bookcase-back {
+    border-left: 0;
+    border-right: 0;
+    border-top-width: 10px;
+    border-radius: 0;
+  }
+
+  .rs-bookcase-row {
+    padding: 40px 16px 0;
+  }
+
+  .rs-bookcase-plank {
+    margin: 0;
+  }
+
+  /* Touch has no hover, so the label would only flash on tap. */
+  .rs-book-tip {
+    display: none;
+  }
+
+  .rs-game-banner {
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 20px 16px 16px;
+  }
+
+  .rs-game-banner-cover {
+    width: 72px;
+    height: 96px;
+  }
+
+  .rs-game-banner-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .rs-game-banner-actions > * {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-book-spine,
+  .rs-book-weave,
+  .rs-book-tip {
+    transition: none;
+  }
+
+  .rs-book-spine:hover,
+  .rs-book-spine:focus-visible {
+    transform: none;
+  }
+
+  .rs-book-face-body {
+    animation: none;
+  }
+}
+
 .rs-muted-count {
   opacity: 0.62;
 }
@@ -1232,12 +1902,6 @@ a {
   color: var(--accent-ink);
 }
 
-.rs-game-upload-action {
-  border-color: var(--accent);
-  background: color-mix(in oklab, var(--accent) 16%, var(--bg));
-  color: var(--accent-ink);
-  font-weight: 750;
-}
 
 .rs-shelf {
   position: relative;
@@ -1849,40 +2513,11 @@ a {
   opacity: 0.5;
 }
 
-.rs-game-hero {
-  position: relative;
-  overflow: hidden;
-  padding: 60px 32px 40px;
-  background: linear-gradient(135deg, var(--game-a), var(--game-b));
-  background-position: center;
-  background-size: cover;
-  color: white;
-}
 
-.rs-game-hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0.22;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence baseFrequency='0.9'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .12 0'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");
-}
 
-.rs-game-hero > * {
-  position: relative;
-  z-index: 1;
-}
 
-.rs-over-media {
-  color: rgba(255, 255, 255, 0.76);
-}
 
-.rs-over-media-title {
-  color: white;
-}
 
-.rs-game-filter-row,
 .rs-chip-row,
 .rs-action-row,
 .rs-avatar-stack,
@@ -1891,10 +2526,6 @@ a {
   flex-wrap: wrap;
 }
 
-.rs-game-filter-row {
-  gap: 6px;
-  margin-top: 24px;
-}
 
 .rs-chip-row {
   gap: 6px;
@@ -3155,7 +3786,6 @@ a {
   .rs-hero,
   .rs-section,
   .rs-filterbar,
-  .rs-game-hero,
   .rs-player-page,
   .rs-public-page {
     padding-left: 16px;
