@@ -67,6 +67,12 @@ export interface PlaylistSummary {
    * @memberof PlaylistSummary
    */
   collaboratorCount: number;
+  /**
+   *
+   * @type {boolean}
+   * @memberof PlaylistSummary
+   */
+  isGamingSession: boolean;
 }
 
 /**
@@ -88,6 +94,8 @@ export function instanceOfPlaylistSummary(
     !("collaboratorCount" in value) ||
     value["collaboratorCount"] === undefined
   )
+    return false;
+  if (!("isGamingSession" in value) || value["isGamingSession"] === undefined)
     return false;
   return true;
 }
@@ -112,6 +120,7 @@ export function PlaylistSummaryFromJSONTyped(
     updatedAt: new Date(json["updated_at"]),
     clipCount: json["clip_count"],
     collaboratorCount: json["collaborator_count"],
+    isGamingSession: json["is_gaming_session"],
   };
 }
 
@@ -136,5 +145,6 @@ export function PlaylistSummaryToJSONTyped(
     updated_at: value["updatedAt"].toISOString(),
     clip_count: value["clipCount"],
     collaborator_count: value["collaboratorCount"],
+    is_gaming_session: value["isGamingSession"],
   };
 }

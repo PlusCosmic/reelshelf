@@ -416,9 +416,10 @@ a {
 
 .rs-landing-shelf-demo-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
 }
 
 .rs-landing-shelf-demo-head .rs-eyebrow {
@@ -430,21 +431,13 @@ a {
   font-size: 13px;
 }
 
-.rs-landing-shelf-demo .rs-shelf {
+.rs-landing-shelf-demo .rs-bookcase {
+  --book-scale: 0.85;
   margin-top: 16px;
 }
 
-.rs-landing-shelf-demo .rs-shelf-track {
+.rs-landing-shelf-demo .rs-bookcase-row {
   justify-content: center;
-}
-
-.rs-landing-spine {
-  height: 160px;
-  cursor: default;
-}
-
-.rs-landing-spine:nth-child(odd) {
-  height: 176px;
 }
 
 .rs-landing-section {
@@ -656,6 +649,14 @@ a {
 
   .rs-landing-shelf-demo {
     padding: 20px 16px 4px;
+  }
+
+  .rs-landing-shelf-demo .rs-bookcase {
+    --book-scale: 0.7;
+  }
+
+  .rs-landing-shelf-demo .rs-bookcase-row {
+    justify-content: flex-start;
   }
 
   .rs-landing-section {
@@ -1397,7 +1398,7 @@ html:has(.rs-library-route) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-height: calc(var(--book-h) * var(--book-scale) - 104px);
+  max-height: calc((var(--book-h) - 104px) * var(--book-scale));
   overflow: hidden;
   writing-mode: vertical-rl;
   white-space: nowrap;
@@ -1923,169 +1924,367 @@ html:has(.rs-library-route) {
   color: var(--accent-ink);
 }
 
-.rs-shelf {
-  position: relative;
-  padding-bottom: 16px;
-  margin-top: 28px;
-}
-
-.rs-shelf-track {
-  display: flex;
-  gap: 6px;
-  align-items: flex-end;
-  overflow-x: auto;
-  margin-top: -8px;
-  padding: 8px 3px 14px;
-}
-
-.rs-shelf::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 8px;
-  height: 2px;
-  background: linear-gradient(to right, transparent, var(--line), transparent);
-}
-
-.rs-shelf::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 8px;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--fg) 6%, transparent),
-    transparent
-  );
-}
-
-.rs-spine {
-  position: relative;
-  width: 50px;
-  height: 200px;
-  flex: 0 0 auto;
-  overflow: hidden;
-  border: 0;
-  border-radius: 5px;
-  cursor: pointer;
-  background: linear-gradient(180deg, var(--game-a), var(--game-b));
-  background-position: center;
-  background-size: cover;
-  box-shadow: 0 1px 4px color-mix(in oklab, var(--shadow) 12%, transparent);
-  transition:
-    transform 0.18s,
-    box-shadow 0.18s;
-}
-
-.rs-spine:hover,
-.rs-spine.active {
-  transform: translateY(-4px);
-  box-shadow:
-    0 6px 20px color-mix(in oklab, var(--shadow) 24%, transparent),
-    0 0 0 2px var(--accent);
-}
-
-.rs-spine-add {
-  display: grid;
-  place-items: center;
-  gap: 8px;
-  border: 1px dashed color-mix(in oklab, var(--fg) 34%, transparent);
-  background: color-mix(in oklab, var(--bg-soft) 82%, transparent);
-  color: var(--fg-soft);
-}
-
-.rs-spine-add:hover {
-  color: var(--fg);
-  border-color: var(--accent);
-}
-
-.rs-spine-add svg {
-  width: 34px;
-  height: 34px;
-  padding: 8px;
-  border-radius: 50%;
-  background: color-mix(in oklab, var(--accent) 14%, var(--bg));
-  color: var(--accent-ink);
-}
-
-.rs-spine span:first-child {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  display: block;
-  max-width: 148px;
-  overflow: hidden;
-  padding: 3px 7px;
-  border-radius: 3px;
-  transform: translate(-50%, -50%) rotate(-90deg);
-  color: white;
-  background: rgba(0, 0, 0, 0.28);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.38);
-}
-
-.rs-spine span:last-child {
-  position: absolute;
-  left: 50%;
-  bottom: 6px;
-  min-width: 20px;
-  padding: 2px 5px;
-  border-radius: var(--radius);
-  transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.86);
-  background: rgba(0, 0, 0, 0.22);
-  font-size: 10px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
 .rs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 34px 24px;
 }
 
-.rs-collection-hero-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.rs-collection-hero {
-  padding-bottom: 36px;
-}
-
-.rs-collection-hero .rs-h1 {
-  max-width: none;
-  font-size: clamp(42px, 4.2vw, 56px);
-  line-height: 1;
-}
-
 .rs-collection-new-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 32px;
+  gap: 8px;
+  min-height: 44px;
   border: 0;
   border-radius: var(--radius);
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--fill);
+  color: var(--fill-ink);
   cursor: pointer;
-  padding: 0 14px;
-  font-size: 13px;
-  font-weight: 700;
+  padding: 0 18px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
   white-space: nowrap;
+}
+
+/* Collections, as a ledger of rows. */
+.rs-ledger-page {
+  padding: 40px 32px 80px;
+}
+
+.rs-ledger-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 36px;
+}
+
+.rs-ledger-head .rs-h1 {
+  margin: 0;
+}
+
+.rs-ledger-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rs-ledger-tools .rs-search {
+  width: 300px;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.rs-ledger-group + .rs-ledger-group {
+  margin-top: 40px;
+}
+
+.rs-ledger-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: var(--fg-soft);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.rs-ledger-heading .rs-display {
+  color: var(--fg);
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.rs-ledger-heading-note::before {
+  content: "· ";
+}
+
+.rs-ledger-heading::after {
+  content: "";
+  flex: 1;
+  min-width: 24px;
+  border-bottom: 1px dashed var(--track-bg);
+  transform: translateY(-5px);
+}
+
+.rs-ledger-row {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr) minmax(0, 250px) 110px 120px;
+  grid-template-areas: "mosaic body people count updated";
+  align-items: center;
+  gap: 24px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg);
+}
+
+.rs-ledger-row:hover .rs-ledger-name .rs-display {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.rs-ledger-mosaic {
+  grid-area: mosaic;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 1px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+}
+
+.rs-ledger-mosaic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rs-ledger-mosaic[data-count="1"] img {
+  grid-area: 1 / 1 / 3 / 3;
+}
+
+.rs-ledger-mosaic[data-count="2"] img {
+  grid-row: 1 / 3;
+}
+
+.rs-ledger-mosaic[data-count="3"] img:first-child {
+  grid-row: 1 / 3;
+}
+
+.rs-ledger-mosaic.empty {
+  place-items: center;
+  border: 1px dashed var(--track-bg);
+  box-sizing: border-box;
+  color: var(--fg-soft);
+  font-size: 12px;
+}
+
+.rs-ledger-mosaic.empty > span:first-child {
+  grid-area: 1 / 1 / 3 / 3;
+}
+
+/* Each game's share of the collection, in its cloth. */
+.rs-ledger-share {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  height: 4px;
+}
+
+.rs-ledger-body {
+  grid-area: body;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rs-ledger-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.rs-ledger-name .rs-display {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.rs-ledger-badge {
+  padding: 2px 6px;
+  border: 1px solid var(--track-bg);
+  border-radius: 2px;
+  color: var(--fg-soft);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rs-ledger-description {
+  color: var(--fg-soft);
+  font-size: 15px;
+}
+
+.rs-ledger-games {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  color: var(--fg-soft);
+  font-size: 14px;
+}
+
+.rs-ledger-games > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rs-ledger-games img {
+  width: 15px;
+  height: 20px;
+  border-radius: 1px;
+  object-fit: cover;
+}
+
+.rs-ledger-games strong {
+  color: var(--fg);
+}
+
+.rs-ledger-phone-meta {
+  display: none;
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-ledger-phone-meta strong {
+  color: var(--fg);
+}
+
+.rs-ledger-people {
+  grid-area: people;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--fg-soft);
+  font-size: 14px;
+}
+
+.rs-ledger-count {
+  grid-area: count;
+  display: grid;
+  color: var(--fg-soft);
+  font-size: 14px;
+}
+
+.rs-ledger-count strong {
+  color: var(--fg);
+}
+
+.rs-ledger-updated {
+  grid-area: updated;
+  display: grid;
+  justify-items: end;
+  color: var(--fg-soft);
+  font-size: 14px;
+}
+
+.rs-ledger-updated small {
+  font-size: 12px;
+}
+
+/* One collection's page. */
+.rs-collection-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.rs-collection-head .rs-h1 {
+  margin: 0;
+}
+
+.rs-collection-description {
+  margin: 8px 0 0;
+  color: var(--fg-soft);
+  font-size: 17px;
+}
+
+.rs-collection-share {
+  display: grid;
+  gap: 8px;
+  margin: 28px 0 10px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rs-collection-share-bar {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.rs-collection-share .rs-ledger-games {
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .rs-ledger-page {
+    padding: 28px 16px 64px;
+  }
+
+  .rs-ledger-tools .rs-search {
+    display: none;
+  }
+
+  .rs-ledger-head {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .rs-ledger-tools .rs-collection-new-button {
+    width: 44px;
+    padding: 0;
+  }
+
+  .rs-ledger-tools .rs-collection-new-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .rs-ledger-row {
+    grid-template-columns: 124px minmax(0, 1fr);
+    grid-template-areas:
+      "mosaic body"
+      "mosaic people";
+    align-items: start;
+    gap: 6px 14px;
+    padding: 12px 0;
+  }
+
+  .rs-ledger-name .rs-display {
+    font-size: 17px;
+  }
+
+  .rs-ledger-description,
+  .rs-ledger-row .rs-ledger-games,
+  .rs-ledger-count,
+  .rs-ledger-updated {
+    display: none;
+  }
+
+  .rs-ledger-phone-meta {
+    display: block;
+  }
+
+  .rs-ledger-heading-note {
+    display: none;
+  }
+
+  .rs-ledger-people {
+    font-size: 12.5px;
+  }
 }
 
 .rs-compact-grid {
@@ -2345,35 +2544,6 @@ html:has(.rs-library-route) {
   min-width: 0;
 }
 
-.rs-collection-card {
-  display: block;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: color-mix(in oklab, var(--bg) 86%, white);
-  color: inherit;
-  text-decoration: none;
-  transition:
-    border-color 0.18s,
-    box-shadow 0.18s,
-    transform 0.18s;
-}
-
-.rs-collection-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 389px));
-  align-items: start;
-  justify-content: start;
-  gap: 24px;
-}
-
-.rs-collection-card:hover,
-.rs-collection-card:focus-visible {
-  border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
-  box-shadow: 0 16px 38px color-mix(in oklab, var(--shadow) 11%, transparent);
-  outline: 0;
-  transform: translateY(-2px);
-}
-
 .rs-thumb {
   position: relative;
   display: block;
@@ -2410,16 +2580,6 @@ html:has(.rs-library-route) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.rs-player-gradient::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0.35;
-  pointer-events: none;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .12 0'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");
 }
 
 .rs-play-reticle {
@@ -2480,27 +2640,8 @@ html:has(.rs-library-route) {
   overflow-wrap: anywhere;
 }
 
-.rs-collection-title {
-  font-family: var(--font-display);
-  font-variation-settings: "SOFT" 100;
-  font-size: 18px;
-  font-weight: 400;
-}
-
-.rs-card-description,
-.rs-hero-description,
 .rs-sidebar-copy {
   color: var(--fg-soft);
-}
-
-.rs-card-description {
-  margin: 0 0 10px;
-  font-size: 13px;
-}
-
-.rs-hero-description {
-  max-width: 680px;
-  font-size: 15px;
 }
 
 .rs-sidebar-copy {
@@ -2535,8 +2676,7 @@ html:has(.rs-library-route) {
 
 .rs-chip-row,
 .rs-action-row,
-.rs-avatar-stack,
-.rs-collaborator-row {
+.rs-avatar-stack {
   display: flex;
   flex-wrap: wrap;
 }
@@ -2591,12 +2731,6 @@ html:has(.rs-library-route) {
   filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.36));
 }
 
-.rs-player-page {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 28px 32px 80px;
-}
-
 .rs-player {
   position: relative;
   overflow: hidden;
@@ -2608,8 +2742,7 @@ html:has(.rs-library-route) {
   box-shadow: 0 20px 60px color-mix(in oklab, var(--shadow) 18%, transparent);
 }
 
-.rs-player-frame,
-.rs-absolute-fill {
+.rs-player-frame {
   position: absolute;
   inset: 0;
 }
@@ -2622,6 +2755,573 @@ html:has(.rs-library-route) {
 
 .rs-player-actions {
   margin-top: 18px;
+}
+
+/* A clip's page. --cloth is its game's binding, set on .rs-watch. */
+.rs-watch {
+  padding-bottom: 80px;
+}
+
+.rs-watch-strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 0 32px;
+  background: var(--bg-soft);
+}
+
+.rs-watch-strip::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 3px;
+  background: var(--cloth);
+}
+
+.rs-watch-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.rs-watch-back img {
+  width: 28px;
+  height: 37px;
+  border-radius: 2px;
+  object-fit: cover;
+}
+
+.rs-watch-back small {
+  display: block;
+  color: var(--fg-soft);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.rs-watch-back .rs-display {
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.rs-watch-back:hover .rs-display {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.rs-watch-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--fg-soft);
+  font-size: 13.5px;
+}
+
+.rs-watch-counts strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--fg);
+}
+
+.rs-watch-counts strong::before {
+  content: "·";
+  margin-right: 1px;
+  color: var(--fg-soft);
+  font-weight: 400;
+}
+
+.rs-watch-counts .rs-stitched-dot,
+.rs-watch-meta .rs-stitched-dot,
+.rs-session-card-top .rs-stitched-dot {
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+}
+
+.rs-watch-theatre {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin-left: 20px;
+  padding: 0 12px;
+  border: 1px solid var(--track-bg);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rs-watch-theatre:hover {
+  border-color: var(--fg-soft);
+}
+
+.rs-watch-theatre[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.rs-watch-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 368px;
+  grid-template-areas:
+    "stage more"
+    "details more"
+    "session more";
+  align-items: start;
+  column-gap: 40px;
+  padding: 36px 32px 0;
+}
+
+.rs-watch-stage {
+  grid-area: stage;
+  position: relative;
+  isolation: isolate;
+}
+
+.rs-watch-stage-art,
+.rs-watch-neighbour,
+.rs-watch-facts,
+.rs-watch-more-full {
+  display: none;
+}
+
+.rs-watch-details {
+  grid-area: details;
+  min-width: 0;
+  margin-top: 26px;
+}
+
+.rs-watch-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.rs-watch-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 10px;
+  color: var(--fg-soft);
+  font-size: 14px;
+}
+
+.rs-watch-meta strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg);
+}
+
+.rs-watch-details .rs-chip {
+  cursor: default;
+}
+
+.rs-watch-details .rs-player-actions {
+  margin-top: 22px;
+}
+
+.rs-watch-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 16px;
+  color: var(--fg-soft);
+  font-size: 13.5px;
+}
+
+.rs-watch-section-head h2 {
+  margin: 0;
+  color: var(--fg);
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.rs-watch-session {
+  grid-area: session;
+  min-width: 0;
+  margin-top: 44px;
+}
+
+.rs-session-cards {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 3 * 20px) / 4);
+  gap: 20px;
+  overflow-x: auto;
+  /* Room for the current card's ring, which the scroller would otherwise clip. */
+  padding: 6px;
+  margin: -6px;
+  scrollbar-width: thin;
+}
+
+.rs-session-card {
+  display: block;
+  min-width: 0;
+  color: var(--fg);
+}
+
+.rs-session-card[aria-current="page"] .rs-thumb {
+  outline: 3px solid var(--cloth);
+  outline-offset: 3px;
+}
+
+.rs-session-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--fg-soft);
+  font-size: 12.5px;
+}
+
+.rs-session-card-top > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rs-session-card-top .rs-display {
+  color: var(--fg);
+  font-size: 19px;
+  font-weight: 500;
+}
+
+.rs-session-card-now {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rs-session-card-title {
+  display: block;
+  margin-top: 2px;
+  color: var(--fg-soft);
+  font-size: 12.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.rs-session-card:hover .rs-session-card-title {
+  color: var(--fg);
+}
+
+.rs-watch-more {
+  grid-area: more;
+  min-width: 0;
+}
+
+.rs-watch-more h2 {
+  margin: 0 0 10px;
+}
+
+.rs-watch-more .rs-filmstrip {
+  border-top: 1px solid var(--line);
+}
+
+.rs-watch-more .rs-row,
+.rs-watch-more .rs-row.no-game {
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.rs-watch-more .rs-row-title {
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.rs-watch-more .rs-row-duration {
+  display: none;
+}
+
+.rs-watch-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  margin-top: 14px;
+  border: 1px solid var(--track-bg);
+  border-radius: var(--radius);
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rs-watch-all:hover {
+  border-color: var(--fg-soft);
+}
+
+.rs-watch-all-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Theatre mode: the player on a stage in the game's cloth, everything else underneath. Phones
+   already give the player the full width, so it only applies on wider screens. */
+@media (min-width: 901px) {
+  .rs-watch.theatre .rs-watch-layout {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-areas:
+      "stage stage"
+      "details facts"
+      "session session"
+      "full full";
+    column-gap: 56px;
+    padding-top: 0;
+  }
+
+  .rs-watch.theatre .rs-watch-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    margin: 0 -32px;
+    padding: 44px 32px;
+    overflow: hidden;
+    background: var(--scrim);
+  }
+
+  .rs-watch.theatre .rs-watch-stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(ellipse at 50% 55%, rgb(5 12 8 / 0.55), transparent 70%),
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--cloth) 55%, transparent),
+        color-mix(in oklab, var(--cloth) 30%, var(--bg)) 70%,
+        var(--bg)
+      );
+  }
+
+  .rs-watch.theatre .rs-watch-stage-art {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 30%;
+    opacity: 0.35;
+    filter: saturate(0.7) blur(1px);
+  }
+
+  .rs-watch.theatre .rs-player {
+    flex: none;
+    width: min(1040px, 100% - 2 * (128px + 28px));
+    box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 128px;
+    padding: 10px 8px;
+    box-sizing: border-box;
+    border: 1px solid rgb(255 255 255 / 0.14);
+    border-radius: var(--radius);
+    background: rgb(10 20 14 / 0.55);
+    color: #f4f7f4;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour.none {
+    visibility: hidden;
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour:hover {
+    border-color: rgb(255 255 255 / 0.4);
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour.newer {
+    flex-direction: column-reverse;
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour img {
+    width: 112px;
+    aspect-ratio: 16 / 9;
+    border-radius: 2px;
+    object-fit: cover;
+  }
+
+  .rs-watch.theatre .rs-watch-neighbour small {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  .rs-watch.theatre .rs-watch-details {
+    margin-top: 30px;
+  }
+
+  .rs-watch.theatre .rs-watch-facts {
+    display: block;
+    grid-area: facts;
+    margin-top: 30px;
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--bg-soft);
+  }
+
+  .rs-watch.theatre .rs-session-cards {
+    gap: 29px;
+    grid-auto-columns: calc((100% - 3 * 29px) / 4);
+  }
+
+  .rs-watch.theatre .rs-watch-more {
+    display: none;
+  }
+
+  .rs-watch.theatre .rs-watch-more-full {
+    display: block;
+    grid-area: full;
+    margin-top: 48px;
+  }
+}
+
+.rs-watch-facts dl {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  row-gap: 12px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.rs-watch-facts dt {
+  color: var(--fg-soft);
+}
+
+.rs-watch-facts dd {
+  margin: 0;
+}
+
+.rs-watch-facts-game {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.rs-watch-facts-game img {
+  width: 18px;
+  height: 24px;
+  border-radius: 1px;
+  object-fit: cover;
+}
+
+@media (max-width: 900px) {
+  .rs-watch-strip {
+    min-height: 56px;
+    padding: 0 16px;
+  }
+
+  .rs-watch-counts,
+  .rs-watch-theatre {
+    display: none;
+  }
+
+  .rs-watch-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "stage"
+      "details"
+      "session"
+      "more";
+    padding: 0;
+  }
+
+  .rs-watch-stage .rs-player {
+    border-radius: 0;
+  }
+
+  .rs-watch-details,
+  .rs-watch-more {
+    padding: 0 16px;
+  }
+
+  .rs-watch-details {
+    margin-top: 18px;
+  }
+
+  .rs-watch-title {
+    font-size: 24px;
+  }
+
+  .rs-watch-meta {
+    font-size: 13px;
+  }
+
+  .rs-watch-session {
+    margin-top: 30px;
+  }
+
+  .rs-watch-session .rs-watch-section-head {
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 16px;
+  }
+
+  .rs-watch-session .rs-watch-section-head h2 {
+    font-size: 21px;
+  }
+
+  .rs-session-cards {
+    grid-auto-columns: 200px;
+    gap: 14px;
+    margin: 0;
+    padding: 6px 16px;
+  }
+
+  .rs-watch-more {
+    margin-top: 30px;
+  }
+
+  .rs-watch-more .rs-row,
+  .rs-watch-more .rs-row.no-game {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
 }
 
 .rs-public-app {
@@ -2686,20 +3386,6 @@ html:has(.rs-library-route) {
   text-align: center;
 }
 
-.rs-player-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 48px;
-  margin-top: 28px;
-}
-
-.rs-sidebar-panel {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--bg-soft);
-  padding: 16px;
-}
-
 .rs-back-link {
   margin-bottom: 16px;
 }
@@ -2712,151 +3398,12 @@ html:has(.rs-library-route) {
   overflow-wrap: anywhere;
 }
 
-.rs-collection-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 2 / 1;
-  display: grid;
-  gap: 1px;
-  overflow: hidden;
-  isolation: isolate;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--line);
-}
-
-.rs-collection-cover[data-count="1"] {
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr;
-}
-
-.rs-collection-cover[data-count="2"] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: 1fr;
-}
-
-.rs-collection-cover[data-count="3"],
-.rs-collection-cover[data-count="4"] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-}
-
-.rs-collection-cover-item {
-  position: relative;
-  display: block;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  background:
-    radial-gradient(
-      circle at 25% 18%,
-      color-mix(in oklab, var(--game-a) 26%, transparent),
-      transparent 40%
-    ),
-    linear-gradient(
-      135deg,
-      color-mix(in oklab, var(--bg-soft) 88%, var(--game-a)),
-      color-mix(in oklab, var(--bg-soft) 88%, var(--game-b))
-    );
-}
-
-.rs-collection-cover-item .rs-thumb {
-  position: relative;
-  display: block;
-  height: 100%;
-  aspect-ratio: auto;
-  cursor: inherit;
-  border: 0;
-  border-radius: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
-    linear-gradient(
-      135deg,
-      color-mix(in oklab, var(--game-a) 78%, var(--scrim)),
-      color-mix(in oklab, var(--game-b) 78%, var(--scrim))
-    );
-  box-shadow: none;
-}
-
-.rs-collection-cover-item .rs-thumb img {
-  background: linear-gradient(
-    135deg,
-    color-mix(in oklab, var(--game-a) 78%, var(--scrim)),
-    color-mix(in oklab, var(--game-b) 78%, var(--scrim))
-  );
-}
-
-.rs-collection-cover-item .rs-thumb:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-.rs-collection-cover-item .rs-play-reticle,
-.rs-collection-cover-item .rs-duration,
-.rs-collection-cover-item .rs-shared-indicator {
-  display: none;
-}
-
-.rs-collection-card-body {
-  padding: 22px 18px 20px;
-}
-
-.rs-collection-card-title-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.rs-collection-card-title-row .rs-card-title {
-  margin: 0;
-}
-
-.rs-collection-card-title-row span {
-  flex: 0 0 auto;
-  color: var(--fg-soft);
-  font-size: 12px;
-}
-
-.rs-collection-card-body .rs-card-description {
-  margin-top: 8px;
-  margin-bottom: 14px;
-  min-height: 18px;
-  line-height: 1.4;
-}
-
-.rs-collection-collaborators {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 24px;
-  color: var(--fg-soft);
-  font-size: 12px;
-}
-
-.rs-collection-collaborators .rs-avatar-stack {
-  flex: 0 0 auto;
-  margin-top: 0;
-}
-
-.rs-collection-private {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.rs-avatar-stack,
-.rs-collaborator-row {
+.rs-avatar-stack {
   align-items: center;
 }
 
 .rs-avatar-stack {
   margin-top: 12px;
-}
-
-.rs-collaborator-row {
-  gap: 8px;
-  margin-top: 20px;
 }
 
 .rs-avatar-offset {
@@ -3937,7 +4484,6 @@ html:has(.rs-library-route) {
   .rs-hero,
   .rs-section,
   .rs-filterbar,
-  .rs-player-page,
   .rs-public-page {
     padding-left: 16px;
     padding-right: 16px;
@@ -3947,14 +4493,8 @@ html:has(.rs-library-route) {
     grid-template-columns: 1fr;
   }
 
-  .rs-player-grid,
-  .rs-split,
-  .rs-collection-grid {
+  .rs-split {
     grid-template-columns: 1fr;
-  }
-
-  .rs-collection-hero-row {
-    display: grid;
   }
 
   .rs-collection-new-button {

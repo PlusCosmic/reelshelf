@@ -53,7 +53,8 @@ public class PlaylistService(
             p.CreatedAt,
             p.UpdatedAt,
             p.ClipCount,
-            p.CollaboratorCount
+            p.CollaboratorCount,
+            p.IsGamingSession
         )).ToList();
     }
 
