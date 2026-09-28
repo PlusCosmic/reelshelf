@@ -9,6 +9,8 @@ public class GameCategory
     public string? CoverUrl { get; init; }
     public string? KeyArtUrl { get; init; }
     public string? GameLogoUrl { get; init; }
+    /// <summary>The book's cloth on the library shelf as #rrggbb, from the cover; null until worked out.</summary>
+    public string? ClothColor { get; init; }
     public bool IsCustom { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
@@ -30,7 +32,9 @@ public record GameCategoryResponse(
     string? CoverUrl,
     string? KeyArtUrl,
     string? GameLogoUrl,
-    bool IsCustom
+    bool IsCustom,
+    /// <summary>The book's cloth on the library shelf as #rrggbb; null until worked out, or for custom covers.</summary>
+    string? ClothColor
 );
 
 public record GameSearchResult(long IgdbId, string Name, string Slug, string? CoverUrl);

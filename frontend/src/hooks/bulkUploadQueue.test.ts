@@ -22,6 +22,7 @@ const categories: GameCategoryResponse[] = [
     keyArtUrl: null,
     gameLogoUrl: null,
     isCustom: false,
+    clothColor: null,
   },
   {
     id: "valorant-id",
@@ -31,6 +32,7 @@ const categories: GameCategoryResponse[] = [
     keyArtUrl: null,
     gameLogoUrl: null,
     isCustom: false,
+    clothColor: null,
   },
 ];
 

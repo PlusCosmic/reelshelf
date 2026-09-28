@@ -34,6 +34,7 @@ const categories: GameCategoryResponse[] = [
     keyArtUrl: null,
     gameLogoUrl: null,
     isCustom: false,
+    clothColor: null,
   },
 ];
 
