@@ -7,7 +7,9 @@
   "paths": {
     "/auth/{provider}/login": {
       "get": {
-        "tags": ["AuthEndpoints"],
+        "tags": [
+          "AuthEndpoints"
+        ],
         "operationId": "Login",
         "parameters": [
           {
@@ -35,7 +37,9 @@
     },
     "/auth/{provider}/link": {
       "get": {
-        "tags": ["AuthEndpoints"],
+        "tags": [
+          "AuthEndpoints"
+        ],
         "operationId": "LinkIdentity",
         "parameters": [
           {
@@ -63,7 +67,9 @@
     },
     "/auth/post-login-redirect": {
       "get": {
-        "tags": ["AuthEndpoints"],
+        "tags": [
+          "AuthEndpoints"
+        ],
         "operationId": "PostLoginRedirect",
         "parameters": [
           {
@@ -83,7 +89,9 @@
     },
     "/auth/dev-login": {
       "post": {
-        "tags": ["AuthEndpoints"],
+        "tags": [
+          "AuthEndpoints"
+        ],
         "operationId": "DevLogin",
         "requestBody": {
           "content": {
@@ -114,7 +122,9 @@
     },
     "/api/clips/library": {
       "get": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "GetClipLibrary",
         "responses": {
           "200": {
@@ -132,7 +142,9 @@
     },
     "/api/clips": {
       "get": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "GetClips",
         "parameters": [
           {
@@ -237,7 +249,9 @@
     },
     "/api/clips/categories/{categoryId}/videos": {
       "post": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "CreateVideo",
         "parameters": [
           {
@@ -318,7 +332,9 @@
     },
     "/api/clips/videos/{clipId}": {
       "get": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "GetVideoById",
         "parameters": [
           {
@@ -348,7 +364,9 @@
         }
       },
       "delete": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "DeleteClip",
         "parameters": [
           {
@@ -373,7 +391,9 @@
     },
     "/api/clips/videos/{clipId}/share": {
       "post": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "ShareVideo",
         "parameters": [
           {
@@ -405,7 +425,9 @@
     },
     "/api/clips/videos/{clipId}/view": {
       "post": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "MarkVideoAsViewed",
         "parameters": [
           {
@@ -430,7 +452,9 @@
     },
     "/api/clips/videos/{clipId}/tags": {
       "post": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "AddTagToClip",
         "parameters": [
           {
@@ -472,7 +496,9 @@
     },
     "/api/clips/videos/{clipId}/tags/{tag}": {
       "delete": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "RemoveTagFromClip",
         "parameters": [
           {
@@ -512,7 +538,9 @@
     },
     "/api/clips/tags/top": {
       "get": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "GetTopTags",
         "parameters": [
           {
@@ -543,7 +571,9 @@
     },
     "/api/clips/videos/{clipId}/title": {
       "patch": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "UpdateClipTitle",
         "parameters": [
           {
@@ -585,7 +615,9 @@
     },
     "/api/clips/backfill-metadata": {
       "post": {
-        "tags": ["ClipsEndpoints"],
+        "tags": [
+          "ClipsEndpoints"
+        ],
         "operationId": "BackfillClipMetadata",
         "responses": {
           "200": {
@@ -603,7 +635,9 @@
     },
     "/api/shared-clips/{token}": {
       "get": {
-        "tags": ["SharedClipsEndpoints"],
+        "tags": [
+          "SharedClipsEndpoints"
+        ],
         "operationId": "GetSharedClip",
         "parameters": [
           {
@@ -634,7 +668,9 @@
     },
     "/api/apex-legends/map-rotation": {
       "get": {
-        "tags": ["Reelshelf"],
+        "tags": [
+          "Reelshelf"
+        ],
         "operationId": "GetApexMapRotation",
         "responses": {
           "200": {
@@ -652,7 +688,9 @@
     },
     "/api/user/{userId}": {
       "get": {
-        "tags": ["UserEndpoints"],
+        "tags": [
+          "UserEndpoints"
+        ],
         "parameters": [
           {
             "name": "userId",
@@ -683,7 +721,9 @@
     },
     "/api/users/suggestions": {
       "get": {
-        "tags": ["UserEndpoints"],
+        "tags": [
+          "UserEndpoints"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -703,7 +743,9 @@
     },
     "/api/playlists": {
       "post": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "CreatePlaylist",
         "requestBody": {
           "content": {
@@ -739,7 +781,9 @@
         }
       },
       "get": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "GetPlaylists",
         "responses": {
           "200": {
@@ -760,7 +804,9 @@
     },
     "/api/playlists/gaming-session": {
       "post": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "CreateGamingSessionPlaylist",
         "requestBody": {
           "content": {
@@ -798,7 +844,9 @@
     },
     "/api/playlists/gaming-sessions": {
       "post": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "EnsureGamingSessionPlaylist",
         "requestBody": {
           "content": {
@@ -836,7 +884,9 @@
     },
     "/api/playlists/{id}": {
       "get": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "GetPlaylistById",
         "parameters": [
           {
@@ -866,7 +916,9 @@
         }
       },
       "put": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "UpdatePlaylist",
         "parameters": [
           {
@@ -916,7 +968,9 @@
         }
       },
       "delete": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "DeletePlaylist",
         "parameters": [
           {
@@ -941,7 +995,9 @@
     },
     "/api/playlists/{id}/clips": {
       "post": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "AddClipsToPlaylist",
         "parameters": [
           {
@@ -993,7 +1049,9 @@
     },
     "/api/playlists/{id}/clips/{clipId}": {
       "delete": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "RemoveClipFromPlaylist",
         "parameters": [
           {
@@ -1027,7 +1085,9 @@
     },
     "/api/playlists/{id}/clips/reorder": {
       "put": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "ReorderPlaylistClips",
         "parameters": [
           {
@@ -1079,7 +1139,9 @@
     },
     "/api/playlists/{id}/collaborators": {
       "post": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "AddCollaborator",
         "parameters": [
           {
@@ -1132,7 +1194,9 @@
         }
       },
       "get": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "GetCollaborators",
         "parameters": [
           {
@@ -1167,7 +1231,9 @@
     },
     "/api/playlists/{id}/collaborators/{userId}": {
       "delete": {
-        "tags": ["PlaylistEndpoints"],
+        "tags": [
+          "PlaylistEndpoints"
+        ],
         "operationId": "RemoveCollaborator",
         "parameters": [
           {
@@ -1211,7 +1277,9 @@
     },
     "/api/ffmpeg/download/{videoId}": {
       "get": {
-        "tags": ["FFmpegEndpoints"],
+        "tags": [
+          "FFmpegEndpoints"
+        ],
         "operationId": "DownloadVideo",
         "parameters": [
           {
@@ -1240,7 +1308,9 @@
     },
     "/api/webhooks/bunny/video-progress": {
       "post": {
-        "tags": ["BunnyWebhookEndpoints"],
+        "tags": [
+          "BunnyWebhookEndpoints"
+        ],
         "operationId": "ReceiveVideoProgress",
         "requestBody": {
           "content": {
@@ -1261,7 +1331,9 @@
     },
     "/api/games/categories": {
       "get": {
-        "tags": ["GameCategoryEndpoints"],
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
         "operationId": "GetUserGameCategories",
         "responses": {
           "200": {
@@ -1282,7 +1354,9 @@
     },
     "/api/games/categories/{categoryId}": {
       "get": {
-        "tags": ["GameCategoryEndpoints"],
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
         "operationId": "GetGameCategoryById",
         "parameters": [
           {
@@ -1312,7 +1386,9 @@
         }
       },
       "delete": {
-        "tags": ["GameCategoryEndpoints"],
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
         "operationId": "RemoveGameCategory",
         "parameters": [
           {
@@ -1334,7 +1410,9 @@
     },
     "/api/games/search": {
       "get": {
-        "tags": ["GameCategoryEndpoints"],
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
         "operationId": "SearchGames",
         "parameters": [
           {
@@ -1375,7 +1453,9 @@
     },
     "/api/games/categories/from-igdb": {
       "post": {
-        "tags": ["GameCategoryEndpoints"],
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
         "operationId": "AddGameCategoryFromIgdb",
         "requestBody": {
           "content": {
@@ -1406,7 +1486,9 @@
     },
     "/api/games/categories/custom": {
       "post": {
-        "tags": ["GameCategoryEndpoints"],
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
         "operationId": "AddCustomCategory",
         "requestBody": {
           "content": {
@@ -1444,7 +1526,9 @@
     },
     "/api/apex-legends/assign-account": {
       "post": {
-        "tags": ["ApexEndpoints"],
+        "tags": [
+          "ApexEndpoints"
+        ],
         "operationId": "AssignAccount",
         "parameters": [
           {
@@ -1476,7 +1560,9 @@
     },
     "/api/legend-detection/clips": {
       "get": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "GetLegendDetectionReviewClips",
         "responses": {
           "200": {
@@ -1497,7 +1583,9 @@
     },
     "/api/legend-detection/usage": {
       "get": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "GetLegendDetectionUsage",
         "responses": {
           "200": {
@@ -1518,7 +1606,9 @@
     },
     "/api/legend-detection/backfill": {
       "post": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "BackfillLegendDetection",
         "requestBody": {
           "content": {
@@ -1546,7 +1636,9 @@
     },
     "/api/legend-detection/archive": {
       "post": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "ArchiveLegendDetectionRuns",
         "responses": {
           "200": {
@@ -1564,7 +1656,9 @@
     },
     "/api/legend-detection/clips/{clipId}/runs": {
       "post": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "QueueLegendDetectionRun",
         "parameters": [
           {
@@ -1601,7 +1695,9 @@
         }
       },
       "get": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "GetLegendDetectionRuns",
         "parameters": [
           {
@@ -1633,7 +1729,9 @@
     },
     "/api/legend-detection/clips/{clipId}/label": {
       "put": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "SetLegendDetectionLabel",
         "parameters": [
           {
@@ -1663,7 +1761,9 @@
         }
       },
       "delete": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "DeleteLegendDetectionLabel",
         "parameters": [
           {
@@ -1685,7 +1785,9 @@
     },
     "/api/legend-detection/legends": {
       "get": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "GetLegendDetectionLegends",
         "responses": {
           "200": {
@@ -1706,7 +1808,9 @@
     },
     "/api/legend-detection/reasoning-efforts": {
       "get": {
-        "tags": ["LegendDetectionEndpoints"],
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
         "operationId": "GetLegendDetectionReasoningEfforts",
         "responses": {
           "200": {
@@ -1727,7 +1831,9 @@
     },
     "/api/me": {
       "get": {
-        "tags": ["UserEndpoints"],
+        "tags": [
+          "UserEndpoints"
+        ],
         "operationId": "GetMe",
         "responses": {
           "200": {
@@ -1745,7 +1851,9 @@
     },
     "/api/me/email": {
       "put": {
-        "tags": ["UserEndpoints"],
+        "tags": [
+          "UserEndpoints"
+        ],
         "operationId": "SetMyEmail",
         "requestBody": {
           "content": {
@@ -1776,7 +1884,9 @@
     },
     "/api/me/storage": {
       "get": {
-        "tags": ["UserEndpoints"],
+        "tags": [
+          "UserEndpoints"
+        ],
         "operationId": "GetMyStorageUsage",
         "responses": {
           "200": {
@@ -1794,7 +1904,9 @@
     },
     "/api/me/identities": {
       "get": {
-        "tags": ["UserEndpoints"],
+        "tags": [
+          "UserEndpoints"
+        ],
         "operationId": "GetMyLinkedIdentities",
         "responses": {
           "200": {
@@ -1815,7 +1927,9 @@
     },
     "/api/me/identities/{provider}": {
       "delete": {
-        "tags": ["UserEndpoints"],
+        "tags": [
+          "UserEndpoints"
+        ],
         "operationId": "UnlinkMyIdentity",
         "parameters": [
           {
@@ -1849,7 +1963,9 @@
     },
     "/api/twitch/clips": {
       "get": {
-        "tags": ["TwitchClipsEndpoints"],
+        "tags": [
+          "TwitchClipsEndpoints"
+        ],
         "operationId": "GetTwitchClips",
         "parameters": [
           {
@@ -1903,7 +2019,9 @@
     },
     "/api/twitch/clips/import": {
       "post": {
-        "tags": ["TwitchClipsEndpoints"],
+        "tags": [
+          "TwitchClipsEndpoints"
+        ],
         "operationId": "ImportTwitchClip",
         "requestBody": {
           "content": {
@@ -1946,11 +2064,17 @@
         "type": "object",
         "properties": {
           "clip_id": {
-            "type": ["null", "string"],
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "clip_ids": {
-            "type": ["null", "array"],
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string",
               "format": "uuid"
@@ -1962,28 +2086,42 @@
         "type": "object",
         "properties": {
           "user_id": {
-            "type": ["null", "string"],
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "username": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "AddCustomCategoryRequest": {
-        "required": ["name", "cover_url"],
+        "required": [
+          "name",
+          "cover_url"
+        ],
         "type": "object",
         "properties": {
           "name": {
             "type": "string"
           },
           "cover_url": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "AddGameFromIgdbRequest": {
-        "required": ["igdb_id"],
+        "required": [
+          "igdb_id"
+        ],
         "type": "object",
         "properties": {
           "igdb_id": {
@@ -1993,7 +2131,9 @@
         }
       },
       "AddTagRequest": {
-        "required": ["tag"],
+        "required": [
+          "tag"
+        ],
         "type": "object",
         "properties": {
           "tag": {
@@ -2002,16 +2142,25 @@
         }
       },
       "BackfillLegendDetectionRequest": {
-        "required": ["reasoning_effort"],
+        "required": [
+          "reasoning_effort"
+        ],
         "type": "object",
         "properties": {
           "reasoning_effort": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "BackfillResult": {
-        "required": ["total_processed", "success_count", "failure_count"],
+        "required": [
+          "total_processed",
+          "success_count",
+          "failure_count"
+        ],
         "type": "object",
         "properties": {
           "total_processed": {
@@ -2169,7 +2318,7 @@
           "share": {
             "$ref": "#/components/schemas/ClipShareSummary"
           },
-          "game_metadata": {}
+          "game_metadata": { }
         }
       },
       "ClipCategoryTotals": {
@@ -2205,7 +2354,11 @@
         }
       },
       "ClipLibraryResponse": {
-        "required": ["categories", "totals", "category_totals"],
+        "required": [
+          "categories",
+          "totals",
+          "category_totals"
+        ],
         "type": "object",
         "properties": {
           "categories": {
@@ -2253,7 +2406,10 @@
         }
       },
       "ClipShareResponse": {
-        "required": ["share_path", "shared"],
+        "required": [
+          "share_path",
+          "shared"
+        ],
         "type": "object",
         "properties": {
           "share_path": {
@@ -2265,7 +2421,9 @@
         }
       },
       "ClipShareSummary": {
-        "required": ["shared"],
+        "required": [
+          "shared"
+        ],
         "type": "object",
         "properties": {
           "shared": {
@@ -2312,7 +2470,10 @@
         }
       },
       "CreateGamingSessionPlaylistRequest": {
-        "required": ["participants", "category_id"],
+        "required": [
+          "participants",
+          "category_id"
+        ],
         "type": "object",
         "properties": {
           "participants": {
@@ -2329,14 +2490,19 @@
         }
       },
       "CreatePlaylistRequest": {
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "type": "object",
         "properties": {
           "name": {
             "type": "string"
           },
           "description": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2389,16 +2555,28 @@
             "type": "string"
           },
           "global_name": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "avatar": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "email": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "suggested_email": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "needs_onboarding": {
             "type": "boolean"
@@ -2423,10 +2601,16 @@
             "format": "int32"
           },
           "name": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "legend": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "name_confidence": {
             "type": "number",
@@ -2439,19 +2623,29 @@
         }
       },
       "DevLoginRequest": {
-        "required": ["api_key"],
+        "required": [
+          "api_key"
+        ],
         "type": "object",
         "properties": {
           "api_key": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "return_url": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "DevLoginResponse": {
-        "required": ["redirect_url"],
+        "required": [
+          "redirect_url"
+        ],
         "type": "object",
         "properties": {
           "redirect_url": {
@@ -2460,7 +2654,12 @@
         }
       },
       "EnsureGamingSessionPlaylistRequest": {
-        "required": ["category_id", "session_date", "clip_ids", "timezone"],
+        "required": [
+          "category_id",
+          "session_date",
+          "clip_ids",
+          "timezone"
+        ],
         "type": "object",
         "properties": {
           "category_id": {
@@ -2507,24 +2706,41 @@
             "type": "string"
           },
           "cover_url": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "key_art_url": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "game_logo_url": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "is_custom": {
             "type": "boolean"
           },
           "cloth_color": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "GameSearchResult": {
-        "required": ["igdb_id", "name", "slug", "cover_url"],
+        "required": [
+          "igdb_id",
+          "name",
+          "slug",
+          "cover_url"
+        ],
         "type": "object",
         "properties": {
           "igdb_id": {
@@ -2538,7 +2754,10 @@
             "type": "string"
           },
           "cover_url": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2574,7 +2793,10 @@
         }
       },
       "ImportTwitchClipRequest": {
-        "required": ["clip_id", "category_id"],
+        "required": [
+          "clip_id",
+          "category_id"
+        ],
         "type": "object",
         "properties": {
           "clip_id": {
@@ -2585,12 +2807,17 @@
             "format": "uuid"
           },
           "title": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "LegendDetectionArchiveResponse": {
-        "required": ["archived"],
+        "required": [
+          "archived"
+        ],
         "type": "object",
         "properties": {
           "archived": {
@@ -2600,7 +2827,9 @@
         }
       },
       "LegendDetectionBackfillResponse": {
-        "required": ["queued"],
+        "required": [
+          "queued"
+        ],
         "type": "object",
         "properties": {
           "queued": {
@@ -2610,11 +2839,18 @@
         }
       },
       "LegendDetectionLabel": {
-        "required": ["player_legend", "teammate_legends", "labelled_at"],
+        "required": [
+          "player_legend",
+          "teammate_legends",
+          "labelled_at"
+        ],
         "type": "object",
         "properties": {
           "player_legend": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "teammate_legends": {
             "type": "array",
@@ -2658,7 +2894,10 @@
             "format": "date-time"
           },
           "length_seconds": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           },
           "embed_url": {
@@ -2743,10 +2982,16 @@
             "type": "string"
           },
           "reasoning_effort": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "prompt_version": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "status": {
             "type": "string"
@@ -2756,60 +3001,102 @@
             "format": "int32"
           },
           "frame_count": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           },
           "hud_detected": {
-            "type": ["null", "boolean"]
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "player_legend": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "player_legend_confidence": {
-            "type": ["null", "number"],
+            "type": [
+              "null",
+              "number"
+            ],
             "format": "float"
           },
           "player_name": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "player_name_confidence": {
-            "type": ["null", "number"],
+            "type": [
+              "null",
+              "number"
+            ],
             "format": "float"
           },
           "teammates": {
-            "type": ["null", "array"],
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "$ref": "#/components/schemas/DetectedTeammate"
             }
           },
           "raw_response": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "input_tokens": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           },
           "cached_input_tokens": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           },
           "output_tokens": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           },
           "duration_ms": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           },
           "error": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "created_at": {
             "type": "string",
             "format": "date-time"
           },
           "completed_at": {
-            "type": ["null", "string"],
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           }
         }
@@ -2843,10 +3130,16 @@
             "type": "string"
           },
           "reasoning_effort": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "prompt_version": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "succeeded": {
             "type": "integer",
@@ -2873,7 +3166,10 @@
             "format": "int64"
           },
           "average_duration_ms": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           },
           "labelled": {
@@ -2897,7 +3193,10 @@
             "format": "int32"
           },
           "archived_at": {
-            "type": ["null", "string"],
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           }
         }
@@ -2925,13 +3224,22 @@
             "type": "string"
           },
           "display_name": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "avatar_url": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "email": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "linked_at": {
             "type": "string",
@@ -2943,7 +3251,12 @@
         }
       },
       "MapInfo": {
-        "required": ["name", "map_start", "map_end", "asset_uri"],
+        "required": [
+          "name",
+          "map_start",
+          "map_end",
+          "asset_uri"
+        ],
         "type": "object",
         "properties": {
           "name": {
@@ -2964,7 +3277,10 @@
         }
       },
       "MetaTag": {
-        "required": ["property", "value"],
+        "required": [
+          "property",
+          "value"
+        ],
         "type": "object",
         "properties": {
           "property": {
@@ -2976,7 +3292,10 @@
         }
       },
       "Moment": {
-        "required": ["label", "timestamp"],
+        "required": [
+          "label",
+          "timestamp"
+        ],
         "type": "object",
         "properties": {
           "label": {
@@ -2989,7 +3308,11 @@
         }
       },
       "PagedClipsResponse": {
-        "required": ["clips", "total_clips", "total_pages"],
+        "required": [
+          "clips",
+          "total_clips",
+          "total_pages"
+        ],
         "type": "object",
         "properties": {
           "clips": {
@@ -3027,7 +3350,10 @@
             "type": "string"
           },
           "description": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "creator_user_id": {
             "type": "string",
@@ -3103,7 +3429,10 @@
             "type": "string"
           },
           "avatar_url": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "added_at": {
             "type": "string",
@@ -3136,7 +3465,10 @@
             "type": "string"
           },
           "description": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "creator_user_id": {
             "type": "string",
@@ -3181,7 +3513,10 @@
             "type": "string"
           },
           "description": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "creator_user_id": {
             "type": "string",
@@ -3210,17 +3545,30 @@
         }
       },
       "QueueLegendDetectionRunRequest": {
-        "required": ["provider", "model", "reasoning_effort"],
+        "required": [
+          "provider",
+          "model",
+          "reasoning_effort"
+        ],
         "type": "object",
         "properties": {
           "provider": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "model": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "reasoning_effort": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3228,15 +3576,24 @@
         "type": "object",
         "properties": {
           "clip_id": {
-            "type": ["null", "string"],
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "new_position": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           },
           "clip_ordering": {
-            "type": ["null", "array"],
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string",
               "format": "uuid"
@@ -3245,20 +3602,31 @@
         }
       },
       "SetEmailRequest": {
-        "required": ["email"],
+        "required": [
+          "email"
+        ],
         "type": "object",
         "properties": {
           "email": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "SetLegendDetectionLabelRequest": {
-        "required": ["player_legend", "teammate_legends"],
+        "required": [
+          "player_legend",
+          "teammate_legends"
+        ],
         "type": "object",
         "properties": {
           "player_legend": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "teammate_legends": {
             "type": "array",
@@ -3298,7 +3666,11 @@
         }
       },
       "StorageUsageResponse": {
-        "required": ["used_bytes", "limit_bytes", "is_unlimited"],
+        "required": [
+          "used_bytes",
+          "limit_bytes",
+          "is_unlimited"
+        ],
         "type": "object",
         "properties": {
           "used_bytes": {
@@ -3306,7 +3678,10 @@
             "format": "int64"
           },
           "limit_bytes": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int64"
           },
           "is_unlimited": {
@@ -3315,7 +3690,10 @@
         }
       },
       "TopTag": {
-        "required": ["name", "count"],
+        "required": [
+          "name",
+          "count"
+        ],
         "type": "object",
         "properties": {
           "name": {
@@ -3328,14 +3706,22 @@
         }
       },
       "TwitchClipsResponse": {
-        "required": ["state", "twitch_login", "clips", "cursor"],
+        "required": [
+          "state",
+          "twitch_login",
+          "clips",
+          "cursor"
+        ],
         "type": "object",
         "properties": {
           "state": {
             "$ref": "#/components/schemas/TwitchClipsState"
           },
           "twitch_login": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "clips": {
             "type": "array",
@@ -3344,12 +3730,19 @@
             }
           },
           "cursor": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "TwitchClipsState": {
-        "enum": ["NotLinked", "NeedsAuthorization", "Ready"]
+        "enum": [
+          "NotLinked",
+          "NeedsAuthorization",
+          "Ready"
+        ]
       },
       "TwitchClipSummary": {
         "required": [
@@ -3378,7 +3771,10 @@
             "type": "string"
           },
           "thumbnail_url": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "duration_seconds": {
             "type": "number",
@@ -3393,17 +3789,29 @@
             "format": "date-time"
           },
           "creator_name": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "game_name": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "igdb_id": {
-            "type": ["null", "integer"],
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int64"
           },
           "suggested_category_id": {
-            "type": ["null", "string"],
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "already_imported": {
@@ -3415,15 +3823,23 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "description": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "UpdateTitleRequest": {
-        "required": ["title"],
+        "required": [
+          "title"
+        ],
         "type": "object",
         "properties": {
           "title": {
@@ -3432,7 +3848,12 @@
         }
       },
       "UserProfile": {
-        "required": ["id", "username", "global_name", "avatar"],
+        "required": [
+          "id",
+          "username",
+          "global_name",
+          "avatar"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -3443,15 +3864,25 @@
             "type": "string"
           },
           "global_name": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "avatar": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "VideoProgressUpdate": {
-        "required": ["VideoLibraryId", "VideoGuid", "Status"],
+        "required": [
+          "VideoLibraryId",
+          "VideoGuid",
+          "Status"
+        ],
         "type": "object",
         "properties": {
           "VideoLibraryId": {
