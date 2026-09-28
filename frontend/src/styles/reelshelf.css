@@ -2326,6 +2326,23 @@ html:has(.rs-library-route) {
   font-size: 14px;
 }
 
+.rs-collection-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  background: var(--fill);
+  color: var(--fill-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rs-collection-play:hover {
+  filter: brightness(1.08);
+}
+
 .rs-collection-rows {
   margin: 0;
   padding: 0;
@@ -4441,6 +4458,28 @@ html:has(.rs-library-route) {
 
 .rs-row.no-game {
   grid-template-columns: 190px minmax(0, 1fr) auto;
+}
+
+/* The clip being watched, in a list beside it. */
+.rs-row.current {
+  background: var(--surface);
+  box-shadow: inset 3px 0 0 var(--cloth, var(--accent));
+}
+
+.rs-watch-more .rs-row.current {
+  padding-left: 10px;
+}
+
+.rs-row-now {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rs-watch-back-mark {
+  color: var(--accent);
 }
 
 /* The next month's heading draws its own line, so the row above it doesn't need one. */

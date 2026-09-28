@@ -13,6 +13,9 @@ import {
 import { StitchedDot } from "../StitchedDot";
 import { SharedIndicator } from "./Navigation";
 
+/** What a link to a clip's page can carry: the collection it is being played through, if any. */
+export type ClipLinkSearch = { collection?: string };
+
 export function ClipThumb({
   clip,
   category,
@@ -139,19 +142,26 @@ function ClipRow({
   clip,
   category,
   showGame,
+  current,
+  search,
 }: {
   clip: Clip;
   category: GameCategoryResponse | undefined;
   showGame: boolean;
+  current: boolean;
+  search: ClipLinkSearch | undefined;
 }) {
   return (
     <Link
-      className={`rs-row${showGame ? "" : " no-game"}`}
+      className={`rs-row${showGame ? "" : " no-game"}${current ? " current" : ""}`}
       to="/games/$slug/$clipId"
       params={{ slug: clip.categorySlug, clipId: clip.clipId }}
+      search={search}
+      aria-current={current ? "page" : undefined}
     >
       <ClipThumb clip={clip} category={category} compact />
       <span className="rs-row-body">
+        {current ? <span className="rs-row-now">Now playing</span> : null}
         <span className="rs-row-heading">
           <strong className="rs-row-title">{clip.video.title}</strong>
           {!clip.isViewed ? (
@@ -194,6 +204,8 @@ export function ClipGrid({
   variant = "poster",
   groupByMonth = false,
   showGame = true,
+  currentClipId,
+  linkSearch,
 }: {
   clips: Clip[];
   categories: GameCategoryResponse[];
@@ -202,6 +214,10 @@ export function ClipGrid({
   groupByMonth?: boolean;
   /** Filmstrip only: the game column, which a single game's list does not need. */
   showGame?: boolean;
+  /** Filmstrip only: the clip being watched, marked in the list. */
+  currentClipId?: string;
+  /** Filmstrip only: carried on each clip's link, such as the collection being played through. */
+  linkSearch?: ClipLinkSearch;
 }) {
   if (clips.length === 0) {
     return <div className="rs-empty">No clips match this view.</div>;
@@ -222,6 +238,8 @@ export function ClipGrid({
               clip={item.clip}
               category={categoryForClip(item.clip, categories)}
               showGame={showGame}
+              current={item.clip.clipId === currentClipId}
+              search={linkSearch}
             />
           ),
         )}

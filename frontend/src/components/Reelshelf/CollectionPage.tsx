@@ -1,7 +1,12 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { IconLock, IconPencil, IconUserPlus } from "@tabler/icons-react";
+import {
+  IconLock,
+  IconPencil,
+  IconPlayerPlayFilled,
+  IconUserPlus,
+} from "@tabler/icons-react";
 import { useCurrentUser } from "@/hooks/auth.queries";
 import {
   useDeleteCollection,
@@ -136,6 +141,17 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
                 Edit
               </button>
             </>
+          ) : null}
+          {clips.length > 0 ? (
+            <Link
+              className="rs-collection-play"
+              to="/games/$slug/$clipId"
+              params={{ slug: clips[0].categorySlug, clipId: clips[0].clipId }}
+              search={{ collection: playlist.id }}
+            >
+              <IconPlayerPlayFilled size={15} aria-hidden="true" />
+              Play in order
+            </Link>
           ) : null}
         </div>
       </header>
