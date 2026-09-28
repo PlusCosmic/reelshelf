@@ -20,7 +20,7 @@ public static class UserEndpoints
 
         // Endpoints that don't need the current user but still require authorization
         app.MapGet("user/{userId:guid}", GetUser).RequireAuthorization();
-        app.MapGet("users/suggestions", GetUserSuggestions).RequireAuthorization();
+        app.MapGet("users/suggestions", GetUserSuggestions).WithName("GetUserSuggestions").RequireAuthorization();
     }
 
     private static async Task<Ok<CurrentUserResponse>> GetMe(AuthenticatedUser user, UserStatements userStatements)
