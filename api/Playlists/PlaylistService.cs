@@ -14,6 +14,16 @@ public class PlaylistService(
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection)
 {
+    /// <summary>Throws unless <paramref name="userId"/> made the collection; see <see cref="PlaylistPermissions"/>.</summary>
+    private async Task RequireOwner(Guid playlistId, Guid userId, string action)
+    {
+        PlaylistStatements.PlaylistRow? playlist = await playlistStatements.GetPlaylistById(playlistId);
+        if (playlist is null || !PlaylistPermissions.CanManage(playlist.CreatorUserId, userId))
+        {
+            throw new ForbiddenException($"Only the person who made this collection can {action}");
+        }
+    }
+
     public async Task<Playlist> CreatePlaylist(string name, string? description, Guid userId)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -141,6 +151,7 @@ public class PlaylistService(
             return null;
         }
 
+        await RequireOwner(playlistId, userId, "rename it");
         await playlistStatements.UpdatePlaylist(playlistId, name, description);
 
         PlaylistStatements.PlaylistRow? playlistRow = await playlistStatements.GetPlaylistById(playlistId);
@@ -167,6 +178,7 @@ public class PlaylistService(
             return false;
         }
 
+        await RequireOwner(playlistId, userId, "delete it");
         await playlistStatements.DeletePlaylist(playlistId);
         return true;
     }
@@ -289,6 +301,7 @@ public class PlaylistService(
             return null;
         }
 
+        await RequireOwner(playlistId, actingUserId, "invite people");
         UserStatements.UserRow? userToAdd = null;
 
         if (userId.HasValue)
@@ -337,6 +350,22 @@ public class PlaylistService(
         if (!targetIsCollaborator)
         {
             return false;
+        }
+
+        PlaylistStatements.PlaylistRow? playlist = await playlistStatements.GetPlaylistById(playlistId);
+        if (playlist is null)
+        {
+            return false;
+        }
+
+        if (collaboratorUserId == playlist.CreatorUserId)
+        {
+            throw new BadRequestException("The person who made a collection can't leave it; delete it instead");
+        }
+
+        if (!PlaylistPermissions.CanRemoveCollaborator(playlist.CreatorUserId, userId, collaboratorUserId))
+        {
+            throw new ForbiddenException("Only the person who made this collection can remove other people");
         }
 
         int collaboratorCount = await playlistStatements.GetCollaboratorCount(playlistId);

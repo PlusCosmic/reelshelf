@@ -102,41 +102,6 @@ export class UserEndpointsApi extends runtime.BaseAPI {
 
   /**
    */
-  async apiUsersSuggestionsGetRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<UserProfile>>> {
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/users/suggestions`;
-
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
-
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      jsonValue.map(UserProfileFromJSON),
-    );
-  }
-
-  /**
-   */
-  async apiUsersSuggestionsGet(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<UserProfile>> {
-    const response = await this.apiUsersSuggestionsGetRaw(initOverrides);
-    return await response.value();
-  }
-
-  /**
-   */
   async getMeRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<CurrentUserResponse>> {
@@ -237,6 +202,41 @@ export class UserEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<StorageUsageResponse> {
     const response = await this.getMyStorageUsageRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async getUserSuggestionsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<UserProfile>>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/users/suggestions`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(UserProfileFromJSON),
+    );
+  }
+
+  /**
+   */
+  async getUserSuggestions(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<UserProfile>> {
+    const response = await this.getUserSuggestionsRaw(initOverrides);
     return await response.value();
   }
 
