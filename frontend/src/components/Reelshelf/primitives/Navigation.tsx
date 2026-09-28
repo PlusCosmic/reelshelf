@@ -11,10 +11,14 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Clip } from "@/api-client";
 import { useCurrentUser, useDeleteClip, useShareClip } from "@/hooks/queries";
+import { apiConfig } from "@/shared/config/apiConfig";
 import { ApiError } from "@/shared/services/apiError";
+import { AddToCollectionDialog } from "../collections/AddToCollectionDialog";
 
 export function PlayerActions({ clip }: { clip: Clip }) {
   const [shareOpen, setShareOpen] = useState(false);
+  const [collectOpen, setCollectOpen] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const navigate = useNavigate();
   const deleteClip = useDeleteClip();
   const { data: currentUser } = useCurrentUser();
@@ -54,14 +58,29 @@ export function PlayerActions({ clip }: { clip: Clip }) {
             Share
           </button>
         ) : null}
-        <button className="rs-small-button" type="button">
+        <button
+          className="rs-small-button"
+          type="button"
+          onClick={() => setCollectOpen(true)}
+        >
           <IconFolderPlus size={13} />
           Add to collection
         </button>
-        <button className="rs-small-button" type="button">
+        {/* The server remuxes the stream before the file starts, which can take a moment; the
+            label says so rather than the button seeming to do nothing. */}
+        <a
+          className="rs-small-button"
+          href={`${apiConfig.baseUrl}/api/ffmpeg/download/${clip.videoId}`}
+          download
+          aria-disabled={preparing}
+          onClick={() => {
+            setPreparing(true);
+            window.setTimeout(() => setPreparing(false), 8000);
+          }}
+        >
           <IconDownload size={13} />
-          Download
-        </button>
+          {preparing ? "Preparing download…" : "Download"}
+        </a>
         {canDelete ? (
           <button
             className="rs-small-button rs-small-button-danger"
@@ -83,6 +102,12 @@ export function PlayerActions({ clip }: { clip: Clip }) {
       ) : null}
       {shareOpen ? (
         <ShareClipDialog clip={clip} onClose={() => setShareOpen(false)} />
+      ) : null}
+      {collectOpen ? (
+        <AddToCollectionDialog
+          clip={clip}
+          onClose={() => setCollectOpen(false)}
+        />
       ) : null}
     </>
   );
