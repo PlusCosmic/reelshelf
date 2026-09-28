@@ -16,31 +16,36 @@ import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Bookcase } from "./Bookcase";
 import type { GameShelfItem } from "./reelshelf-model";
 
-/** Example games for the shelf, bound in the kind of cloth colours real covers give. */
-const shelfBooks: GameShelfItem[] = [
-  ["Apex Legends", 142, 31, "#b06c51"],
-  ["Helldivers 2", 58, 0, "#8a7a2e"],
-  ["Rocket League", 91, 4, "#326295"],
-  ["Baldur's Gate 3", 23, 0, "#6e4435"],
-  ["Deep Rock Galactic", 37, 2, "#927d5e"],
-  ["Valorant", 64, 0, "#9a4a4f"],
-].map(([name, clipCount, unviewedCount, clothColor]) => {
-  const slug = (name as string).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+const igdbCover = (id: string) =>
+  `https://images.igdb.com/igdb/image/upload/t_cover_big/${id}.jpg`;
+
+/** Example games for the shelf, bound in the cloth Reelshelf takes from each real cover. */
+const shelfBooks: GameShelfItem[] = (
+  [
+    ["Apex Legends", 142, 31, "#b06c51", "coa93z"],
+    ["Marvel Rivals", 91, 4, "#928111", "cobxmn"],
+    ["Balatro", 23, 0, "#326295", "co9f4g"],
+    ["Slay the Spire II", 37, 2, "#2f2e57", "co82c5"],
+    ["Minecraft", 58, 0, "#5a9148", "co8fu7"],
+    ["ARC Raiders", 64, 0, "#382541", "co9rk1"],
+  ] as const
+).map(([name, clipCount, unviewedCount, clothColor, cover]) => {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   return {
     id: slug,
-    name: name as string,
+    name,
     slug,
-    coverUrl: null,
+    coverUrl: igdbCover(cover),
     keyArtUrl: null,
     gameLogoUrl: null,
     isCustom: false,
-    clothColor: clothColor as string,
-    clipCount: clipCount as number,
-    unviewedCount: unviewedCount as number,
+    clothColor,
+    clipCount,
+    unviewedCount,
     durationSeconds: 0,
     sizeBytes: 0,
-    colorA: clothColor as string,
-    colorB: clothColor as string,
+    colorA: clothColor,
+    colorB: clothColor,
   };
 });
 
@@ -49,7 +54,7 @@ const clothOf = (slug: string) =>
 
 const previewClips = [
   {
-    id: "valorant",
+    id: "arc-raiders",
     tag: "clutch",
     duration: "0:38",
     x: -220,
@@ -58,7 +63,7 @@ const previewClips = [
     width: 180,
   },
   {
-    id: "helldivers-2",
+    id: "marvel-rivals",
     tag: "fail",
     duration: "0:47",
     x: -60,
@@ -67,7 +72,7 @@ const previewClips = [
     width: 200,
   },
   {
-    id: "rocket-league",
+    id: "balatro",
     tag: "highlight",
     duration: "0:09",
     x: 80,

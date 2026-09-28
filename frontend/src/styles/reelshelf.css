@@ -68,6 +68,12 @@
   box-sizing: border-box;
 }
 
+/* Keep room for the scrollbar on every page, so short pages without one don't shift the layout
+   sideways against long pages that have one. */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -1243,6 +1249,10 @@ html:has(.rs-library-route) {
   margin-bottom: 28px;
 }
 
+.rs-bookcase {
+  position: relative;
+}
+
 .rs-bookcase-back {
   display: flex;
   flex-direction: column;
@@ -1263,6 +1273,7 @@ html:has(.rs-library-route) {
 }
 
 .rs-bookcase-row {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 3px;
@@ -1271,6 +1282,47 @@ html:has(.rs-library-route) {
   box-sizing: border-box;
   /* Room above the tallest book for the hover label and the lifted spine. */
   padding: 64px 20px 0;
+}
+
+/* Shown at whichever end of the shelf has books out of sight. */
+.rs-bookcase-scroll {
+  position: absolute;
+  top: calc(50% - 12px);
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--case-upright);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--case-back) 82%, transparent);
+  color: var(--fg);
+  cursor: pointer;
+  translate: 0 -50%;
+  box-shadow: 0 6px 16px -6px
+    color-mix(in oklab, var(--shadow) 60%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.rs-bookcase-scroll:hover,
+.rs-bookcase-scroll:focus-visible {
+  border-color: var(--accent);
+}
+
+.rs-bookcase-scroll.left {
+  left: 6px;
+}
+
+.rs-bookcase-scroll.right {
+  right: 6px;
+}
+
+@keyframes rs-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
 
 .rs-bookcase-plank {
@@ -1491,12 +1543,11 @@ html:has(.rs-library-route) {
   text-shadow: none;
 }
 
-/* Shown on hover and keyboard focus: the only place a spine says how many clips are new. */
+/* Shown on hover and keyboard focus: the only place a spine says how many clips are new. Bookcase
+   places it over the book being pointed at, clear of the lifted spine and inside the case. */
 .rs-book-tip {
   position: absolute;
-  left: 50%;
-  bottom: calc(100% + 10px);
-  z-index: 3;
+  z-index: 6;
   display: grid;
   gap: 3px;
   width: max-content;
@@ -1508,19 +1559,17 @@ html:has(.rs-library-route) {
   text-align: left;
   box-shadow: 0 8px 18px -8px
     color-mix(in oklab, var(--shadow) 50%, transparent);
-  opacity: 0;
-  transform: translate(-50%, 4px);
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
+  transform: translate(-50%, calc(-100% - 20px));
+  animation: rs-tip-in 0.15s ease;
   pointer-events: none;
   writing-mode: horizontal-tb;
 }
 
-.rs-book-spine:hover .rs-book-tip,
-.rs-book-spine:focus-visible .rs-book-tip {
-  opacity: 1;
-  transform: translate(-50%, 0);
+@keyframes rs-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 16px));
+  }
 }
 
 .rs-book-tip-name {
@@ -1549,7 +1598,9 @@ html:has(.rs-library-route) {
   flex: none;
   width: calc(216px * var(--book-scale));
   height: calc(278px * var(--book-scale));
-  margin: 0 calc(16px * var(--book-scale)) 0 calc(8px * var(--book-scale));
+  /* The cover turns away from the shelf on its left edge, which leaves its right edge short of
+     the box; a smaller right margin evens up the gaps either side. */
+  margin: 0 calc(2px * var(--book-scale)) 0 calc(8px * var(--book-scale));
   padding: 0;
   border: 0;
   background: transparent;
@@ -1581,6 +1632,18 @@ html:has(.rs-library-route) {
   transform: perspective(1100px) rotateY(12deg);
   transform-origin: 0 100%;
   animation: rs-book-turn 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* A book put back turns from face-out to spine-out as it slots in. */
+.rs-book-spine.returning {
+  transform-origin: 0 100%;
+  animation: rs-book-return 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes rs-book-return {
+  from {
+    transform: perspective(900px) rotateY(-55deg) translateY(-8px);
+  }
 }
 
 @keyframes rs-book-turn {
@@ -1698,6 +1761,7 @@ html:has(.rs-library-route) {
 
 /* The pulled-out game's header: key art behind a scrim, or its cloth laid flat. */
 .rs-game-banner {
+  animation: rs-banner-in 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
   position: relative;
   isolation: isolate;
   display: flex;
@@ -1899,7 +1963,10 @@ html:has(.rs-library-route) {
     transform: none;
   }
 
-  .rs-book-face-body {
+  .rs-book-face-body,
+  .rs-book-spine.returning,
+  .rs-book-tip,
+  .rs-game-banner {
     animation: none;
   }
 }
@@ -1985,8 +2052,8 @@ html:has(.rs-library-route) {
 .rs-ledger-heading {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  margin: 0 0 6px;
+  gap: 10px;
+  margin: 0;
   color: var(--fg-soft);
   font-size: 13px;
   font-weight: 400;
@@ -1998,8 +2065,8 @@ html:has(.rs-library-route) {
   font-weight: 500;
 }
 
-.rs-ledger-heading-note::before {
-  content: "· ";
+.rs-ledger-heading-count {
+  font-variant-numeric: tabular-nums;
 }
 
 .rs-ledger-heading::after {
@@ -2008,6 +2075,21 @@ html:has(.rs-library-route) {
   min-width: 24px;
   border-bottom: 1px dashed var(--track-bg);
   transform: translateY(-5px);
+}
+
+.rs-ledger-heading-note {
+  margin: 2px 0 0;
+  color: var(--fg-soft);
+  font-size: 13.5px;
+}
+
+.rs-ledger-group > :nth-child(2) {
+  margin-top: 6px;
+}
+
+/* The next group's heading closes this one off. */
+.rs-ledger-row:last-child {
+  border-bottom: 0;
 }
 
 .rs-ledger-row {
@@ -2099,17 +2181,6 @@ html:has(.rs-library-route) {
   font-weight: 500;
   line-height: 1.2;
   overflow-wrap: anywhere;
-}
-
-.rs-ledger-badge {
-  padding: 2px 6px;
-  border: 1px solid var(--track-bg);
-  border-radius: 2px;
-  color: var(--fg-soft);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .rs-ledger-description {
@@ -2279,7 +2350,7 @@ html:has(.rs-library-route) {
   }
 
   .rs-ledger-heading-note {
-    display: none;
+    font-size: 12.5px;
   }
 
   .rs-ledger-people {
@@ -4042,6 +4113,11 @@ html:has(.rs-library-route) {
 
 .rs-row.no-game {
   grid-template-columns: 190px minmax(0, 1fr) auto;
+}
+
+/* The next month's heading draws its own line, so the row above it doesn't need one. */
+.rs-row:has(+ .rs-month) {
+  border-bottom: 0;
 }
 
 .rs-row:hover .rs-row-title {

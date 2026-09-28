@@ -1,5 +1,6 @@
 import {
   Link,
+  Navigate,
   Outlet,
   createRootRoute,
   useRouterState,
@@ -107,6 +108,9 @@ function AuthenticatedShell({
   }
 
   if (!user || isError) {
+    // Signed out, every address is the front page; send deeper links there so the address bar
+    // matches what is shown.
+    if (pathname !== "/") return <Navigate to="/" replace />;
     return <LandingPage theme={theme} onToggleTheme={onToggleTheme} />;
   }
 
@@ -122,8 +126,8 @@ function AuthenticatedShell({
             Library
           </Link>
           <Link
-            to="/playlists"
-            className={active("/playlists") ? "active" : undefined}
+            to="/collections"
+            className={active("/collections") ? "active" : undefined}
           >
             Collections
           </Link>

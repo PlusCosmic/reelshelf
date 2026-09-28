@@ -50,7 +50,7 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
 
   return (
     <main className="rs-ledger-page">
-      <BackToLibrary to="/playlists" label="Collections" />
+      <BackToLibrary to="/collections" label="Collections" />
       <header className="rs-collection-head">
         <div>
           <div className="rs-eyebrow">

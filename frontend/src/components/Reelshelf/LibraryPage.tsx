@@ -87,6 +87,14 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     tag: null,
   });
   const dragDepthRef = useRef(0);
+  // The page stays mounted as books are pulled in and out, so a new game starts with a clean
+  // search and no tag, as it would on arriving fresh.
+  const [shownSlug, setShownSlug] = useState(selectedSlug);
+  if (shownSlug !== selectedSlug) {
+    setShownSlug(selectedSlug);
+    dispatch({ type: "setQuery", value: "" });
+    dispatch({ type: "setTag", value: null });
+  }
   const [topSection, setTopSection] = useState<HTMLElement | null>(null);
   const [clipsSection, setClipsSection] = useState<HTMLElement | null>(null);
   const [pastShelf, setPastShelf] = useState(false);

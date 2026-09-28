@@ -496,7 +496,7 @@ function QueueSession({
         {fullySaved && savedSessionPlaylistId ? (
           <Link
             className="rs-bulk-session-link"
-            to="/playlists/$playlistId"
+            to="/collections/$playlistId"
             params={{ playlistId: savedSessionPlaylistId }}
             onClick={(event) => event.stopPropagation()}
           >
