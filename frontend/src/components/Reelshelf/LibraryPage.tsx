@@ -156,6 +156,9 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
       <div className="rs-section rs-empty">This game could not be found.</div>
     );
 
+  // With a book pulled out, its banner names the page; the greeting steps down to a paragraph.
+  const Greeting = selected ? "p" : "h1";
+
   const selectGame = (game: GameShelfItem) => {
     dispatch({ type: "setTag", value: null });
     void navigate({ to: "/games/$slug", params: { slug: game.slug } });
@@ -244,6 +247,17 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
       ) : null}
 
       <section className="rs-library-top" ref={setTopSection}>
+        {/* The greeting heads the page whether or not a book is pulled out, so choosing a game
+            never moves the shelf; the pulled-out book's banner opens under it. */}
+        <div className="rs-library-greeting">
+          <div className="rs-eyebrow">
+            Your archive - <StatLine totals={totals} />
+          </div>
+          <Greeting className="rs-display rs-h1">
+            Welcome back. <em>{totals.unviewedCount || "No"} new clips</em> are
+            waiting on the shelf.
+          </Greeting>
+        </div>
         <Bookcase
           shelf={shelf}
           selectedId={selectedId}
@@ -261,17 +275,7 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
             onUpload={() => void openUpload(selected)}
             onPutBack={putBack}
           />
-        ) : (
-          <div className="rs-library-greeting">
-            <div className="rs-eyebrow">
-              Your archive - <StatLine totals={totals} />
-            </div>
-            <h1 className="rs-display rs-h1">
-              Welcome back. <em>{totals.unviewedCount || "No"} new clips</em>{" "}
-              are waiting on the shelf.
-            </h1>
-          </div>
-        )}
+        ) : null}
       </section>
 
       <ShelfBar
