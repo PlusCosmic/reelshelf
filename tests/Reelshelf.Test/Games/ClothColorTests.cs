@@ -1,6 +1,5 @@
 using System.Globalization;
 using FFMpegCore;
-using FFMpegCore.Pipes;
 using Reelshelf.Games;
 using Xunit;
 
@@ -57,22 +56,34 @@ public class ClothColorTests
         Assert.Null(ClothColor.FromRgb(pixels));
     }
 
-    /// <summary>Runs the real ffmpeg, which CI installs, on a generated solid-colour JPEG.</summary>
-    [Fact]
-    public async Task FromImageAsync_ReadsACoverImage()
+    /// <summary>Runs the real ffmpeg, which CI installs, on a generated solid-colour cover.</summary>
+    [Theory]
+    [InlineData("jpg")]
+    [InlineData("png")]
+    public async Task FromImageAsync_ReadsACoverImage(string extension)
     {
-        using MemoryStream image = new();
-        await FFMpegArguments
-            .FromFileInput("color=c=0x2060c0:size=264x352", verifyExists: false, options => options.ForceFormat("lavfi"))
-            .OutputToPipe(new StreamPipeSink(image), options => options
-                .WithCustomArgument("-frames:v 1")
-                .WithVideoCodec("mjpeg")
-                .ForceFormat("image2pipe"))
-            .ProcessAsynchronously();
+        string path = Path.Combine(Path.GetTempPath(), $"cover-{Guid.NewGuid():N}.{extension}");
+        try
+        {
+            await FFMpegArguments
+                .FromFileInput("color=c=0x2060c0:size=264x352", verifyExists: false, options => options.ForceFormat("lavfi"))
+                .OutputToFile(path, overwrite: true, options => options.WithCustomArgument("-frames:v 1"))
+                .ProcessAsynchronously();
 
-        (int r, int g, int b) = Parse((await ClothColor.FromImageAsync(image.ToArray(), CancellationToken.None))!);
+            (int r, int g, int b) = Parse((await ClothColor.FromImageAsync(await File.ReadAllBytesAsync(path), CancellationToken.None))!);
 
-        Assert.True(b > r && b > g);
+            Assert.True(b > r && b > g);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task FromImageAsync_RejectsAnEmptyImage()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => ClothColor.FromImageAsync([], CancellationToken.None));
     }
 
     [Theory]

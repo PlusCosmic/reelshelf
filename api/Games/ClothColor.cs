@@ -1,6 +1,5 @@
 using System.Globalization;
 using FFMpegCore;
-using FFMpegCore.Pipes;
 
 namespace Reelshelf.Games;
 
@@ -25,20 +24,36 @@ public static class ClothColor
     private const int HueBins = 12;
 
     /// <summary>The cloth colour for a cover image (any format ffmpeg reads). Throws when ffmpeg cannot read it.</summary>
+    /// <remarks>
+    /// The image goes to ffmpeg as a temp file rather than through FFMpegCore's pipes: over a pipe ffmpeg now and
+    /// then reached the end of its input before any bytes had arrived and failed to open it. image2pipe tells the
+    /// image's format from its bytes, since the file has no telling extension.
+    /// </remarks>
     public static async Task<string?> FromImageAsync(byte[] image, CancellationToken cancellationToken)
     {
-        using MemoryStream input = new(image);
-        using MemoryStream output = new();
-        await FFMpegArguments
-            .FromPipeInput(new StreamPipeSource(input), options => options.ForceFormat("image2pipe"))
-            .OutputToPipe(new StreamPipeSink(output), options => options
-                .WithCustomArgument($"-vf scale={SampleWidth}:{SampleHeight}:flags=area")
-                .WithCustomArgument("-frames:v 1 -pix_fmt rgb24")
-                .ForceFormat("rawvideo"))
-            .CancellableThrough(cancellationToken)
-            .ProcessAsynchronously();
+        if (image.Length == 0) throw new ArgumentException("The cover image is empty", nameof(image));
 
-        return FromRgb(output.ToArray());
+        string input = Path.Combine(Path.GetTempPath(), $"cloth-{Guid.NewGuid():N}.img");
+        string output = Path.Combine(Path.GetTempPath(), $"cloth-{Guid.NewGuid():N}.rgb");
+        try
+        {
+            await File.WriteAllBytesAsync(input, image, cancellationToken);
+            await FFMpegArguments
+                .FromFileInput(input, verifyExists: true, options => options.ForceFormat("image2pipe"))
+                .OutputToFile(output, overwrite: true, options => options
+                    .WithCustomArgument($"-vf scale={SampleWidth}:{SampleHeight}:flags=area")
+                    .WithCustomArgument("-frames:v 1 -pix_fmt rgb24")
+                    .ForceFormat("rawvideo"))
+                .CancellableThrough(cancellationToken)
+                .ProcessAsynchronously();
+
+            return FromRgb(await File.ReadAllBytesAsync(output, cancellationToken));
+        }
+        finally
+        {
+            File.Delete(input);
+            File.Delete(output);
+        }
     }
 
     /// <summary>
