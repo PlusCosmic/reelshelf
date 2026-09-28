@@ -64,6 +64,76 @@ export function makeGameShelf(
   });
 }
 
+export interface BookBinding {
+  /** Cloth colour: the cover-derived one from the API, else the game's fallback colour. */
+  cloth: string;
+  /** Title ink that reads on the cloth. */
+  ink: string;
+  /** True for pale cloth, which takes dark ink and a fainter cover weave. */
+  light: boolean;
+}
+
+const darkInk = "#13261c";
+const lightInk = "#f4f7f4";
+
+function relativeLuminance(hex: string) {
+  const channel = (offset: number) => {
+    const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+
+function contrast(a: number, b: number) {
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+/**
+ * How a game's book is bound. Custom categories and games whose cover has not been read yet have
+ * no cloth colour; they fall back to the darker of their placeholder pair, which takes light ink.
+ */
+export function bookBinding(game: GameShelfItem): BookBinding {
+  const cloth = game.clothColor;
+  if (!cloth || !/^#[0-9a-f]{6}$/i.test(cloth)) {
+    return { cloth: game.colorB, ink: lightInk, light: false };
+  }
+  const luminance = relativeLuminance(cloth);
+  const light =
+    contrast(luminance, relativeLuminance(darkInk)) >
+    contrast(luminance, relativeLuminance(lightInk));
+  return { cloth, ink: light ? darkInk : lightInk, light };
+}
+
+function hashOf(text: string) {
+  let hash = 0;
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return hash;
+}
+
+/** Spine size in desktop pixels: busier games are thicker, heights vary like a real shelf. */
+export function bookSize(game: GameShelfItem) {
+  const fullness = Math.sqrt(Math.min(game.clipCount, 300) / 300);
+  return {
+    width: Math.round(46 + 44 * fullness),
+    height: 236 + (hashOf(game.id) % 65),
+  };
+}
+
+/**
+ * Splits a series prefix onto its own line of the spine, so "Call of Duty: Warzone" reads as a
+ * small "Call of Duty" over a large "Warzone" instead of one long line that has to be cut.
+ */
+export function spineTitle(name: string): {
+  series: string | null;
+  title: string;
+} {
+  const split = name.indexOf(": ");
+  if (split > 0 && name.length > 18) {
+    return { series: name.slice(0, split), title: name.slice(split + 2) };
+  }
+  return { series: null, title: name };
+}
+
 export function categoryTotalsFor(
   categoryTotals: ClipCategoryTotals[],
   categoryId: string,
