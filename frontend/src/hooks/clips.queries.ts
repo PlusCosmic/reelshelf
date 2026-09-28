@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import type { Clip, PagedClipsResponse } from "@/api-client";
 import { storageUsageQueryKey } from "@/hooks/auth.queries";
+import { gamingSessionBounds } from "@/shared/utils/gamingSession";
 import {
   deleteClip,
   fetchClips,
@@ -68,28 +69,31 @@ export function useClipsInfinite(filters: ClipsFilters = {}, enabled = true) {
 }
 
 /**
- * The clips from the same game on the same day as this one, earliest first: the night's session.
- * "Day" is the viewer's own calendar day, which is how the session collections are dated too.
+ * The clips from the same game in the same gaming session as this one, earliest first. A session
+ * runs 5am to 5am local time, the same bounds uploads use to file clips into session collections.
  */
 export function useClipSession(clip: Clip | null | undefined) {
   const categoryId = clip?.gameCategoryId;
-  const start = clip ? new Date(clip.createdAt) : undefined;
-  start?.setHours(0, 0, 0, 0);
-  const end = start ? new Date(start) : undefined;
-  end?.setDate(end.getDate() + 1);
+  const bounds = clip ? gamingSessionBounds(new Date(clip.createdAt)) : null;
 
   return useQuery({
-    queryKey: ["clips", "list", "session", categoryId, start?.toISOString()],
+    queryKey: [
+      "clips",
+      "list",
+      "session",
+      categoryId,
+      bounds?.start.toISOString(),
+    ],
     queryFn: async () => {
       const page = await fetchClips({
         page: 1,
         pageSize: 100,
         categoryId,
         sortOrder: 1,
-        startDate: start,
-        endDate: new Date(end!.getTime() - 1),
+        startDate: bounds!.start,
+        endDate: new Date(bounds!.end.getTime() - 1),
       });
-      return page.clips;
+      return { day: bounds!.day, clips: page.clips };
     },
     enabled: !!clip,
     staleTime: 30_000,

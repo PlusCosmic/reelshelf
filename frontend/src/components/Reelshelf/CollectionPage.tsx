@@ -1,7 +1,14 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { IconLock } from "@tabler/icons-react";
+import { useMemo, useState } from "react";
+import { IconLock, IconPencil, IconUserPlus } from "@tabler/icons-react";
 import { useCurrentUser } from "@/hooks/auth.queries";
+import {
+  useDeleteCollection,
+  useRemoveClipFromCollection,
+  useReorderCollection,
+  useUpdateCollection,
+} from "@/hooks/playlists.queries";
 import { fetchPlaylistById } from "@/shared/services/playlists";
 import {
   collectionClips,
@@ -9,7 +16,10 @@ import {
   collectionMinutes,
   sharingSummary,
 } from "./collections-model";
-import { Avatar, BackToLibrary, ClipGrid } from "./ReelshelfPrimitives";
+import { CollectionFormDialog } from "./collections/CollectionFormDialog";
+import { CollectionRows } from "./collections/CollectionRows";
+import { PeopleDialog } from "./collections/PeopleDialog";
+import { Avatar, BackToLibrary } from "./ReelshelfPrimitives";
 import { formatDate, makeGameShelf } from "./reelshelf-model";
 import { useLibraryData } from "./useLibraryData";
 
@@ -33,6 +43,12 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
     queryKey: ["playlists", playlistId],
     queryFn: () => fetchPlaylistById(playlistId),
   });
+  const navigate = useNavigate();
+  const [dialog, setDialog] = useState<"edit" | "people" | null>(null);
+  const update = useUpdateCollection(playlistId);
+  const remove = useDeleteCollection(playlistId);
+  const reorder = useReorderCollection(playlistId);
+  const takeOut = useRemoveClipFromCollection();
 
   if (isLoading)
     return <div className="rs-section rs-empty">Loading collection…</div>;
@@ -43,7 +59,9 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
       </div>
     );
 
-  const clips = collectionClips(playlist).map(({ clip }) => clip);
+  const entries = collectionClips(playlist);
+  const clips = entries.map(({ clip }) => clip);
+  const isOwner = playlist.creatorUserId === currentUser?.id;
   const games = collectionGames(clips, shelf);
   const sharing = sharingSummary(playlist, currentUser?.id);
   const total = games.reduce((sum, game) => sum + game.count, 0);
@@ -64,31 +82,61 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
             <p className="rs-collection-description">{playlist.description}</p>
           ) : null}
         </div>
-        <div className="rs-ledger-people">
-          {sharing.people.length > 0 ? (
+        <div className="rs-collection-actions">
+          <button
+            type="button"
+            className="rs-ledger-people rs-collection-people"
+            onClick={() => setDialog("people")}
+            aria-label={`People: ${sharing.label}`}
+          >
+            {sharing.people.length > 0 ? (
+              <>
+                <span className="rs-avatar-stack">
+                  {sharing.people.slice(0, 5).map((person, index) => (
+                    <span
+                      key={person.userId}
+                      className={index === 0 ? undefined : "rs-avatar-offset"}
+                    >
+                      <Avatar
+                        name={person.username}
+                        src={person.avatarUrl}
+                        size={30}
+                      />
+                    </span>
+                  ))}
+                </span>
+                {sharing.label}
+              </>
+            ) : (
+              <>
+                <IconLock size={14} aria-hidden="true" />
+                Private
+              </>
+            )}
+          </button>
+          {isOwner ? (
             <>
-              <span className="rs-avatar-stack">
-                {sharing.people.slice(0, 5).map((person, index) => (
-                  <span
-                    key={person.userId}
-                    className={index === 0 ? undefined : "rs-avatar-offset"}
-                  >
-                    <Avatar
-                      name={person.username}
-                      src={person.avatarUrl}
-                      size={30}
-                    />
-                  </span>
-                ))}
-              </span>
-              {sharing.label}
+              <button
+                type="button"
+                className="rs-small-button"
+                onClick={() => setDialog("people")}
+              >
+                <IconUserPlus size={15} aria-hidden="true" />
+                Invite
+              </button>
+              <button
+                type="button"
+                className="rs-small-button"
+                onClick={() => {
+                  update.reset();
+                  setDialog("edit");
+                }}
+              >
+                <IconPencil size={15} aria-hidden="true" />
+                Edit
+              </button>
             </>
-          ) : (
-            <>
-              <IconLock size={14} aria-hidden="true" />
-              Private
-            </>
-          )}
+          ) : null}
         </div>
       </header>
 
@@ -128,15 +176,69 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
       ) : null}
 
       {clips.length > 0 ? (
-        <ClipGrid
-          clips={clips}
+        <CollectionRows
+          playlist={playlist}
+          entries={entries}
           categories={categories}
-          variant="filmstrip"
           showGame={games.length > 1}
+          viewerId={currentUser?.id}
+          onReorder={(clipIds) => reorder.mutate(clipIds)}
+          onRemove={(clip) =>
+            takeOut.mutate({ playlistId, clipId: clip.clipId })
+          }
+          removingId={
+            takeOut.isPending ? (takeOut.variables?.clipId ?? null) : null
+          }
         />
       ) : (
-        <div className="rs-empty">No clips in this collection yet.</div>
+        <div className="rs-empty">
+          No clips in this collection yet. Add them from a clip's page with Add
+          to collection.
+        </div>
       )}
+      {reorder.isError || takeOut.isError ? (
+        <p className="rs-upload-error" role="alert">
+          That change could not be saved. Try again.
+        </p>
+      ) : null}
+
+      {dialog === "people" ? (
+        <PeopleDialog
+          playlist={playlist}
+          viewerId={currentUser?.id}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog === "edit" ? (
+        <CollectionFormDialog
+          title="Edit collection"
+          submitLabel="Save"
+          savingLabel="Saving…"
+          initialName={playlist.name}
+          initialDescription={playlist.description ?? ""}
+          saving={update.isPending}
+          error={update.error ?? remove.error}
+          onClose={() => setDialog(null)}
+          onSubmit={(name, description) =>
+            update.mutate(
+              { name, description },
+              { onSuccess: () => setDialog(null) },
+            )
+          }
+          deleting={remove.isPending}
+          onDelete={() => {
+            if (
+              !window.confirm(
+                `Delete "${playlist.name}"? The clips stay in your library.`,
+              )
+            )
+              return;
+            remove.mutate(undefined, {
+              onSuccess: () => void navigate({ to: "/collections" }),
+            });
+          }}
+        />
+      ) : null}
     </main>
   );
 }

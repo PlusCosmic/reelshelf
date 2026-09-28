@@ -1,9 +1,10 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { IconLock, IconPlus } from "@tabler/icons-react";
 import type { PlaylistSummary, PlaylistWithDetails } from "@/api-client";
 import { useCurrentUser } from "@/hooks/auth.queries";
+import { useCreateCollection } from "@/hooks/playlists.queries";
 import { fetchPlaylistById } from "@/shared/services/playlists";
 import {
   collectionClips,
@@ -11,6 +12,7 @@ import {
   collectionMinutes,
   sharingSummary,
 } from "./collections-model";
+import { CollectionFormDialog } from "./collections/CollectionFormDialog";
 import { Avatar, SearchBox } from "./ReelshelfPrimitives";
 import {
   formatDate,
@@ -158,6 +160,9 @@ export function CollectionsPage() {
   const { categories, categoryTotals } = useLibraryData();
   const { data: currentUser } = useCurrentUser();
   const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
+  const createCollection = useCreateCollection();
+  const navigate = useNavigate();
   const shelf = useMemo(
     () => makeGameShelf(categories, categoryTotals),
     [categories, categoryTotals],
@@ -236,7 +241,14 @@ export function CollectionsPage() {
               placeholder="Search collections"
             />
           ) : null}
-          <button className="rs-collection-new-button" type="button">
+          <button
+            className="rs-collection-new-button"
+            type="button"
+            onClick={() => {
+              createCollection.reset();
+              setCreating(true);
+            }}
+          >
             <IconPlus size={16} aria-hidden="true" />
             <span>New collection</span>
           </button>
@@ -277,6 +289,28 @@ export function CollectionsPage() {
           </section>
         ))
       )}
+      {creating ? (
+        <CollectionFormDialog
+          title="New collection"
+          submitLabel="Make collection"
+          savingLabel="Making…"
+          saving={createCollection.isPending}
+          error={createCollection.error}
+          onClose={() => setCreating(false)}
+          onSubmit={(name, description) =>
+            createCollection.mutate(
+              { name, description },
+              {
+                onSuccess: (playlist) =>
+                  void navigate({
+                    to: "/collections/$playlistId",
+                    params: { playlistId: playlist.id },
+                  }),
+              },
+            )
+          }
+        />
+      ) : null}
     </main>
   );
 }

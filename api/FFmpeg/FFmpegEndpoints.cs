@@ -51,7 +51,7 @@ public static class FFmpegEndpoints
             return TypedResults.File(
                 fileStream,
                 contentType: "video/mp4",
-                fileDownloadName: $"{videoId}.mp4",
+                fileDownloadName: DownloadFileName.For(clip.Title, videoId),
                 enableRangeProcessing: true);
         }
         catch (FileNotFoundException ex)

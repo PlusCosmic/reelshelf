@@ -47,6 +47,13 @@ public class ConflictException : DomainException
     }
 }
 
+public class ForbiddenException : DomainException
+{
+    public ForbiddenException(string message) : base(message, StatusCodes.Status403Forbidden)
+    {
+    }
+}
+
 public class UnauthorizedException : DomainException
 {
     public UnauthorizedException(string message) : base(message, StatusCodes.Status401Unauthorized)
