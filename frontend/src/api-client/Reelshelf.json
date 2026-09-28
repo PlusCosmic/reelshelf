@@ -3868,6 +3868,63 @@
           }
         }
       },
+      "PlaylistGameCount": {
+        "required": [
+          "game_category_id",
+          "clip_count"
+        ],
+        "type": "object",
+        "properties": {
+          "game_category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clip_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PlaylistPerson": {
+        "required": [
+          "user_id",
+          "username",
+          "avatar_url"
+        ],
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PlaylistPreviewClip": {
+        "required": [
+          "clip_id",
+          "video_id"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "video_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "PlaylistSummary": {
         "required": [
           "id",
@@ -3878,7 +3935,11 @@
           "updated_at",
           "clip_count",
           "collaborator_count",
-          "is_gaming_session"
+          "is_gaming_session",
+          "total_seconds",
+          "preview_clips",
+          "games",
+          "people"
         ],
         "type": "object",
         "properties": {
@@ -3917,6 +3978,28 @@
           },
           "is_gaming_session": {
             "type": "boolean"
+          },
+          "total_seconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "preview_clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaylistPreviewClip"
+            }
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaylistGameCount"
+            }
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaylistPerson"
+            }
           }
         }
       },

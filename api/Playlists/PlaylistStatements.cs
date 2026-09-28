@@ -68,6 +68,70 @@ public class PlaylistStatements(NpgsqlConnection connection)
         return results.ToList();
     }
 
+    /// <summary>
+    /// What the collections list shows of each collection beyond its summary, for many collections in three
+    /// queries rather than one request per collection.
+    /// </summary>
+    public async Task<PlaylistListExtras> GetListExtras(Guid[] playlistIds)
+    {
+        const string previewSql = @"
+            SELECT playlist_id, clip_id, video_id
+            FROM (
+                SELECT pc.playlist_id, c.id AS clip_id, c.video_id,
+                       ROW_NUMBER() OVER (PARTITION BY pc.playlist_id ORDER BY pc.position, pc.added_at) AS n
+                FROM playlist_clips pc
+                INNER JOIN clip c ON c.id = pc.clip_id
+                WHERE pc.playlist_id = ANY(@playlistIds)
+            ) ordered
+            WHERE n <= 4
+            ORDER BY playlist_id, n";
+
+        const string gamesSql = @"
+            SELECT pc.playlist_id, c.game_category_id, COUNT(*)::int AS clip_count, COALESCE(SUM(c.length), 0)::int AS seconds
+            FROM playlist_clips pc
+            INNER JOIN clip c ON c.id = pc.clip_id
+            WHERE pc.playlist_id = ANY(@playlistIds)
+            GROUP BY pc.playlist_id, c.game_category_id";
+
+        const string peopleSql = @"
+            SELECT pc.playlist_id, pc.user_id, du.username, du.avatar_url
+            FROM playlist_collaborators pc
+            INNER JOIN app_user du ON pc.user_id = du.id
+            WHERE pc.playlist_id = ANY(@playlistIds)
+            ORDER BY pc.playlist_id, pc.added_at";
+
+        var parameters = new { playlistIds };
+        List<PreviewClipRow> previews = (await connection.QueryAsync<PreviewClipRow>(previewSql, parameters)).ToList();
+        List<GameCountRow> games = (await connection.QueryAsync<GameCountRow>(gamesSql, parameters)).ToList();
+        List<PersonRow> people = (await connection.QueryAsync<PersonRow>(peopleSql, parameters)).ToList();
+        return new PlaylistListExtras(previews, games, people);
+    }
+
+    public sealed record PlaylistListExtras(List<PreviewClipRow> Previews, List<GameCountRow> Games, List<PersonRow> People);
+
+    public class PreviewClipRow
+    {
+        public Guid PlaylistId { get; set; }
+        public Guid ClipId { get; set; }
+        public Guid VideoId { get; set; }
+    }
+
+    public class GameCountRow
+    {
+        public Guid PlaylistId { get; set; }
+        public Guid GameCategoryId { get; set; }
+        public int ClipCount { get; set; }
+        public int Seconds { get; set; }
+    }
+
+    public class PersonRow
+    {
+        public Guid PlaylistId { get; set; }
+        public Guid UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string? AvatarUrl { get; set; }
+    }
+
     public async Task<PlaylistRow?> GetPlaylistById(Guid playlistId)
     {
         const string sql = @"

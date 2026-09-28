@@ -64,6 +64,10 @@ const playlists: PlaylistSummary[] = [
     clipCount: 0,
     collaboratorCount: 0,
     isGamingSession: false,
+    totalSeconds: 0,
+    previewClips: [],
+    games: [],
+    people: [],
   },
 ];
 

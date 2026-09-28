@@ -13,6 +13,28 @@
  */
 
 import { mapValues } from "../runtime";
+import type { PlaylistPreviewClip } from "./PlaylistPreviewClip";
+import {
+  PlaylistPreviewClipFromJSON,
+  PlaylistPreviewClipFromJSONTyped,
+  PlaylistPreviewClipToJSON,
+  PlaylistPreviewClipToJSONTyped,
+} from "./PlaylistPreviewClip";
+import type { PlaylistGameCount } from "./PlaylistGameCount";
+import {
+  PlaylistGameCountFromJSON,
+  PlaylistGameCountFromJSONTyped,
+  PlaylistGameCountToJSON,
+  PlaylistGameCountToJSONTyped,
+} from "./PlaylistGameCount";
+import type { PlaylistPerson } from "./PlaylistPerson";
+import {
+  PlaylistPersonFromJSON,
+  PlaylistPersonFromJSONTyped,
+  PlaylistPersonToJSON,
+  PlaylistPersonToJSONTyped,
+} from "./PlaylistPerson";
+
 /**
  *
  * @export
@@ -73,6 +95,30 @@ export interface PlaylistSummary {
    * @memberof PlaylistSummary
    */
   isGamingSession: boolean;
+  /**
+   *
+   * @type {number}
+   * @memberof PlaylistSummary
+   */
+  totalSeconds: number;
+  /**
+   *
+   * @type {Array<PlaylistPreviewClip>}
+   * @memberof PlaylistSummary
+   */
+  previewClips: Array<PlaylistPreviewClip>;
+  /**
+   *
+   * @type {Array<PlaylistGameCount>}
+   * @memberof PlaylistSummary
+   */
+  games: Array<PlaylistGameCount>;
+  /**
+   *
+   * @type {Array<PlaylistPerson>}
+   * @memberof PlaylistSummary
+   */
+  people: Array<PlaylistPerson>;
 }
 
 /**
@@ -97,6 +143,12 @@ export function instanceOfPlaylistSummary(
     return false;
   if (!("isGamingSession" in value) || value["isGamingSession"] === undefined)
     return false;
+  if (!("totalSeconds" in value) || value["totalSeconds"] === undefined)
+    return false;
+  if (!("previewClips" in value) || value["previewClips"] === undefined)
+    return false;
+  if (!("games" in value) || value["games"] === undefined) return false;
+  if (!("people" in value) || value["people"] === undefined) return false;
   return true;
 }
 
@@ -121,6 +173,12 @@ export function PlaylistSummaryFromJSONTyped(
     clipCount: json["clip_count"],
     collaboratorCount: json["collaborator_count"],
     isGamingSession: json["is_gaming_session"],
+    totalSeconds: json["total_seconds"],
+    previewClips: (json["preview_clips"] as Array<any>).map(
+      PlaylistPreviewClipFromJSON,
+    ),
+    games: (json["games"] as Array<any>).map(PlaylistGameCountFromJSON),
+    people: (json["people"] as Array<any>).map(PlaylistPersonFromJSON),
   };
 }
 
@@ -146,5 +204,11 @@ export function PlaylistSummaryToJSONTyped(
     clip_count: value["clipCount"],
     collaborator_count: value["collaboratorCount"],
     is_gaming_session: value["isGamingSession"],
+    total_seconds: value["totalSeconds"],
+    preview_clips: (value["previewClips"] as Array<any>).map(
+      PlaylistPreviewClipToJSON,
+    ),
+    games: (value["games"] as Array<any>).map(PlaylistGameCountToJSON),
+    people: (value["people"] as Array<any>).map(PlaylistPersonToJSON),
   };
 }
