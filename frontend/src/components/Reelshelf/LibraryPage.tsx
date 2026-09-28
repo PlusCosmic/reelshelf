@@ -1,6 +1,6 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import type { DragEvent } from "react";
-import { useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
 import { useTopTags } from "@/hooks/clips.queries";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
@@ -11,6 +11,7 @@ import {
 } from "@/utils/bulkUploadDrop";
 import { Bookcase } from "./Bookcase";
 import { GameBanner } from "./GameBanner";
+import { ShelfBar } from "./ShelfBar";
 import {
   Chip,
   PagedClipGrid,
@@ -23,6 +24,23 @@ import {
   type GameShelfItem,
 } from "./reelshelf-model";
 import { useLibraryData } from "./useLibraryData";
+
+declare module "@tanstack/react-router" {
+  interface HistoryState {
+    /** Set when a game is chosen from the bar below the shelf: land on its clips, not the shelf. */
+    toClips?: boolean;
+  }
+}
+
+function topbarHeight() {
+  return (
+    parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue(
+        "--rs-topbar-height",
+      ),
+    ) || 0
+  );
+}
 
 type LibraryState = {
   addCategoryOpen: boolean;
@@ -69,6 +87,21 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     tag: null,
   });
   const dragDepthRef = useRef(0);
+  const [topSection, setTopSection] = useState<HTMLElement | null>(null);
+  const [clipsSection, setClipsSection] = useState<HTMLElement | null>(null);
+  const [pastShelf, setPastShelf] = useState(false);
+  // A fresh object per navigation, so the scroll below runs once each time the bar is used.
+  const historyState = useRouterState({
+    select: (router) => router.location.state,
+  });
+  const pathname = useRouterState({
+    select: (router) => router.location.pathname.replace(/(.)\/$/, "$1"),
+  });
+  // During a navigation the outgoing page still sees the new location; only the page the location
+  // now names should act on it.
+  const isCurrentPage = selectedSlug
+    ? pathname === `/games/${selectedSlug}`
+    : pathname === "/";
   const shelf = useMemo(
     () => makeGameShelf(categories, categoryTotals),
     [categories, categoryTotals],
@@ -88,6 +121,28 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     [search, selectedId, state.tag],
   );
 
+  // The bar takes over once the whole shelf and its header have scrolled up under the topbar.
+  useEffect(() => {
+    if (!topSection || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setPastShelf(!entry.isIntersecting),
+      { rootMargin: `-${topbarHeight()}px 0px 0px 0px` },
+    );
+    observer.observe(topSection);
+    return () => observer.disconnect();
+  }, [topSection]);
+
+  // A game chosen from the bar opens at the top of its clips rather than back up at the shelf.
+  // The list's scroll-margin keeps it clear of the topbar and the bar; waiting a frame lets the
+  // new game's shelf and header lay out first.
+  useEffect(() => {
+    if (!clipsSection || !historyState.toClips || !isCurrentPage) return;
+    const frame = requestAnimationFrame(() =>
+      clipsSection.scrollIntoView({ block: "start" }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [clipsSection, historyState, isCurrentPage]);
+
   if (isLoading)
     return <div className="rs-section rs-empty">Loading your archive…</div>;
   if (isError)
@@ -104,6 +159,18 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
   const selectGame = (game: GameShelfItem) => {
     dispatch({ type: "setTag", value: null });
     void navigate({ to: "/games/$slug", params: { slug: game.slug } });
+  };
+
+  const chooseFromBar = (game: GameShelfItem | null) => {
+    dispatch({ type: "setTag", value: null });
+    void (game
+      ? navigate({
+          to: "/games/$slug",
+          params: { slug: game.slug },
+          resetScroll: false,
+          state: { toClips: true },
+        })
+      : navigate({ to: "/", resetScroll: false, state: { toClips: true } }));
   };
 
   const putBack = () => {
@@ -176,7 +243,7 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
         </div>
       ) : null}
 
-      <section className="rs-library-top">
+      <section className="rs-library-top" ref={setTopSection}>
         <Bookcase
           shelf={shelf}
           selectedId={selectedId}
@@ -207,17 +274,34 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
         )}
       </section>
 
+      <ShelfBar
+        visible={pastShelf}
+        shelf={shelf}
+        selected={selected}
+        unviewedTotal={totals.unviewedCount}
+        clipTotal={totals.clipCount}
+        query={state.query}
+        onQueryChange={(value) => dispatch({ type: "setQuery", value })}
+        onChoose={chooseFromBar}
+        onBackToShelf={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      />
+
       {selected?.clipCount === 0 ? null : (
         <>
           <section className="rs-filterbar">
+            {/* Tags only appear once there are some; a library without any has nothing to filter by. */}
             <div className="rs-filter-chips">
-              <span className="rs-eyebrow rs-filter-label">Tags</span>
-              <Chip
-                active={!state.tag}
-                onClick={() => dispatch({ type: "setTag", value: null })}
-              >
-                All tags
-              </Chip>
+              {tags.length > 0 ? (
+                <>
+                  <span className="rs-eyebrow rs-filter-label">Tags</span>
+                  <Chip
+                    active={!state.tag}
+                    onClick={() => dispatch({ type: "setTag", value: null })}
+                  >
+                    All tags
+                  </Chip>
+                </>
+              ) : null}
               {tags.map((tag) => (
                 <Chip
                   key={tag.name}
@@ -240,11 +324,13 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
             />
           </section>
 
-          <section className="rs-section">
+          <section className="rs-section rs-clips" ref={setClipsSection}>
             <PagedClipGrid
               filters={filters}
               categories={categories}
               variant="filmstrip"
+              groupByMonth
+              showGame={!selected}
             />
           </section>
         </>

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { IconUpload } from "@tabler/icons-react";
-import { StitchedDot } from "./Bookcase";
+import { StitchedDot } from "./StitchedDot";
 import { StatLine, type ClipTotals } from "./primitives/Stats";
 import { bookBinding, type GameShelfItem } from "./reelshelf-model";
 
