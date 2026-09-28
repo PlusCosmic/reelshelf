@@ -1,4 +1,5 @@
 import type { GameCategoryResponse } from "@/api-client";
+import { gamingSessionDate } from "@/shared/utils/gamingSession";
 
 type BulkUploadStatus =
   | "ready"
@@ -231,14 +232,8 @@ function parseTimestampFromSourcePath(sourcePath: string) {
   return null;
 }
 
-export function gamingSessionDate(date: Date) {
-  const sessionDate = new Date(date);
-  if (sessionDate.getHours() < 5) {
-    sessionDate.setDate(sessionDate.getDate() - 1);
-  }
-
-  return formatLocalDate(sessionDate);
-}
+// Kept here too, where the upload queue's callers and tests have always found it.
+export { gamingSessionDate };
 
 export function groupRowsIntoSessions(rows: BulkUploadRow[]) {
   const sorted = rows.toSorted(
@@ -391,11 +386,4 @@ function containsCompactPath(path: string, value: string) {
   }
 
   return false;
-}
-
-function formatLocalDate(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }

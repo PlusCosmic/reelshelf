@@ -163,10 +163,12 @@ function NeighbourLink({
 
 function SameSession({
   session,
+  day,
   current,
   category,
 }: {
   session: Clip[];
+  day: Date;
   current: Clip;
   category: GameCategoryResponse | undefined;
 }) {
@@ -191,9 +193,8 @@ function SameSession({
           Same session
         </h2>
         <span>
-          {dayFormatter.format(new Date(current.createdAt))} ·{" "}
-          {plural(session.length, "clip", "clips")},{" "}
-          {formatTime(first.createdAt)} to {formatTime(last.createdAt)}
+          {dayFormatter.format(day)} · {plural(session.length, "clip", "clips")}
+          , {formatTime(first.createdAt)} to {formatTime(last.createdAt)}
         </span>
       </div>
       <div className="rs-session-cards" ref={cardsRef}>
@@ -291,7 +292,8 @@ export function ClipPlayerPage({
   const game = shelf.find((item) =>
     clip ? item.id === clip.gameCategoryId : item.slug === slug,
   );
-  const { data: session = [] } = useClipSession(clip);
+  const { data: sessionData } = useClipSession(clip);
+  const session = useMemo(() => sessionData?.clips ?? [], [sessionData]);
   const { data: neighbours } = useClipNeighbours(clip);
   // The first page of the game's clips is plenty for "more from", and it shares its cache with the
   // game's own list.
@@ -398,7 +400,12 @@ export function ClipPlayerPage({
         <ClipFacts clip={clip} game={game} />
 
         {session.length > 1 ? (
-          <SameSession session={session} current={clip} category={game} />
+          <SameSession
+            session={session}
+            day={sessionData!.day}
+            current={clip}
+            category={game}
+          />
         ) : null}
 
         {more.length > 0 ? (

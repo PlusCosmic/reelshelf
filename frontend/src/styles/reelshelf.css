@@ -2410,6 +2410,111 @@ html:has(.rs-library-route) {
   font-size: 22px;
   line-height: 1.1;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A list of choices in a dialog, each one toggled on or off, like which collections hold a clip. */
+.rs-picker {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-picker-option {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rs-picker-option:hover:not(:disabled),
+.rs-picker-option:focus-visible {
+  border-color: var(--line);
+  background: var(--bg-soft);
+}
+
+.rs-picker-option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.rs-picker-check {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--track-bg);
+  border-radius: 3px;
+  color: var(--fill-ink);
+}
+
+.rs-picker-option[aria-pressed="true"] .rs-picker-check {
+  border-color: var(--fill);
+  background: var(--fill);
+}
+
+.rs-picker-name {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.rs-picker-meta {
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-picker-make {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px dashed var(--track-bg);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rs-picker-make:hover,
+.rs-picker-make:focus-visible {
+  border-color: var(--accent);
+}
+
+.rs-picker-new {
+  display: flex;
+  gap: 8px;
+}
+
+.rs-picker-new .rs-input-shell {
+  flex: 1;
+}
+
+.rs-picker-new .rs-primary {
+  min-height: 42px;
+  border: 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .rs-modal-tabs {
@@ -4060,6 +4165,16 @@ html:has(.rs-library-route) {
 .rs-field textarea {
   min-height: 110px;
   resize: vertical;
+}
+
+/* A field whose input sits in a shell draws its border and focus ring on the shell, not twice. */
+.rs-field .rs-input-shell input,
+.rs-field .rs-input-shell input:focus {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .rs-empty {
