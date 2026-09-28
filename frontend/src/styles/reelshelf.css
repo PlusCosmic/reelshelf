@@ -2296,6 +2296,219 @@ html:has(.rs-library-route) {
   margin-top: 0;
 }
 
+.rs-collection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rs-collection-people {
+  min-height: 40px;
+  margin-right: 8px;
+  padding: 0 8px 0 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rs-collection-people:hover {
+  color: var(--fg);
+}
+
+.rs-collection-actions .rs-small-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.rs-collection-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A handle to drag by, the clip's row, and a way to take it out. */
+.rs-collection-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.rs-collection-item .rs-row {
+  border-bottom: 0;
+}
+
+.rs-collection-item.dragging {
+  position: relative;
+  z-index: 2;
+  border-radius: var(--radius);
+  box-shadow: 0 12px 30px -10px
+    color-mix(in oklab, var(--shadow) 60%, transparent);
+  outline: 1px solid var(--track-bg);
+}
+
+.rs-drag-handle {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-soft);
+  cursor: grab;
+  touch-action: none;
+}
+
+.rs-drag-handle:hover,
+.rs-drag-handle:focus-visible {
+  background: var(--bg-soft);
+  color: var(--fg);
+}
+
+.rs-collection-item.dragging .rs-drag-handle {
+  cursor: grabbing;
+}
+
+.rs-collection-remove {
+  opacity: 0.6;
+}
+
+.rs-collection-item:hover .rs-collection-remove,
+.rs-collection-remove:focus-visible {
+  opacity: 1;
+}
+
+.rs-collection-added {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Everyone on a collection, in the People dialog. */
+.rs-people {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-people li {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.rs-people-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--fg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.rs-people-tag {
+  padding: 1px 6px;
+  border: 1px solid var(--track-bg);
+  border-radius: 2px;
+  color: var(--fg-soft);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.rs-people-role {
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-people-invite {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.rs-people-invite .rs-eyebrow {
+  margin: 0;
+}
+
+.rs-people-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rs-people-suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.rs-people-suggestion:hover:not(:disabled),
+.rs-people-suggestion:focus-visible {
+  border-color: var(--accent);
+}
+
+.rs-people-note {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .rs-collection-item {
+    grid-template-columns: 28px minmax(0, 1fr) 36px;
+    gap: 4px;
+  }
+
+  .rs-collection-item .rs-row,
+  .rs-collection-item .rs-row.no-game {
+    grid-template-columns: 110px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .rs-people li {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .rs-people-role {
+    display: none;
+  }
+}
+
 @media (max-width: 900px) {
   .rs-ledger-page {
     padding: 28px 16px 64px;

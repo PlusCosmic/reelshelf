@@ -13,6 +13,8 @@ export function CollectionFormDialog({
   error,
   onSubmit,
   onClose,
+  onDelete,
+  deleting = false,
 }: {
   title: string;
   submitLabel: string;
@@ -23,6 +25,9 @@ export function CollectionFormDialog({
   error: unknown;
   onSubmit: (name: string, description: string | null) => void;
   onClose: () => void;
+  /** Offered when editing a collection its viewer owns. */
+  onDelete?: () => void;
+  deleting?: boolean;
 }) {
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
@@ -34,7 +39,12 @@ export function CollectionFormDialog({
   };
 
   return (
-    <Dialog eyebrow="Collection" title={title} busy={saving} onClose={onClose}>
+    <Dialog
+      eyebrow="Collection"
+      title={title}
+      busy={saving || deleting}
+      onClose={onClose}
+    >
       {() => (
         <form className="rs-modal-panel" onSubmit={submit}>
           <label className="rs-field">
@@ -68,13 +78,25 @@ export function CollectionFormDialog({
                 : "The collection could not be saved."}
             </p>
           ) : null}
-          <button
-            className="rs-primary rs-modal-submit"
-            type="submit"
-            disabled={!name.trim() || saving}
-          >
-            {saving ? savingLabel : submitLabel}
-          </button>
+          <div className="rs-modal-actions">
+            <button
+              className="rs-primary rs-modal-submit"
+              type="submit"
+              disabled={!name.trim() || saving || deleting}
+            >
+              {saving ? savingLabel : submitLabel}
+            </button>
+            {onDelete ? (
+              <button
+                className="rs-small-button rs-small-button-danger"
+                type="button"
+                disabled={saving || deleting}
+                onClick={onDelete}
+              >
+                {deleting ? "Deleting…" : "Delete collection"}
+              </button>
+            ) : null}
+          </div>
         </form>
       )}
     </Dialog>
