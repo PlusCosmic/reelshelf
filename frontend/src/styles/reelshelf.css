@@ -710,10 +710,35 @@ a {
   color: var(--fg);
 }
 
+/* Brand colours are fixed rather than theme tokens; keep them in sync with public/favicon.svg. */
 .rs-brand-logo-mark {
   display: block;
   width: 30px;
   height: 30px;
+}
+
+.rs-brand-logo-mark .tile {
+  fill: #12281e;
+}
+
+.rs-brand-logo-mark .book-dark {
+  fill: #317f54;
+}
+
+.rs-brand-logo-mark .book-light {
+  fill: #97cca8;
+}
+
+.rs-brand-logo-mark .band {
+  fill: #d6ecd8;
+}
+
+.rs-brand-logo-mark .shelf {
+  fill: #f6f5ef;
+}
+
+[data-theme="dark"] .rs-brand-logo-mark .tile {
+  fill: #234634;
 }
 
 .rs-brand-logo-word {
