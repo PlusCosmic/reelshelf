@@ -48,6 +48,12 @@ export interface ClipTranscriptionRun {
    * @type {string}
    * @memberof ClipTranscriptionRun
    */
+  fallbackModel: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof ClipTranscriptionRun
+   */
   promptVersion: string | null;
   /**
    *
@@ -151,6 +157,8 @@ export function instanceOfClipTranscriptionRun(
   if (!("clipId" in value) || value["clipId"] === undefined) return false;
   if (!("trigger" in value) || value["trigger"] === undefined) return false;
   if (!("model" in value) || value["model"] === undefined) return false;
+  if (!("fallbackModel" in value) || value["fallbackModel"] === undefined)
+    return false;
   if (!("promptVersion" in value) || value["promptVersion"] === undefined)
     return false;
   if (!("prompt" in value) || value["prompt"] === undefined) return false;
@@ -194,6 +202,7 @@ export function ClipTranscriptionRunFromJSONTyped(
     clipId: json["clip_id"],
     trigger: json["trigger"],
     model: json["model"],
+    fallbackModel: json["fallback_model"],
     promptVersion: json["prompt_version"],
     prompt: json["prompt"],
     keywords: json["keywords"],
@@ -231,6 +240,7 @@ export function ClipTranscriptionRunToJSONTyped(
     clip_id: value["clipId"],
     trigger: value["trigger"],
     model: value["model"],
+    fallback_model: value["fallbackModel"],
     prompt_version: value["promptVersion"],
     prompt: value["prompt"],
     keywords: value["keywords"],

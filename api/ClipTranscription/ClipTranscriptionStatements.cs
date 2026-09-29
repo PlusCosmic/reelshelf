@@ -10,9 +10,9 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
     public const string RetryTrigger = "retry";
 
     private const string RunColumns = """
-        id, clip_id, trigger, model, prompt_version, prompt, keywords, status, attempts, has_audio, audio_seconds,
-        audio_bytes, transcript, languages, raw_response, input_tokens, output_tokens, duration_ms, error, created_at,
-        started_at, completed_at
+        id, clip_id, trigger, model, fallback_model, prompt_version, prompt, keywords, status, attempts, has_audio,
+        audio_seconds, audio_bytes, transcript, languages, raw_response, input_tokens, output_tokens, duration_ms,
+        error, created_at, started_at, completed_at
         """;
 
     /// <summary>Queues a clip's automatic run. Returns false when the clip already has one.</summary>
@@ -114,11 +114,13 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         TranscriptionPrompt prompt,
         ClipAudio audio,
         ClipTranscript? transcript,
+        string? fallbackModel,
         int durationMs)
     {
         const string sql = """
             UPDATE clip_transcription_run
             SET status = 'succeeded',
+                fallback_model = @FallbackModel,
                 prompt_version = @PromptVersion,
                 prompt = @Prompt,
                 keywords = @Keywords,
@@ -138,6 +140,7 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         await connection.ExecuteAsync(sql, new
         {
             RunId = runId,
+            FallbackModel = fallbackModel,
             PromptVersion = TranscriptionPrompt.Version,
             prompt.Prompt,
             Keywords = prompt.Keywords.ToArray(),
@@ -254,6 +257,12 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
                    COUNT(*) FILTER (WHERE status IN ('pending', 'running')) AS queued,
                    COUNT(*) FILTER (WHERE status = 'succeeded' AND has_audio = false) AS without_audio,
                    COUNT(*) FILTER (WHERE status = 'succeeded' AND has_audio AND transcript = '') AS without_speech,
+                   COUNT(*) FILTER (WHERE status = 'succeeded' AND fallback_model IS NOT NULL) AS fallback_runs,
+                   COUNT(*) FILTER (WHERE status = 'succeeded' AND fallback_model IS NOT NULL AND transcript <> '')
+                       AS fallback_recovered,
+                   MAX(fallback_model) AS fallback_model,
+                   COALESCE(SUM(audio_seconds) FILTER (WHERE status = 'succeeded' AND fallback_model IS NOT NULL), 0)::float8
+                       AS fallback_audio_seconds,
                    COALESCE(SUM(audio_seconds) FILTER (WHERE status = 'succeeded' AND has_audio), 0)::float8
                        AS audio_seconds,
                    COALESCE(SUM(input_tokens), 0) AS input_tokens,
@@ -299,6 +308,10 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         public long Queued { get; set; }
         public long WithoutAudio { get; set; }
         public long WithoutSpeech { get; set; }
+        public long FallbackRuns { get; set; }
+        public long FallbackRecovered { get; set; }
+        public string? FallbackModel { get; set; }
+        public double FallbackAudioSeconds { get; set; }
         public double AudioSeconds { get; set; }
         public long InputTokens { get; set; }
         public long OutputTokens { get; set; }
@@ -323,6 +336,7 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         public Guid ClipId { get; set; }
         public string Trigger { get; set; } = "";
         public string Model { get; set; } = "";
+        public string? FallbackModel { get; set; }
         public string? PromptVersion { get; set; }
         public string? Prompt { get; set; }
         public string[]? Keywords { get; set; }

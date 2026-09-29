@@ -66,6 +66,18 @@ export interface ClipTranscriptionUsage {
    * @type {number}
    * @memberof ClipTranscriptionUsage
    */
+  fallbackRuns: number;
+  /**
+   *
+   * @type {number}
+   * @memberof ClipTranscriptionUsage
+   */
+  fallbackRecovered: number;
+  /**
+   *
+   * @type {number}
+   * @memberof ClipTranscriptionUsage
+   */
   audioMinutes: number;
   /**
    *
@@ -109,6 +121,13 @@ export function instanceOfClipTranscriptionUsage(
     return false;
   if (!("withoutSpeech" in value) || value["withoutSpeech"] === undefined)
     return false;
+  if (!("fallbackRuns" in value) || value["fallbackRuns"] === undefined)
+    return false;
+  if (
+    !("fallbackRecovered" in value) ||
+    value["fallbackRecovered"] === undefined
+  )
+    return false;
   if (!("audioMinutes" in value) || value["audioMinutes"] === undefined)
     return false;
   if (!("estimatedCostUsd" in value) || value["estimatedCostUsd"] === undefined)
@@ -146,6 +165,8 @@ export function ClipTranscriptionUsageFromJSONTyped(
     queued: json["queued"],
     withoutAudio: json["without_audio"],
     withoutSpeech: json["without_speech"],
+    fallbackRuns: json["fallback_runs"],
+    fallbackRecovered: json["fallback_recovered"],
     audioMinutes: json["audio_minutes"],
     estimatedCostUsd: json["estimated_cost_usd"],
     inputTokens: json["input_tokens"],
@@ -176,6 +197,8 @@ export function ClipTranscriptionUsageToJSONTyped(
     queued: value["queued"],
     without_audio: value["withoutAudio"],
     without_speech: value["withoutSpeech"],
+    fallback_runs: value["fallbackRuns"],
+    fallback_recovered: value["fallbackRecovered"],
     audio_minutes: value["audioMinutes"],
     estimated_cost_usd: value["estimatedCostUsd"],
     input_tokens: value["inputTokens"],

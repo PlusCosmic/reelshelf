@@ -37,3 +37,15 @@ Things we found that shaped the decision:
 - The Postgres image in `PlusCosmic/infrastructure`, and any Postgres used by tests, must include pgvector before the stage 2 migration runs. `CREATE EXTENSION vector` may need a superuser the first time.
 - Search quality depends on the summariser. The fixed mood-tag list and the prompt are versioned (a hash on each run, like `prompt_version`), so changes can be compared on the admin page.
 - The three stages depend on each other only through stored rows. Any stage can be rebuilt, rerun or replaced without touching the others.
+
+## Amendment (2026-09-29): transcription through OpenRouter with Gemini
+
+The first backfill with `gpt-transcribe` recorded 408 of 714 clips as having no speech, and many of them do. The audio was fine: full length, one stereo track, the same levels as clips that transcribed. The model returned an empty transcript, and whether it did varied from one call to the next on the same clip. On a sample of 20 empty clips, 5 controls and 4 clips the owner confirmed have speech:
+
+- `gpt-transcribe` recovered 5 of 20, or 7 with `chunking_strategy=auto`.
+- `gpt-4o-transcribe` with chunking recovered nearly all of them, but mixed in invented Norwegian, Russian, Chinese and Portuguese words and dropped lines.
+- `whisper-1` produced text for every clip, including repeating its own prompt over silent ones.
+- `gemini-3.5-transcribe` with the game's vocabulary was the most accurate, found speech in every clip that has it, and left silent clips empty. Without the vocabulary it returned nothing for one clip every time.
+- `deepgram/nova-3` also found every clip with speech, was fastest, and mishears more.
+
+Calling Gemini directly allows 100 requests a day, so transcription goes through OpenRouter's `audio/transcriptions` endpoint, where the model id picks the provider and our own OpenAI and Gemini keys are used first. The default is `google/gemini-3.5-transcribe` with the vocabulary, falling back to `deepgram/nova-3` when it hears nothing, before a clip is recorded as having no speech. Transcripts include in-game voice lines and announcers as well as players; the summary stage (#134) has to tell them apart.

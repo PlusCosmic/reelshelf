@@ -2677,6 +2677,7 @@
           "clip_id",
           "trigger",
           "model",
+          "fallback_model",
           "prompt_version",
           "prompt",
           "keywords",
@@ -2709,6 +2710,12 @@
           },
           "model": {
             "type": "string"
+          },
+          "fallback_model": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "prompt_version": {
             "type": [
@@ -2816,6 +2823,8 @@
           "queued",
           "without_audio",
           "without_speech",
+          "fallback_runs",
+          "fallback_recovered",
           "audio_minutes",
           "estimated_cost_usd",
           "input_tokens",
@@ -2850,6 +2859,14 @@
             "format": "int32"
           },
           "without_speech": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fallback_runs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fallback_recovered": {
             "type": "integer",
             "format": "int32"
           },

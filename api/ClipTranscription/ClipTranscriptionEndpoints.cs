@@ -74,8 +74,10 @@ public sealed record ClipTranscriptionReviewClip(
 
 /// <summary>
 /// Totals for one model and prompt version. <c>WithoutAudio</c> counts clips with no audio track, which cost
-/// nothing; <c>WithoutSpeech</c> counts clips whose audio came back with no words. The cost is an estimate from
-/// the model's price in <c>ClipTranscription:CostPerMinuteUsd</c>, null for a model with no price listed.
+/// nothing; <c>WithoutSpeech</c> counts clips whose audio came back with no words from either model.
+/// <c>FallbackRuns</c> counts runs whose model heard nothing and went to the fallback model, and
+/// <c>FallbackRecovered</c> those where the fallback heard speech. The cost is an estimate from the models' prices in
+/// <c>ClipTranscription:CostPerMinuteUsd</c>, null when a price is missing.
 /// </summary>
 public sealed record ClipTranscriptionUsage(
     string Model,
@@ -85,6 +87,8 @@ public sealed record ClipTranscriptionUsage(
     int Queued,
     int WithoutAudio,
     int WithoutSpeech,
+    int FallbackRuns,
+    int FallbackRecovered,
     double AudioMinutes,
     decimal? EstimatedCostUsd,
     long InputTokens,
@@ -96,6 +100,7 @@ public sealed record ClipTranscriptionRun(
     Guid ClipId,
     string Trigger,
     string Model,
+    string? FallbackModel,
     string? PromptVersion,
     string? Prompt,
     List<string> Keywords,
@@ -120,6 +125,7 @@ public sealed record ClipTranscriptionRun(
             row.ClipId,
             row.Trigger,
             row.Model,
+            row.FallbackModel,
             row.PromptVersion,
             row.Prompt,
             row.Keywords?.ToList() ?? [],
