@@ -1,11 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">Reelshelf logo mark</title>
-  <desc id="desc">Three books standing on a shelf.</desc>
-  <rect width="32" height="32" rx="5" fill="#13241c"/>
-  <g transform="translate(1 0)">
-    <rect x="5" y="8" width="6" height="16" rx="1" fill="#2f7d52"/>
-    <rect x="12" y="5" width="5" height="19" rx="1" fill="#8fc9a4"/>
-    <rect x="18.5" y="9.5" width="5" height="14.5" rx="1" fill="#2f7d52" transform="rotate(12 21 24)"/>
+  <desc id="desc">Three banded books on a shelf, the last one leaning.</desc>
+  <style>
+    .tile { fill: #12281e; }
+    .book-dark { fill: #317f54; }
+    .book-light { fill: #97cca8; }
+    .band { fill: #d6ecd8; }
+    .shelf { fill: #f6f5ef; }
+    /* Lift the tile on dark tab bars so its edge doesn't vanish. */
+    @media (prefers-color-scheme: dark) {
+      .tile { fill: #234634; }
+    }
+  </style>
+  <rect class="tile" width="512" height="512" rx="44"/>
+  <rect class="book-dark" x="98" y="156" width="92" height="228" rx="12"/>
+  <rect class="band" x="98" y="188" width="92" height="8"/>
+  <rect class="band" x="98" y="216" width="92" height="8"/>
+  <rect class="band" x="98" y="350" width="92" height="8"/>
+  <rect class="book-light" x="206" y="108" width="92" height="276" rx="12"/>
+  <rect class="band" x="206" y="140" width="92" height="8"/>
+  <rect class="band" x="206" y="168" width="92" height="8"/>
+  <rect class="band" x="206" y="350" width="92" height="8"/>
+  <g transform="translate(373 271) rotate(-11.3)">
+    <rect class="book-dark" x="-40" y="-106" width="80" height="212" rx="12"/>
+    <rect class="band" x="-40" y="-70" width="80" height="8"/>
+    <rect class="band" x="-40" y="-42" width="80" height="8"/>
   </g>
-  <rect x="3.5" y="24" width="25" height="2.5" rx="1" fill="#e4ebe6"/>
+  <rect class="shelf" x="58" y="394" width="394" height="34" rx="17"/>
 </svg>
