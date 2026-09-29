@@ -74,6 +74,20 @@ public class ClipTranscriptionService(
         return queued;
     }
 
+    /// <summary>
+    /// Queues a run with the configured model for every clip whose latest run succeeded with audio but no words,
+    /// made with a different model. Safe to repeat: once a clip's latest run uses the configured model, it is left
+    /// alone whatever that run found.
+    /// </summary>
+    public async Task<int> RetryEmptyAsync()
+    {
+        string model = ConfiguredModel();
+        int queued = await statements.QueueRetriesForEmptyRunsAsync(model);
+        logger.LogInformation("Queued {Count} transcription retries with {Model} for clips that came back empty",
+            queued, model);
+        return queued;
+    }
+
     /// <summary>Queues an extra run for one clip, optionally with a different model to compare against.</summary>
     public async Task<ClipTranscriptionStatements.ClipTranscriptionRunRow> QueueManualRunAsync(Guid clipId, string? model)
     {
@@ -121,7 +135,7 @@ public class ClipTranscriptionService(
 
     public async Task<List<ClipTranscriptionUsage>> GetUsageAsync()
     {
-        decimal costPerMinute = options.CurrentValue.CostPerMinuteUsd;
+        Dictionary<string, decimal> prices = options.CurrentValue.CostPerMinuteUsd;
         return (await statements.GetUsageAsync())
             .Select(row => new ClipTranscriptionUsage(
                 row.Model,
@@ -131,12 +145,41 @@ public class ClipTranscriptionService(
                 (int)row.Queued,
                 (int)row.WithoutAudio,
                 (int)row.WithoutSpeech,
+                (int)row.FallbackRuns,
+                (int)row.FallbackRecovered,
                 Math.Round(row.AudioSeconds / 60, 1),
-                Math.Round((decimal)row.AudioSeconds / 60 * costPerMinute, 4),
+                EstimateCost(prices, row),
                 row.InputTokens,
                 row.OutputTokens,
                 row.AverageDurationMs))
             .ToList();
+    }
+
+    /// <summary>
+    /// Every minute of audio at the model's price, plus the minutes also sent to the fallback at its price. Null
+    /// when either price is missing, since a partial total would read as the whole cost.
+    /// </summary>
+    internal static decimal? EstimateCost(
+        Dictionary<string, decimal> prices,
+        ClipTranscriptionStatements.UsageRow row)
+    {
+        if (!prices.TryGetValue(row.Model, out decimal perMinute))
+        {
+            return null;
+        }
+
+        decimal cost = (decimal)row.AudioSeconds / 60 * perMinute;
+        if (row.FallbackAudioSeconds > 0)
+        {
+            if (row.FallbackModel is null || !prices.TryGetValue(row.FallbackModel, out decimal fallbackPerMinute))
+            {
+                return null;
+            }
+
+            cost += (decimal)row.FallbackAudioSeconds / 60 * fallbackPerMinute;
+        }
+
+        return Math.Round(cost, 4);
     }
 
     /// <summary>Processes the next queued run. Returns false when there was nothing to do.</summary>
@@ -165,7 +208,7 @@ public class ClipTranscriptionService(
         }
 
         bool canRetry = run.Attempts < current.MaxAttempts;
-        TranscriptionPrompt prompt = TranscriptionPrompt.For(run.GameName, run.GameSlug);
+        TranscriptionPrompt prompt = TranscriptionPrompt.For(run.GameName, run.GameSlug, run.Model);
         string audioPath = Path.Combine(Path.GetTempPath(), "clip-transcription", $"{run.Id:N}.m4a");
         try
         {
@@ -173,7 +216,8 @@ public class ClipTranscriptionService(
             ClipAudio audio = await ClipAudioExtractor.ExtractAsync(PlaylistUrl(run.VideoId), audioPath, cancellationToken);
             if (!audio.HasAudio)
             {
-                await statements.CompleteRunAsync(run.Id, prompt, audio, null, (int)stopwatch.ElapsedMilliseconds);
+                await statements.CompleteRunAsync(run.Id, prompt, audio, null, null,
+                    (int)stopwatch.ElapsedMilliseconds);
                 logger.LogInformation("Clip {ClipId} has no audio track; nothing to transcribe", run.ClipId);
                 return true;
             }
@@ -187,7 +231,24 @@ public class ClipTranscriptionService(
             }
 
             ClipTranscript transcript = await transcriber.TranscribeAsync(audioPath, run.Model, prompt, cancellationToken);
-            await statements.CompleteRunAsync(run.Id, prompt, audio, transcript, (int)stopwatch.ElapsedMilliseconds);
+            string? fallbackModel = transcript.Text.Length == 0 ? current.EffectiveFallbackModel : null;
+            if (fallbackModel is not null)
+            {
+                // The main model sometimes returns nothing for a clip with speech; only if the fallback also hears
+                // nothing is the clip recorded as having no speech.
+                TranscriptionPrompt fallbackPrompt = TranscriptionPrompt.For(run.GameName, run.GameSlug, fallbackModel);
+                ClipTranscript fallback =
+                    await transcriber.TranscribeAsync(audioPath, fallbackModel, fallbackPrompt, cancellationToken);
+                logger.LogInformation("{Model} heard nothing in clip {ClipId}; {FallbackModel} heard {Characters} characters",
+                    run.Model, run.ClipId, fallbackModel, fallback.Text.Length);
+                if (fallback.Text.Length > 0)
+                {
+                    transcript = fallback;
+                }
+            }
+
+            await statements.CompleteRunAsync(run.Id, prompt, audio, transcript, fallbackModel,
+                (int)stopwatch.ElapsedMilliseconds);
             logger.LogInformation(
                 "Transcribed clip {ClipId} with {Model}: {Seconds:0}s of audio, {Characters} characters",
                 run.ClipId, run.Model, audio.Seconds, transcript.Text.Length);
@@ -223,7 +284,7 @@ public class ClipTranscriptionService(
         if (!current.IsConfigured)
         {
             throw new BadRequestException(
-                "Clip transcription is not configured; set ClipTranscription:ApiKey and ClipTranscription:Model");
+                "Clip transcription is not configured; set ClipTranscription:OpenRouterApiKey and ClipTranscription:Model");
         }
 
         return current.Model.Trim();

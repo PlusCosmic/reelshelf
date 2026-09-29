@@ -275,13 +275,13 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddHttpClient(LegendDetectionService.FramesHttpClientName,
             client => client.Timeout = TimeSpan.FromSeconds(30));
 
-        // Clip transcription stays idle until ClipTranscription:ApiKey is configured.
+        // Clip transcription stays idle until ClipTranscription:OpenRouterApiKey is configured.
         builder.Services.Configure<ClipTranscriptionOptions>(
             builder.Configuration.GetSection(ClipTranscriptionOptions.SectionName));
-        builder.Services.AddSingleton<IClipTranscriber, OpenAIClipTranscriber>();
+        builder.Services.AddSingleton<IClipTranscriber, OpenRouterClipTranscriber>();
         builder.Services.AddScoped<ClipTranscriptionStatements>();
         builder.Services.AddScoped<ClipTranscriptionService>();
-        builder.Services.AddHttpClient(OpenAIClipTranscriber.HttpClientName,
+        builder.Services.AddHttpClient(OpenRouterClipTranscriber.HttpClientName,
             client => client.Timeout = TimeSpan.FromMinutes(5));
 
         // Background services should not run during explicit OpenAPI document generation.

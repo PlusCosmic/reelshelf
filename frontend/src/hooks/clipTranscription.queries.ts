@@ -6,6 +6,7 @@ import {
   fetchTranscriptionUsage,
   isTranscriptionActive,
   queueTranscriptionRun,
+  retryEmptyTranscriptions,
 } from "@/shared/services/clipTranscription";
 
 export const clipTranscriptionQueryKey = ["clip-transcription"] as const;
@@ -72,6 +73,14 @@ export function useBackfillClipTranscription() {
   const invalidate = useInvalidateClipTranscription();
   return useMutation({
     mutationFn: backfillClipTranscription,
+    onSuccess: invalidate,
+  });
+}
+
+export function useRetryEmptyTranscriptions() {
+  const invalidate = useInvalidateClipTranscription();
+  return useMutation({
+    mutationFn: retryEmptyTranscriptions,
     onSuccess: invalidate,
   });
 }

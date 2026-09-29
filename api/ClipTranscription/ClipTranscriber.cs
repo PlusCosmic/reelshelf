@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 
 namespace Reelshelf.ClipTranscription;
@@ -32,14 +34,19 @@ public sealed class ClipTranscriptionException(string message, bool retryable) :
 }
 
 /// <summary>
-/// Calls OpenAI's <c>audio/transcriptions</c> endpoint directly: the SDK's typed options don't carry
-/// <c>gpt-transcribe</c>'s <c>keywords</c>, and the multipart form is small enough to own.
+/// Transcribes through OpenRouter's <c>audio/transcriptions</c> endpoint, so the model id alone (for example
+/// <c>google/gemini-3.5-transcribe</c> or <c>deepgram/nova-3</c>) picks the provider. Settings a provider only
+/// exposes itself (vocabulary, prompt, chunking) go under <c>provider.options</c>, keyed by the provider's tag and
+/// using its own field names; see <see cref="ProviderOptions"/>.
 /// </summary>
-public sealed class OpenAIClipTranscriber(
+public sealed class OpenRouterClipTranscriber(
     IHttpClientFactory httpClientFactory,
     IOptionsMonitor<ClipTranscriptionOptions> options) : IClipTranscriber
 {
     public const string HttpClientName = "clip-transcription";
+
+    /// <summary>Bumped when the request's shape changes, so runs made with an older shape keep their own version.</summary>
+    public const string RequestLayoutVersion = "openrouter-v1";
 
     public async Task<ClipTranscript> TranscribeAsync(
         string audioPath,
@@ -50,15 +57,18 @@ public sealed class OpenAIClipTranscriber(
         ClipTranscriptionOptions current = options.CurrentValue;
         HttpClient client = httpClientFactory.CreateClient(HttpClientName);
 
-        await using FileStream audio = File.OpenRead(audioPath);
+        byte[] audio = await File.ReadAllBytesAsync(audioPath, cancellationToken);
         using HttpRequestMessage request = new(HttpMethod.Post, new Uri(new Uri(current.BaseUrl), "audio/transcriptions"));
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", current.ApiKey);
-        request.Content = BuildForm(audio, Path.GetFileName(audioPath), model, prompt);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", current.OpenRouterApiKey);
+        request.Content = new StringContent(BuildRequest(audio, model, prompt).ToJsonString(), Encoding.UTF8,
+            "application/json");
 
         using HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
         string body = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
+            // OpenRouter passes provider outages through as 5xx (including Cloudflare-style 520s); a 413 or 400
+            // will fail the same way again.
             bool retryable = response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.RequestTimeout
                              || (int)response.StatusCode >= 500;
             throw new ClipTranscriptionException(
@@ -68,28 +78,81 @@ public sealed class OpenAIClipTranscriber(
         return Parse(body);
     }
 
-    internal static MultipartFormDataContent BuildForm(
-        Stream audio,
-        string fileName,
-        string model,
-        TranscriptionPrompt prompt)
+    internal static JsonObject BuildRequest(byte[] audio, string model, TranscriptionPrompt prompt)
     {
-        StreamContent file = new(audio);
-        file.Headers.ContentType = new MediaTypeHeaderValue("audio/mp4");
-
-        MultipartFormDataContent form = new()
+        JsonObject request = new()
         {
-            { file, "file", fileName },
-            { new StringContent(model), "model" },
-            { new StringContent("json"), "response_format" },
-            { new StringContent(prompt.Prompt), "prompt" }
+            ["model"] = model,
+            ["input_audio"] = new JsonObject
+            {
+                ["data"] = Convert.ToBase64String(audio),
+                ["format"] = "m4a"
+            }
         };
-        foreach (string keyword in prompt.Keywords)
+
+        JsonObject? providerOptions = ProviderOptions(model, prompt);
+        if (providerOptions is not null)
         {
-            form.Add(new StringContent(keyword), "keywords[]");
+            request["provider"] = new JsonObject { ["options"] = providerOptions };
         }
 
-        return form;
+        return request;
+    }
+
+    /// <summary>
+    /// What each model family is sent beyond the audio. Gemini takes the vocabulary as <c>custom_vocabulary</c>:
+    /// without it, <c>gemini-3.5-transcribe</c> returned nothing for some clips with speech. OpenAI models take the
+    /// prompt and <c>chunking_strategy=auto</c>, and <c>gpt-transcribe</c> also takes <c>keywords</c>. Deepgram's
+    /// integration only forwards formatting flags. <see cref="TranscriptionPrompt.For"/> leaves out whatever a model
+    /// is not sent, so the stored run matches the request.
+    /// </summary>
+    internal static JsonObject? ProviderOptions(string model, TranscriptionPrompt prompt)
+    {
+        if (model.StartsWith("google/", StringComparison.OrdinalIgnoreCase))
+        {
+            return prompt.Keywords.Count == 0
+                ? null
+                : new JsonObject
+                {
+                    ["google-ai-studio"] = new JsonObject { ["custom_vocabulary"] = ToArray(prompt.Keywords) }
+                };
+        }
+
+        if (model.StartsWith("openai/", StringComparison.OrdinalIgnoreCase))
+        {
+            JsonObject openai = new() { ["chunking_strategy"] = "auto" };
+            if (prompt.Prompt is not null)
+            {
+                openai["prompt"] = prompt.Prompt;
+            }
+
+            if (prompt.Keywords.Count > 0)
+            {
+                openai["keywords"] = ToArray(prompt.Keywords);
+            }
+
+            return new JsonObject { ["openai"] = openai };
+        }
+
+        if (model.StartsWith("deepgram/", StringComparison.OrdinalIgnoreCase))
+        {
+            return new JsonObject { ["deepgram"] = new JsonObject { ["smart_format"] = true } };
+        }
+
+        return null;
+    }
+
+    /// <summary>Models whose provider takes a list of terms to spell as given.</summary>
+    public static bool SupportsKeywords(string model)
+    {
+        return model.StartsWith("google/", StringComparison.OrdinalIgnoreCase)
+               || model.StartsWith("openai/gpt-transcribe", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Models whose provider takes free-text context.</summary>
+    public static bool SupportsPrompt(string model)
+    {
+        return model.StartsWith("openai/", StringComparison.OrdinalIgnoreCase);
     }
 
     internal static ClipTranscript Parse(string json)
@@ -99,15 +162,9 @@ public sealed class OpenAIClipTranscriber(
 
         string text = root.TryGetProperty("text", out JsonElement textElement) ? textElement.GetString() ?? "" : "";
         List<string> languages = [];
-        if (root.TryGetProperty("languages", out JsonElement languagesElement)
-            && languagesElement.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("language", out JsonElement language) && language.ValueKind == JsonValueKind.String)
         {
-            languages.AddRange(languagesElement.EnumerateArray()
-                .Select(language => language.ValueKind == JsonValueKind.Object
-                                    && language.TryGetProperty("code", out JsonElement code)
-                    ? code.GetString()
-                    : null)
-                .OfType<string>());
+            languages.Add(language.GetString()!);
         }
 
         int? inputTokens = null;
@@ -119,6 +176,11 @@ public sealed class OpenAIClipTranscriber(
         }
 
         return new ClipTranscript(text.Trim(), languages, inputTokens, outputTokens, json);
+    }
+
+    private static JsonArray ToArray(IEnumerable<string> values)
+    {
+        return new JsonArray(values.Select(value => (JsonNode?)JsonValue.Create(value)).ToArray());
     }
 
     private static int? ReadInt(JsonElement element, string name)

@@ -26,8 +26,17 @@ export function TranscriptionUsageTable({
             <th scope="col" title="Clips without an audio track; never sent">
               No audio
             </th>
+            <th
+              scope="col"
+              title="Runs where the model heard nothing and the fallback model was tried; in brackets, how many it found speech in"
+            >
+              Fallback
+            </th>
             <th scope="col">Audio</th>
-            <th scope="col" title="From ClipTranscription:CostPerMinuteUsd">
+            <th
+              scope="col"
+              title="From the model's price in ClipTranscription:CostPerMinuteUsd"
+            >
               Est. cost
             </th>
             <th scope="col">Input tokens</th>
@@ -45,6 +54,10 @@ export function TranscriptionUsageTable({
               <td>{row.queued}</td>
               <td>{row.withoutSpeech}</td>
               <td>{row.withoutAudio}</td>
+              <td>
+                {row.fallbackRuns}
+                {row.fallbackRuns > 0 ? ` (${row.fallbackRecovered})` : ""}
+              </td>
               <td>{row.audioMinutes.toFixed(1)} min</td>
               <td>{formatCost(row.estimatedCostUsd)}</td>
               <td>{formatTokens(row.inputTokens)}</td>

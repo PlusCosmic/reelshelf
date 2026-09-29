@@ -1896,6 +1896,26 @@
         }
       }
     },
+    "/api/clip-transcription/retry-empty": {
+      "post": {
+        "tags": [
+          "ClipTranscriptionEndpoints"
+        ],
+        "operationId": "RetryEmptyClipTranscriptions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipTranscriptionBackfillResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clip-transcription/clips/{clipId}/runs": {
       "post": {
         "tags": [
@@ -2657,6 +2677,7 @@
           "clip_id",
           "trigger",
           "model",
+          "fallback_model",
           "prompt_version",
           "prompt",
           "keywords",
@@ -2689,6 +2710,12 @@
           },
           "model": {
             "type": "string"
+          },
+          "fallback_model": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "prompt_version": {
             "type": [
@@ -2796,6 +2823,8 @@
           "queued",
           "without_audio",
           "without_speech",
+          "fallback_runs",
+          "fallback_recovered",
           "audio_minutes",
           "estimated_cost_usd",
           "input_tokens",
@@ -2833,12 +2862,23 @@
             "type": "integer",
             "format": "int32"
           },
+          "fallback_runs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fallback_recovered": {
+            "type": "integer",
+            "format": "int32"
+          },
           "audio_minutes": {
             "type": "number",
             "format": "double"
           },
           "estimated_cost_usd": {
-            "type": "number",
+            "type": [
+              "null",
+              "number"
+            ],
             "format": "double"
           },
           "input_tokens": {

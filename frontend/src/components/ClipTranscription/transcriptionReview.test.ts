@@ -14,7 +14,8 @@ function run(overrides: Partial<ClipTranscriptionRun>): ClipTranscriptionRun {
     id: "run",
     clipId: "clip",
     trigger: "auto",
-    model: "gpt-transcribe",
+    model: "google/gemini-3.5-transcribe",
+    fallbackModel: null,
     promptVersion: null,
     prompt: null,
     keywords: [],
@@ -89,5 +90,6 @@ describe("formatCost", () => {
     expect(formatCost(0.0045)).toBe("<$0.01");
     expect(formatCost(0)).toBe("$0.00");
     expect(formatCost(1.234)).toBe("$1.23");
+    expect(formatCost(null)).toBe("–");
   });
 });

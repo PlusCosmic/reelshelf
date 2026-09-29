@@ -106,6 +106,11 @@ function RunResult({ run }: { run: ClipTranscriptionRun }) {
         <Badge tone={statusTone(run.status)}>{run.status}</Badge>
         <span className="rs-meta">
           {run.model}
+          {run.fallbackModel
+            ? run.transcript
+              ? ` (heard nothing; transcript from ${run.fallbackModel})`
+              : ` (${run.fallbackModel} heard nothing either)`
+            : ""}
           {run.audioSeconds !== null
             ? ` · ${Math.round(run.audioSeconds)}s of audio`
             : ""}

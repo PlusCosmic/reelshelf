@@ -15,6 +15,7 @@ import {
 import {
   useBackfillClipTranscription,
   useCurrentUser,
+  useRetryEmptyTranscriptions,
   useTranscriptionReviewClips,
   useTranscriptionUsage,
 } from "@/hooks/queries";
@@ -62,6 +63,7 @@ function TranscriptionReview() {
   const anyActive = clips.some((clip) => isTranscriptionActive(clip.latestRun));
   const usage = useTranscriptionUsage(true, anyActive);
   const backfill = useBackfillClipTranscription();
+  const retryEmpty = useRetryEmptyTranscriptions();
 
   const counts = useMemo(() => countByTranscriptionFilter(clips), [clips]);
   const visible = useMemo(
@@ -120,6 +122,13 @@ function TranscriptionReview() {
     if (confirmed) backfill.mutate();
   }
 
+  function onRetryEmpty() {
+    const confirmed = window.confirm(
+      "Transcribe again, with the configured model, every clip that came back with no speech from another model? Each run is a paid model call.",
+    );
+    if (confirmed) retryEmpty.mutate();
+  }
+
   return (
     <div className="rs-legend-page">
       <header className="rs-legend-header">
@@ -128,6 +137,9 @@ function TranscriptionReview() {
           <h1 className="rs-display rs-h2">Check what the model heard.</h1>
         </div>
         <div className="rs-legend-backfill">
+          <Button onClick={onRetryEmpty} disabled={retryEmpty.isPending}>
+            {retryEmpty.isPending ? "Queueing…" : "Retry no-speech clips"}
+          </Button>
           <Button
             variant="primary"
             onClick={onBackfill}
@@ -139,6 +151,15 @@ function TranscriptionReview() {
             <span className="rs-meta">
               Queued {backfill.data} {backfill.data === 1 ? "clip" : "clips"}.
             </span>
+          ) : null}
+          {retryEmpty.isSuccess ? (
+            <span className="rs-meta">
+              Retrying {retryEmpty.data}{" "}
+              {retryEmpty.data === 1 ? "clip" : "clips"}.
+            </span>
+          ) : null}
+          {retryEmpty.isError ? (
+            <span className="rs-legend-error">{retryEmpty.error.message}</span>
           ) : null}
           {backfill.isError ? (
             <span className="rs-legend-error">{backfill.error.message}</span>

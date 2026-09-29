@@ -265,4 +265,39 @@ export class ClipTranscriptionEndpointsApi extends runtime.BaseAPI {
     );
     return await response.value();
   }
+
+  /**
+   */
+  async retryEmptyClipTranscriptionsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClipTranscriptionBackfillResponse>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clip-transcription/retry-empty`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClipTranscriptionBackfillResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async retryEmptyClipTranscriptions(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClipTranscriptionBackfillResponse> {
+    const response = await this.retryEmptyClipTranscriptionsRaw(initOverrides);
+    return await response.value();
+  }
 }
