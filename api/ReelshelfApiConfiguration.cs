@@ -195,11 +195,16 @@ internal static class ReelshelfApiConfiguration
 
     private static void AddAuthenticationAndAuthorization(this WebApplicationBuilder builder)
     {
-        string keysPath = builder.Configuration["DataProtection:KeysPath"]
-                          ?? Path.Combine(builder.Environment.ContentRootPath, "keys");
-        builder.Services.AddDataProtection()
-            .SetApplicationName("Reelshelf")
-            .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+        IDataProtectionBuilder dataProtection = builder.Services.AddDataProtection()
+            .SetApplicationName("Reelshelf");
+
+        // Without an explicit path the keys go to the framework default ($HOME/.aspnet/DataProtection-Keys),
+        // never the content root: a dev server serving the checkout would otherwise expose them.
+        string? keysPath = builder.Configuration["DataProtection:KeysPath"];
+        if (!string.IsNullOrWhiteSpace(keysPath))
+        {
+            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+        }
 
         builder.AddReelshelfAuthentication();
         builder.AddReelshelfRateLimiting();

@@ -20,9 +20,11 @@ const apiProxy: ProxyOptions = {
   },
 };
 
+const cacheDir = process.env.VITE_CACHE_DIR ?? "../.cache/vite/reelshelf";
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  cacheDir: process.env.VITE_CACHE_DIR ?? "../.cache/vite/reelshelf",
+  cacheDir,
   plugins: [
     tanstackRouter({
       target: "react",
@@ -36,6 +38,11 @@ export default defineConfig({
     },
   },
   server: {
+    // Vite's default allow-list is the whole workspace, so a public dev server would hand out anything
+    // in the checkout (API config, Data Protection keys) under /@fs/. Serve only what the app loads.
+    fs: {
+      allow: [".", "../node_modules", cacheDir],
+    },
     proxy: {
       "/api": apiProxy,
       "/auth": apiProxy,
