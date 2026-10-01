@@ -17,11 +17,19 @@ public static class RateLimitPolicies
     /// <summary>Clip preparation, which reserves storage and creates a Bunny video before any bytes arrive.</summary>
     public const string ClipPrepare = "clip-prepare";
 
+    /// <summary>
+    /// Discord Activity sign-in, which spends the Discord application's API budget (code exchange, user and
+    /// instance lookups). Callers have no session yet, so they partition by address, and Activity traffic reaches the API through Discord's proxy, so the limit is set for many rooms sharing one address.
+    /// </summary>
+    public const string ActivityToken = "activity-token";
+
     private const int DefaultIgdbRequestsPerMinute = 30;
 
     // The uploader runs at most three uploads at once, so a legitimate client prepares clips no faster than
     // it finishes them; this bound only bites on scripted bursts of never-uploaded reservations.
     private const int DefaultClipPreparationsPerMinute = 60;
+
+    private const int DefaultActivityTokensPerMinute = 120;
 
     public static void AddReelshelfRateLimiting(this WebApplicationBuilder builder)
     {
@@ -50,6 +58,8 @@ public static class RateLimitPolicies
 
             options.AddPerUserSlidingWindow(Igdb, igdbPerMinute);
             options.AddPerUserSlidingWindow(ClipPrepare, preparationsPerMinute);
+            options.AddPerUserSlidingWindow(ActivityToken,
+                builder.Configuration.GetValue<int?>("DiscordActivity:TokensPerMinute") ?? DefaultActivityTokensPerMinute);
         });
     }
 

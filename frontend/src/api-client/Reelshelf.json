@@ -2216,10 +2216,192 @@
           }
         }
       }
+    },
+    "/api/activity/config": {
+      "get": {
+        "tags": [
+          "DiscordActivityEndpoints"
+        ],
+        "operationId": "GetActivityConfig",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activity/token": {
+      "post": {
+        "tags": [
+          "DiscordActivityEndpoints"
+        ],
+        "operationId": "ExchangeActivityToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivitySessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activity/me": {
+      "get": {
+        "tags": [
+          "DiscordActivityEndpoints"
+        ],
+        "operationId": "GetActivityParticipant",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityParticipantResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ActivityConfigResponse": {
+        "required": [
+          "enabled",
+          "client_id"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "client_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ActivityParticipantResponse": {
+        "required": [
+          "discord_user_id",
+          "name",
+          "avatar_url",
+          "is_member",
+          "account_id",
+          "account_name"
+        ],
+        "type": "object",
+        "properties": {
+          "discord_user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "is_member": {
+            "type": "boolean"
+          },
+          "account_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "account_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ActivitySessionResponse": {
+        "required": [
+          "access_token",
+          "room_token",
+          "room_token_expires_at",
+          "instance_id",
+          "participant"
+        ],
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "room_token": {
+            "type": "string"
+          },
+          "room_token_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "instance_id": {
+            "type": "string"
+          },
+          "participant": {
+            "$ref": "#/components/schemas/ActivityParticipantResponse"
+          }
+        }
+      },
+      "ActivityTokenRequest": {
+        "required": [
+          "code",
+          "instance_id"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "instance_id": {
+            "type": "string"
+          }
+        }
+      },
       "AddClipToPlaylistRequest": {
         "type": "object",
         "properties": {
@@ -4505,6 +4687,9 @@
     },
     {
       "name": "TwitchClipsEndpoints"
+    },
+    {
+      "name": "DiscordActivityEndpoints"
     }
   ]
 }
