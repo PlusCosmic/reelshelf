@@ -56,6 +56,22 @@ _Avoid_: Treating the whitelist as an access gate; it no longer blocks sign-in.
 **Storage Usage**:
 The sum of a user's clip sizes, counted from the client-declared file size at upload time (falling back to Bunny's reported storage size for older clips).
 
+**Watch Room**:
+One launch of the Reelshelf Discord Activity in a voice channel, keyed by Discord's instance id, where everyone connected watches the same clips in sync. It lasts only while someone is connected.
+_Avoid_: "party" or "session" in code; **Gaming Session** already means something else.
+
+**Room Guest**:
+A **Watch Room** participant with no **Account** linked to their Discord login. Can watch and react, never queue.
+
+**Room Member**:
+A **Watch Room** participant whose Discord login is a **Linked Identity**. Can queue clips from their own **Library**.
+
+**Room Host**:
+The **Room Member** who controls playback and the queue: the first member to connect, then the longest-connected member when the host leaves.
+
+**Room Queue**:
+The clips waiting to play in a **Watch Room**, played in turn by who added them.
+
 ## Relationships
 
 - A **Bulk Upload Queue** contains one or more local files that may become **Clips**.
@@ -74,6 +90,7 @@ The sum of a user's clip sizes, counted from the client-declared file size at up
 - A **Twitch Clip Import** needs a Twitch **Linked Identity** whose stored token carries the clips scope; otherwise the add-clips page asks the user to link or reconnect Twitch instead of listing clips.
 - An imported **Clip** reserves storage for the file size Twitch reports before the copy starts, and the reservation is released if the copy fails.
 - The game for a **Twitch Clip Import** is suggested from the IGDB id Twitch reports for the clip's game; the user confirms or changes it before importing.
+- A **Clip** enters a **Room Queue** only from its owner; **Room Guests** see it only while it is queued or playing in their **Watch Room**.
 - Tags selected during bulk upload are queue metadata until the corresponding **Clip** is successfully saved.
 - Committing a **Bulk Upload Queue** uploads selected rows only; unselected rows remain in the queue.
 - A queued row is saved only after the video upload and post-upload filing both succeed.
