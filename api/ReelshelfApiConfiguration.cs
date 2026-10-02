@@ -15,6 +15,7 @@ using Reelshelf.Bunny;
 using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
 using Reelshelf.Discord;
+using Reelshelf.DiscordActivity;
 using Reelshelf.Email;
 using Reelshelf.Users;
 using Reelshelf.Exceptions;
@@ -76,6 +77,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapClipTranscriptionEndpoints();
         apiGroup.MapUserEndpoints();
         apiGroup.MapTwitchClipsEndpoints();
+        apiGroup.MapDiscordActivityEndpoints();
 
         // OpenAPI is useful during development and explicit client-generation jobs, but should not be public by default.
         if (app.Environment.IsDevelopment() ||
@@ -207,6 +209,7 @@ internal static class ReelshelfApiConfiguration
         }
 
         builder.AddReelshelfAuthentication();
+        builder.AddDiscordActivity();
         builder.AddReelshelfRateLimiting();
     }
 

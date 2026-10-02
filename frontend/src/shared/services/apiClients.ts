@@ -2,6 +2,7 @@ import {
   ClipsEndpointsApi,
   ClipTranscriptionEndpointsApi,
   Configuration as ClipsConfiguration,
+  DiscordActivityEndpointsApi,
   UserEndpointsApi,
   GameCategoryEndpointsApi,
   LegendDetectionEndpointsApi,
@@ -50,4 +51,8 @@ export function createClipTranscriptionApi() {
 
 export function createTwitchClipsApi() {
   return new TwitchClipsEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createDiscordActivityApi() {
+  return new DiscordActivityEndpointsApi(new ClipsConfiguration(clientOptions));
 }

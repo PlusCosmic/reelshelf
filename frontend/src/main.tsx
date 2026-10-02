@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,6 +8,15 @@ import "@fontsource-variable/instrument-sans";
 import "@fontsource-variable/fraunces/full.css";
 import "@fontsource-variable/fraunces/full-italic.css";
 import "./styles/reelshelf.css";
+
+// Inside Discord (served from its proxy origin) the app is the watch room only; the SDK stays out of the
+// regular bundle.
+const isDiscordActivity = window.location.hostname.endsWith(".discordsays.com");
+const ActivityApp = lazy(() =>
+  import("./components/Activity/ActivityApp").then((module) => ({
+    default: module.ActivityApp,
+  })),
+);
 
 // Create a new router instance
 const router = createRouter({
@@ -40,11 +49,23 @@ const queryClient = new QueryClient({
 const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-    </StrictMode>,
-  );
+  if (isDiscordActivity) {
+    // Discord's client is dark, and the stored site preference lives on another origin anyway.
+    document.documentElement.dataset.theme = "dark";
+    root.render(
+      <StrictMode>
+        <Suspense fallback={null}>
+          <ActivityApp />
+        </Suspense>
+      </StrictMode>,
+    );
+  } else {
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+  }
 }

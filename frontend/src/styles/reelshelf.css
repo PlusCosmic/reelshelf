@@ -3825,6 +3825,82 @@ html:has(.rs-library-route) {
   margin-bottom: 16px;
 }
 
+/* The Discord Activity: a small iframe in a voice channel, so it stays compact and single-column. */
+.rs-activity {
+  min-height: 100vh;
+  padding: 20px 16px 40px;
+  display: grid;
+  align-content: start;
+  gap: 24px;
+}
+
+.rs-activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rs-activity-kicker {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rs-activity-room {
+  display: grid;
+  gap: 28px;
+  width: min(720px, 100%);
+  margin: 0 auto;
+}
+
+.rs-activity-you {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rs-activity-you h1 {
+  margin: 0;
+}
+
+.rs-activity-role {
+  margin: 6px 0 0;
+  color: var(--fg-soft);
+}
+
+.rs-activity-avatar {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  object-fit: cover;
+}
+
+.rs-activity-avatar.is-small {
+  width: 28px;
+  height: 28px;
+}
+
+.rs-activity-present ul {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.rs-activity-present li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .rs-row-title {
   display: block;
   min-width: 0;
