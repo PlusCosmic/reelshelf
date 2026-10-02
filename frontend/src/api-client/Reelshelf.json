@@ -2277,6 +2277,26 @@
         }
       }
     },
+    "/api/activity/token/refresh": {
+      "post": {
+        "tags": [
+          "DiscordActivityEndpoints"
+        ],
+        "operationId": "RefreshActivityToken",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomTokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/activity/me": {
       "get": {
         "tags": [
@@ -4440,6 +4460,22 @@
               "type": "string",
               "format": "uuid"
             }
+          }
+        }
+      },
+      "RoomTokenResponse": {
+        "required": [
+          "room_token",
+          "room_token_expires_at"
+        ],
+        "type": "object",
+        "properties": {
+          "room_token": {
+            "type": "string"
+          },
+          "room_token_expires_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

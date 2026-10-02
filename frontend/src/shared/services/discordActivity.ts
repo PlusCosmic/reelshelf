@@ -89,30 +89,3 @@ export async function connectToActivity(): Promise<ActivityConnection> {
 
   return { sdk, session };
 }
-
-export type RoomPresence = {
-  id: string;
-  name: string;
-  avatarUrl: string | null;
-};
-
-type SdkParticipant = {
-  id: string;
-  username: string;
-  global_name?: string | null;
-  nickname?: string;
-  avatar?: string | null;
-};
-
-export function toRoomPresence(participant: SdkParticipant): RoomPresence {
-  return {
-    id: participant.id,
-    name:
-      participant.nickname || participant.global_name || participant.username,
-    avatarUrl: participant.avatar
-      ? activityImageUrl(
-          `https://cdn.discordapp.com/avatars/${participant.id}/${participant.avatar}.png?size=64`,
-        )
-      : null,
-  };
-}

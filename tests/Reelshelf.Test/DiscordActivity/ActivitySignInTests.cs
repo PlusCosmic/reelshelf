@@ -119,6 +119,21 @@ public class ActivitySignInTests
         Assert.Equal(new RoomParticipant("111", InstanceId, "Alice", null), RoomTokenAuthentication.ReadParticipant(principal));
     }
 
+    [Fact]
+    public async Task Refresh_IssuesANewToken_OnlyWhileStillInTheInstance()
+    {
+        RoomTokens tokens = new(new EphemeralDataProtectionProvider(), new Clock());
+        RoomParticipant participant = new("111", InstanceId, "Alice", null);
+
+        RoomTokenResponse? stillHere = await CreateService(new FakeDiscord(instanceUsers: """["111"]"""), new FakeStore(), tokens)
+            .RefreshAsync(participant, CancellationToken.None);
+        RoomTokenResponse? left = await CreateService(new FakeDiscord(instanceUsers: """["222"]"""), new FakeStore(), tokens)
+            .RefreshAsync(participant, CancellationToken.None);
+
+        Assert.Equal(participant, tokens.Read(stillHere!.RoomToken));
+        Assert.Null(left);
+    }
+
     [Theory]
     [InlineData(3, true)]
     [InlineData(4, true)]
