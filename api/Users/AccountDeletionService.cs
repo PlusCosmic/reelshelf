@@ -156,10 +156,15 @@ public sealed class AccountDeletionSignal
     }
 }
 
+/// <summary>
+/// Runs only where <c>AccountDeletion:Enabled</c> is true (the default). Dev shares prod's database, so it sets it to
+/// false and leaves deleting accounts, whichever instance they were requested on, to prod.
+/// </summary>
 public class AccountDeletionBackgroundService(
     ILogger<AccountDeletionBackgroundService> logger,
     IServiceScopeFactory scopeFactory,
-    AccountDeletionSignal signal)
+    AccountDeletionSignal signal,
+    IConfiguration configuration)
     : BackgroundService
 {
     /// <summary>How often marked accounts are retried when nothing wakes the service.</summary>
@@ -167,6 +172,12 @@ public class AccountDeletionBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!configuration.GetValue("AccountDeletion:Enabled", true))
+        {
+            logger.LogInformation("Account deletion is disabled on this instance; another instance deletes requested accounts");
+            return;
+        }
+
         while (!stoppingToken.IsCancellationRequested)
         {
             await RunPassAsync(stoppingToken);
