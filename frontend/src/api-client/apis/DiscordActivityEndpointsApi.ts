@@ -14,12 +14,15 @@
 
 import * as runtime from "../runtime";
 import type {
+  ActivityClipsResponse,
   ActivityConfigResponse,
   ActivityParticipantResponse,
   ActivitySessionResponse,
   ActivityTokenRequest,
 } from "../models/index";
 import {
+  ActivityClipsResponseFromJSON,
+  ActivityClipsResponseToJSON,
   ActivityConfigResponseFromJSON,
   ActivityConfigResponseToJSON,
   ActivityParticipantResponseFromJSON,
@@ -32,6 +35,11 @@ import {
 
 export interface ExchangeActivityTokenRequest {
   activityTokenRequest: ActivityTokenRequest;
+}
+
+export interface GetActivityClipsRequest {
+  search?: string;
+  page?: number;
 }
 
 /**
@@ -84,6 +92,54 @@ export class DiscordActivityEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ActivitySessionResponse> {
     const response = await this.exchangeActivityTokenRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   */
+  async getActivityClipsRaw(
+    requestParameters: GetActivityClipsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityClipsResponse>> {
+    const queryParameters: any = {};
+
+    if (requestParameters["search"] != null) {
+      queryParameters["search"] = requestParameters["search"];
+    }
+
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/activity/clips`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ActivityClipsResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async getActivityClips(
+    requestParameters: GetActivityClipsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ActivityClipsResponse> {
+    const response = await this.getActivityClipsRaw(
       requestParameters,
       initOverrides,
     );
