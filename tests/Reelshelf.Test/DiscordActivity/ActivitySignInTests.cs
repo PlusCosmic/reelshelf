@@ -119,6 +119,32 @@ public class ActivitySignInTests
         Assert.Equal(new RoomParticipant("111", InstanceId, "Alice", null), RoomTokenAuthentication.ReadParticipant(principal));
     }
 
+    [Fact]
+    public async Task Refresh_IssuesANewToken_OnlyWhileStillInTheInstance()
+    {
+        RoomTokens tokens = new(new EphemeralDataProtectionProvider(), new Clock());
+        RoomParticipant participant = new("111", InstanceId, "Alice", null);
+
+        RoomTokenResponse? stillHere = await CreateService(new FakeDiscord(instanceUsers: """["111"]"""), new FakeStore(), tokens)
+            .RefreshAsync(participant, CancellationToken.None);
+        RoomTokenResponse? left = await CreateService(new FakeDiscord(instanceUsers: """["222"]"""), new FakeStore(), tokens)
+            .RefreshAsync(participant, CancellationToken.None);
+
+        Assert.Equal(participant, tokens.Read(stillHere!.RoomToken));
+        Assert.Null(left);
+    }
+
+    [Theory]
+    [InlineData(3, true)]
+    [InlineData(4, true)]
+    [InlineData(2, false)]
+    [InlineData(5, false)]
+    [InlineData(null, false)]
+    public void OnlyEncodedClipsArePlayable(int? videoStatus, bool playable)
+    {
+        Assert.Equal(playable, ActivityClipService.IsPlayable(videoStatus));
+    }
+
     private static ActivitySignInService CreateService(FakeDiscord discord, FakeStore store, RoomTokens? tokens = null, string botToken = "bot-token")
     {
         IConfiguration configuration = new ConfigurationBuilder()

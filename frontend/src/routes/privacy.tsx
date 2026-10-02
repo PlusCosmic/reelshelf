@@ -106,10 +106,12 @@ function PrivacyRoute() {
 
       <h2>Sharing and visibility</h2>
       <p>
-        Your clips are visible only to you, to collaborators you add, and to
-        anyone with a share link to the clip or a shared collection. Clip video
-        addresses aren't secret-signed, so treat clips as unlisted rather than
-        private. A share link keeps working until you delete the clip.
+        Your clips are visible only to you, to collaborators you add, to anyone
+        with a share link to the clip or a shared collection, and to the people
+        in a Discord watch room when you play a clip there. Watch rooms aren't
+        saved; they end when everyone leaves. Clip video addresses aren't
+        secret-signed, so treat clips as unlisted rather than private. A share
+        link keeps working until you delete the clip.
       </p>
 
       <h2>How long we keep it</h2>

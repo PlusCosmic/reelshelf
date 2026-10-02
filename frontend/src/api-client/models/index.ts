@@ -1,5 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from "./ActivityClip";
+export * from "./ActivityClipsResponse";
 export * from "./ActivityConfigResponse";
 export * from "./ActivityParticipantResponse";
 export * from "./ActivitySessionResponse";
@@ -57,6 +59,7 @@ export * from "./PlaylistWithDetails";
 export * from "./QueueClipTranscriptionRunRequest";
 export * from "./QueueLegendDetectionRunRequest";
 export * from "./ReorderPlaylistClipsRequest";
+export * from "./RoomTokenResponse";
 export * from "./SetEmailRequest";
 export * from "./SetLegendDetectionLabelRequest";
 export * from "./SharedClipResponse";

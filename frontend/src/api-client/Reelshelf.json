@@ -2277,6 +2277,26 @@
         }
       }
     },
+    "/api/activity/token/refresh": {
+      "post": {
+        "tags": [
+          "DiscordActivityEndpoints"
+        ],
+        "operationId": "RefreshActivityToken",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomTokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/activity/me": {
       "get": {
         "tags": [
@@ -2296,10 +2316,105 @@
           }
         }
       }
+    },
+    "/api/activity/clips": {
+      "get": {
+        "tags": [
+          "DiscordActivityEndpoints"
+        ],
+        "operationId": "GetActivityClips",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityClipsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ActivityClip": {
+        "required": [
+          "clip_id",
+          "video_id",
+          "title",
+          "game",
+          "duration_seconds",
+          "created_at",
+          "ready"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "video_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "game": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ready": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ActivityClipsResponse": {
+        "required": [
+          "clips",
+          "has_more"
+        ],
+        "type": "object",
+        "properties": {
+          "clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityClip"
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        }
+      },
       "ActivityConfigResponse": {
         "required": [
           "enabled",
@@ -4345,6 +4460,22 @@
               "type": "string",
               "format": "uuid"
             }
+          }
+        }
+      },
+      "RoomTokenResponse": {
+        "required": [
+          "room_token",
+          "room_token_expires_at"
+        ],
+        "type": "object",
+        "properties": {
+          "room_token": {
+            "type": "string"
+          },
+          "room_token_expires_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

@@ -29,6 +29,8 @@ public sealed record ActivitySessionResponse(
     string InstanceId,
     ActivityParticipantResponse Participant);
 
+public sealed record RoomTokenResponse(string RoomToken, DateTimeOffset RoomTokenExpiresAt);
+
 public sealed record ActivitySignInResult(ActivitySignInOutcome Outcome, ActivitySessionResponse? Session = null);
 
 /// <summary>
@@ -66,6 +68,22 @@ public sealed class ActivitySignInService(
 
         return new ActivitySignInResult(ActivitySignInOutcome.Ok,
             new ActivitySessionResponse(accessToken, roomToken, expiresAt, instanceId, participant));
+    }
+
+    /// <summary>
+    /// A fresh room token for someone who already holds one, issued only while Discord still lists them in
+    /// the instance. Null when they have left it.
+    /// </summary>
+    public async Task<RoomTokenResponse?> RefreshAsync(RoomParticipant participant, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<string>? connected = await discord.GetInstanceUserIdsAsync(participant.InstanceId, cancellationToken);
+        if (connected is null || !connected.Contains(participant.DiscordUserId, StringComparer.Ordinal))
+        {
+            return null;
+        }
+
+        (string roomToken, DateTimeOffset expiresAt) = roomTokens.Issue(participant);
+        return new RoomTokenResponse(roomToken, expiresAt);
     }
 
     /// <summary>

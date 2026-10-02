@@ -20,7 +20,13 @@ public static class DiscordActivityEndpoints
         group.MapPost("/token", ExchangeToken).WithName("ExchangeActivityToken")
             .AllowAnonymous()
             .RequireRateLimiting(RateLimitPolicies.ActivityToken);
+        group.MapPost("/token/refresh", RefreshToken).WithName("RefreshActivityToken")
+            .RequireAuthorization(RoomTokenAuthentication.Policy)
+            .RequireRateLimiting(RateLimitPolicies.ActivityToken);
+        group.MapHub<WatchRoomHub>("/hub").RequireAuthorization(RoomTokenAuthentication.Policy);
         group.MapGet("/me", GetMe).WithName("GetActivityParticipant")
+            .RequireAuthorization(RoomTokenAuthentication.Policy);
+        group.MapGet("/clips", GetOwnClips).WithName("GetActivityClips")
             .RequireAuthorization(RoomTokenAuthentication.Policy);
     }
 
@@ -52,6 +58,27 @@ public static class DiscordActivityEndpoints
         };
     }
 
+    /// <summary>
+    /// Renews a room token before it expires, so a long session can reconnect to the hub. Refused once the
+    /// holder is no longer in the Activity instance.
+    /// </summary>
+    private static async Task<Results<Ok<RoomTokenResponse>, UnauthorizedHttpResult, ProblemHttpResult>> RefreshToken(
+        ActivitySignInService signIn,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        RoomParticipant? participant = RoomTokenAuthentication.ReadParticipant(context.User);
+        if (participant is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        RoomTokenResponse? refreshed = await signIn.RefreshAsync(participant, cancellationToken);
+        return refreshed is null
+            ? TypedResults.Problem("You are not connected to this Activity", statusCode: StatusCodes.Status403Forbidden)
+            : TypedResults.Ok(refreshed);
+    }
+
     private static async Task<Results<Ok<ActivityParticipantResponse>, UnauthorizedHttpResult>> GetMe(
         ActivitySignInService signIn,
         HttpContext context)
@@ -64,6 +91,31 @@ public static class DiscordActivityEndpoints
 
         return TypedResults.Ok(await signIn.DescribeAsync(participant.DiscordUserId, participant.Name, participant.AvatarUrl));
     }
+
+    /// <summary>The caller's own clips to pick from. Only room members have a shelf; guests are refused.</summary>
+    private static async Task<Results<Ok<ActivityClipsResponse>, UnauthorizedHttpResult, ProblemHttpResult>> GetOwnClips(
+        ActivitySignInService signIn,
+        ActivityClipService activityClips,
+        HttpContext context,
+        string? search = null,
+        int page = 1)
+    {
+        RoomParticipant? participant = RoomTokenAuthentication.ReadParticipant(context.User);
+        if (participant is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        ActivityParticipantResponse described =
+            await signIn.DescribeAsync(participant.DiscordUserId, participant.Name, participant.AvatarUrl);
+        if (described.AccountId is not { } accountId)
+        {
+            return TypedResults.Problem("Link Discord to a Reelshelf account to play your clips",
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        return TypedResults.Ok(await activityClips.GetOwnClips(accountId, search, page));
+    }
 }
 
 public static class DiscordActivitySetup
@@ -75,6 +127,9 @@ public static class DiscordActivitySetup
         builder.Services.AddSingleton<DiscordActivityClient>();
         builder.Services.AddSingleton<RoomTokens>();
         builder.Services.AddScoped<ActivitySignInService>();
+        builder.Services.AddScoped<ActivityClipService>();
+        builder.Services.AddSingleton<WatchRoomRegistry>();
+        builder.Services.AddSignalR();
 
         builder.Services.AddAuthentication()
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, RoomTokenAuthentication>(

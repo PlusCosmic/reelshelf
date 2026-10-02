@@ -53,6 +53,12 @@ export function createTwitchClipsApi() {
   return new TwitchClipsEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
-export function createDiscordActivityApi() {
-  return new DiscordActivityEndpointsApi(new ClipsConfiguration(clientOptions));
+export function createDiscordActivityApi(roomToken?: string) {
+  return new DiscordActivityEndpointsApi(
+    new ClipsConfiguration({
+      ...clientOptions,
+      // Room endpoints take the Activity's room token, never the site cookie.
+      headers: roomToken ? { Authorization: `Bearer ${roomToken}` } : undefined,
+    }),
+  );
 }

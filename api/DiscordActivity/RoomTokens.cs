@@ -75,13 +75,13 @@ public sealed class RoomTokenAuthentication(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        string? header = Request.Headers.Authorization;
-        if (header is null || !header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        string? token = ReadToken();
+        if (token is null)
         {
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        RoomParticipant? participant = roomTokens.Read(header["Bearer ".Length..].Trim());
+        RoomParticipant? participant = roomTokens.Read(token);
         if (participant is null)
         {
             return Task.FromResult(AuthenticateResult.Fail("Invalid or expired room token"));
@@ -100,6 +100,24 @@ public sealed class RoomTokenAuthentication(
 
         ClaimsIdentity identity = new(claims, Scheme);
         return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme)));
+    }
+
+    /// <summary>
+    /// The bearer header, or for the watch room hub the <c>access_token</c> query parameter: browsers cannot
+    /// set headers on a WebSocket, so SignalR's client sends the token there instead.
+    /// </summary>
+    private string? ReadToken()
+    {
+        string? header = Request.Headers.Authorization;
+        if (header is not null && header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return header["Bearer ".Length..].Trim();
+        }
+
+        string? queryToken = Request.Query["access_token"];
+        return Request.Path.StartsWithSegments(WatchRoomHub.Path) && !string.IsNullOrEmpty(queryToken)
+            ? queryToken
+            : null;
     }
 
     public static RoomParticipant? ReadParticipant(ClaimsPrincipal principal)
