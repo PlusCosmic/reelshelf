@@ -4005,6 +4005,21 @@ html:has(.rs-library-route) {
   gap: 12px;
 }
 
+.rs-activity-volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rs-activity-volume .rs-icon-button {
+  color: var(--fg);
+}
+
+.rs-activity-volume input[type="range"] {
+  width: min(180px, 100%);
+  accent-color: var(--accent);
+}
+
 .rs-activity-unmute {
   position: absolute;
   top: 12px;

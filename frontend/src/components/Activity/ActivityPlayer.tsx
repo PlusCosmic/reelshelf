@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { IconVolume, IconVolume2, IconVolumeOff } from "@tabler/icons-react";
 import { activityStreamUrl } from "@/shared/services/discordActivity";
 import {
   correctDrift,
@@ -8,6 +9,34 @@ import {
 
 /** How often a follower checks its position against the room. */
 const syncIntervalMs = 500;
+
+const volumeStorageKey = "reelshelf.activity.volume";
+
+type VolumePreference = { volume: number; muted: boolean };
+
+/** This viewer's own volume, remembered in their browser; it never reaches the room. */
+function loadVolume(): VolumePreference {
+  try {
+    const saved = JSON.parse(
+      window.localStorage.getItem(volumeStorageKey) ?? "null",
+    ) as Partial<VolumePreference> | null;
+    const volume = Number(saved?.volume);
+    return {
+      volume: Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 1,
+      muted: saved?.muted === true,
+    };
+  } catch {
+    return { volume: 1, muted: false };
+  }
+}
+
+function saveVolume(preference: VolumePreference) {
+  try {
+    window.localStorage.setItem(volumeStorageKey, JSON.stringify(preference));
+  } catch {
+    // Storage blocked (private window, previews): the setting lasts until the Activity closes.
+  }
+}
 
 export type HostControls = {
   onPlay: (positionSeconds: number) => void;
@@ -38,6 +67,7 @@ export function ActivityPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
   const [mutedForAutoplay, setMutedForAutoplay] = useState(false);
+  const [{ volume, muted }, setVolume] = useState(loadVolume);
   const itemId = playback.itemId;
   const videoId = playback.clip.videoId;
   const isHost = host !== null;
@@ -56,6 +86,37 @@ export function ActivityPlayer({
   // out must not move the new one.
   const loadedItemIdRef = useRef<string | null>(null);
   const syncRef = useRef<() => void>(() => undefined);
+
+  // Volume is personal: applied to this viewer's element only. The browser's autoplay mute sits on top of
+  // the viewer's own setting without overwriting it.
+  const mutedForAutoplayRef = useRef(mutedForAutoplay);
+  useEffect(() => {
+    mutedForAutoplayRef.current = mutedForAutoplay;
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = volume;
+    video.muted = muted || mutedForAutoplay;
+  }, [volume, muted, mutedForAutoplay]);
+
+  useEffect(() => saveVolume({ volume, muted }), [volume, muted]);
+
+  // The host changes volume with the video's own controls; keep their choice the same way.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isHost) return;
+    const onVolumeChange = () => {
+      if (mutedForAutoplayRef.current) return;
+      setVolume({ volume: video.volume, muted: video.muted });
+    };
+    video.addEventListener("volumechange", onVolumeChange);
+    return () => video.removeEventListener("volumechange", onVolumeChange);
+  }, [isHost]);
+
+  const changeVolume = (next: VolumePreference) => {
+    // Touching the volume is a click, so the browser now allows sound.
+    setMutedForAutoplay(false);
+    setVolume(next);
+  };
 
   const startPlaying = (video: HTMLVideoElement) => {
     video.play().catch(() => {
@@ -170,35 +231,72 @@ export function ActivityPlayer({
     syncRef.current();
   }, [playback]);
 
+  const silent = muted || mutedForAutoplay || volume === 0;
+
   return (
-    <div className="rs-activity-player">
-      <video
-        ref={videoRef}
-        className="rs-activity-video"
-        controls={isHost}
-        playsInline
-        aria-label={playback.clip.title}
-      />
-      {overlay}
-      {mutedForAutoplay ? (
-        <button
-          type="button"
-          className="rs-primary rs-activity-unmute"
-          onClick={() => {
-            const video = videoRef.current;
-            if (video) video.muted = false;
-            setMutedForAutoplay(false);
-          }}
-        >
-          Turn sound on
-        </button>
-      ) : null}
-      {failed ? (
-        <p className="rs-activity-player-error" role="alert">
-          This clip couldn't be played here.
-        </p>
-      ) : null}
-    </div>
+    <>
+      <div className="rs-activity-player">
+        <video
+          ref={videoRef}
+          className="rs-activity-video"
+          controls={isHost}
+          playsInline
+          aria-label={playback.clip.title}
+        />
+        {overlay}
+        {mutedForAutoplay ? (
+          <button
+            type="button"
+            className="rs-primary rs-activity-unmute"
+            onClick={() => changeVolume({ volume: volume || 1, muted: false })}
+          >
+            Turn sound on
+          </button>
+        ) : null}
+        {failed ? (
+          <p className="rs-activity-player-error" role="alert">
+            This clip couldn't be played here.
+          </p>
+        ) : null}
+      </div>
+      {isHost ? null : (
+        <div className="rs-activity-volume">
+          <button
+            type="button"
+            className="rs-icon-button"
+            aria-label={silent ? "Unmute" : "Mute"}
+            aria-pressed={silent}
+            onClick={() =>
+              changeVolume(
+                silent
+                  ? { volume: volume || 1, muted: false }
+                  : { volume, muted: true },
+              )
+            }
+          >
+            {silent ? (
+              <IconVolumeOff size={18} aria-hidden="true" />
+            ) : volume < 0.5 ? (
+              <IconVolume2 size={18} aria-hidden="true" />
+            ) : (
+              <IconVolume size={18} aria-hidden="true" />
+            )}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            aria-label="Volume"
+            value={silent ? 0 : volume}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              changeVolume({ volume: next, muted: next === 0 });
+            }}
+          />
+        </div>
+      )}
+    </>
   );
 }
 
