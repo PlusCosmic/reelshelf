@@ -3,14 +3,13 @@ import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { toApiError } from "@/shared/services/apiError";
 import { ActivityClipPicker } from "./ActivityClipPicker";
 import { ActivityPlayer } from "./ActivityPlayer";
+import { useWatchRoom, type WatchRoom } from "./useWatchRoom";
 import {
   ActivityUnavailableError,
   activityImageUrl,
   connectToActivity,
-  toRoomPresence,
-  type ActivityClip,
   type ActivityConnection,
-  type RoomPresence,
+  type ActivityParticipantResponse,
 } from "@/shared/services/discordActivity";
 
 type ConnectState =
@@ -19,8 +18,8 @@ type ConnectState =
   | { status: "failed"; message: string };
 
 /**
- * The watch room inside a Discord voice channel (ADR-0006). This first slice signs the participant in and
- * shows who is here; playback and the room queue build on the session it holds.
+ * The watch room inside a Discord voice channel (ADR-0006): sign in through Discord, then join the room's
+ * live connection. The host picks clips and controls playback; everyone else follows along.
  */
 export function ActivityApp() {
   const [state, setState] = useState<ConnectState>({ status: "connecting" });
@@ -81,43 +80,58 @@ export function ActivityApp() {
 }
 
 function ActivityRoom({ connection }: { connection: ActivityConnection }) {
-  const { sdk, session } = connection;
+  const { session } = connection;
   const { participant } = session;
-  const [present, setPresent] = useState<RoomPresence[]>([]);
-  const [playing, setPlaying] = useState<ActivityClip | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const update = (data: {
-      participants: Parameters<typeof toRoomPresence>[0][];
-    }) => {
-      if (active) setPresent(data.participants.map(toRoomPresence));
-    };
-
-    void sdk.commands.getInstanceConnectedParticipants().then(update);
-    void sdk.subscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE", update);
-    return () => {
-      active = false;
-      void sdk.unsubscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE", update);
-    };
-  }, [sdk]);
-
+  const room = useWatchRoom(session);
+  const playback = room.state?.playback ?? null;
+  const host = room.state?.participants.find((person) => person.isHost);
   const avatarUrl = activityImageUrl(participant.avatarUrl);
 
   return (
     <section className="rs-activity-room">
-      {playing ? (
+      {room.status !== "connected" ? (
+        <p className="rs-activity-banner" aria-live="polite">
+          {room.status === "connecting"
+            ? "Connecting to the room…"
+            : "Reconnecting to the room…"}
+        </p>
+      ) : null}
+
+      {playback ? (
         <div className="rs-activity-now">
-          <ActivityPlayer videoId={playing.videoId} title={playing.title} />
-          <div>
-            <h2 className="rs-display rs-activity-now-title">
-              {playing.title}
-            </h2>
-            {playing.game ? (
-              <p className="rs-activity-role">{playing.game}</p>
+          <ActivityPlayer
+            playback={playback}
+            clockOffsetMs={room.clockOffsetMs}
+            host={
+              room.isHost
+                ? { onPlay: room.play, onPause: room.pause, onSeek: room.seek }
+                : null
+            }
+          />
+          <div className="rs-activity-now-details">
+            <div>
+              <h2 className="rs-display rs-activity-now-title">
+                {playback.clip.title}
+              </h2>
+              <p className="rs-activity-role">
+                {[playback.clip.game, `from ${playback.clip.ownerName}'s shelf`]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+            {room.isHost ? (
+              <button type="button" className="rs-primary" onClick={room.stop}>
+                Stop
+              </button>
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {room.error ? (
+        <p className="rs-activity-banner" role="alert">
+          {room.error}
+        </p>
       ) : null}
 
       <div className="rs-activity-you">
@@ -127,9 +141,7 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
         <div>
           <h1 className="rs-display rs-h2">{participant.name}</h1>
           <p className="rs-activity-role">
-            {participant.isMember
-              ? `Your shelf: ${participant.accountName}. Pick a clip below to play it. Playback isn't shared with the room yet.`
-              : "Watching as a guest. Have a Reelshelf account? Link Discord in Settings to queue your clips."}
+            {describeRole(room, participant, host?.name)}
           </p>
         </div>
       </div>
@@ -137,35 +149,59 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
       <div className="rs-activity-present">
         <h2 className="rs-activity-kicker">In the room</h2>
         <ul>
-          {present.map((person) => (
-            <li key={person.id}>
-              {person.avatarUrl ? (
-                <img
-                  className="rs-activity-avatar is-small"
-                  src={person.avatarUrl}
-                  alt=""
-                />
-              ) : (
-                <span
-                  className="rs-activity-avatar is-small"
-                  aria-hidden="true"
-                />
-              )}
-              <span>{person.name}</span>
-            </li>
-          ))}
+          {(room.state?.participants ?? []).map((person) => {
+            const personAvatar = activityImageUrl(person.avatarUrl);
+            return (
+              <li key={person.discordUserId}>
+                {personAvatar ? (
+                  <img
+                    className="rs-activity-avatar is-small"
+                    src={personAvatar}
+                    alt=""
+                  />
+                ) : (
+                  <span
+                    className="rs-activity-avatar is-small"
+                    aria-hidden="true"
+                  />
+                )}
+                <span>{person.name}</span>
+                {person.isHost ? (
+                  <span className="rs-activity-tag">Host</span>
+                ) : !person.isMember ? (
+                  <span className="rs-activity-tag is-quiet">Guest</span>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       </div>
 
-      {participant.isMember ? (
+      {room.isHost ? (
         <ActivityClipPicker
           roomToken={session.roomToken}
-          playingClipId={playing?.clipId ?? null}
-          onPick={setPlaying}
+          playingClipId={playback?.clip.clipId ?? null}
+          onPick={(clip) => room.playClip(clip.clipId)}
         />
       ) : null}
     </section>
   );
+}
+
+function describeRole(
+  room: WatchRoom,
+  participant: ActivityParticipantResponse,
+  hostName: string | undefined,
+): string {
+  if (room.isHost) {
+    return `You're hosting from ${participant.accountName}'s shelf. Pick a clip below and everyone watches it with you.`;
+  }
+  const hosting = hostName
+    ? `${hostName} is hosting.`
+    : "Nobody with a Reelshelf shelf is here yet.";
+  return participant.isMember
+    ? `${hosting} Queuing your own clips is coming next.`
+    : `${hosting} You're watching as a guest. Have a Reelshelf account? Link Discord in Settings to share your clips.`;
 }
 
 async function describeFailure(error: unknown): Promise<string> {

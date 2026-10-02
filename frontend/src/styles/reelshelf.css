@@ -3928,6 +3928,42 @@ html:has(.rs-library-route) {
   background: var(--scrim);
 }
 
+.rs-activity-now-details {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rs-activity-unmute {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.rs-activity-banner {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  color: var(--fg-soft);
+}
+
+.rs-activity-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--accent) 22%, transparent);
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rs-activity-tag.is-quiet {
+  background: var(--bg-soft);
+  color: var(--fg-soft);
+}
+
 .rs-activity-player-error {
   position: absolute;
   inset: auto 0 0;

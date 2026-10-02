@@ -59,6 +59,7 @@ export * from "./PlaylistWithDetails";
 export * from "./QueueClipTranscriptionRunRequest";
 export * from "./QueueLegendDetectionRunRequest";
 export * from "./ReorderPlaylistClipsRequest";
+export * from "./RoomTokenResponse";
 export * from "./SetEmailRequest";
 export * from "./SetLegendDetectionLabelRequest";
 export * from "./SharedClipResponse";

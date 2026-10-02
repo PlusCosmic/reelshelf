@@ -20,6 +20,10 @@ public static class DiscordActivityEndpoints
         group.MapPost("/token", ExchangeToken).WithName("ExchangeActivityToken")
             .AllowAnonymous()
             .RequireRateLimiting(RateLimitPolicies.ActivityToken);
+        group.MapPost("/token/refresh", RefreshToken).WithName("RefreshActivityToken")
+            .RequireAuthorization(RoomTokenAuthentication.Policy)
+            .RequireRateLimiting(RateLimitPolicies.ActivityToken);
+        group.MapHub<WatchRoomHub>("/hub").RequireAuthorization(RoomTokenAuthentication.Policy);
         group.MapGet("/me", GetMe).WithName("GetActivityParticipant")
             .RequireAuthorization(RoomTokenAuthentication.Policy);
         group.MapGet("/clips", GetOwnClips).WithName("GetActivityClips")
@@ -52,6 +56,27 @@ public static class DiscordActivityEndpoints
             ActivitySignInOutcome.NotInInstance => TypedResults.Problem("You are not connected to this Activity", statusCode: StatusCodes.Status403Forbidden),
             _ => TypedResults.Problem("The Discord Activity is not configured", statusCode: StatusCodes.Status503ServiceUnavailable)
         };
+    }
+
+    /// <summary>
+    /// Renews a room token before it expires, so a long session can reconnect to the hub. Refused once the
+    /// holder is no longer in the Activity instance.
+    /// </summary>
+    private static async Task<Results<Ok<RoomTokenResponse>, UnauthorizedHttpResult, ProblemHttpResult>> RefreshToken(
+        ActivitySignInService signIn,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        RoomParticipant? participant = RoomTokenAuthentication.ReadParticipant(context.User);
+        if (participant is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        RoomTokenResponse? refreshed = await signIn.RefreshAsync(participant, cancellationToken);
+        return refreshed is null
+            ? TypedResults.Problem("You are not connected to this Activity", statusCode: StatusCodes.Status403Forbidden)
+            : TypedResults.Ok(refreshed);
     }
 
     private static async Task<Results<Ok<ActivityParticipantResponse>, UnauthorizedHttpResult>> GetMe(
@@ -103,6 +128,8 @@ public static class DiscordActivitySetup
         builder.Services.AddSingleton<RoomTokens>();
         builder.Services.AddScoped<ActivitySignInService>();
         builder.Services.AddScoped<ActivityClipService>();
+        builder.Services.AddSingleton<WatchRoomRegistry>();
+        builder.Services.AddSignalR();
 
         builder.Services.AddAuthentication()
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, RoomTokenAuthentication>(

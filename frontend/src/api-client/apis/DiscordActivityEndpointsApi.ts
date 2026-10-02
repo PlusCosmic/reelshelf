@@ -19,6 +19,7 @@ import type {
   ActivityParticipantResponse,
   ActivitySessionResponse,
   ActivityTokenRequest,
+  RoomTokenResponse,
 } from "../models/index";
 import {
   ActivityClipsResponseFromJSON,
@@ -31,6 +32,8 @@ import {
   ActivitySessionResponseToJSON,
   ActivityTokenRequestFromJSON,
   ActivityTokenRequestToJSON,
+  RoomTokenResponseFromJSON,
+  RoomTokenResponseToJSON,
 } from "../models/index";
 
 export interface ExchangeActivityTokenRequest {
@@ -213,6 +216,41 @@ export class DiscordActivityEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ActivityParticipantResponse> {
     const response = await this.getActivityParticipantRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async refreshActivityTokenRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RoomTokenResponse>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/activity/token/refresh`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RoomTokenResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async refreshActivityToken(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RoomTokenResponse> {
+    const response = await this.refreshActivityTokenRaw(initOverrides);
     return await response.value();
   }
 }
