@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="common.css">
+<svg id="s" width="1024" height="576" viewBox="0 0 1024 576">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="60%">
+      <stop offset="0" stop-color="#1a3326"/><stop offset="1" stop-color="#0f1e17"/>
+    </radialGradient>
+    <!-- Fade the shelves out as they reach toward the middle so the UI has a quiet centre. -->
+    <linearGradient id="fade" x1="0" x2="1">
+      <stop offset="0" stop-color="#fff"/><stop offset="0.17" stop-color="#fff"/>
+      <stop offset="0.3" stop-color="#fff" stop-opacity="0"/><stop offset="0.7" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="0.83" stop-color="#fff"/><stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+    <mask id="m"><rect width="1024" height="576" fill="url(#fade)"/></mask>
+  </defs>
+  <rect width="1024" height="576" fill="url(#glow)"/>
+  <g id="art" mask="url(#m)" opacity="0.92"></g>
+</svg>
+<script src="books.js"></script>
+<script>
+  const art = document.getElementById("art");
+  // Left bookcase
+  shelf(art, { x0: 18, x1: 262, y: 128, seed: 3, minH: 64, maxH: 104 });
+  shelf(art, { x0: 18, x1: 236, y: 296, seed: 11, minH: 72, maxH: 120, playAt: 2 });
+  shelf(art, { x0: 18, x1: 252, y: 462, seed: 27, minH: 60, maxH: 112 });
+  // Right bookcase
+  shelf(art, { x0: 776, x1: 1008, y: 104, seed: 41, minH: 54, maxH: 90, leanLast: false });
+  shelf(art, { x0: 790, x1: 1008, y: 272, seed: 52, minH: 70, maxH: 118, leanLast: false, playAt: 4 });
+  shelf(art, { x0: 770, x1: 1008, y: 440, seed: 63, minH: 64, maxH: 110, leanLast: false });
+  // Bottom-edge planks peeking in from the corners
+  shelf(art, { x0: 18, x1: 200, y: 596, seed: 71, minH: 40, maxH: 60, leanLast: false });
+  shelf(art, { x0: 820, x1: 1008, y: 596, seed: 83, minH: 40, maxH: 60, leanLast: false });
+</script>
