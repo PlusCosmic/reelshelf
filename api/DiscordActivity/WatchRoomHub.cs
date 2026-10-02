@@ -8,7 +8,7 @@ namespace Reelshelf.DiscordActivity;
 /// <summary>
 /// The watch room's live connection (ADR-0006). A connection joins the room named in its room token, never one
 /// the client picks. Every change is broadcast as a whole <see cref="RoomStateView"/> on <c>RoomState</c>.
-/// Only the host can change playback, and only with clips from their own shelf.
+/// Members queue clips from their own shelf; only the host controls playback and moderates the queue.
 /// </summary>
 /// <remarks>The hub uses SignalR's default camelCase JSON, not the API's snake_case; its client types are hand-written.</remarks>
 [Authorize(Policy = RoomTokenAuthentication.Policy)]
@@ -51,14 +51,14 @@ public sealed class WatchRoomHub(
         }
     }
 
-    /// <summary>The host starts one of their own clips for the room, from the beginning.</summary>
-    public async Task PlayClip(Guid clipId)
+    /// <summary>A member queues one of their own clips; it starts at once when nothing is playing.</summary>
+    public async Task AddToQueue(Guid clipId)
     {
         WatchRoom room = Room();
         RoomConnection caller = room.GetConnection(Context.ConnectionId) ?? throw NotInRoom();
-        if (!room.IsHost(Context.ConnectionId) || caller.AccountId is not { } accountId)
+        if (caller.AccountId is not { } accountId)
         {
-            throw new HubException("Only the host can choose what plays");
+            throw new HubException("Link Discord to your Reelshelf account to queue clips");
         }
 
         ClipsStatements.ClipWithTagsRow? clip = await clips.GetClipWithTagsByIdAndOwner(clipId, accountId);
@@ -76,7 +76,55 @@ public sealed class WatchRoomHub(
             caller.AccountName ?? caller.Name,
             clip.Length ?? 0);
 
-        await ApplyHostChange(room, room.PlayClip(Context.ConnectionId, nowPlaying));
+        switch (room.Enqueue(Context.ConnectionId, nowPlaying))
+        {
+            case EnqueueResult.Queued:
+                await Broadcast(room);
+                return;
+            case EnqueueResult.Locked:
+                throw new HubException("The host has locked the queue");
+            case EnqueueResult.AlreadyQueued:
+                throw new HubException("That clip is already in the queue");
+            case EnqueueResult.Full:
+                throw new HubException($"The queue is full ({WatchRoom.MaxQueueLength} clips)");
+            default:
+                throw new HubException("Link Discord to your Reelshelf account to queue clips");
+        }
+    }
+
+    /// <summary>The host removes any queued clip; a member removes their own.</summary>
+    public async Task RemoveFromQueue(Guid itemId)
+    {
+        WatchRoom room = Room();
+        await ApplyChange(room, room.Remove(Context.ConnectionId, itemId));
+    }
+
+    public async Task MoveInQueue(Guid itemId, int toIndex)
+    {
+        WatchRoom room = Room();
+        await ApplyChange(room, room.Move(Context.ConnectionId, itemId, toIndex));
+    }
+
+    public async Task LockQueue(bool locked)
+    {
+        WatchRoom room = Room();
+        await ApplyChange(room, room.SetQueueLocked(Context.ConnectionId, locked));
+    }
+
+    /// <summary>
+    /// Moves on to the next queued clip: the host skipping, or the host's player reaching the end of
+    /// <paramref name="currentItemId"/>.
+    /// </summary>
+    public async Task Next(Guid? currentItemId)
+    {
+        WatchRoom room = Room();
+        await ApplyChange(room, room.Next(Context.ConnectionId, currentItemId));
+    }
+
+    public async Task PlayNow(Guid itemId)
+    {
+        WatchRoom room = Room();
+        await ApplyChange(room, room.PlayNow(Context.ConnectionId, itemId));
     }
 
     public Task Play(double positionSeconds) => SetPlayback(true, positionSeconds);
@@ -85,23 +133,17 @@ public sealed class WatchRoomHub(
 
     public Task Seek(double positionSeconds) => SetPlayback(null, positionSeconds);
 
-    public async Task Stop()
-    {
-        WatchRoom room = Room();
-        await ApplyHostChange(room, room.Stop(Context.ConnectionId));
-    }
-
     private async Task SetPlayback(bool? playing, double positionSeconds)
     {
         WatchRoom room = Room();
-        await ApplyHostChange(room, room.SetPlayback(Context.ConnectionId, playing, positionSeconds));
+        await ApplyChange(room, room.SetPlayback(Context.ConnectionId, playing, positionSeconds));
     }
 
-    private async Task ApplyHostChange(WatchRoom room, bool applied)
+    private async Task ApplyChange(WatchRoom room, bool applied)
     {
         if (!applied)
         {
-            // Not the host (any more), or nothing playing: resend the room so the caller's screen catches up.
+            // Not allowed (not the host any more, or not their clip) or out of date: resend the room so the caller's screen catches up.
             await Clients.Caller.SendAsync(RoomStateMethod, room.Snapshot());
             return;
         }

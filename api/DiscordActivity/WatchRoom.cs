@@ -27,11 +27,33 @@ public sealed record NowPlaying(
     string OwnerName,
     int DurationSeconds);
 
+/// <summary>A clip waiting in the room's queue, with the Discord user who queued it (always its owner).</summary>
+public sealed record QueuedClip(Guid ItemId, NowPlaying Clip, string OwnerDiscordUserId);
+
+/// <summary>
+/// A queued clip as clients see it. It carries no video id: the stream is only handed out once the clip plays.
+/// </summary>
+public sealed record QueueItemView(
+    Guid ItemId,
+    Guid ClipId,
+    string Title,
+    string Game,
+    string OwnerName,
+    string OwnerDiscordUserId,
+    int DurationSeconds);
+
 /// <summary>
 /// Where playback stood at <see cref="UpdatedAt"/> (server time). While playing, clients add the time since
-/// then to <see cref="PositionSeconds"/> to find where everyone should be now.
+/// then to <see cref="PositionSeconds"/> to find where everyone should be now. <see cref="ItemId"/> names this
+/// play of the clip, so a clip queued again later is a new item.
 /// </summary>
-public sealed record RoomPlayback(NowPlaying Clip, bool Playing, double PositionSeconds, DateTimeOffset UpdatedAt);
+public sealed record RoomPlayback(
+    Guid ItemId,
+    NowPlaying Clip,
+    string OwnerDiscordUserId,
+    bool Playing,
+    double PositionSeconds,
+    DateTimeOffset UpdatedAt);
 
 public sealed record RoomParticipantView(string DiscordUserId, string Name, string? AvatarUrl, bool IsMember, bool IsHost);
 
@@ -44,18 +66,39 @@ public sealed record RoomStateView(
     string? HostDiscordUserId,
     List<RoomParticipantView> Participants,
     RoomPlayback? Playback,
+    List<QueueItemView> Queue,
+    bool QueueLocked,
     DateTimeOffset ServerTime);
 
+public enum EnqueueResult
+{
+    Queued,
+    NotAMember,
+    Locked,
+    AlreadyQueued,
+    Full
+}
+
 /// <summary>
-/// A watch room: everyone connected to one Activity instance, its host and what is playing. Held in memory
-/// only (ADR-0006). Every method takes the room's lock, so the hub can call it from any connection.
+/// A watch room: everyone connected to one Activity instance, its host, what is playing and what is queued.
+/// Held in memory only (ADR-0006). Every method takes the room's lock, so the hub can call it from any
+/// connection.
 /// </summary>
+/// <remarks>
+/// A queued clip is shown to the room only while its owner is in it: clips of an owner who has left are hidden
+/// from the queue and dropped when their turn comes, and come back if the owner reconnects first. A clip that
+/// is already playing plays on. When no member is left, the room has nothing to play and its queue empties.
+/// </remarks>
 public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
 {
+    public const int MaxQueueLength = 50;
+
     private readonly object _gate = new();
     private readonly Dictionary<string, RoomConnection> _connections = new(StringComparer.Ordinal);
+    private readonly List<QueuedClip> _queue = [];
     private string? _hostDiscordUserId;
     private RoomPlayback? _playback;
+    private bool _queueLocked;
     private long _version;
 
     public string InstanceId { get; } = instanceId;
@@ -101,15 +144,21 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
             }
 
             // The host keeps the role while any of their connections remain; otherwise it passes to the
-            // member who has been here longest. With only guests left there is no host.
-            if (left.DiscordUserId == _hostDiscordUserId &&
-                _connections.Values.All(remaining => remaining.DiscordUserId != left.DiscordUserId))
+            // member who has been here longest. With only guests left there is no host, and no clips.
+            if (left.DiscordUserId == _hostDiscordUserId && !IsPresent(left.DiscordUserId))
             {
                 _hostDiscordUserId = _connections.Values
                     .Where(remaining => remaining.IsMember)
                     .OrderBy(remaining => remaining.ConnectedAt)
                     .Select(remaining => remaining.DiscordUserId)
                     .FirstOrDefault();
+            }
+
+            if (_hostDiscordUserId is null)
+            {
+                _playback = null;
+                _queue.Clear();
+                _queueLocked = false;
             }
 
             return false;
@@ -128,13 +177,96 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
     {
         lock (_gate)
         {
-            return _connections.TryGetValue(connectionId, out RoomConnection? connection) &&
-                   connection.DiscordUserId == _hostDiscordUserId;
+            return IsHostLocked(connectionId);
         }
     }
 
-    /// <summary>The host starts a clip from the beginning. False when the caller is not the host.</summary>
-    public bool PlayClip(string connectionId, NowPlaying clip)
+    /// <summary>
+    /// A member queues one of their own clips. It goes in round-robin by who queued it: a member's first clip
+    /// waits behind everyone else's first, their second behind everyone's second, and so on. When nothing is
+    /// playing it starts at once. While the queue is locked only the host can add.
+    /// </summary>
+    public EnqueueResult Enqueue(string connectionId, NowPlaying clip)
+    {
+        lock (_gate)
+        {
+            if (!_connections.TryGetValue(connectionId, out RoomConnection? caller) || !caller.IsMember)
+            {
+                return EnqueueResult.NotAMember;
+            }
+
+            if (_queueLocked && caller.DiscordUserId != _hostDiscordUserId)
+            {
+                return EnqueueResult.Locked;
+            }
+
+            if (_queue.Any(item => item.Clip.ClipId == clip.ClipId))
+            {
+                return EnqueueResult.AlreadyQueued;
+            }
+
+            if (_queue.Count >= MaxQueueLength)
+            {
+                return EnqueueResult.Full;
+            }
+
+            QueuedClip queued = new(Guid.NewGuid(), clip, caller.DiscordUserId);
+            _queue.Insert(RoundRobinIndex(caller.DiscordUserId), queued);
+            if (_playback is null)
+            {
+                PlayNextLocked();
+            }
+
+            _version++;
+            return EnqueueResult.Queued;
+        }
+    }
+
+    /// <summary>The host can remove any queued clip; a member can remove their own.</summary>
+    public bool Remove(string connectionId, Guid itemId)
+    {
+        lock (_gate)
+        {
+            int index = _queue.FindIndex(item => item.ItemId == itemId);
+            if (index < 0 || !_connections.TryGetValue(connectionId, out RoomConnection? caller) ||
+                (caller.DiscordUserId != _hostDiscordUserId &&
+                 caller.DiscordUserId != _queue[index].OwnerDiscordUserId))
+            {
+                return false;
+            }
+
+            _queue.RemoveAt(index);
+            _version++;
+            return true;
+        }
+    }
+
+    /// <summary>The host moves a queued clip to <paramref name="toIndex"/> among the clips the room can see.</summary>
+    public bool Move(string connectionId, Guid itemId, int toIndex)
+    {
+        lock (_gate)
+        {
+            List<QueuedClip> visible = VisibleQueue();
+            QueuedClip? moving = visible.FirstOrDefault(item => item.ItemId == itemId);
+            if (!IsHostLocked(connectionId) || moving is null)
+            {
+                return false;
+            }
+
+            // Place it before the visible clip now at that position, or after the last one; hidden clips of
+            // absent owners keep their places.
+            visible.Remove(moving);
+            _queue.Remove(moving);
+            int target = Math.Clamp(toIndex, 0, visible.Count);
+            int at = target < visible.Count ? _queue.IndexOf(visible[target]) : _queue.Count;
+            _queue.Insert(at, moving);
+            _version++;
+            return true;
+        }
+    }
+
+    /// <summary>The host locks the queue so only they can add, for a showcase.</summary>
+    public bool SetQueueLocked(string connectionId, bool locked)
     {
         lock (_gate)
         {
@@ -143,7 +275,46 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
                 return false;
             }
 
-            _playback = new RoomPlayback(clip, true, 0, timeProvider.GetUtcNow());
+            _queueLocked = locked;
+            _version++;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// The host moves on to the next queued clip, or stops when the queue is empty. With
+    /// <paramref name="currentItemId"/> it only moves on from that clip, so a clip ending on two of the host's
+    /// devices skips once.
+    /// </summary>
+    public bool Next(string connectionId, Guid? currentItemId)
+    {
+        lock (_gate)
+        {
+            if (!IsHostLocked(connectionId) ||
+                (currentItemId is not null && _playback?.ItemId != currentItemId))
+            {
+                return false;
+            }
+
+            PlayNextLocked();
+            _version++;
+            return true;
+        }
+    }
+
+    /// <summary>The host plays a queued clip now, taking it out of the queue.</summary>
+    public bool PlayNow(string connectionId, Guid itemId)
+    {
+        lock (_gate)
+        {
+            QueuedClip? item = VisibleQueue().FirstOrDefault(queued => queued.ItemId == itemId);
+            if (!IsHostLocked(connectionId) || item is null)
+            {
+                return false;
+            }
+
+            _queue.Remove(item);
+            Start(item);
             _version++;
             return true;
         }
@@ -179,29 +350,17 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
         }
     }
 
-    public bool Stop(string connectionId)
-    {
-        lock (_gate)
-        {
-            if (!IsHostLocked(connectionId))
-            {
-                return false;
-            }
-
-            _playback = null;
-            _version++;
-            return true;
-        }
-    }
-
     public RoomStateView Snapshot()
     {
         lock (_gate)
         {
             // One row per person, however many connections they have, in the order they arrived.
-            List<RoomParticipantView> participants = _connections.Values
+            Dictionary<string, RoomConnection> people = _connections.Values
                 .GroupBy(connection => connection.DiscordUserId)
                 .Select(group => group.OrderBy(connection => connection.ConnectedAt).First())
+                .ToDictionary(connection => connection.DiscordUserId);
+
+            List<RoomParticipantView> participants = people.Values
                 .OrderBy(connection => connection.ConnectedAt)
                 .Select(connection => new RoomParticipantView(
                     connection.DiscordUserId,
@@ -211,9 +370,77 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
                     connection.DiscordUserId == _hostDiscordUserId))
                 .ToList();
 
-            return new RoomStateView(_version, _hostDiscordUserId, participants, _playback, timeProvider.GetUtcNow());
+            List<QueueItemView> queue = VisibleQueue()
+                .Select(item => new QueueItemView(
+                    item.ItemId,
+                    item.Clip.ClipId,
+                    item.Clip.Title,
+                    item.Clip.Game,
+                    item.Clip.OwnerName,
+                    item.OwnerDiscordUserId,
+                    item.Clip.DurationSeconds))
+                .ToList();
+
+            return new RoomStateView(
+                _version,
+                _hostDiscordUserId,
+                participants,
+                _playback,
+                queue,
+                _queueLocked,
+                timeProvider.GetUtcNow());
         }
     }
+
+    /// <summary>
+    /// Where a new clip from <paramref name="owner"/> goes. It is the owner's round <c>k</c>, where <c>k</c>
+    /// is how many of their clips are already queued. It goes after the owner's own queued clips, before the
+    /// first clip from a later round. The host's manual moves are kept, since nothing already queued moves.
+    /// </summary>
+    private int RoundRobinIndex(string owner)
+    {
+        int round = _queue.Count(item => item.OwnerDiscordUserId == owner);
+        int start = _queue.FindLastIndex(item => item.OwnerDiscordUserId == owner) + 1;
+
+        Dictionary<string, int> seen = new(StringComparer.Ordinal);
+        for (int index = 0; index < _queue.Count; index++)
+        {
+            string itemOwner = _queue[index].OwnerDiscordUserId;
+            int itemRound = seen.GetValueOrDefault(itemOwner);
+            seen[itemOwner] = itemRound + 1;
+            if (index >= start && itemRound > round)
+            {
+                return index;
+            }
+        }
+
+        return _queue.Count;
+    }
+
+    /// <summary>Plays the first queued clip whose owner is still here, dropping any before it whose owner left.</summary>
+    private void PlayNextLocked()
+    {
+        while (_queue.Count > 0)
+        {
+            QueuedClip next = _queue[0];
+            _queue.RemoveAt(0);
+            if (IsPresent(next.OwnerDiscordUserId))
+            {
+                Start(next);
+                return;
+            }
+        }
+
+        _playback = null;
+    }
+
+    private void Start(QueuedClip item) =>
+        _playback = new RoomPlayback(item.ItemId, item.Clip, item.OwnerDiscordUserId, true, 0, timeProvider.GetUtcNow());
+
+    private List<QueuedClip> VisibleQueue() => _queue.Where(item => IsPresent(item.OwnerDiscordUserId)).ToList();
+
+    private bool IsPresent(string discordUserId) =>
+        _connections.Values.Any(connection => connection.DiscordUserId == discordUserId);
 
     private bool IsHostLocked(string connectionId) =>
         _connections.TryGetValue(connectionId, out RoomConnection? connection) &&

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { correctDrift, expectedPosition, type RoomPlayback } from "./watchRoom";
 
 const playback = (overrides: Partial<RoomPlayback> = {}): RoomPlayback => ({
+  itemId: "i",
+  ownerDiscordUserId: "alice",
   clip: {
     clipId: "c",
     videoId: "v",

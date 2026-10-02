@@ -4,13 +4,13 @@ using Xunit;
 namespace Reelshelf.Test.DiscordActivity;
 
 /// <summary>
-/// The in-memory watch room: who hosts, who may change playback, how playback is recorded, and when a room
-/// closes. The hub is a thin layer over this.
+/// The in-memory watch room: who hosts, who may change playback and the queue, how the queue is ordered, how
+/// playback is recorded, and when a room closes. The hub is a thin layer over this.
 /// </summary>
 public class WatchRoomTests
 {
     private const string Instance = "i-1";
-    private static readonly NowPlaying Clip = new(Guid.NewGuid(), Guid.NewGuid(), "Triple", "Apex Legends", "Alice", 30);
+    private static readonly NowPlaying Clip = NewClip("Triple");
 
     private readonly Clock _clock = new();
     private readonly WatchRoomRegistry _rooms;
@@ -74,14 +74,16 @@ public class WatchRoomTests
         _rooms.Join(Instance, Member("c2", "bob"));
         _rooms.Join(Instance, Guest("g1", "guest"));
 
-        Assert.False(room.PlayClip("c2", Clip));
-        Assert.False(room.PlayClip("g1", Clip));
-        Assert.Null(room.Snapshot().Playback);
+        Assert.Equal(EnqueueResult.NotAMember, room.Enqueue("g1", Clip));
+        Assert.Equal(EnqueueResult.Queued, room.Enqueue("c2", Clip));
+        Assert.Equal(Clip, room.Snapshot().Playback!.Clip);
 
-        Assert.True(room.PlayClip("c1", Clip));
         Assert.False(room.SetPlayback("c2", false, 5));
-        Assert.False(room.Stop("g1"));
-        Assert.NotNull(room.Snapshot().Playback);
+        Assert.False(room.SetPlayback("g1", false, 5));
+        Assert.False(room.Next("c2", null));
+        Assert.False(room.SetQueueLocked("c2", true));
+        Assert.True(room.SetPlayback("c1", false, 5));
+        Assert.False(room.Snapshot().Playback!.Playing);
     }
 
     [Fact]
@@ -90,7 +92,7 @@ public class WatchRoomTests
         WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
         Assert.False(room.SetPlayback("c1", true, 3));
 
-        room.PlayClip("c1", Clip);
+        room.Enqueue("c1", Clip);
         RoomPlayback started = room.Snapshot().Playback!;
         Assert.True(started.Playing);
         Assert.Equal(0, started.PositionSeconds);
@@ -111,7 +113,7 @@ public class WatchRoomTests
         Assert.Equal(0, room.Snapshot().Playback!.PositionSeconds);
         Assert.False(room.SetPlayback("c1", true, double.NaN));
 
-        room.Stop("c1");
+        room.Next("c1", null);
         Assert.Null(room.Snapshot().Playback);
     }
 
@@ -122,10 +124,10 @@ public class WatchRoomTests
         _rooms.Join(Instance, Guest("g1", "guest"));
         long afterJoins = room.Snapshot().Version;
 
-        room.PlayClip("g1", Clip);
+        room.Enqueue("g1", Clip);
         Assert.Equal(afterJoins, room.Snapshot().Version);
 
-        room.PlayClip("c1", Clip);
+        room.Enqueue("c1", Clip);
         room.SetPlayback("c1", false, 1);
         Assert.Equal(afterJoins + 2, room.Snapshot().Version);
     }
@@ -134,7 +136,7 @@ public class WatchRoomTests
     public void TheLastToLeaveClosesTheRoom_AndTheNextJoinStartsAFreshOne()
     {
         WatchRoom first = _rooms.Join(Instance, Member("c1", "alice"));
-        first.PlayClip("c1", Clip);
+        first.Enqueue("c1", Clip);
 
         Assert.Null(_rooms.Leave(Instance, "c1"));
         Assert.Null(_rooms.Find(Instance));
@@ -152,8 +154,171 @@ public class WatchRoomTests
         WatchRoom two = _rooms.Join("i-2", Member("c2", "bob"));
 
         Assert.NotSame(one, two);
-        Assert.False(two.PlayClip("c1", Clip));
+        Assert.Equal(EnqueueResult.NotAMember, two.Enqueue("c1", Clip));
     }
+
+    [Fact]
+    public void TheQueueTakesTurnsByWhoQueued()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        _rooms.Join(Instance, Member("c2", "bob"));
+        _rooms.Join(Instance, Member("c3", "carol"));
+
+        room.Enqueue("c1", NewClip("a0")); // Plays at once.
+        room.Enqueue("c1", NewClip("a1"));
+        room.Enqueue("c1", NewClip("a2"));
+        room.Enqueue("c1", NewClip("a3"));
+        room.Enqueue("c2", NewClip("b1"));
+        room.Enqueue("c2", NewClip("b2"));
+        room.Enqueue("c3", NewClip("c1"));
+
+        Assert.Equal("a0", room.Snapshot().Playback!.Clip.Title);
+        Assert.Equal(["a1", "b1", "c1", "a2", "b2", "a3"], QueueTitles(room));
+    }
+
+    [Fact]
+    public void ANewClipNeverJumpsAheadOfTheOwnersEarlierOnes_AfterTheHostReorders()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        _rooms.Join(Instance, Member("c2", "bob"));
+        room.Enqueue("c1", NewClip("playing"));
+        room.Enqueue("c1", NewClip("a1"));
+        room.Enqueue("c2", NewClip("b1"));
+        room.Enqueue("c2", NewClip("b2"));
+        Assert.Equal(["a1", "b1", "b2"], QueueTitles(room));
+
+        // The host sends Bob's first clip to the back, behind his second.
+        Assert.True(room.Move("c1", ItemId(room, "b1"), 2));
+        Assert.Equal(["a1", "b2", "b1"], QueueTitles(room));
+
+        room.Enqueue("c2", NewClip("b3"));
+        Assert.Equal(["a1", "b2", "b1", "b3"], QueueTitles(room));
+    }
+
+    [Fact]
+    public void TheHostModerates_MembersRemoveOnlyTheirOwn()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        _rooms.Join(Instance, Member("c2", "bob"));
+        _rooms.Join(Instance, Member("c3", "carol"));
+        room.Enqueue("c1", NewClip("playing"));
+        room.Enqueue("c2", NewClip("b1"));
+        room.Enqueue("c3", NewClip("c1"));
+        room.Enqueue("c2", NewClip("b2"));
+
+        Assert.False(room.Remove("c3", ItemId(room, "b1")));
+        Assert.False(room.Move("c2", ItemId(room, "b2"), 0));
+        Assert.False(room.PlayNow("c2", ItemId(room, "b2")));
+        Assert.True(room.Remove("c2", ItemId(room, "b1")));
+        Assert.True(room.Remove("c1", ItemId(room, "c1")));
+        Assert.Equal(["b2"], QueueTitles(room));
+
+        Assert.True(room.PlayNow("c1", ItemId(room, "b2")));
+        Assert.Equal("b2", room.Snapshot().Playback!.Clip.Title);
+        Assert.Empty(room.Snapshot().Queue);
+    }
+
+    [Fact]
+    public void ALockedQueueTakesClipsOnlyFromTheHost()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        _rooms.Join(Instance, Member("c2", "bob"));
+        Assert.True(room.SetQueueLocked("c1", true));
+        Assert.True(room.Snapshot().QueueLocked);
+
+        Assert.Equal(EnqueueResult.Locked, room.Enqueue("c2", NewClip("b1")));
+        Assert.Equal(EnqueueResult.Queued, room.Enqueue("c1", NewClip("a1")));
+
+        room.SetQueueLocked("c1", false);
+        Assert.Equal(EnqueueResult.Queued, room.Enqueue("c2", NewClip("b1")));
+    }
+
+    [Fact]
+    public void AClipIsQueuedOnce_AndTheQueueHasALimit()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        NowPlaying again = NewClip("again");
+        room.Enqueue("c1", NewClip("playing"));
+        Assert.Equal(EnqueueResult.Queued, room.Enqueue("c1", again));
+        Assert.Equal(EnqueueResult.AlreadyQueued, room.Enqueue("c1", again));
+
+        for (int i = 1; i < WatchRoom.MaxQueueLength; i++)
+        {
+            Assert.Equal(EnqueueResult.Queued, room.Enqueue("c1", NewClip($"clip {i}")));
+        }
+
+        Assert.Equal(EnqueueResult.Full, room.Enqueue("c1", NewClip("one too many")));
+    }
+
+    [Fact]
+    public void NextMovesOnOnce_FromTheClipThatEnded()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        room.Enqueue("c1", NewClip("first"));
+        room.Enqueue("c1", NewClip("second"));
+        Guid first = room.Snapshot().Playback!.ItemId;
+
+        Assert.True(room.Next("c1", first));
+        Assert.Equal("second", room.Snapshot().Playback!.Clip.Title);
+        Assert.False(room.Next("c1", first));
+        Assert.Equal("second", room.Snapshot().Playback!.Clip.Title);
+
+        Assert.True(room.Next("c1", room.Snapshot().Playback!.ItemId));
+        Assert.Null(room.Snapshot().Playback);
+    }
+
+    [Fact]
+    public void AnAbsentOwnersClipsAreHiddenAndSkipped_UntilTheyReturn()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        _rooms.Join(Instance, Member("c2", "bob"));
+        room.Enqueue("c1", NewClip("playing"));
+        room.Enqueue("c2", NewClip("b1"));
+        room.Enqueue("c1", NewClip("a1"));
+        Assert.Equal(["b1", "a1"], QueueTitles(room));
+
+        _rooms.Leave(Instance, "c2");
+        Assert.Equal(["a1"], QueueTitles(room));
+        Assert.Equal("playing", room.Snapshot().Playback!.Clip.Title);
+
+        // Bob comes back before his turn: his clip is still there.
+        _rooms.Join(Instance, Member("c2b", "bob"));
+        Assert.Equal(["b1", "a1"], QueueTitles(room));
+
+        // He leaves again; when his turn comes his clip is dropped.
+        _rooms.Leave(Instance, "c2b");
+        room.Next("c1", null);
+        Assert.Equal("a1", room.Snapshot().Playback!.Clip.Title);
+        _rooms.Join(Instance, Member("c2c", "bob"));
+        Assert.Empty(room.Snapshot().Queue);
+    }
+
+    [Fact]
+    public void WhenOnlyGuestsAreLeft_NothingPlaysAndTheQueueEmpties()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        _rooms.Join(Instance, Guest("g1", "guest"));
+        room.Enqueue("c1", NewClip("playing"));
+        room.Enqueue("c1", NewClip("next"));
+        room.SetQueueLocked("c1", true);
+
+        _rooms.Leave(Instance, "c1");
+        RoomStateView state = room.Snapshot();
+        Assert.Null(state.Playback);
+        Assert.Empty(state.Queue);
+        Assert.False(state.QueueLocked);
+
+        // Alice coming back finds an empty room, not her old queue.
+        _rooms.Join(Instance, Member("c1b", "alice"));
+        Assert.Empty(room.Snapshot().Queue);
+    }
+
+    private static List<string> QueueTitles(WatchRoom room) => room.Snapshot().Queue.Select(item => item.Title).ToList();
+
+    private static Guid ItemId(WatchRoom room, string title) =>
+        room.Snapshot().Queue.Single(item => item.Title == title).ItemId;
+
+    private static NowPlaying NewClip(string title) => new(Guid.NewGuid(), Guid.NewGuid(), title, "Apex Legends", "Alice", 30);
 
     private RoomConnection Member(string connectionId, string discordUserId)
     {

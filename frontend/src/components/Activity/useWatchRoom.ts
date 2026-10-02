@@ -20,11 +20,16 @@ export type WatchRoom = {
   /** Server time minus local time, from the latest room state. */
   clockOffsetMs: () => number;
   error: string | null;
-  playClip: (clipId: string) => void;
+  addToQueue: (clipId: string) => void;
+  removeFromQueue: (itemId: string) => void;
+  moveInQueue: (itemId: string, toIndex: number) => void;
+  lockQueue: (locked: boolean) => void;
+  playNow: (itemId: string) => void;
+  /** Moves on from `currentItemId`; with null, from whatever is playing. */
+  next: (currentItemId: string | null) => void;
   play: (positionSeconds: number) => void;
   pause: (positionSeconds: number) => void;
   seek: (positionSeconds: number) => void;
-  stop: () => void;
 };
 
 /** The live connection to this Activity instance's watch room. */
@@ -117,10 +122,14 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
     isHost: state?.hostDiscordUserId === session.participant.discordUserId,
     clockOffsetMs: () => offsetRef.current,
     error,
-    playClip: (clipId) => invoke("PlayClip", clipId),
+    addToQueue: (clipId) => invoke("AddToQueue", clipId),
+    removeFromQueue: (itemId) => invoke("RemoveFromQueue", itemId),
+    moveInQueue: (itemId, toIndex) => invoke("MoveInQueue", itemId, toIndex),
+    lockQueue: (locked) => invoke("LockQueue", locked),
+    playNow: (itemId) => invoke("PlayNow", itemId),
+    next: (currentItemId) => invoke("Next", currentItemId),
     play: (position) => invoke("Play", position),
     pause: (position) => invoke("Pause", position),
     seek: (position) => invoke("Seek", position),
-    stop: () => invoke("Stop"),
   };
 }

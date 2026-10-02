@@ -13,6 +13,8 @@ export type HostControls = {
   onPlay: (positionSeconds: number) => void;
   onPause: (positionSeconds: number) => void;
   onSeek: (positionSeconds: number) => void;
+  /** The clip reached its end, so the room moves on to the next one. */
+  onEnded: (itemId: string) => void;
 };
 
 /**
@@ -33,6 +35,7 @@ export function ActivityPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
   const [mutedForAutoplay, setMutedForAutoplay] = useState(false);
+  const itemId = playback.itemId;
   const videoId = playback.clip.videoId;
   const isHost = host !== null;
 
@@ -46,9 +49,9 @@ export function ActivityPlayer({
     offsetRef.current = clockOffsetMs;
   });
 
-  // Which clip the element has loaded far enough to report on; host events from a clip being swapped out
-  // must not move the new one.
-  const loadedVideoIdRef = useRef<string | null>(null);
+  // Which queue item the element has loaded far enough to report on; host events from a clip being swapped
+  // out must not move the new one.
+  const loadedItemIdRef = useRef<string | null>(null);
   const syncRef = useRef<() => void>(() => undefined);
 
   const startPlaying = (video: HTMLVideoElement) => {
@@ -60,17 +63,18 @@ export function ActivityPlayer({
     });
   };
 
+  // Keyed by queue item, so the same clip queued again reloads from the start.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     setFailed(false);
-    loadedVideoIdRef.current = null;
+    loadedItemIdRef.current = null;
     const source = activityStreamUrl(videoId);
 
     // Once the clip is loaded, start where the room is: the beginning for a new clip, or mid-clip for
     // someone joining (or the host reloading) while it plays.
     const onLoaded = () => {
-      loadedVideoIdRef.current = videoId;
+      loadedItemIdRef.current = itemId;
       const room = playbackRef.current;
       video.currentTime = expectedPosition(room, offsetRef.current());
       if (room.playing) startPlaying(video);
@@ -82,26 +86,32 @@ export function ActivityPlayer({
       video.removeEventListener("loadedmetadata", onLoaded);
       detach();
     };
-  }, [videoId]);
+  }, [itemId, videoId]);
 
   // The host reports what they do with their own controls.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const report = (kind: keyof HostControls) => () => {
-      if (loadedVideoIdRef.current !== playbackRef.current.clip.videoId) return;
-      hostRef.current?.[kind](video.currentTime);
+    const isCurrent = () =>
+      loadedItemIdRef.current === playbackRef.current.itemId;
+    const report = (kind: "onPlay" | "onPause" | "onSeek") => () => {
+      if (isCurrent()) hostRef.current?.[kind](video.currentTime);
     };
     const onPlay = report("onPlay");
     const onPause = report("onPause");
     const onSeeked = report("onSeek");
+    const onEnded = () => {
+      if (isCurrent()) hostRef.current?.onEnded(playbackRef.current.itemId);
+    };
     video.addEventListener("play", onPlay);
     video.addEventListener("pause", onPause);
     video.addEventListener("seeked", onSeeked);
+    video.addEventListener("ended", onEnded);
     return () => {
       video.removeEventListener("play", onPlay);
       video.removeEventListener("pause", onPause);
       video.removeEventListener("seeked", onSeeked);
+      video.removeEventListener("ended", onEnded);
     };
   }, []);
 
@@ -115,7 +125,7 @@ export function ActivityPlayer({
     video.playbackRate = 1;
 
     const sync = () => {
-      if (loadedVideoIdRef.current !== playbackRef.current.clip.videoId) return;
+      if (loadedItemIdRef.current !== playbackRef.current.itemId) return;
       const room = playbackRef.current;
       const target = expectedPosition(room, offsetRef.current());
 
@@ -127,6 +137,9 @@ export function ActivityPlayer({
         }
         return;
       }
+
+      // Finished a moment before the host: wait for the room to move on rather than replay from the start.
+      if (video.ended && target >= video.duration - 1) return;
 
       if (video.paused) {
         video.currentTime = target;
