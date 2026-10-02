@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { activityStreamUrl } from "@/shared/services/discordActivity";
 import {
   correctDrift,
@@ -26,11 +26,14 @@ export function ActivityPlayer({
   playback,
   host,
   clockOffsetMs,
+  overlay,
 }: {
   playback: RoomPlayback;
   /** Present when this viewer is the host. */
   host: HostControls | null;
   clockOffsetMs: () => number;
+  /** Drawn over the video, such as the room's reactions. */
+  overlay?: ReactNode;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
@@ -176,6 +179,7 @@ export function ActivityPlayer({
         playsInline
         aria-label={playback.clip.title}
       />
+      {overlay}
       {mutedForAutoplay ? (
         <button
           type="button"

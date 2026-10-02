@@ -70,6 +70,12 @@ public sealed record RoomStateView(
     bool QueueLocked,
     DateTimeOffset ServerTime);
 
+/// <summary>
+/// An emoji someone sent while a clip played. It is broadcast once and never kept: it is not part of
+/// <see cref="RoomStateView"/>.
+/// </summary>
+public sealed record RoomReaction(Guid ItemId, string DiscordUserId, string Name, string Emoji);
+
 public enum EnqueueResult
 {
     Queued,
@@ -93,9 +99,18 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
 {
     public const int MaxQueueLength = 50;
 
+    /// <summary>The reactions on offer; the Activity's reaction bar shows the same set.</summary>
+    public static readonly IReadOnlyList<string> ReactionEmoji = ["😂", "🔥", "😮", "👏", "💀", "❤️"];
+
+    /// <summary>Each person may send this many reactions per <see cref="ReactionWindow"/>, so a held key can't flood the room.</summary>
+    public const int ReactionsPerWindow = 6;
+
+    public static readonly TimeSpan ReactionWindow = TimeSpan.FromSeconds(3);
+
     private readonly object _gate = new();
     private readonly Dictionary<string, RoomConnection> _connections = new(StringComparer.Ordinal);
     private readonly List<QueuedClip> _queue = [];
+    private readonly Dictionary<string, Queue<DateTimeOffset>> _recentReactions = new(StringComparer.Ordinal);
     private string? _hostDiscordUserId;
     private RoomPlayback? _playback;
     private bool _queueLocked;
@@ -145,6 +160,11 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
 
             // The host keeps the role while any of their connections remain; otherwise it passes to the
             // member who has been here longest. With only guests left there is no host, and no clips.
+            if (!IsPresent(left.DiscordUserId))
+            {
+                _recentReactions.Remove(left.DiscordUserId);
+            }
+
             if (left.DiscordUserId == _hostDiscordUserId && !IsPresent(left.DiscordUserId))
             {
                 _hostDiscordUserId = _connections.Values
@@ -347,6 +367,42 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
             };
             _version++;
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Anyone in the room, guests included, reacts to the clip that is playing. Null when nothing is playing,
+    /// the emoji isn't one on offer, or the person has sent too many in the last few seconds.
+    /// </summary>
+    public RoomReaction? React(string connectionId, string emoji)
+    {
+        lock (_gate)
+        {
+            if (_playback is null || !ReactionEmoji.Contains(emoji) ||
+                !_connections.TryGetValue(connectionId, out RoomConnection? caller))
+            {
+                return null;
+            }
+
+            DateTimeOffset now = timeProvider.GetUtcNow();
+            if (!_recentReactions.TryGetValue(caller.DiscordUserId, out Queue<DateTimeOffset>? recent))
+            {
+                recent = new Queue<DateTimeOffset>();
+                _recentReactions[caller.DiscordUserId] = recent;
+            }
+
+            while (recent.Count > 0 && now - recent.Peek() >= ReactionWindow)
+            {
+                recent.Dequeue();
+            }
+
+            if (recent.Count >= ReactionsPerWindow)
+            {
+                return null;
+            }
+
+            recent.Enqueue(now);
+            return new RoomReaction(_playback.ItemId, caller.DiscordUserId, caller.Name, emoji);
         }
     }
 

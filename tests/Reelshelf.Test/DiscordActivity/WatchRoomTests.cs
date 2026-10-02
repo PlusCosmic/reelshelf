@@ -5,7 +5,7 @@ namespace Reelshelf.Test.DiscordActivity;
 
 /// <summary>
 /// The in-memory watch room: who hosts, who may change playback and the queue, how the queue is ordered, how
-/// playback is recorded, and when a room closes. The hub is a thin layer over this.
+/// playback is recorded, who may react and how often, and when a room closes. The hub is a thin layer over this.
 /// </summary>
 public class WatchRoomTests
 {
@@ -311,6 +311,46 @@ public class WatchRoomTests
         // Alice coming back finds an empty room, not her old queue.
         _rooms.Join(Instance, Member("c1b", "alice"));
         Assert.Empty(room.Snapshot().Queue);
+    }
+
+    [Fact]
+    public void AnyoneReactsToThePlayingClip_WithAnEmojiOnOffer()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        _rooms.Join(Instance, Guest("g1", "guest"));
+        Assert.Null(room.React("g1", "🔥"));
+
+        room.Enqueue("c1", Clip);
+        long version = room.Snapshot().Version;
+        RoomReaction reaction = room.React("g1", "🔥")!;
+
+        Assert.Equal(room.Snapshot().Playback!.ItemId, reaction.ItemId);
+        Assert.Equal("guest", reaction.DiscordUserId);
+        Assert.Equal("🔥", reaction.Emoji);
+        Assert.Null(room.React("g1", "🍕"));
+        Assert.Null(room.React("nobody", "🔥"));
+        Assert.Equal(version, room.Snapshot().Version);
+    }
+
+    [Fact]
+    public void ReactionsAreLimitedPerPerson_AndTheLimitRecovers()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        _rooms.Join(Instance, Member("c1-phone", "alice"));
+        _rooms.Join(Instance, Guest("g1", "guest"));
+        room.Enqueue("c1", Clip);
+
+        for (int i = 0; i < WatchRoom.ReactionsPerWindow; i++)
+        {
+            Assert.NotNull(room.React(i % 2 == 0 ? "c1" : "c1-phone", "😂"));
+        }
+
+        Assert.Null(room.React("c1", "😂"));
+        Assert.Null(room.React("c1-phone", "😂"));
+        Assert.NotNull(room.React("g1", "😂"));
+
+        _clock.Advance(WatchRoom.ReactionWindow);
+        Assert.NotNull(room.React("c1", "😂"));
     }
 
     private static List<string> QueueTitles(WatchRoom room) => room.Snapshot().Queue.Select(item => item.Title).ToList();
