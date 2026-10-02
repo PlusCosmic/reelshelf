@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LibraryRouteImport } from './routes/_library'
 import { Route as ClipTranscriptionRouteImport } from './routes/clip-transcription'
 import { Route as LegendDetectionRouteImport } from './routes/legend-detection'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as LibraryIndexRouteImport } from './routes/_library/index'
 import { Route as CollectionsIndexRouteImport } from './routes/collections/index'
@@ -38,6 +40,11 @@ const LegendDetectionRoute = LegendDetectionRouteImport.update({
   path: '/legend-detection',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -46,6 +53,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UploadRoute = UploadRouteImport.update({
@@ -98,8 +110,10 @@ export interface FileRoutesByFullPath {
   '/': typeof LibraryIndexRoute
   '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
+  '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
@@ -112,8 +126,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
+  '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
@@ -129,8 +145,10 @@ export interface FileRoutesById {
   '/_library': typeof LibraryRouteWithChildren
   '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
+  '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
@@ -147,8 +165,10 @@ export interface FileRouteTypes {
     | '/'
     | '/clip-transcription'
     | '/legend-detection'
+    | '/privacy'
     | '/settings'
     | '/sign-in'
+    | '/terms'
     | '/upload'
     | '/collections/$playlistId'
     | '/playlists/$playlistId'
@@ -161,8 +181,10 @@ export interface FileRouteTypes {
   to:
     | '/clip-transcription'
     | '/legend-detection'
+    | '/privacy'
     | '/settings'
     | '/sign-in'
+    | '/terms'
     | '/upload'
     | '/collections/$playlistId'
     | '/playlists/$playlistId'
@@ -177,8 +199,10 @@ export interface FileRouteTypes {
     | '/_library'
     | '/clip-transcription'
     | '/legend-detection'
+    | '/privacy'
     | '/settings'
     | '/sign-in'
+    | '/terms'
     | '/upload'
     | '/collections/$playlistId'
     | '/playlists/$playlistId'
@@ -194,8 +218,10 @@ export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRouteWithChildren
   ClipTranscriptionRoute: typeof ClipTranscriptionRoute
   LegendDetectionRoute: typeof LegendDetectionRoute
+  PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   SignInRoute: typeof SignInRoute
+  TermsRoute: typeof TermsRoute
   UploadRoute: typeof UploadRoute
   CollectionsPlaylistIdRoute: typeof CollectionsPlaylistIdRoute
   PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
@@ -228,6 +254,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegendDetectionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -240,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/upload': {
@@ -325,8 +365,10 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRouteWithChildren,
   ClipTranscriptionRoute: ClipTranscriptionRoute,
   LegendDetectionRoute: LegendDetectionRoute,
+  PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   SignInRoute: SignInRoute,
+  TermsRoute: TermsRoute,
   UploadRoute: UploadRoute,
   CollectionsPlaylistIdRoute: CollectionsPlaylistIdRoute,
   PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,

@@ -77,7 +77,12 @@ function RootComponent() {
     setTheme(next);
   };
 
-  if (pathname.startsWith("/share/") || pathname === "/sign-in") {
+  if (
+    pathname.startsWith("/share/") ||
+    pathname === "/sign-in" ||
+    pathname === "/terms" ||
+    pathname === "/privacy"
+  ) {
     return <PublicShell theme={theme} onToggleTheme={toggleTheme} />;
   }
 

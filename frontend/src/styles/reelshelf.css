@@ -632,6 +632,76 @@ a {
   color: var(--fg);
 }
 
+.rs-signin-legal {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.rs-signin-legal a,
+.rs-legal a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rs-landing-footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.rs-landing-footer-links a:hover {
+  color: var(--fg);
+}
+
+.rs-legal {
+  display: grid;
+  gap: 14px;
+  width: min(680px, 100%);
+  margin: 0 auto;
+  color: var(--fg-soft);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.rs-legal-title {
+  margin: 0 0 8px;
+  color: var(--fg);
+}
+
+.rs-legal h2 {
+  margin: 20px 0 0;
+  color: var(--fg);
+  font-size: 18px;
+}
+
+.rs-legal p,
+.rs-legal ul {
+  margin: 0;
+}
+
+.rs-legal ul {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+}
+
+.rs-legal strong {
+  color: var(--fg);
+}
+
+.rs-legal-links {
+  display: flex;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
 @media (max-width: 900px) {
   .rs-landing-header {
     padding: 20px 16px;
