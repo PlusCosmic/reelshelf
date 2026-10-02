@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { toApiError } from "@/shared/services/apiError";
+import { ActivityClipPicker } from "./ActivityClipPicker";
+import { ActivityPlayer } from "./ActivityPlayer";
 import {
   ActivityUnavailableError,
   activityImageUrl,
   connectToActivity,
   toRoomPresence,
+  type ActivityClip,
   type ActivityConnection,
   type RoomPresence,
 } from "@/shared/services/discordActivity";
@@ -81,6 +84,7 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
   const { sdk, session } = connection;
   const { participant } = session;
   const [present, setPresent] = useState<RoomPresence[]>([]);
+  const [playing, setPlaying] = useState<ActivityClip | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -102,6 +106,20 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
 
   return (
     <section className="rs-activity-room">
+      {playing ? (
+        <div className="rs-activity-now">
+          <ActivityPlayer videoId={playing.videoId} title={playing.title} />
+          <div>
+            <h2 className="rs-display rs-activity-now-title">
+              {playing.title}
+            </h2>
+            {playing.game ? (
+              <p className="rs-activity-role">{playing.game}</p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <div className="rs-activity-you">
         {avatarUrl ? (
           <img className="rs-activity-avatar" src={avatarUrl} alt="" />
@@ -110,7 +128,7 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
           <h1 className="rs-display rs-h2">{participant.name}</h1>
           <p className="rs-activity-role">
             {participant.isMember
-              ? `Your shelf: ${participant.accountName}. You'll be able to queue your clips here.`
+              ? `Your shelf: ${participant.accountName}. Pick a clip below to play it. Playback isn't shared with the room yet.`
               : "Watching as a guest. Have a Reelshelf account? Link Discord in Settings to queue your clips."}
           </p>
         </div>
@@ -138,6 +156,14 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
           ))}
         </ul>
       </div>
+
+      {participant.isMember ? (
+        <ActivityClipPicker
+          roomToken={session.roomToken}
+          playingClipId={playing?.clipId ?? null}
+          onPick={setPlaying}
+        />
+      ) : null}
     </section>
   );
 }

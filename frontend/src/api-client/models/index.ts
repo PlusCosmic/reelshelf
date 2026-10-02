@@ -1,5 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from "./ActivityClip";
+export * from "./ActivityClipsResponse";
 export * from "./ActivityConfigResponse";
 export * from "./ActivityParticipantResponse";
 export * from "./ActivitySessionResponse";

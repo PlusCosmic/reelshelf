@@ -119,6 +119,17 @@ public class ActivitySignInTests
         Assert.Equal(new RoomParticipant("111", InstanceId, "Alice", null), RoomTokenAuthentication.ReadParticipant(principal));
     }
 
+    [Theory]
+    [InlineData(3, true)]
+    [InlineData(4, true)]
+    [InlineData(2, false)]
+    [InlineData(5, false)]
+    [InlineData(null, false)]
+    public void OnlyEncodedClipsArePlayable(int? videoStatus, bool playable)
+    {
+        Assert.Equal(playable, ActivityClipService.IsPlayable(videoStatus));
+    }
+
     private static ActivitySignInService CreateService(FakeDiscord discord, FakeStore store, RoomTokens? tokens = null, string botToken = "bot-token")
     {
         IConfiguration configuration = new ConfigurationBuilder()
