@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { IconChevronLeft } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 
-export const legalOperator = "PlusCosmic";
+export const legalOperator = "Harry Leach (PlusCosmic)";
 export const legalContactEmail = "support@reelshelf.app";
 export const legalGoverningLaw = "England and Wales";
 
