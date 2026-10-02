@@ -118,9 +118,12 @@ function PrivacyRoute() {
       <p>
         We keep your data while your account exists. Deleting a clip removes the
         video from storage and deletes its tags, detections and transcripts.
-        Unlinking a sign-in method deletes its stored tokens. To delete your
-        whole account, email us and we'll remove everything within 30 days.
-        Backups and logs age out on their own schedule.
+        Unlinking a sign-in method deletes its stored tokens. You can delete
+        your whole account in Settings: it stops working straight away, and its
+        clips are removed from storage and the rest of its data deleted shortly
+        after, usually within minutes. Collections you made go with it,
+        including for their collaborators. Backups and logs age out on their own
+        schedule.
       </p>
 
       <h2>Your rights</h2>

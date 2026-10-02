@@ -33,11 +33,27 @@ public static class AccountEmails
             $"<p>Once it's full, new uploads are refused until you <a href=\"{Encode(libraryUrl)}\">delete some clips</a>.</p>"));
     }
 
-    private static string Wrap(string title, string body)
+    public static EmailMessage AccountDeletionStarted(string to)
+    {
+        string subject = "Your Reelshelf account is being deleted";
+        string text =
+            "Your Reelshelf account and everything in it, including your clips, collections and share links, " +
+            "are being permanently deleted. This can't be undone.\n\n" +
+            "If you didn't ask for this, someone may have access to your Discord or Twitch account; secure it now.\n";
+
+        return new EmailMessage(to, subject, text, Wrap(subject,
+            "<p>Your Reelshelf account and everything in it, including your clips, collections and share links, " +
+            "are being permanently deleted. This can't be undone.</p>" +
+            "<p>If you didn't ask for this, someone may have access to your Discord or Twitch account; secure it now.</p>",
+            footer: "Sent by Reelshelf."));
+    }
+
+    private static string Wrap(string title, string body,
+        string footer = "Sent by Reelshelf. Change or remove your address in Settings.")
     {
         return "<!doctype html><html><body style=\"font-family:system-ui,sans-serif;line-height:1.5;color:#222\">" +
                $"<h2 style=\"font-weight:600\">{Encode(title)}</h2>{body}" +
-               "<p style=\"color:#777;font-size:12px\">Sent by Reelshelf. Change or remove your address in Settings.</p>" +
+               $"<p style=\"color:#777;font-size:12px\">{Encode(footer)}</p>" +
                "</body></html>";
     }
 

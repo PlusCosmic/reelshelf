@@ -11,12 +11,16 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
     private const string IdentityColumns =
         "id, user_id, provider, provider_user_id, username, display_name, avatar_url, email, linked_at";
 
+    /// <summary>
+    /// Accounts being deleted are treated as gone, so their sessions stop resolving to a user the moment
+    /// deletion is requested, before the background service has removed their clips.
+    /// </summary>
     public async Task<UserRow?> GetUserById(Guid id)
     {
         string sql = $@"
             SELECT {UserColumns}
             FROM app_user
-            WHERE id = @id
+            WHERE id = @id AND deletion_requested_at IS NULL
             LIMIT 1";
 
         return await connection.QuerySingleOrDefaultAsync<UserRow>(sql, new { id });
@@ -31,7 +35,7 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         string sql = $@"
             SELECT {UserColumns}
             FROM app_user
-            WHERE username = @username
+            WHERE username = @username AND deletion_requested_at IS NULL
             ORDER BY id
             LIMIT 2";
 

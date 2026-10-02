@@ -29,6 +29,7 @@ export * from "./CreateGamingSessionPlaylistRequest";
 export * from "./CreatePlaylistRequest";
 export * from "./CurrentMapRotation";
 export * from "./CurrentUserResponse";
+export * from "./DeleteAccountRequest";
 export * from "./DetectedTeammate";
 export * from "./DevLoginRequest";
 export * from "./DevLoginResponse";

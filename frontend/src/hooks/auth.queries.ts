@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { logout } from "@/shared/services/auth";
 import {
+  deleteAccount,
   fetchLinkedIdentities,
   fetchMe,
   fetchStorageUsage,
@@ -74,6 +75,18 @@ export function useLogout() {
   return useMutation({
     mutationFn: logout,
     onSuccess: () => {
+      queryClient.clear();
+    },
+  });
+}
+
+export function useDeleteAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => {
+      // The session is gone along with the account, so nothing cached belongs to anyone any more.
       queryClient.clear();
     },
   });
