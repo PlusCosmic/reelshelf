@@ -70,6 +70,12 @@ function SignInRoute() {
           </p>
         ) : null}
 
+        <p className="rs-signin-legal">
+          By continuing you agree to the{" "}
+          <Link to="/terms">terms of service</Link> and{" "}
+          <Link to="/privacy">privacy policy</Link>.
+        </p>
+
         <Link to="/" className="rs-signin-back">
           <IconChevronLeft size={14} aria-hidden="true" />
           Back to the front page

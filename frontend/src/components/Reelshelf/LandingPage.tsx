@@ -295,7 +295,13 @@ export function LandingPage({
         </section>
       </main>
 
-      <footer className="rs-landing-footer">for the clips worth keeping</footer>
+      <footer className="rs-landing-footer">
+        for the clips worth keeping
+        <nav className="rs-landing-footer-links" aria-label="Legal">
+          <Link to="/terms">Terms</Link>
+          <Link to="/privacy">Privacy</Link>
+        </nav>
+      </footer>
     </div>
   );
 }

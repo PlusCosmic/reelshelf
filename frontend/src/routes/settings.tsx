@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   LinkedAccounts,
@@ -60,6 +60,14 @@ function SettingsRoute() {
             primary one.
           </p>
           <LinkedAccounts notice={notice} />
+        </div>
+        <div className="rs-settings-section">
+          <h2 className="rs-eyebrow">Your data</h2>
+          <p className="rs-sidebar-copy">
+            Read the <Link to="/privacy">privacy policy</Link> and{" "}
+            <Link to="/terms">terms of service</Link>. To delete your account,
+            email the address in the privacy policy.
+          </p>
         </div>
       </section>
     </>
