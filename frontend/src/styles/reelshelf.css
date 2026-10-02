@@ -4043,6 +4043,89 @@ html:has(.rs-library-route) {
   color: var(--tip-ink);
 }
 
+.rs-activity-reaction-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rs-activity-reaction-bar .rs-icon-button {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.rs-activity-reactions {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Lasts as long as reactionLifetimeMs in useWatchRoom. */
+.rs-activity-reaction {
+  position: absolute;
+  bottom: 8%;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  animation: rs-reaction-float 2.6s ease-out forwards;
+}
+
+.rs-activity-reaction-emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.rs-activity-reaction-name {
+  max-width: 96px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--scrim) 70%, transparent);
+  color: var(--tip-ink);
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes rs-reaction-float {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(-8%) scale(1);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-260%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-activity-reaction {
+    animation-name: rs-reaction-fade;
+  }
+
+  @keyframes rs-reaction-fade {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    10%,
+    80% {
+      opacity: 1;
+    }
+  }
+}
+
 .rs-activity-queue {
   display: grid;
   gap: 12px;

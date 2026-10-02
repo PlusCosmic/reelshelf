@@ -57,6 +57,17 @@ export type RoomStateView = {
   serverTime: string;
 };
 
+/** An emoji someone sent while a clip played; broadcast once, never kept. */
+export type RoomReaction = {
+  itemId: string;
+  discordUserId: string;
+  name: string;
+  emoji: string;
+};
+
+/** The reactions on offer; the hub refuses any other (WatchRoom.ReactionEmoji). */
+export const reactionEmoji = ["😂", "🔥", "😮", "👏", "💀", "❤️"] as const;
+
 export const watchRoomHubPath = "/api/activity/hub";
 
 /**

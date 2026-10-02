@@ -21,6 +21,7 @@ public sealed class WatchRoomHub(
 {
     public const string Path = "/api/activity/hub";
     public const string RoomStateMethod = "RoomState";
+    public const string ReactionMethod = "Reaction";
 
     public override async Task OnConnectedAsync()
     {
@@ -125,6 +126,19 @@ public sealed class WatchRoomHub(
     {
         WatchRoom room = Room();
         await ApplyChange(room, room.PlayNow(Context.ConnectionId, itemId));
+    }
+
+    /// <summary>
+    /// Sends an emoji to everyone watching. A refused reaction (nothing playing, an emoji not on offer, too
+    /// many too fast) is dropped quietly rather than shown as an error.
+    /// </summary>
+    public async Task React(string emoji)
+    {
+        WatchRoom room = Room();
+        if (room.React(Context.ConnectionId, emoji) is { } reaction)
+        {
+            await Clients.Group(GroupName(room.InstanceId)).SendAsync(ReactionMethod, reaction);
+        }
     }
 
     public Task Play(double positionSeconds) => SetPlayback(true, positionSeconds);

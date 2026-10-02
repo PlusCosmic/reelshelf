@@ -5,10 +5,20 @@ import {
   createWatchRoomConnection,
   isConnected,
   refreshRoomToken,
+  type RoomReaction,
   type RoomStateView,
 } from "@/shared/services/watchRoom";
 
 export type WatchRoomStatus = "connecting" | "connected" | "reconnecting";
+
+/** How long a reaction stays on screen; matches the float animation in reelshelf.css. */
+const reactionLifetimeMs = 2600;
+
+/** More than this on screen at once and the oldest make way. */
+const maxReactionsOnScreen = 30;
+
+/** A reaction on screen, with a lane across the player so a burst spreads out. */
+export type FloatingReaction = RoomReaction & { key: number; lane: number };
 
 /** Renew the room token this long before it expires, so a reconnect never presents an expired one. */
 const refreshLeadMs = 5 * 60_000;
@@ -20,6 +30,8 @@ export type WatchRoom = {
   /** Server time minus local time, from the latest room state. */
   clockOffsetMs: () => number;
   error: string | null;
+  reactions: FloatingReaction[];
+  react: (emoji: string) => void;
   addToQueue: (clipId: string) => void;
   removeFromQueue: (itemId: string) => void;
   moveInQueue: (itemId: string, toIndex: number) => void;
@@ -37,6 +49,7 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
   const [state, setState] = useState<RoomStateView | null>(null);
   const [status, setStatus] = useState<WatchRoomStatus>("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const tokenRef = useRef(session.roomToken);
   const expiresAtRef = useRef(session.roomTokenExpiresAt);
   const offsetRef = useRef(0);
@@ -46,6 +59,8 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
   useEffect(() => {
     let disposed = false;
     let refreshTimer: number | undefined;
+    let reactionCount = 0;
+    const reactionTimers = new Set<number>();
 
     const scheduleRefresh = () => {
       const delay = Math.max(
@@ -77,6 +92,19 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
       offsetRef.current = Date.parse(next.serverTime) - Date.now();
       setState(next);
     });
+    connection.on("Reaction", (reaction: RoomReaction) => {
+      const key = reactionCount++;
+      setReactions((current) =>
+        [...current, { ...reaction, key, lane: key % 8 }].slice(
+          -maxReactionsOnScreen,
+        ),
+      );
+      const timer = window.setTimeout(() => {
+        reactionTimers.delete(timer);
+        setReactions((current) => current.filter((item) => item.key !== key));
+      }, reactionLifetimeMs);
+      reactionTimers.add(timer);
+    });
     connection.onreconnecting(() => {
       if (!disposed) setStatus("reconnecting");
     });
@@ -97,6 +125,7 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
     return () => {
       disposed = true;
       window.clearTimeout(refreshTimer);
+      reactionTimers.forEach((timer) => window.clearTimeout(timer));
       connectionRef.current = null;
       void connection.stop();
     };
@@ -122,6 +151,8 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
     isHost: state?.hostDiscordUserId === session.participant.discordUserId,
     clockOffsetMs: () => offsetRef.current,
     error,
+    reactions,
+    react: (emoji) => invoke("React", emoji),
     addToQueue: (clipId) => invoke("AddToQueue", clipId),
     removeFromQueue: (itemId) => invoke("RemoveFromQueue", itemId),
     moveInQueue: (itemId, toIndex) => invoke("MoveInQueue", itemId, toIndex),

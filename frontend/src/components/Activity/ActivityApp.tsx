@@ -4,6 +4,10 @@ import { toApiError } from "@/shared/services/apiError";
 import { ActivityClipPicker } from "./ActivityClipPicker";
 import { ActivityPlayer } from "./ActivityPlayer";
 import { ActivityQueue } from "./ActivityQueue";
+import {
+  ActivityReactionBar,
+  ActivityReactionLayer,
+} from "./ActivityReactions";
 import { useWatchRoom, type WatchRoom } from "./useWatchRoom";
 import {
   ActivityUnavailableError,
@@ -107,6 +111,12 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
           <ActivityPlayer
             playback={playback}
             clockOffsetMs={room.clockOffsetMs}
+            overlay={
+              <ActivityReactionLayer
+                reactions={room.reactions}
+                itemId={playback.itemId}
+              />
+            }
             host={
               room.isHost
                 ? {
@@ -139,6 +149,7 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
               </button>
             ) : null}
           </div>
+          <ActivityReactionBar onReact={room.react} />
         </div>
       ) : null}
 
