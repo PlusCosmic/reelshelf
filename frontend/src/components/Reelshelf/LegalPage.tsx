@@ -3,9 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { IconChevronLeft } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 
-// TODO: set the contact address before these pages go live.
 export const legalOperator = "PlusCosmic";
-export const legalContactEmail = "[contact email]";
+export const legalContactEmail = "support@reelshelf.app";
 export const legalGoverningLaw = "England and Wales";
 
 export function LegalPage({
