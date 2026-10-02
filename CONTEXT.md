@@ -70,7 +70,7 @@ A **Watch Room** participant whose Discord login is a **Linked Identity**. Can q
 The **Room Member** who controls playback and the queue: the first member to connect, then the longest-connected member when the host leaves.
 
 **Room Queue**:
-The clips waiting to play in a **Watch Room**, played in turn by who added them.
+The clips waiting to play in a **Watch Room**, played in turn by who added them. Only a clip's owner can add it, and it is shown only while they are in the room.
 
 ## Relationships
 

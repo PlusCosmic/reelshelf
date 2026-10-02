@@ -3,6 +3,7 @@ import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { toApiError } from "@/shared/services/apiError";
 import { ActivityClipPicker } from "./ActivityClipPicker";
 import { ActivityPlayer } from "./ActivityPlayer";
+import { ActivityQueue } from "./ActivityQueue";
 import { useWatchRoom, type WatchRoom } from "./useWatchRoom";
 import {
   ActivityUnavailableError,
@@ -19,7 +20,8 @@ type ConnectState =
 
 /**
  * The watch room inside a Discord voice channel (ADR-0006): sign in through Discord, then join the room's
- * live connection. The host picks clips and controls playback; everyone else follows along.
+ * live connection. Members queue clips from their own shelf; the host controls playback and the queue, and
+ * everyone else follows along.
  */
 export function ActivityApp() {
   const [state, setState] = useState<ConnectState>({ status: "connecting" });
@@ -86,6 +88,9 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
   const playback = room.state?.playback ?? null;
   const host = room.state?.participants.find((person) => person.isHost);
   const avatarUrl = activityImageUrl(participant.avatarUrl);
+  const queue = room.state?.queue ?? [];
+  const canQueue =
+    participant.isMember && (room.isHost || !room.state?.queueLocked);
 
   return (
     <section className="rs-activity-room">
@@ -104,7 +109,12 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
             clockOffsetMs={room.clockOffsetMs}
             host={
               room.isHost
-                ? { onPlay: room.play, onPause: room.pause, onSeek: room.seek }
+                ? {
+                    onPlay: room.play,
+                    onPause: room.pause,
+                    onSeek: room.seek,
+                    onEnded: room.next,
+                  }
                 : null
             }
           />
@@ -120,8 +130,12 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
               </p>
             </div>
             {room.isHost ? (
-              <button type="button" className="rs-primary" onClick={room.stop}>
-                Stop
+              <button
+                type="button"
+                className="rs-primary"
+                onClick={() => room.next(playback.itemId)}
+              >
+                {queue.length > 0 ? "Skip" : "Stop"}
               </button>
             ) : null}
           </div>
@@ -177,11 +191,18 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
         </ul>
       </div>
 
-      {room.isHost ? (
+      {playback || queue.length > 0 || participant.isMember ? (
+        <ActivityQueue
+          room={room}
+          viewerDiscordUserId={participant.discordUserId}
+        />
+      ) : null}
+
+      {canQueue ? (
         <ActivityClipPicker
           roomToken={session.roomToken}
-          playingClipId={playback?.clip.clipId ?? null}
-          onPick={(clip) => room.playClip(clip.clipId)}
+          queuedClipIds={new Set(queue.map((item) => item.clipId))}
+          onPick={(clip) => room.addToQueue(clip.clipId)}
         />
       ) : null}
     </section>
@@ -194,14 +215,17 @@ function describeRole(
   hostName: string | undefined,
 ): string {
   if (room.isHost) {
-    return `You're hosting from ${participant.accountName}'s shelf. Pick a clip below and everyone watches it with you.`;
+    return `You're hosting. Add clips from ${participant.accountName}'s shelf below and everyone watches them with you.`;
   }
   const hosting = hostName
     ? `${hostName} is hosting.`
     : "Nobody with a Reelshelf shelf is here yet.";
-  return participant.isMember
-    ? `${hosting} Queuing your own clips is coming next.`
-    : `${hosting} You're watching as a guest. Have a Reelshelf account? Link Discord in Settings to share your clips.`;
+  if (!participant.isMember) {
+    return `${hosting} You're watching as a guest. Have a Reelshelf account? Link Discord in Settings to share your clips.`;
+  }
+  return room.state?.queueLocked
+    ? `${hosting} They've locked the queue for now.`
+    : `${hosting} Add clips from your shelf to the queue below.`;
 }
 
 async function describeFailure(error: unknown): Promise<string> {

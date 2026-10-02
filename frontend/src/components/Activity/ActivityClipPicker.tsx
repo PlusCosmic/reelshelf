@@ -22,14 +22,14 @@ const initialState: PickerState = {
   failed: false,
 };
 
-/** The member's own clips, newest first, with a search box; picking one plays it. */
+/** The member's own clips, newest first, with a search box; picking one adds it to the room's queue. */
 export function ActivityClipPicker({
   roomToken,
-  playingClipId,
+  queuedClipIds,
   onPick,
 }: {
   roomToken: string;
-  playingClipId: string | null;
+  queuedClipIds: ReadonlySet<string>;
   onPick: (clip: ActivityClip) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -86,7 +86,7 @@ export function ActivityClipPicker({
   return (
     <section className="rs-activity-picker">
       <div className="rs-activity-picker-head">
-        <h2 className="rs-activity-kicker">Your clips</h2>
+        <h2 className="rs-activity-kicker">Add from your shelf</h2>
         <label className="rs-search">
           <input
             type="search"
@@ -108,31 +108,37 @@ export function ActivityClipPicker({
       ) : null}
 
       <ul className="rs-activity-clips">
-        {state.clips.map((clip) => (
-          <li key={clip.clipId}>
-            <button
-              type="button"
-              className="rs-activity-clip"
-              aria-current={clip.clipId === playingClipId ? "true" : undefined}
-              disabled={!clip.ready}
-              onClick={() => onPick(clip)}
-            >
-              <img
-                src={activityThumbnailUrl(clip.videoId)}
-                alt=""
-                loading="lazy"
-              />
-              <span className="rs-activity-clip-title">{clip.title}</span>
-              <span className="rs-activity-clip-meta">
-                {clip.ready
-                  ? [clip.game, formatDuration(clip.durationSeconds)]
-                      .filter(Boolean)
-                      .join(" · ")
-                  : "Still encoding"}
-              </span>
-            </button>
-          </li>
-        ))}
+        {state.clips.map((clip) => {
+          const queued = queuedClipIds.has(clip.clipId);
+          return (
+            <li key={clip.clipId}>
+              <button
+                type="button"
+                className="rs-activity-clip"
+                aria-current={queued ? "true" : undefined}
+                aria-label={`Add ${clip.title} to the queue`}
+                disabled={!clip.ready || queued}
+                onClick={() => onPick(clip)}
+              >
+                <img
+                  src={activityThumbnailUrl(clip.videoId)}
+                  alt=""
+                  loading="lazy"
+                />
+                <span className="rs-activity-clip-title">{clip.title}</span>
+                <span className="rs-activity-clip-meta">
+                  {queued
+                    ? "In the queue"
+                    : clip.ready
+                      ? [clip.game, formatDuration(clip.durationSeconds)]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : "Still encoding"}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
 
       {state.loading ? (

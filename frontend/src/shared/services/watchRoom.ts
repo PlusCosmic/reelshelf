@@ -18,7 +18,10 @@ export type NowPlaying = {
 };
 
 export type RoomPlayback = {
+  /** This play of the clip; a clip queued again later is a new item. */
+  itemId: string;
   clip: NowPlaying;
+  ownerDiscordUserId: string;
   playing: boolean;
   positionSeconds: number;
   /** Server time when `positionSeconds` was recorded. */
@@ -33,11 +36,24 @@ export type RoomParticipantView = {
   isHost: boolean;
 };
 
+/** A queued clip. It has no video id: the stream is only handed out once the clip plays. */
+export type QueueItemView = {
+  itemId: string;
+  clipId: string;
+  title: string;
+  game: string;
+  ownerName: string;
+  ownerDiscordUserId: string;
+  durationSeconds: number;
+};
+
 export type RoomStateView = {
   version: number;
   hostDiscordUserId: string | null;
   participants: RoomParticipantView[];
   playback: RoomPlayback | null;
+  queue: QueueItemView[];
+  queueLocked: boolean;
   serverTime: string;
 };
 
