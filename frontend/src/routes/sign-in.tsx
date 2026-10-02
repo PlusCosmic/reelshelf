@@ -7,6 +7,7 @@ import { authProviders, startLogin } from "@/shared/services/auth";
 
 type SignInSearch = {
   auth_error?: string;
+  account_deleted?: boolean;
 };
 
 export const Route = createFileRoute("/sign-in")({
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/sign-in")({
   validateSearch: (search: Record<string, unknown>): SignInSearch => ({
     auth_error:
       typeof search.auth_error === "string" ? search.auth_error : undefined,
+    account_deleted: search.account_deleted === true ? true : undefined,
   }),
 });
 
@@ -63,6 +65,13 @@ function SignInRoute() {
             </button>
           ))}
         </div>
+
+        {search.account_deleted ? (
+          <p className="rs-signin-copy" role="status">
+            Your account has been deleted. Its clips are being removed from
+            storage now.
+          </p>
+        ) : null}
 
         {search.auth_error ? (
           <p className="rs-landing-error rs-signin-error" role="alert">

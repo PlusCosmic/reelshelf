@@ -15,6 +15,7 @@
 import * as runtime from "../runtime";
 import type {
   CurrentUserResponse,
+  DeleteAccountRequest,
   LinkedIdentity,
   SetEmailRequest,
   StorageUsageResponse,
@@ -23,6 +24,8 @@ import type {
 import {
   CurrentUserResponseFromJSON,
   CurrentUserResponseToJSON,
+  DeleteAccountRequestFromJSON,
+  DeleteAccountRequestToJSON,
   LinkedIdentityFromJSON,
   LinkedIdentityToJSON,
   SetEmailRequestFromJSON,
@@ -35,6 +38,10 @@ import {
 
 export interface ApiUserUserIdGetRequest {
   userId: string;
+}
+
+export interface DeleteMyAccountRequest {
+  deleteAccountRequest: DeleteAccountRequest;
 }
 
 export interface SetMyEmailRequest {
@@ -98,6 +105,52 @@ export class UserEndpointsApi extends runtime.BaseAPI {
       initOverrides,
     );
     return await response.value();
+  }
+
+  /**
+   */
+  async deleteMyAccountRaw(
+    requestParameters: DeleteMyAccountRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["deleteAccountRequest"] == null) {
+      throw new runtime.RequiredError(
+        "deleteAccountRequest",
+        'Required parameter "deleteAccountRequest" was null or undefined when calling deleteMyAccount().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/me/deletion`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: DeleteAccountRequestToJSON(
+          requestParameters["deleteAccountRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async deleteMyAccount(
+    requestParameters: DeleteMyAccountRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteMyAccountRaw(requestParameters, initOverrides);
   }
 
   /**

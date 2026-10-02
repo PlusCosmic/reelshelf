@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
 using Reelshelf.Storage;
@@ -17,6 +19,7 @@ public static class UserEndpoints
         meGroup.MapGet("/storage", GetStorageUsage).WithName("GetMyStorageUsage");
         meGroup.MapGet("/identities", GetLinkedIdentities).WithName("GetMyLinkedIdentities");
         meGroup.MapDelete("/identities/{provider}", UnlinkIdentity).WithName("UnlinkMyIdentity");
+        meGroup.MapPost("/deletion", DeleteAccount).WithName("DeleteMyAccount");
 
         // Endpoints that don't need the current user but still require authorization
         app.MapGet("user/{userId:guid}", GetUser).RequireAuthorization();
@@ -92,6 +95,26 @@ public static class UserEndpoints
         };
     }
 
+    /// <summary>
+    /// Permanently deletes the caller's account. It stops working immediately and the session is ended; the clips
+    /// and the rest of the data are removed in the background.
+    /// </summary>
+    private static async Task<Results<NoContent, BadRequest<string>>> DeleteAccount(
+        AuthenticatedUser user,
+        DeleteAccountRequest request,
+        AccountDeletionService accountDeletion,
+        HttpContext context)
+    {
+        if (!AccountDeletionService.IsConfirmed(request.Confirmation))
+        {
+            return TypedResults.BadRequest($"Type \"{AccountDeletionService.ConfirmationPhrase}\" to confirm.");
+        }
+
+        await accountDeletion.Request(user.Id);
+        await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return TypedResults.NoContent();
+    }
+
     private static async Task<Results<Ok<UserProfile>, NotFound>> GetUser(Guid userId, UserStatements userStatements)
     {
         UserStatements.UserRow? dbUser = await userStatements.GetUserById(userId);
@@ -131,3 +154,6 @@ public sealed record CurrentUserResponse(
 
 /// <summary>An empty or null email clears the address; onboarding still counts as completed.</summary>
 public sealed record SetEmailRequest(string? Email);
+
+/// <summary><see cref="Confirmation"/> must be the phrase the user was asked to type.</summary>
+public sealed record DeleteAccountRequest(string? Confirmation);

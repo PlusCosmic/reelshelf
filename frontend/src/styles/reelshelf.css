@@ -5542,6 +5542,20 @@ html:has(.rs-library-route) {
   gap: 10px;
 }
 
+.rs-primary-danger {
+  background: var(--danger);
+  color: var(--bg);
+}
+
+.rs-delete-account-note p {
+  margin: 0 0 6px;
+}
+
+.rs-delete-account-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
 .rs-email-actions {
   display: flex;
   flex-wrap: wrap;

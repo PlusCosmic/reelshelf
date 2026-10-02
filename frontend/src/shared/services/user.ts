@@ -42,6 +42,16 @@ export async function setEmail(email: string): Promise<void> {
   await createUserApi().setMyEmail({ setEmailRequest: { email } });
 }
 
+/** The phrase the user types to confirm; the API checks it too. */
+export const deleteAccountPhrase = "delete my account";
+
+/** Permanently deletes the account and ends the session; clips are removed in the background. */
+export async function deleteAccount(confirmation: string): Promise<void> {
+  await createUserApi().deleteMyAccount({
+    deleteAccountRequest: { confirmation },
+  });
+}
+
 function fromCurrentUserResponse(user: CurrentUserResponse): CurrentUser {
   return {
     id: user.id,

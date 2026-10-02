@@ -4,6 +4,7 @@ import {
   LinkedAccounts,
   describeLinkResult,
 } from "@/components/Reelshelf/LinkedAccounts";
+import { DeleteAccount } from "@/components/Reelshelf/DeleteAccount";
 import { EmailField } from "@/components/Reelshelf/EmailField";
 import { useCurrentUser } from "@/hooks/queries";
 
@@ -65,9 +66,16 @@ function SettingsRoute() {
           <h2 className="rs-eyebrow">Your data</h2>
           <p className="rs-sidebar-copy">
             Read the <Link to="/privacy">privacy policy</Link> and{" "}
-            <Link to="/terms">terms of service</Link>. To delete your account,
-            email the address in the privacy policy.
+            <Link to="/terms">terms of service</Link>.
           </p>
+        </div>
+        <div className="rs-settings-section">
+          <h2 className="rs-eyebrow">Delete account</h2>
+          <p className="rs-sidebar-copy">
+            Permanently delete your account, every clip in it and the
+            collections you made. This can't be undone.
+          </p>
+          <DeleteAccount />
         </div>
       </section>
     </>

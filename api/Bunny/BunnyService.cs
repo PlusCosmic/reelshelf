@@ -2,7 +2,7 @@ using Reelshelf.Bunny.Models;
 
 namespace Reelshelf.Bunny;
 
-public class BunnyService
+public class BunnyService : Users.IClipVideoHost
 {
     private readonly string _collectionsUrl;
 
@@ -114,6 +114,19 @@ public class BunnyService
     public async Task DeleteVideoAsync(Guid videoId)
     {
         var url = _videosUrl + $"/{videoId}";
+        var response = await _httpClient.DeleteAsync(url);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return;
+        }
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>Idempotent like <see cref="DeleteVideoAsync"/>: a collection Bunny no longer knows about counts as deleted.</summary>
+    public async Task DeleteCollectionAsync(Guid collectionId)
+    {
+        var url = _collectionsUrl + $"/{collectionId}";
         var response = await _httpClient.DeleteAsync(url);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {

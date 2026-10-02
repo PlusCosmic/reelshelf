@@ -2121,6 +2121,39 @@
         }
       }
     },
+    "/api/me/deletion": {
+      "post": {
+        "tags": [
+          "UserEndpoints"
+        ],
+        "operationId": "DeleteMyAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/twitch/clips": {
       "get": {
         "tags": [
@@ -3344,6 +3377,20 @@
           },
           "is_admin": {
             "type": "boolean"
+          }
+        }
+      },
+      "DeleteAccountRequest": {
+        "required": [
+          "confirmation"
+        ],
+        "type": "object",
+        "properties": {
+          "confirmation": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
