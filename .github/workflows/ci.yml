@@ -50,7 +50,7 @@ jobs:
     services:
       # Tests marked [PostgresFact] run against this; they need the pgvector extension.
       postgres:
-        image: pgvector/pgvector:pg17
+        image: pgvector/pgvector:0.8.7-pg17
         env:
           POSTGRES_PASSWORD: postgres
         ports:
