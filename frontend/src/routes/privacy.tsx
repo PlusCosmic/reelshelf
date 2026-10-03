@@ -11,7 +11,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyRoute() {
   return (
-    <LegalPage title="Privacy policy" updated="2 October 2026">
+    <LegalPage title="Privacy policy" updated="3 October 2026">
       <p>
         This explains what Reelshelf, run by {legalOperator}, collects, why, and
         who else handles it. We don't sell your data, show ads or use tracking
@@ -63,6 +63,13 @@ function PrivacyRoute() {
           Google or Deepgram) to make clips searchable. Transcripts are used for
           search and may be reviewed by us to check their quality. Email us if
           you'd like your clips left out of transcription.
+        </li>
+        <li>
+          <strong>Clip summaries:</strong> a transcript, with the clip's title,
+          game and date, is sent to OpenAI to write a short searchable
+          description of the clip, and that description is turned into a search
+          index entry. Summaries are stored, like transcripts, for search and
+          quality checks, and are deleted with the clip.
         </li>
       </ul>
       <p>

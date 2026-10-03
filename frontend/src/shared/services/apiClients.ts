@@ -1,5 +1,6 @@
 import {
   ClipsEndpointsApi,
+  ClipSummaryEndpointsApi,
   ClipTranscriptionEndpointsApi,
   Configuration as ClipsConfiguration,
   DiscordActivityEndpointsApi,
@@ -47,6 +48,10 @@ export function createClipTranscriptionApi() {
   return new ClipTranscriptionEndpointsApi(
     new ClipsConfiguration(clientOptions),
   );
+}
+
+export function createClipSummaryApi() {
+  return new ClipSummaryEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
 export function createTwitchClipsApi() {

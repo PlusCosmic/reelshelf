@@ -1989,6 +1989,132 @@
         }
       }
     },
+    "/api/clip-summary/usage": {
+      "get": {
+        "tags": [
+          "ClipSummaryEndpoints"
+        ],
+        "operationId": "GetClipSummaryUsage",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClipSummaryUsage"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clip-summary/backfill": {
+      "post": {
+        "tags": [
+          "ClipSummaryEndpoints"
+        ],
+        "operationId": "BackfillClipSummary",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackfillClipSummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipSummaryBackfillResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clip-summary/clips/{clipId}/runs": {
+      "post": {
+        "tags": [
+          "ClipSummaryEndpoints"
+        ],
+        "operationId": "QueueClipSummaryRun",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueClipSummaryRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipSummaryRun"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "ClipSummaryEndpoints"
+        ],
+        "operationId": "GetClipSummaryRuns",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClipSummaryRun"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/me": {
       "get": {
         "tags": [
@@ -2631,6 +2757,20 @@
           }
         }
       },
+      "BackfillClipSummaryRequest": {
+        "required": [
+          "reasoning_effort"
+        ],
+        "type": "object",
+        "properties": {
+          "reasoning_effort": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "BackfillLegendDetectionRequest": {
         "required": [
           "reasoning_effort"
@@ -2923,6 +3063,250 @@
       },
       "ClipSortOrder": {
         "type": "integer"
+      },
+      "ClipSummaryBackfillResponse": {
+        "required": [
+          "queued"
+        ],
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ClipSummaryRun": {
+        "required": [
+          "id",
+          "clip_id",
+          "source_transcription_run_id",
+          "trigger",
+          "provider",
+          "model",
+          "reasoning_effort",
+          "prompt_version",
+          "status",
+          "attempts",
+          "description",
+          "mood_tags",
+          "quotes",
+          "people",
+          "has_embedding",
+          "embedding_model",
+          "raw_response",
+          "input_tokens",
+          "cached_input_tokens",
+          "output_tokens",
+          "embedding_tokens",
+          "duration_ms",
+          "error",
+          "created_at",
+          "completed_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_transcription_run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trigger": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "prompt_version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mood_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "quotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "has_embedding": {
+            "type": "boolean"
+          },
+          "embedding_model": {
+            "type": "string"
+          },
+          "raw_response": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "input_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "cached_input_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "output_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "embedding_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "duration_ms": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ClipSummaryUsage": {
+        "required": [
+          "provider",
+          "model",
+          "reasoning_effort",
+          "prompt_version",
+          "succeeded",
+          "failed",
+          "queued",
+          "input_tokens",
+          "cached_input_tokens",
+          "output_tokens",
+          "embedding_tokens",
+          "average_duration_ms"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "prompt_version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "succeeded": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "queued": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cached_input_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "embedding_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "average_duration_ms": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
       },
       "ClipTranscriptionBackfillResponse": {
         "required": [
@@ -4439,6 +4823,34 @@
           }
         }
       },
+      "QueueClipSummaryRunRequest": {
+        "required": [
+          "provider",
+          "model",
+          "reasoning_effort"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reasoning_effort": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "QueueClipTranscriptionRunRequest": {
         "required": [
           "model"
@@ -4862,6 +5274,9 @@
     },
     {
       "name": "ClipTranscriptionEndpoints"
+    },
+    {
+      "name": "ClipSummaryEndpoints"
     },
     {
       "name": "TwitchClipsEndpoints"

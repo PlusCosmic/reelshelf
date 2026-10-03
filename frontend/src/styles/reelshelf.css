@@ -5889,6 +5889,25 @@ html:has(.rs-library-route) {
   white-space: pre-wrap;
 }
 
+.rs-summary-description {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.rs-summary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rs-summary-quotes {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-style: italic;
+}
+
 .rs-legend-rerun {
   display: flex;
   align-items: center;

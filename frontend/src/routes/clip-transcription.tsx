@@ -4,6 +4,7 @@ import { Chip } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
 import { Badge, Button } from "@/components/ui";
 import { TranscriptionReviewDetail } from "@/components/ClipTranscription/TranscriptionReviewDetail";
+import { SummaryUsageTable } from "@/components/ClipTranscription/SummaryUsageTable";
 import { TranscriptionUsageTable } from "@/components/ClipTranscription/TranscriptionUsageTable";
 import {
   countByTranscriptionFilter,
@@ -13,9 +14,11 @@ import {
   type TranscriptionFilter,
 } from "@/components/ClipTranscription/transcriptionReview";
 import {
+  useBackfillClipSummary,
   useBackfillClipTranscription,
   useCurrentUser,
   useRetryEmptyTranscriptions,
+  useSummaryUsage,
   useTranscriptionReviewClips,
   useTranscriptionUsage,
 } from "@/hooks/queries";
@@ -64,6 +67,8 @@ function TranscriptionReview() {
   const usage = useTranscriptionUsage(true, anyActive);
   const backfill = useBackfillClipTranscription();
   const retryEmpty = useRetryEmptyTranscriptions();
+  const summaryUsage = useSummaryUsage(true, anyActive);
+  const backfillSummaries = useBackfillClipSummary();
 
   const counts = useMemo(() => countByTranscriptionFilter(clips), [clips]);
   const visible = useMemo(
@@ -129,6 +134,13 @@ function TranscriptionReview() {
     if (confirmed) retryEmpty.mutate();
   }
 
+  function onBackfillSummaries() {
+    const confirmed = window.confirm(
+      "Queue a summary for every transcribed clip that has never had one, with the configured model? Each run is a paid model call.",
+    );
+    if (confirmed) backfillSummaries.mutate(null);
+  }
+
   return (
     <div className="rs-legend-page">
       <header className="rs-legend-header">
@@ -137,6 +149,12 @@ function TranscriptionReview() {
           <h1 className="rs-display rs-h2">Check what the model heard.</h1>
         </div>
         <div className="rs-legend-backfill">
+          <Button
+            onClick={onBackfillSummaries}
+            disabled={backfillSummaries.isPending}
+          >
+            {backfillSummaries.isPending ? "Queueing…" : "Backfill summaries"}
+          </Button>
           <Button onClick={onRetryEmpty} disabled={retryEmpty.isPending}>
             {retryEmpty.isPending ? "Queueing…" : "Retry no-speech clips"}
           </Button>
@@ -158,6 +176,17 @@ function TranscriptionReview() {
               {retryEmpty.data === 1 ? "clip" : "clips"}.
             </span>
           ) : null}
+          {backfillSummaries.isSuccess ? (
+            <span className="rs-meta">
+              Summarising {backfillSummaries.data}{" "}
+              {backfillSummaries.data === 1 ? "clip" : "clips"}.
+            </span>
+          ) : null}
+          {backfillSummaries.isError ? (
+            <span className="rs-legend-error">
+              {backfillSummaries.error.message}
+            </span>
+          ) : null}
           {retryEmpty.isError ? (
             <span className="rs-legend-error">{retryEmpty.error.message}</span>
           ) : null}
@@ -168,6 +197,7 @@ function TranscriptionReview() {
       </header>
 
       <TranscriptionUsageTable usage={usage.data ?? []} />
+      <SummaryUsageTable usage={summaryUsage.data ?? []} />
 
       <div className="rs-chip-row rs-legend-filters">
         {transcriptionFilters.map(({ value, label }) => (

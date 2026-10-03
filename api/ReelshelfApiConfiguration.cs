@@ -12,6 +12,7 @@ using Reelshelf.ApexLegends;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Auth;
 using Reelshelf.Bunny;
+using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
 using Reelshelf.Discord;
@@ -75,6 +76,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapApexEndpoints();
         apiGroup.MapLegendDetectionEndpoints();
         apiGroup.MapClipTranscriptionEndpoints();
+        apiGroup.MapClipSummaryEndpoints();
         apiGroup.MapUserEndpoints();
         apiGroup.MapTwitchClipsEndpoints();
         apiGroup.MapDiscordActivityEndpoints();
@@ -173,9 +175,8 @@ internal static class ReelshelfApiConfiguration
                                         ?? builder.Configuration["RedisConnectionString"]
                                         ?? "localhost:6379";
 
-        NpgsqlDataSourceBuilder dataSourceBuilder = new(connectionString ??
+        NpgsqlDataSource dataSource = ReelshelfDataSource.Create(connectionString ??
             "Host=localhost;Database=reelshelf_db;Username=reelshelf_user;Password=dummy");
-        NpgsqlDataSource dataSource = dataSourceBuilder.Build();
 
         builder.Services.AddSingleton(dataSource);
         builder.Services.AddScoped(_ => dataSource.CreateConnection());
@@ -296,6 +297,14 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddHttpClient(OpenRouterClipTranscriber.HttpClientName,
             client => client.Timeout = TimeSpan.FromMinutes(5));
 
+        // Clip summaries stay idle until ClipSummary:Providers:openai:ApiKey is configured.
+        builder.Services.Configure<ClipSummaryOptions>(
+            builder.Configuration.GetSection(ClipSummaryOptions.SectionName));
+        builder.Services.AddSingleton<ClipSummaryResources>();
+        builder.Services.AddSingleton<IClipSummarizerFactory, ClipSummarizerFactory>();
+        builder.Services.AddScoped<ClipSummaryStatements>();
+        builder.Services.AddScoped<ClipSummaryService>();
+
         // Background services should not run during explicit OpenAPI document generation.
         if (!builder.Environment.IsEnvironment("OpenApi"))
         {
@@ -305,6 +314,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<GameCategoryClothColorService>();
             builder.Services.AddHostedService<LegendDetectionBackgroundService>();
             builder.Services.AddHostedService<ClipTranscriptionBackgroundService>();
+            builder.Services.AddHostedService<ClipSummaryBackgroundService>();
             builder.Services.AddHostedService<AccountDeletionBackgroundService>();
         }
     }

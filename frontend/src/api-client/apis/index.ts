@@ -3,6 +3,7 @@
 export * from "./ApexEndpointsApi";
 export * from "./AuthEndpointsApi";
 export * from "./BunnyWebhookEndpointsApi";
+export * from "./ClipSummaryEndpointsApi";
 export * from "./ClipTranscriptionEndpointsApi";
 export * from "./ClipsEndpointsApi";
 export * from "./DiscordActivityEndpointsApi";
