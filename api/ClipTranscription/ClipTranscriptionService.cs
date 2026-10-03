@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using Reelshelf.Auth;
 using Reelshelf.Bunny.Models;
+using Reelshelf.ClipSummary;
 using Reelshelf.Core;
 using Reelshelf.Exceptions;
 using Reelshelf.Users;
@@ -14,6 +15,7 @@ public class ClipTranscriptionService(
     UserStatements userStatements,
     WhitelistService whitelistService,
     IClipTranscriber transcriber,
+    ClipSummaryService summaryService,
     IOptionsMonitor<ClipTranscriptionOptions> options,
     IConfiguration configuration,
     ILogger<ClipTranscriptionService> logger)
@@ -209,6 +211,7 @@ public class ClipTranscriptionService(
 
         bool canRetry = run.Attempts < current.MaxAttempts;
         TranscriptionPrompt prompt = TranscriptionPrompt.For(run.GameName, run.GameSlug, run.Model);
+        bool? heardSpeech = null;
         string audioPath = Path.Combine(Path.GetTempPath(), "clip-transcription", $"{run.Id:N}.m4a");
         try
         {
@@ -218,6 +221,7 @@ public class ClipTranscriptionService(
             {
                 await statements.CompleteRunAsync(run.Id, prompt, audio, null, null,
                     (int)stopwatch.ElapsedMilliseconds);
+                heardSpeech = false;
                 logger.LogInformation("Clip {ClipId} has no audio track; nothing to transcribe", run.ClipId);
                 return true;
             }
@@ -249,6 +253,7 @@ public class ClipTranscriptionService(
 
             await statements.CompleteRunAsync(run.Id, prompt, audio, transcript, fallbackModel,
                 (int)stopwatch.ElapsedMilliseconds);
+            heardSpeech = transcript.Text.Length > 0;
             logger.LogInformation(
                 "Transcribed clip {ClipId} with {Model}: {Seconds:0}s of audio, {Characters} characters",
                 run.ClipId, run.Model, audio.Seconds, transcript.Text.Length);
@@ -263,9 +268,29 @@ public class ClipTranscriptionService(
         finally
         {
             TryDelete(audioPath);
+            if (heardSpeech is not null)
+            {
+                await QueueSummaryAsync(run, heardSpeech.Value);
+            }
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Queues the summary of a run that succeeded. A failure here is logged, never recorded on the run, which has
+    /// already succeeded; the summary backfill picks the clip up later.
+    /// </summary>
+    private async Task QueueSummaryAsync(ClipTranscriptionStatements.ClaimedRunRow run, bool heardSpeech)
+    {
+        try
+        {
+            await summaryService.QueueForTranscriptionAsync(run.Id, run.ClipId, run.Trigger, heardSpeech);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to queue a summary for clip {ClipId}", run.ClipId);
+        }
     }
 
     private async Task<List<Guid>> GetWhitelistedOwnersAsync()

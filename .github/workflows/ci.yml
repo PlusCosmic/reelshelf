@@ -47,6 +47,19 @@ jobs:
   api:
     name: API
     runs-on: ubuntu-latest
+    services:
+      # Tests marked [PostgresFact] run against this; they need the pgvector extension.
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,6 +80,8 @@ jobs:
         run: dotnet build Reelshelf.sln --no-restore --configuration Release --disable-build-servers -maxcpucount:1
 
       - name: Test
+        env:
+          REELSHELF_TEST_DATABASE: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
         run: dotnet test Reelshelf.sln --no-build --configuration Release --disable-build-servers --logger "trx;LogFileName=results.trx"
 
       - name: Upload test results

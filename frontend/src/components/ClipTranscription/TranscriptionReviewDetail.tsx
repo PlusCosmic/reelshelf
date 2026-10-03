@@ -14,9 +14,10 @@ import type {
   ClipTranscriptionReviewClip,
   ClipTranscriptionRun,
 } from "@/shared/services/clipTranscription";
+import { SummaryReview } from "./SummaryReview";
 import { transcriptOutcome } from "./transcriptionReview";
 
-/** One clip: the full clip to check against, and every run's transcript. */
+/** One clip: the full clip to check against, every run's transcript, and its summaries. */
 export function TranscriptionReviewDetail({
   clip,
 }: {
@@ -68,6 +69,8 @@ export function TranscriptionReviewDetail({
       {run ? <RunResult run={run} /> : <p className="rs-meta">Not run yet.</p>}
 
       <RerunForm clipId={clip.clipId} />
+
+      <SummaryReview clipId={clip.clipId} />
 
       {runs.length > 0 ? (
         <>
