@@ -353,8 +353,9 @@ public sealed class VectorTypeHandler : SqlMapper.TypeHandler<Vector?>
         parameter.Value = value is null ? DBNull.Value : value;
     }
 
+    /// <remarks>Dapper hands custom handlers <see cref="DBNull"/> for a NULL column.</remarks>
     public override Vector? Parse(object value)
     {
-        return (Vector)value;
+        return value is DBNull ? null : (Vector)value;
     }
 }
