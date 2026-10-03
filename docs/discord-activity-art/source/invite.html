@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="common.css">
+<!-- Rich Presence invite image. Discord lays the invite card over it: "Invite to join", the app icon,
+     name and player count down the left, and a full-width Join button along the bottom (see
+     ../invite-layout-reference.png), so the art sits top-right and the rest stays quiet. -->
+<svg id="s" width="1024" height="576" viewBox="0 0 1024 576">
+  <defs>
+    <radialGradient id="glow" cx="82%" cy="40%" r="70%">
+      <stop offset="0" stop-color="#21402f"/><stop offset="0.55" stop-color="#132a1f"/><stop offset="1" stop-color="#0b1712"/>
+    </radialGradient>
+    <linearGradient id="fade" x1="0" x2="1">
+      <stop offset="0.6" stop-color="#fff" stop-opacity="0"/><stop offset="0.76" stop-color="#fff"/>
+    </linearGradient>
+    <mask id="m"><rect width="1024" height="576" fill="url(#fade)"/></mask>
+  </defs>
+  <rect width="1024" height="576" fill="url(#glow)"/>
+  <g id="back" mask="url(#m)" opacity="0.3"></g>
+  <g id="front" mask="url(#m)"></g>
+</svg>
+<script src="books.js"></script>
+<script>
+  shelf(document.getElementById("back"), { x0: 640, x1: 1040, y: 108, seed: 7, scale: 1.1, minH: 70, maxH: 100, leanLast: false });
+  shelf(document.getElementById("front"), { x0: 736, x1: 990, y: 322, seed: 23, scale: 1.5, minH: 96, maxH: 126, gapChance: 0, playAt: 2 });
+</script>
