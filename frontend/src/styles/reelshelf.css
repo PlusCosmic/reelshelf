@@ -3942,20 +3942,6 @@ html:has(.rs-library-route) {
   color: var(--fg-soft);
 }
 
-.rs-activity-avatar {
-  flex: none;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--bg-soft);
-  object-fit: cover;
-}
-
-.rs-activity-avatar.is-small {
-  width: 28px;
-  height: 28px;
-}
-
 .rs-activity-present ul {
   margin: 12px 0 0;
   padding: 0;

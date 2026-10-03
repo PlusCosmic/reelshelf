@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
+import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
+import { defaultCloth } from "@/components/Reelshelf/reelshelf-model";
 import { toApiError } from "@/shared/services/apiError";
 import { ActivityClipPicker } from "./ActivityClipPicker";
 import { ActivityPlayer } from "./ActivityPlayer";
@@ -91,7 +93,6 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
   const room = useWatchRoom(session);
   const playback = room.state?.playback ?? null;
   const host = room.state?.participants.find((person) => person.isHost);
-  const avatarUrl = activityImageUrl(participant.avatarUrl);
   const queue = room.state?.queue ?? [];
   const canQueue =
     participant.isMember && (room.isHost || !room.state?.queueLocked);
@@ -160,9 +161,7 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
       ) : null}
 
       <div className="rs-activity-you">
-        {avatarUrl ? (
-          <img className="rs-activity-avatar" src={avatarUrl} alt="" />
-        ) : null}
+        <ParticipantAvatar person={participant} size={56} />
         <div>
           <h1 className="rs-display rs-h2">{participant.name}</h1>
           <p className="rs-activity-role">
@@ -174,31 +173,17 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
       <div className="rs-activity-present">
         <h2 className="rs-activity-kicker">In the room</h2>
         <ul>
-          {(room.state?.participants ?? []).map((person) => {
-            const personAvatar = activityImageUrl(person.avatarUrl);
-            return (
-              <li key={person.discordUserId}>
-                {personAvatar ? (
-                  <img
-                    className="rs-activity-avatar is-small"
-                    src={personAvatar}
-                    alt=""
-                  />
-                ) : (
-                  <span
-                    className="rs-activity-avatar is-small"
-                    aria-hidden="true"
-                  />
-                )}
-                <span>{person.name}</span>
-                {person.isHost ? (
-                  <span className="rs-activity-tag">Host</span>
-                ) : !person.isMember ? (
-                  <span className="rs-activity-tag is-quiet">Guest</span>
-                ) : null}
-              </li>
-            );
-          })}
+          {(room.state?.participants ?? []).map((person) => (
+            <li key={person.discordUserId}>
+              <ParticipantAvatar person={person} size={28} />
+              <span>{person.name}</span>
+              {person.isHost ? (
+                <span className="rs-activity-tag">Host</span>
+              ) : !person.isMember ? (
+                <span className="rs-activity-tag is-quiet">Guest</span>
+              ) : null}
+            </li>
+          ))}
         </ul>
       </div>
 
@@ -217,6 +202,24 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
         />
       ) : null}
     </section>
+  );
+}
+
+/** Discord picture when there is one, else their initial on a cloth colour that stays theirs across rooms. */
+function ParticipantAvatar({
+  person,
+  size,
+}: {
+  person: { discordUserId: string; name: string; avatarUrl?: string | null };
+  size: number;
+}) {
+  return (
+    <Avatar
+      name={person.name}
+      src={activityImageUrl(person.avatarUrl)}
+      size={size}
+      color={defaultCloth(person.discordUserId)}
+    />
   );
 }
 

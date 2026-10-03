@@ -5,10 +5,13 @@ export function Avatar({
   name = "You",
   src,
   size = 28,
+  color,
 }: {
   name?: string | null;
   src?: string | null;
   size?: number;
+  /** Background behind the initials; the accent fill when unset. Text stays white, so pass a mid-tone. */
+  color?: string;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const initials = (name ?? "You")
@@ -20,7 +23,7 @@ export function Avatar({
   return (
     <span
       className="rs-avatar"
-      style={{ "--size": `${size}px` } as CSSProperties}
+      style={{ "--size": `${size}px`, background: color } as CSSProperties}
     >
       {src && !imageFailed ? (
         <img
