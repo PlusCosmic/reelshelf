@@ -33,16 +33,41 @@ export async function fetchLegendUsage(): Promise<LegendDetectionUsage[]> {
   return createLegendDetectionApi().getLegendDetectionUsage();
 }
 
-/** Queues another run for a clip; a null model or reasoning effort uses the configured default. */
+/** OpenAI's Decisions API: it has its own default model and takes no reasoning effort. */
+export const decisionsProvider = "openai-decisions";
+
+/** Which provider, model and reasoning effort to run; null uses the configured default. */
+export type LegendRunOptions = {
+  provider: string | null;
+  model: string | null;
+  reasoningEffort: string | null;
+};
+
+/** Queues another run for a clip. */
 export async function queueLegendRun(
   clipId: string,
-  model: string | null,
-  reasoningEffort: string | null,
+  options: LegendRunOptions,
 ): Promise<LegendDetectionRun> {
   return createLegendDetectionApi().queueLegendDetectionRun({
     clipId,
-    queueLegendDetectionRunRequest: { provider: null, model, reasoningEffort },
+    queueLegendDetectionRunRequest: options,
   });
+}
+
+/** Queues a run for every labelled clip, so the usage table can score it; returns how many were queued. */
+export async function queueLabelledLegendRuns(
+  options: LegendRunOptions,
+): Promise<number> {
+  const response =
+    await createLegendDetectionApi().queueLegendDetectionLabelledRuns({
+      queueLegendDetectionRunRequest: options,
+    });
+  return response.queued;
+}
+
+/** The providers with an API key, which a run can be queued against. */
+export async function fetchLegendProviders(): Promise<string[]> {
+  return createLegendDetectionApi().getLegendDetectionProviders();
 }
 
 /**

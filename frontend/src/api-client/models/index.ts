@@ -45,6 +45,7 @@ export * from "./ImportedTwitchClipResponse";
 export * from "./LegendDetectionArchiveResponse";
 export * from "./LegendDetectionBackfillResponse";
 export * from "./LegendDetectionLabel";
+export * from "./LegendDetectionQueuedRunsResponse";
 export * from "./LegendDetectionReviewClip";
 export * from "./LegendDetectionRun";
 export * from "./LegendDetectionUsage";

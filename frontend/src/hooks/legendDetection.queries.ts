@@ -4,13 +4,16 @@ import {
   backfillLegendDetection,
   deleteLegendLabel,
   fetchLegendNames,
+  fetchLegendProviders,
   fetchLegendReasoningEfforts,
   setLegendLabel,
   fetchLegendReviewClips,
   fetchLegendRuns,
   fetchLegendUsage,
   isRunActive,
+  queueLabelledLegendRuns,
   queueLegendRun,
+  type LegendRunOptions,
 } from "@/shared/services/legendDetection";
 
 export const legendDetectionQueryKey = ["legend-detection"] as const;
@@ -69,14 +72,28 @@ export function useQueueLegendRun() {
   return useMutation({
     mutationFn: ({
       clipId,
-      model,
-      reasoningEffort,
-    }: {
-      clipId: string;
-      model: string | null;
-      reasoningEffort: string | null;
-    }) => queueLegendRun(clipId, model, reasoningEffort),
+      ...options
+    }: LegendRunOptions & { clipId: string }) =>
+      queueLegendRun(clipId, options),
     onSuccess: invalidate,
+  });
+}
+
+export function useQueueLabelledLegendRuns() {
+  const invalidate = useInvalidateLegendDetection();
+  return useMutation({
+    mutationFn: queueLabelledLegendRuns,
+    onSuccess: invalidate,
+  });
+}
+
+export function useLegendProviders(enabled = true) {
+  return useQuery({
+    queryKey: [...legendDetectionQueryKey, "providers"],
+    queryFn: fetchLegendProviders,
+    enabled,
+    retry: false,
+    staleTime: Infinity,
   });
 }
 

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Reelshelf.Core;
 using Reelshelf.Exceptions;
@@ -12,7 +11,6 @@ public class LegendDetectionService(
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements,
     ILegendRecognizerFactory recognizerFactory,
-    LegendDetectionResources resources,
     IHttpClientFactory httpClientFactory,
     IOptionsMonitor<LegendDetectionOptions> options,
     IConfiguration configuration,
@@ -38,8 +36,8 @@ public class LegendDetectionService(
     public async Task QueueForEncodedClipAsync(ClipsStatements.ClipRow clip)
     {
         LegendDetectionOptions current = options.CurrentValue;
-        if (!current.AutoDetect || !recognizerFactory.IsConfigured(current.Provider)
-                                || string.IsNullOrWhiteSpace(current.Model))
+        string model = ModelOrDefault(current.Provider, current.Model);
+        if (!current.AutoDetect || !recognizerFactory.IsConfigured(current.Provider) || model.Length == 0)
         {
             return;
         }
@@ -53,7 +51,9 @@ public class LegendDetectionService(
         string? reasoningEffort;
         try
         {
-            reasoningEffort = LegendReasoningEffort.Normalize(current.ReasoningEffort);
+            reasoningEffort = recognizerFactory.SupportsReasoningEffort(current.Provider)
+                ? LegendReasoningEffort.Normalize(current.ReasoningEffort)
+                : null;
         }
         catch (ArgumentException ex)
         {
@@ -61,7 +61,7 @@ public class LegendDetectionService(
             return;
         }
 
-        if (await statements.QueueAutoRunAsync(clip.Id, current.Provider, current.Model, reasoningEffort))
+        if (await statements.QueueAutoRunAsync(clip.Id, current.Provider.ToLowerInvariant(), model, reasoningEffort))
         {
             logger.LogInformation("Queued legend detection for clip {ClipId}", clip.Id);
         }
@@ -102,6 +102,25 @@ public class LegendDetectionService(
         (string resolvedProvider, string resolvedModel, string? effort) = Resolve(provider, model, reasoningEffort);
         _ = await clipsStatements.GetClipById(clipId) ?? throw new NotFoundException("Clip", clipId);
         return await statements.QueueManualRunAsync(clipId, resolvedProvider, resolvedModel, effort);
+    }
+
+    /// <summary>
+    /// Queues a manual run for every labelled clip, so a provider, model or reasoning effort can be scored
+    /// against the labels on the usage table in one go.
+    /// </summary>
+    public async Task<int> QueueLabelledRunsAsync(string? provider, string? model, string? reasoningEffort)
+    {
+        (string resolvedProvider, string resolvedModel, string? effort) = Resolve(provider, model, reasoningEffort);
+        int queued = await statements.QueueManualRunsForLabelledClipsAsync(resolvedProvider, resolvedModel, effort);
+        logger.LogInformation("Queued {Count} legend detection runs on labelled clips with {Provider}/{Model}",
+            queued, resolvedProvider, resolvedModel);
+        return queued;
+    }
+
+    /// <summary>The providers a run can be queued against.</summary>
+    public IReadOnlyList<string> GetProviders()
+    {
+        return recognizerFactory.ConfiguredProviders();
     }
 
     public async Task<List<LegendDetectionStatements.LegendDetectionRunRow>> GetRunsAsync(Guid clipId)
@@ -235,14 +254,14 @@ public class LegendDetectionService(
         }
 
         LegendDetectionResult? completed = null;
+        ILegendRecognizer recognizer = recognizerFactory.Create(run.Provider, run.Model, run.ReasoningEffort);
         try
         {
             LegendScreenshot[] screenshots = await Task.WhenAll(
                 frames.Select(frame => LegendHudCropper.PrepareAsync(frame, cancellationToken)));
             Stopwatch stopwatch = Stopwatch.StartNew();
-            ILegendRecognizer recognizer = recognizerFactory.Create(run.Provider, run.Model, run.ReasoningEffort);
             LegendRecognition recognition = await recognizer.RecognizeAsync(screenshots, cancellationToken);
-            await statements.CompleteRunAsync(run.Id, resources.PromptVersion, frames.Count, recognition,
+            await statements.CompleteRunAsync(run.Id, recognizer.PromptVersion, frames.Count, recognition,
                 (int)stopwatch.ElapsedMilliseconds);
             completed = recognition.Result;
 
@@ -256,8 +275,8 @@ public class LegendDetectionService(
         {
             logger.LogWarning(ex, "Legend detection attempt {Attempt} failed for clip {ClipId} with {Provider}/{Model}",
                 run.Attempts, run.ClipId, run.Provider, run.Model);
-            string? rawResponse = ex is JsonException ? ex.Data["RawResponse"] as string : null;
-            await statements.FailRunAsync(run.Id, ex.Message, resources.PromptVersion, rawResponse, canRetry);
+            string? rawResponse = ex.Data["RawResponse"] as string;
+            await statements.FailRunAsync(run.Id, ex.Message, recognizer.PromptVersion, rawResponse, canRetry);
         }
 
         // Outside the try: the run has already succeeded, so a failure here must not mark it failed.
@@ -291,10 +310,21 @@ public class LegendDetectionService(
     private async Task QueueEscalationAsync(LegendDetectionStatements.ClaimedRunRow run)
     {
         LegendDetectionOptions current = options.CurrentValue;
+        string provider = string.IsNullOrWhiteSpace(current.EscalationProvider)
+            ? run.Provider
+            : current.EscalationProvider.Trim().ToLowerInvariant();
+        if (!recognizerFactory.IsConfigured(provider))
+        {
+            logger.LogWarning("Not escalating legend detection: provider '{Provider}' is not configured", provider);
+            return;
+        }
+
         string? reasoningEffort;
         try
         {
-            reasoningEffort = LegendReasoningEffort.Normalize(current.EscalationReasoningEffort);
+            reasoningEffort = recognizerFactory.SupportsReasoningEffort(provider)
+                ? LegendReasoningEffort.Normalize(current.EscalationReasoningEffort)
+                : null;
         }
         catch (ArgumentException ex)
         {
@@ -304,9 +334,9 @@ public class LegendDetectionService(
         }
 
         string model = current.EscalationModel.Trim();
-        await statements.QueueEscalationRunAsync(run.ClipId, run.Provider, model, reasoningEffort);
-        logger.LogInformation("Escalated legend detection for clip {ClipId} from {Model} to {EscalationModel}",
-            run.ClipId, run.Model, model);
+        await statements.QueueEscalationRunAsync(run.ClipId, provider, model, reasoningEffort);
+        logger.LogInformation("Escalated legend detection for clip {ClipId} from {Provider}/{Model} to {EscalationProvider}/{EscalationModel}",
+            run.ClipId, run.Provider, run.Model, provider, model);
     }
 
     /// <summary>
@@ -368,16 +398,27 @@ public class LegendDetectionService(
     {
         LegendDetectionOptions current = options.CurrentValue;
         string resolvedProvider = string.IsNullOrWhiteSpace(provider) ? current.Provider : provider.Trim();
-        string resolvedModel = string.IsNullOrWhiteSpace(model) ? current.Model : model.Trim();
-
         if (!recognizerFactory.IsConfigured(resolvedProvider))
         {
             throw new BadRequestException($"Legend detection provider '{resolvedProvider}' is not configured");
         }
 
+        // The configured model belongs to the configured provider, so another provider falls back to its own.
+        string resolvedModel = !string.IsNullOrWhiteSpace(model) ? model.Trim()
+            : string.Equals(resolvedProvider, current.Provider, StringComparison.OrdinalIgnoreCase)
+                ? ModelOrDefault(resolvedProvider, current.Model)
+                : recognizerFactory.DefaultModel(resolvedProvider) ?? current.Model;
+
         if (string.IsNullOrWhiteSpace(resolvedModel))
         {
             throw new BadRequestException("No legend detection model given and LegendDetection:Model is not set");
+        }
+
+        if (!recognizerFactory.SupportsReasoningEffort(resolvedProvider))
+        {
+            return string.IsNullOrWhiteSpace(reasoningEffort)
+                ? (resolvedProvider.ToLowerInvariant(), resolvedModel, null)
+                : throw new BadRequestException($"Legend detection provider '{resolvedProvider}' takes no reasoning effort");
         }
 
         string? resolvedEffort;
@@ -392,5 +433,10 @@ public class LegendDetectionService(
         }
 
         return (resolvedProvider.ToLowerInvariant(), resolvedModel, resolvedEffort);
+    }
+
+    private string ModelOrDefault(string provider, string model)
+    {
+        return string.IsNullOrWhiteSpace(model) ? recognizerFactory.DefaultModel(provider) ?? "" : model.Trim();
     }
 }

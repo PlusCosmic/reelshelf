@@ -45,6 +45,7 @@
         <!-- Embedded instead of published: the Web SDK would otherwise copy the schema .json to the publish output. -->
         <Content Remove="ApexLegends/LegendDetection/Resources/**" />
         <EmbeddedResource Include="ApexLegends/LegendDetection/Resources/prompt.md" LogicalName="LegendDetection.prompt.md" />
+        <EmbeddedResource Include="ApexLegends/LegendDetection/Resources/decisions-prompt.md" LogicalName="LegendDetection.decisions-prompt.md" />
         <EmbeddedResource Include="ApexLegends/LegendDetection/Resources/response-schema.json" LogicalName="LegendDetection.response-schema.json" />
         <EmbeddedResource Include="ApexLegends/LegendDetection/Resources/reference-sheet.png" LogicalName="LegendDetection.reference-sheet.png" />
         <Content Remove="ClipSummary/Resources/**" />

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Chip } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
 import { Badge, Button } from "@/components/ui";
+import { LabelledRunForm } from "@/components/LegendDetection/LabelledRunForm";
 import { LegendReviewDetail } from "@/components/LegendDetection/LegendReviewDetail";
 import { LegendUsageTable } from "@/components/LegendDetection/LegendUsageTable";
 import { ReasoningEffortSelect } from "@/components/LegendDetection/ReasoningEffortSelect";
@@ -188,6 +189,7 @@ function LegendReview() {
       </header>
 
       <LegendUsageTable usage={usage.data ?? []} />
+      <LabelledRunForm />
 
       <div className="rs-chip-row rs-legend-filters">
         {reviewFilters.map(({ value, label }) => (
