@@ -9,6 +9,10 @@ overview followed by a close-up of its bottom-left HUD panel (see `LegendHudCrop
 - `response-schema.json`: the JSON Schema for the structured output.
 - `reference-sheet.png`: the legend portraits labelled with their names.
 
+The `openai-decisions` provider (`DecisionsLegendRecognizer`) sends `decisions-prompt.md` as leading text instead,
+with the same reference sheet and screenshots, and asks the Decisions API two questions in place of the schema. Keep
+the two prompts' guidance on spectating and the HUD in step.
+
 Each run records a prompt version, a hash of all three files, so editing any of them automatically separates
 new results from old ones. When a legend is added to the sheet, add it to `ApexLegendNames` too; legends the
 model returns that are not in that list are discarded.

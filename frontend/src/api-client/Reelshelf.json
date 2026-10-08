@@ -1728,6 +1728,36 @@
         }
       }
     },
+    "/api/legend-detection/labelled/runs": {
+      "post": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "QueueLegendDetectionLabelledRuns",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueLegendDetectionRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegendDetectionQueuedRunsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/legend-detection/clips/{clipId}/label": {
       "put": {
         "tags": [
@@ -1813,6 +1843,29 @@
           "LegendDetectionEndpoints"
         ],
         "operationId": "GetLegendDetectionReasoningEfforts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legend-detection/providers": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendDetectionProviders",
         "responses": {
           "200": {
             "description": "OK",
@@ -4053,6 +4106,18 @@
           "labelled_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "LegendDetectionQueuedRunsResponse": {
+        "required": [
+          "queued"
+        ],
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

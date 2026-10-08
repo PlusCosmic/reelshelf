@@ -17,11 +17,13 @@ public static class LegendDetectionEndpoints
         group.MapPost("backfill", Backfill).WithName("BackfillLegendDetection");
         group.MapPost("archive", ArchiveAllRuns).WithName("ArchiveLegendDetectionRuns");
         group.MapPost("clips/{clipId:guid}/runs", QueueRun).WithName("QueueLegendDetectionRun");
+        group.MapPost("labelled/runs", QueueLabelledRuns).WithName("QueueLegendDetectionLabelledRuns");
         group.MapGet("clips/{clipId:guid}/runs", GetRuns).WithName("GetLegendDetectionRuns");
         group.MapPut("clips/{clipId:guid}/label", SetLabel).WithName("SetLegendDetectionLabel");
         group.MapDelete("clips/{clipId:guid}/label", DeleteLabel).WithName("DeleteLegendDetectionLabel");
         group.MapGet("legends", GetLegends).WithName("GetLegendDetectionLegends");
         group.MapGet("reasoning-efforts", GetReasoningEfforts).WithName("GetLegendDetectionReasoningEfforts");
+        group.MapGet("providers", GetProviders).WithName("GetLegendDetectionProviders");
     }
 
     public static async Task<List<LegendDetectionReviewClip>> GetClipsForReview(LegendDetectionService service)
@@ -55,6 +57,15 @@ public static class LegendDetectionEndpoints
             request.ReasoningEffort));
     }
 
+    /// <summary>Queues a manual run for every labelled clip; see <see cref="QueueLegendDetectionRunRequest"/>.</summary>
+    public static async Task<LegendDetectionQueuedRunsResponse> QueueLabelledRuns(
+        QueueLegendDetectionRunRequest request,
+        LegendDetectionService service)
+    {
+        return new LegendDetectionQueuedRunsResponse(
+            await service.QueueLabelledRunsAsync(request.Provider, request.Model, request.ReasoningEffort));
+    }
+
     public static async Task<NoContent> SetLabel(
         Guid clipId,
         SetLegendDetectionLabelRequest request,
@@ -83,6 +94,15 @@ public static class LegendDetectionEndpoints
         return LegendReasoningEffort.All;
     }
 
+    /// <summary>
+    /// The providers with an API key, which a run can be queued against. <c>openai-decisions</c> is OpenAI's
+    /// Decisions API: it defaults to its own model and takes no reasoning effort.
+    /// </summary>
+    public static IReadOnlyList<string> GetProviders(LegendDetectionService service)
+    {
+        return service.GetProviders();
+    }
+
     public static async Task<List<LegendDetectionRun>> GetRuns(Guid clipId, LegendDetectionService service)
     {
         return (await service.GetRunsAsync(clipId)).Select(LegendDetectionRun.From).ToList();
@@ -90,8 +110,10 @@ public static class LegendDetectionEndpoints
 }
 
 /// <summary>
-/// Leave <c>Provider</c>, <c>Model</c> or <c>ReasoningEffort</c> empty to use the configured default. The effort
-/// is one of the values from <c>GET /api/legend-detection/reasoning-efforts</c>.
+/// Leave <c>Provider</c>, <c>Model</c> or <c>ReasoningEffort</c> empty to use the configured default. The provider
+/// is one of <c>GET /api/legend-detection/providers</c>; a provider other than the configured one falls back to its
+/// own default model, if it has one. The effort is one of the values from
+/// <c>GET /api/legend-detection/reasoning-efforts</c>, and must be empty for a provider that takes none.
 /// </summary>
 public sealed record QueueLegendDetectionRunRequest(string? Provider, string? Model, string? ReasoningEffort);
 
@@ -101,6 +123,8 @@ public sealed record BackfillLegendDetectionRequest(string? ReasoningEffort);
 public sealed record LegendDetectionBackfillResponse(int Queued);
 
 public sealed record LegendDetectionArchiveResponse(int Archived);
+
+public sealed record LegendDetectionQueuedRunsResponse(int Queued);
 
 /// <summary>A null <c>PlayerLegend</c> means the clip owner's legend can't be identified from the clip.</summary>
 public sealed record SetLegendDetectionLabelRequest(string? PlayerLegend, List<string> TeammateLegends);

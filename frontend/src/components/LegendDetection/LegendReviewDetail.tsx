@@ -5,7 +5,7 @@ import {
   formatDate,
   formatDuration,
 } from "@/components/Reelshelf/reelshelf-model";
-import { Badge, Button, Input } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { useLegendRuns, useQueueLegendRun } from "@/hooks/queries";
 import { LegendLabelEditor } from "./LegendLabelEditor";
 import type {
@@ -18,7 +18,7 @@ import {
   formatReasoningEffort,
   formatTokens,
 } from "./legendReview";
-import { ReasoningEffortSelect } from "./ReasoningEffortSelect";
+import { useRunOptions } from "./RunOptionsFields";
 
 /** One clip: the frames the model is sent, the full clip to check against, and every run's answer. */
 export function LegendReviewDetail({
@@ -267,32 +267,17 @@ function Detected({
 }
 
 function RerunForm({ clipId }: { clipId: string }) {
-  const [model, setModel] = useState("");
-  const [reasoningEffort, setReasoningEffort] = useState("");
+  const { options, fields } = useRunOptions();
   const queue = useQueueLegendRun();
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    queue.mutate({
-      clipId,
-      model: model.trim() || null,
-      reasoningEffort: reasoningEffort || null,
-    });
+    queue.mutate({ clipId, ...options });
   }
 
   return (
     <form className="rs-legend-rerun" onSubmit={onSubmit}>
-      <Input
-        compact
-        value={model}
-        onChange={(event) => setModel(event.target.value)}
-        placeholder="Model (default if empty)"
-        aria-label="Model to run"
-      />
-      <ReasoningEffortSelect
-        value={reasoningEffort}
-        onValueChange={setReasoningEffort}
-      />
+      {fields}
       <Button type="submit" size="sm" disabled={queue.isPending}>
         {queue.isPending ? "Queueing…" : "Run again"}
       </Button>

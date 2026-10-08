@@ -39,6 +39,12 @@ public sealed class LegendDetectionOptions
 
     public double EscalateBelow { get; set; } = 0.9;
 
+    /// <summary>
+    /// The provider for fallback runs. Empty uses the automatic run's own provider; set it to escalate from the
+    /// Decisions API to a chat model, for example.
+    /// </summary>
+    public string EscalationProvider { get; set; } = "";
+
     /// <summary>How many runs each API instance sends to the model at once. Read when the API starts.</summary>
     public int Concurrency { get; set; } = 4;
 
@@ -110,6 +116,16 @@ public sealed record LegendDetectionResult(
     };
 
     /// <summary>
+    /// A result built from a provider's answer rather than parsed from JSON, with the same check that the legend is
+    /// on the reference sheet.
+    /// </summary>
+    public static LegendDetectionResult Create(bool hudDetected, string? legend, double confidence)
+    {
+        (string? canonical, double canonicalConfidence) = OnSheet(legend, confidence);
+        return new LegendDetectionResult(hudDetected, new DetectedPlayer(canonical, canonicalConfidence));
+    }
+
+    /// <summary>
     /// Parses a response and drops any legend that is not on the reference sheet, since the schema cannot stop
     /// the model inventing one. Throws <see cref="JsonException"/> when the response does not match the schema.
     /// </summary>
@@ -172,6 +188,12 @@ public sealed record LegendRecognition(
 /// <summary>Identifies the clip owner's legend from a clip's frames using one particular model.</summary>
 public interface ILegendRecognizer
 {
+    /// <summary>
+    /// Identifies everything this recognizer sends that the model sees, recorded on each run so results from
+    /// different prompts or request layouts are never compared as the same.
+    /// </summary>
+    string PromptVersion { get; }
+
     Task<LegendRecognition> RecognizeAsync(IReadOnlyList<LegendScreenshot> screenshots, CancellationToken cancellationToken);
 }
 
@@ -190,6 +212,8 @@ public sealed class ChatClientLegendRecognizer(IChatClient chatClient, LegendDet
     /// <see cref="LegendDetectionResources.PromptVersion"/> just as a changed prompt file would be.
     /// </summary>
     public const string RequestLayoutVersion = "4";
+
+    public string PromptVersion => resources.PromptVersion;
 
     public async Task<LegendRecognition> RecognizeAsync(
         IReadOnlyList<LegendScreenshot> screenshots,
@@ -245,27 +269,57 @@ public sealed class ChatClientLegendRecognizer(IChatClient chatClient, LegendDet
 
 /// <summary>
 /// Builds a recognizer for a provider and model. Adding a provider means adding a case to
-/// <see cref="CreateChatClient"/> and giving it an API key in configuration.
+/// <see cref="LegendRecognizerFactory.Create"/> and giving it an API key in configuration.
 /// </summary>
 public interface ILegendRecognizerFactory
 {
     bool IsConfigured(string provider);
+
+    /// <summary>The supported providers that have an API key, which a run can be queued against.</summary>
+    IReadOnlyList<string> ConfiguredProviders();
+
+    /// <summary>Whether runs on <paramref name="provider"/> take a reasoning effort.</summary>
+    bool SupportsReasoningEffort(string provider);
+
+    /// <summary>The model to use on <paramref name="provider"/> when none is given, if it has one of its own.</summary>
+    string? DefaultModel(string provider);
+
     /// <param name="reasoningEffort">One of <see cref="LegendReasoningEffort.All"/>, or null for the model's default.</param>
     ILegendRecognizer Create(string provider, string model, string? reasoningEffort);
 }
 
+/// <remarks>
+/// <see cref="OpenAIDecisions"/> is OpenAI's Decisions API, which uses the <see cref="OpenAI"/> provider's key.
+/// </remarks>
 public sealed class LegendRecognizerFactory(
     IOptionsMonitor<LegendDetectionOptions> options,
-    LegendDetectionResources resources) : ILegendRecognizerFactory
+    LegendDetectionResources resources,
+    IHttpClientFactory httpClientFactory) : ILegendRecognizerFactory
 {
     public const string OpenAI = "openai";
+    public const string OpenAIDecisions = "openai-decisions";
 
-    private static readonly string[] SupportedProviders = [OpenAI];
+    private static readonly string[] SupportedProviders = [OpenAI, OpenAIDecisions];
 
     public bool IsConfigured(string provider)
     {
         return SupportedProviders.Contains(provider, StringComparer.OrdinalIgnoreCase)
                && !string.IsNullOrWhiteSpace(ApiKey(provider));
+    }
+
+    public IReadOnlyList<string> ConfiguredProviders()
+    {
+        return SupportedProviders.Where(IsConfigured).ToList();
+    }
+
+    public bool SupportsReasoningEffort(string provider)
+    {
+        return !IsDecisions(provider);
+    }
+
+    public string? DefaultModel(string provider)
+    {
+        return IsDecisions(provider) ? DecisionsLegendRecognizer.DefaultModel : null;
     }
 
     public ILegendRecognizer Create(string provider, string model, string? reasoningEffort)
@@ -276,6 +330,15 @@ public sealed class LegendRecognizerFactory(
         }
 
         LegendDetectionProviderOptions providerOptions = ProviderOptions(provider)!;
+        if (IsDecisions(provider))
+        {
+            return new DecisionsLegendRecognizer(
+                httpClientFactory.CreateClient(DecisionsLegendRecognizer.HttpClientName),
+                providerOptions.ApiKey,
+                model,
+                resources);
+        }
+
         IChatClient chatClient = provider.ToLowerInvariant() switch
         {
             OpenAI => CreateOpenAIChatClient(
@@ -390,9 +453,15 @@ public sealed class LegendRecognizerFactory(
         return ProviderOptions(provider)?.ApiKey;
     }
 
+    private static bool IsDecisions(string provider)
+    {
+        return string.Equals(provider, OpenAIDecisions, StringComparison.OrdinalIgnoreCase);
+    }
+
     private LegendDetectionProviderOptions? ProviderOptions(string provider)
     {
-        return options.CurrentValue.Providers.TryGetValue(provider, out LegendDetectionProviderOptions? providerOptions)
+        string credentials = IsDecisions(provider) ? OpenAI : provider;
+        return options.CurrentValue.Providers.TryGetValue(credentials, out LegendDetectionProviderOptions? providerOptions)
             ? providerOptions
             : null;
     }

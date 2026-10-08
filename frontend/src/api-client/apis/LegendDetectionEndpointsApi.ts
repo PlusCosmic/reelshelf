@@ -17,6 +17,7 @@ import type {
   BackfillLegendDetectionRequest,
   LegendDetectionArchiveResponse,
   LegendDetectionBackfillResponse,
+  LegendDetectionQueuedRunsResponse,
   LegendDetectionReviewClip,
   LegendDetectionRun,
   LegendDetectionUsage,
@@ -30,6 +31,8 @@ import {
   LegendDetectionArchiveResponseToJSON,
   LegendDetectionBackfillResponseFromJSON,
   LegendDetectionBackfillResponseToJSON,
+  LegendDetectionQueuedRunsResponseFromJSON,
+  LegendDetectionQueuedRunsResponseToJSON,
   LegendDetectionReviewClipFromJSON,
   LegendDetectionReviewClipToJSON,
   LegendDetectionRunFromJSON,
@@ -52,6 +55,10 @@ export interface DeleteLegendDetectionLabelRequest {
 
 export interface GetLegendDetectionRunsRequest {
   clipId: string;
+}
+
+export interface QueueLegendDetectionLabelledRunsRequest {
+  queueLegendDetectionRunRequest: QueueLegendDetectionRunRequest;
 }
 
 export interface QueueLegendDetectionRunOperationRequest {
@@ -235,6 +242,39 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
 
   /**
    */
+  async getLegendDetectionProvidersRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<string>>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/providers`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse<any>(response);
+  }
+
+  /**
+   */
+  async getLegendDetectionProviders(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<string>> {
+    const response = await this.getLegendDetectionProvidersRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
   async getLegendDetectionReasoningEffortsRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<string>>> {
@@ -385,6 +425,58 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LegendDetectionUsage>> {
     const response = await this.getLegendDetectionUsageRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async queueLegendDetectionLabelledRunsRaw(
+    requestParameters: QueueLegendDetectionLabelledRunsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LegendDetectionQueuedRunsResponse>> {
+    if (requestParameters["queueLegendDetectionRunRequest"] == null) {
+      throw new runtime.RequiredError(
+        "queueLegendDetectionRunRequest",
+        'Required parameter "queueLegendDetectionRunRequest" was null or undefined when calling queueLegendDetectionLabelledRuns().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/legend-detection/labelled/runs`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: QueueLegendDetectionRunRequestToJSON(
+          requestParameters["queueLegendDetectionRunRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LegendDetectionQueuedRunsResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async queueLegendDetectionLabelledRuns(
+    requestParameters: QueueLegendDetectionLabelledRunsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LegendDetectionQueuedRunsResponse> {
+    const response = await this.queueLegendDetectionLabelledRunsRaw(
+      requestParameters,
+      initOverrides,
+    );
     return await response.value();
   }
 

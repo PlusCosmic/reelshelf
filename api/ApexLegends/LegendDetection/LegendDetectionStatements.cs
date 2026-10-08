@@ -66,6 +66,19 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         });
     }
 
+    public async Task<int> QueueManualRunsForLabelledClipsAsync(string provider, string model, string? reasoningEffort)
+    {
+        const string sql = """
+            INSERT INTO legend_detection_run (clip_id, trigger, provider, model, reasoning_effort)
+            SELECT clip_id, 'manual', @Provider, @Model, @ReasoningEffort
+            FROM legend_detection_label
+            """;
+        return await connection.ExecuteAsync(sql, new
+        {
+            Provider = provider, Model = model, ReasoningEffort = reasoningEffort
+        });
+    }
+
     /// <summary>
     /// Queues a stronger model's run for a clip whose automatic run was unsure; see
     /// <see cref="LegendDetectionOptions.EscalationModel"/>.

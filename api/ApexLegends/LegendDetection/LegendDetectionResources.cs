@@ -9,6 +9,7 @@ namespace Reelshelf.ApexLegends.LegendDetection;
 /// The prompt, response schema and reference sheet embedded from <c>Resources/</c>. They are identical on every
 /// request, so they are loaded once. <see cref="PromptVersion"/> is a hash of all three and the recognizer's
 /// request layout, recorded on each run so results from different prompts are never compared as the same.
+/// <see cref="DecisionsPromptVersion"/> does the same for the Decisions API's prompt, sheet and request layout.
 /// </summary>
 public sealed class LegendDetectionResources
 {
@@ -16,11 +17,14 @@ public sealed class LegendDetectionResources
     public JsonElement ResponseSchema { get; }
     public byte[] ReferenceSheet { get; }
     public string PromptVersion { get; }
+    public string DecisionsPrompt { get; }
+    public string DecisionsPromptVersion { get; }
 
     public LegendDetectionResources()
     {
         byte[] prompt = Read("LegendDetection.prompt.md");
         byte[] schema = Read("LegendDetection.response-schema.json");
+        byte[] decisionsPrompt = Read("LegendDetection.decisions-prompt.md");
         ReferenceSheet = Read("LegendDetection.reference-sheet.png");
 
         Prompt = Encoding.UTF8.GetString(prompt).Trim();
@@ -35,6 +39,12 @@ public sealed class LegendDetectionResources
         hash.AppendData(ReferenceSheet);
         hash.AppendData(Encoding.UTF8.GetBytes(ChatClientLegendRecognizer.RequestLayoutVersion));
         PromptVersion = Convert.ToHexStringLower(hash.GetHashAndReset())[..12];
+
+        DecisionsPrompt = Encoding.UTF8.GetString(decisionsPrompt).Trim();
+        hash.AppendData(decisionsPrompt);
+        hash.AppendData(ReferenceSheet);
+        hash.AppendData(Encoding.UTF8.GetBytes(DecisionsLegendRecognizer.RequestLayoutVersion));
+        DecisionsPromptVersion = Convert.ToHexStringLower(hash.GetHashAndReset())[..12];
     }
 
     private static byte[] Read(string name)

@@ -287,6 +287,8 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<LegendDetectionService>();
         builder.Services.AddHttpClient(LegendDetectionService.FramesHttpClientName,
             client => client.Timeout = TimeSpan.FromSeconds(30));
+        builder.Services.AddHttpClient(DecisionsLegendRecognizer.HttpClientName,
+            client => client.Timeout = TimeSpan.FromMinutes(2));
 
         // Clip transcription stays idle until ClipTranscription:OpenRouterApiKey is configured.
         builder.Services.Configure<ClipTranscriptionOptions>(
