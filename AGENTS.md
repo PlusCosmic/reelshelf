@@ -78,6 +78,7 @@ Triage uses the default five-label vocabulary: `needs-triage`, `needs-info`, `re
 This repo uses a single-context domain documentation layout with root `CONTEXT.md` and root `docs/adr/` when present. See `docs/agents/domain.md`.
 
 <!-- BEGIN AWS Agent Toolkit rules -->
+
 # AWS Guidance for the new AWS experience
 
 This user has signed up for the new AWS experience. This experience lets you sign into AWS using a social provider and requires the following additional context.
