@@ -14,10 +14,10 @@ public class GameCategoryAssetRefreshService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (string.IsNullOrWhiteSpace(configuration["IgdbClientId"]) ||
-            string.IsNullOrWhiteSpace(configuration["IgdbClientSecret"]))
+        if (string.IsNullOrWhiteSpace(configuration["TwitchClientId"]) ||
+            string.IsNullOrWhiteSpace(configuration["TwitchClientSecret"]))
         {
-            logger.LogWarning("IGDB credentials not configured - game category asset refresh service disabled");
+            logger.LogWarning("Twitch credentials not configured - game category asset refresh service disabled");
             return;
         }
 

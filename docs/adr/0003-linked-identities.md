@@ -26,3 +26,4 @@ Reelshelf only knew Discord: the user table was `discord_user`, its natural key 
 - Usernames are no longer unique in practice: a Discord username and a Twitch login can coincide. Adding a collaborator by exact username refuses an ambiguous match and points at the suggestion list, which works by account id.
 - Provider failures and cancelled consent screens redirect back to the app with `auth_error` (sign-in) or `link_error` (linking) instead of surfacing as a 500.
 - Deployments need a Twitch application with `/auth/twitch/callback` registered and `TwitchClientId` / `TwitchClientSecret` set. Discord configuration is unchanged.
+- IGDB authenticates with a Twitch application's client credentials, so game search uses the same `TwitchClientId` / `TwitchClientSecret` rather than separate IGDB settings. One application means one secret to rotate, and the startup check on the Twitch credentials covers IGDB too.

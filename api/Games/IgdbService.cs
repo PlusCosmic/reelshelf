@@ -29,10 +29,12 @@ public class IgdbService
 
     public IgdbService(IConfiguration configuration, IMemoryCache cache)
     {
-        var clientId = configuration["IgdbClientId"]
-            ?? throw new InvalidOperationException("IgdbClientId not configured");
-        var clientSecret = configuration["IgdbClientSecret"]
-            ?? throw new InvalidOperationException("IgdbClientSecret not configured");
+        // IGDB has no credentials of its own: it accepts an app token for any Twitch application, so this
+        // reuses the Twitch sign-in application.
+        var clientId = configuration["TwitchClientId"]
+            ?? throw new InvalidOperationException("TwitchClientId not configured");
+        var clientSecret = configuration["TwitchClientSecret"]
+            ?? throw new InvalidOperationException("TwitchClientSecret not configured");
 
         _client = new IGDBClient(clientId, clientSecret);
         _cache = cache;
