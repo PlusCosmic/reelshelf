@@ -3,6 +3,12 @@ import type { CSSProperties } from "react";
 import { IconPlayerPlayFilled } from "@tabler/icons-react";
 import type { Clip, GameCategoryResponse } from "@/api-client";
 import {
+  clipStageFor,
+  clipStageLabel,
+  type ClipStage,
+} from "@/components/AddClips/addClipsModel";
+import { useUploadForClip } from "@/components/AddClips/UploadsProvider";
+import {
   bookBinding,
   categoryForClip,
   formatDate,
@@ -21,18 +27,23 @@ export function ClipThumb({
   category,
   compact = false,
   onClick,
+  stage,
 }: {
   clip: Clip;
   category?: GameCategoryResponse | null;
   compact?: boolean;
   onClick?: () => void;
+  /** A clip still on its way in: shown dimmed with its progress along the bottom. */
+  stage?: ClipStage;
 }) {
+  const arriving =
+    stage && (stage.kind === "uploading" || stage.kind === "processing");
   const firstTag = clip.tags[0];
   const Tag = onClick ? "button" : "span";
   return (
     <Tag
       {...(onClick ? { type: "button" as const } : {})}
-      className="rs-thumb"
+      className={`rs-thumb${arriving ? " arriving" : ""}`}
       onClick={onClick}
       // The game's cloth shows while the thumbnail loads, or instead of one that's missing.
       style={
@@ -61,6 +72,11 @@ export function ClipThumb({
       {compact && clip.share.shared ? <SharedIndicator compact /> : null}
       {clip.video.length > 0 ? (
         <span className="rs-duration">{formatDuration(clip.video.length)}</span>
+      ) : null}
+      {arriving ? (
+        <span className={`rs-thumb-progress ${stage.kind}`} aria-hidden="true">
+          <span style={{ width: `${stage.progress ?? 0}%` }} />
+        </span>
       ) : null}
     </Tag>
   );
@@ -155,6 +171,7 @@ function ClipRow({
   current: boolean;
   search: ClipLinkSearch | undefined;
 }) {
+  const stage = clipStageFor(clip, useUploadForClip(clip.clipId));
   return (
     <Link
       className={`rs-row${showGame ? "" : " no-game"}${current ? " current" : ""}`}
@@ -163,7 +180,7 @@ function ClipRow({
       search={search}
       aria-current={current ? "page" : undefined}
     >
-      <ClipThumb clip={clip} category={category} compact />
+      <ClipThumb clip={clip} category={category} compact stage={stage} />
       <span className="rs-row-body">
         {current ? <span className="rs-row-now">Now playing</span> : null}
         <span className="rs-row-heading">
@@ -175,6 +192,11 @@ function ClipRow({
             </>
           ) : null}
         </span>
+        {stage.kind !== "ready" ? (
+          <span className={`rs-row-stage ${stage.kind}`}>
+            {clipStageLabel(stage)}
+          </span>
+        ) : null}
         <span className="rs-meta">
           {clip.tags
             .slice(0, 3)
