@@ -31,7 +31,7 @@ await connection.OpenAsync();
 bool hasMetadataTable = await HasMetadataTable(connection);
 bool hasApplicationTables = await HasApplicationTables(connection);
 bool hasBaselineVersion = hasMetadataTable && await HasSuccessfulVersion(connection, baselineVersion);
-string migrationLocation = options.Location ?? defaultMigrationLocation;
+string migrationLocation = ResolveMigrationLocation(options.Location ?? defaultMigrationLocation);
 
 if (hasApplicationTables && !hasMetadataTable && !options.AdoptExisting)
 {
@@ -104,6 +104,19 @@ static async Task<bool> HasSuccessfulVersion(NpgsqlConnection connection, string
         """, connection);
     command.Parameters.AddWithValue("version", version);
     return (bool)(await command.ExecuteScalarAsync() ?? false);
+}
+
+// A relative location is looked for from where the runner was started, then beside the runner itself, where the
+// build copies the SQL files; `dotnet run --project migrations/...` from the repo root starts it one folder up.
+static string ResolveMigrationLocation(string location)
+{
+    if (Path.IsPathRooted(location) || Directory.Exists(location))
+    {
+        return location;
+    }
+
+    string besideRunner = Path.Combine(AppContext.BaseDirectory, location);
+    return Directory.Exists(besideRunner) ? besideRunner : location;
 }
 
 static string CreateMigrationLocationWithoutBaseline(string migrationLocation)
