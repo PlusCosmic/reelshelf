@@ -426,9 +426,13 @@ public class ClipService(
         List<Guid> categoryIds = pagedClips.Select(c => c.GameCategoryId).Distinct().ToList();
         Dictionary<Guid, GameCategory> categoriesById =
             (await gameCategoryStatements.GetByIdsAsync(categoryIds)).ToDictionary(category => category.Id);
+        // Production adopted the baseline schema without running it, so clip_collection there may lack the
+        // (owner_id, game_category_id) unique constraint and hold duplicates from concurrent first uploads.
+        // Nothing reads the collection off a listing, so any one of them will do.
         Dictionary<Guid, ClipsStatements.ClipCollectionRow> collectionsByCategoryId =
             (await clipsStatements.GetCollectionsByOwner(userId))
-            .ToDictionary(collection => collection.GameCategoryId);
+            .GroupBy(collection => collection.GameCategoryId)
+            .ToDictionary(group => group.Key, group => group.First());
 
         List<Clip> finalClips = clipProjection.ProjectClips(
             pagedClips,

@@ -21,8 +21,8 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Every collection the owner has, keyed by category. One row per category, so this is cheap enough
-    /// to fetch whole rather than per clip when projecting a page that spans categories.
+    /// Every collection the owner has. Normally one row per category, so this is cheap enough to fetch
+    /// whole rather than per clip when projecting a page that spans categories.
     /// </summary>
     public async Task<List<ClipCollectionRow>> GetCollectionsByOwner(Guid ownerId)
     {
@@ -30,6 +30,7 @@ public class ClipsStatements(NpgsqlConnection connection)
             SELECT id, owner_id, collection_id, game_category_id
             FROM clip_collection
             WHERE owner_id = @ownerId
+            ORDER BY id
             """;
 
         return (await connection.QueryAsync<ClipCollectionRow>(sql, new { ownerId })).ToList();
