@@ -314,6 +314,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<MapRefreshService>();
             builder.Services.AddHostedService<GameCategoryAssetRefreshService>();
             builder.Services.AddHostedService<GameCategoryClothColorService>();
+            builder.Services.AddHostedService<ClipCollectionMergeService>();
             builder.Services.AddHostedService<LegendDetectionBackgroundService>();
             builder.Services.AddHostedService<ClipTranscriptionBackgroundService>();
             builder.Services.AddHostedService<ClipSummaryBackgroundService>();

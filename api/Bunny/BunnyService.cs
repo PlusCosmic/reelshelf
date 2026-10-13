@@ -107,6 +107,17 @@ public class BunnyService : Users.IClipVideoHost
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task MoveVideoToCollectionAsync(Guid videoId, Guid collectionId)
+    {
+        var url = _videosUrl + $"/{videoId}";
+        var content = JsonContent.Create(new { collectionId = collectionId.ToString() });
+        content.Headers.Remove("Content-Type");
+        content.Headers.Add("Content-Type", "application/json");
+
+        var response = await _httpClient.PostAsync(url, content);
+        response.EnsureSuccessStatusCode();
+    }
+
     /// <summary>
     /// Idempotent: a video Bunny no longer knows about counts as deleted, so a retried clip delete whose
     /// earlier attempt removed the video but not the row can still complete.

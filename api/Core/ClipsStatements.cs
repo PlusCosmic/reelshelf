@@ -21,8 +21,8 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Every collection the owner has, keyed by category. One row per category, so this is cheap enough
-    /// to fetch whole rather than per clip when projecting a page that spans categories.
+    /// Every collection the owner has. Normally one row per category, so this is cheap enough to fetch
+    /// whole rather than per clip when projecting a page that spans categories.
     /// </summary>
     public async Task<List<ClipCollectionRow>> GetCollectionsByOwner(Guid ownerId)
     {
@@ -30,16 +30,21 @@ public class ClipsStatements(NpgsqlConnection connection)
             SELECT id, owner_id, collection_id, game_category_id
             FROM clip_collection
             WHERE owner_id = @ownerId
+            ORDER BY id
             """;
 
         return (await connection.QueryAsync<ClipCollectionRow>(sql, new { ownerId })).ToList();
     }
 
+    /// <summary>
+    /// Inserts the owner's collection for a category, or returns the one a concurrent upload inserted first.
+    /// </summary>
     public async Task<ClipCollectionRow> InsertCollection(Guid ownerId, Guid collectionId, Guid gameCategoryId)
     {
         const string sql = """
             INSERT INTO clip_collection (owner_id, collection_id, game_category_id)
             VALUES (@ownerId, @collectionId, @gameCategoryId)
+            ON CONFLICT (owner_id, game_category_id) DO UPDATE SET collection_id = clip_collection.collection_id
             RETURNING id, owner_id, collection_id, game_category_id
             """;
 
@@ -642,6 +647,25 @@ public class ClipsStatements(NpgsqlConnection connection)
         return await connection.QuerySingleOrDefaultAsync<ClipWithTagsRow>(sql, new { clipId, ownerId });
     }
 
+    public async Task<List<ClipCollectionMergeRow>> GetPendingCollectionMerges(int limit)
+    {
+        const string sql = """
+            SELECT m.collection_id, c.collection_id AS target_collection_id
+            FROM clip_collection_merge m
+            JOIN clip_collection c ON c.owner_id = m.owner_id AND c.game_category_id = m.game_category_id
+            ORDER BY m.collection_id
+            LIMIT @limit
+            """;
+
+        return (await connection.QueryAsync<ClipCollectionMergeRow>(sql, new { limit })).ToList();
+    }
+
+    public async Task DeleteCollectionMerge(Guid collectionId)
+    {
+        const string sql = "DELETE FROM clip_collection_merge WHERE collection_id = @collectionId";
+        await connection.ExecuteAsync(sql, new { collectionId });
+    }
+
     public async Task DeleteClip(Guid clipId)
     {
         const string sql = "DELETE FROM clip WHERE id = @clipId";
@@ -801,6 +825,12 @@ public class ClipsStatements(NpgsqlConnection connection)
         public Guid OwnerId { get; set; }
         public Guid CollectionId { get; set; }
         public Guid GameCategoryId { get; set; }
+    }
+
+    public class ClipCollectionMergeRow
+    {
+        public Guid CollectionId { get; set; }
+        public Guid TargetCollectionId { get; set; }
     }
 
     public class ClipViewRow
