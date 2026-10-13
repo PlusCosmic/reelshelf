@@ -186,7 +186,22 @@ public class ClipService(
     private async Task<ClipsStatements.ClipCollectionRow> CreateCollectionAsync(Guid userId, GameCategory gameCategory)
     {
         BunnyCollection bunnyCollection = await bunnyService.CreateCollectionAsync(gameCategory.Slug, userId);
-        return await clipsStatements.InsertCollection(userId, bunnyCollection.Guid, gameCategory.Id);
+        ClipsStatements.ClipCollectionRow collection =
+            await clipsStatements.InsertCollection(userId, bunnyCollection.Guid, gameCategory.Id);
+        if (collection.CollectionId != bunnyCollection.Guid)
+        {
+            // A concurrent upload created the category's collection first; ours is empty, so drop it.
+            try
+            {
+                await bunnyService.DeleteCollectionAsync(bunnyCollection.Guid);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to delete unused Bunny collection {CollectionId}", bunnyCollection.Guid);
+            }
+        }
+
+        return collection;
     }
 
     /// <summary>
@@ -426,9 +441,8 @@ public class ClipService(
         List<Guid> categoryIds = pagedClips.Select(c => c.GameCategoryId).Distinct().ToList();
         Dictionary<Guid, GameCategory> categoriesById =
             (await gameCategoryStatements.GetByIdsAsync(categoryIds)).ToDictionary(category => category.Id);
-        // Production adopted the baseline schema without running it, so clip_collection there may lack the
-        // (owner_id, game_category_id) unique constraint and hold duplicates from concurrent first uploads.
-        // Nothing reads the collection off a listing, so any one of them will do.
+        // Until V36 runs, production's clip_collection can hold several rows per category (it never got V16's
+        // unique constraint). Nothing reads the collection off a listing, so any one of them will do.
         Dictionary<Guid, ClipsStatements.ClipCollectionRow> collectionsByCategoryId =
             (await clipsStatements.GetCollectionsByOwner(userId))
             .GroupBy(collection => collection.GameCategoryId)
