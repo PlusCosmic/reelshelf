@@ -28,7 +28,12 @@ public class FFmpegService
     public FFmpegService(ILogger<FFmpegService> logger, IConfiguration configuration)
     {
         _logger = logger;
-        _outputPath = configuration["FFmpegOutputPath"] ?? Path.Combine(Path.GetTempPath(), "ffmpeg-downloads");
+        // appsettings.json ships the key empty, so blank means unset; otherwise ffmpeg would write into the
+        // working directory, which the app user cannot write to in the production image.
+        string? configuredPath = configuration["FFmpegOutputPath"];
+        _outputPath = string.IsNullOrWhiteSpace(configuredPath)
+            ? Path.Combine(Path.GetTempPath(), "ffmpeg-downloads")
+            : configuredPath;
 
         int maxConcurrent = configuration.GetValue<int?>("FFmpeg:MaxConcurrentDownloads") ?? DefaultMaxConcurrentDownloads;
         lock (GlobalDownloadsInit)
