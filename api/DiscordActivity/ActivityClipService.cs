@@ -51,7 +51,7 @@ public sealed class ActivityClipService(ClipsStatements clips, GameCategoryState
         return new ActivityClipsResponse(items, page * PageSize < rows.TotalCount);
     }
 
-    /// <summary>Bunny serves the HLS stream once the first resolution has finished encoding.</summary>
+    /// <summary>A clip plays once Bunny has finished encoding it.</summary>
     public static bool IsPlayable(int? videoStatus) =>
-        videoStatus is (int)BunnyVideoStatus.Finished or (int)BunnyVideoStatus.ResolutionFinished;
+        videoStatus == (int)BunnyVideoObjectStatus.Finished;
 }

@@ -1,5 +1,6 @@
 using Dapper;
 using Npgsql;
+using Reelshelf.Bunny.Models;
 
 namespace Reelshelf.ClipTranscription;
 
@@ -41,11 +42,16 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
             INSERT INTO clip_transcription_run (clip_id, trigger, model)
             SELECT id, 'auto', @Model
             FROM clip
-            WHERE owner_id = ANY(@OwnerIds) AND video_status IN (3, 4)
+            WHERE owner_id = ANY(@OwnerIds) AND video_status = @Finished
             ORDER BY created_at
             ON CONFLICT (clip_id) WHERE trigger = 'auto' DO NOTHING
             """;
-        return await connection.ExecuteAsync(sql, new { OwnerIds = ownerIds, Model = model });
+        return await connection.ExecuteAsync(sql, new
+        {
+            OwnerIds = ownerIds,
+            Model = model,
+            Finished = (int)BunnyVideoObjectStatus.Finished
+        });
     }
 
     /// <summary>

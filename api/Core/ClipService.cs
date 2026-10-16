@@ -39,7 +39,7 @@ public class ClipService(
 
     private static bool IsPlayable(int? videoStatus)
     {
-        return videoStatus is (int)BunnyVideoStatus.Finished or (int)BunnyVideoStatus.ResolutionFinished;
+        return videoStatus == (int)BunnyVideoObjectStatus.Finished;
     }
 
     private static string GenerateShareToken()

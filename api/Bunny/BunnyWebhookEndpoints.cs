@@ -94,7 +94,7 @@ public static class BunnyWebhookEndpoints
             logger.LogError(ex, "[WEBHOOK] Error updating clip metadata for ClipId: {ClipId}", clip.Id);
         }
 
-        if (video.Status is (int)BunnyVideoStatus.Finished or (int)BunnyVideoStatus.ResolutionFinished)
+        if (video.Status == (int)BunnyVideoObjectStatus.Finished)
         {
             try
             {

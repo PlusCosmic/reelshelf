@@ -1,7 +1,8 @@
 namespace Reelshelf.Bunny.Models;
 
 /// <summary>
-/// Video encoding status codes from Bunny CDN Stream API.
+/// Status codes in the body of Bunny's video progress webhook. Not the status on Bunny's video object, which is
+/// what clips store: that is <see cref="BunnyVideoObjectStatus"/>.
 /// See: https://docs.bunny.net/docs/stream-webhook
 /// </summary>
 public enum BunnyVideoStatus

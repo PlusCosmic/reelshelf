@@ -37,7 +37,7 @@ public class ClipTranscriptionService(
     {
         return options.AutoQueue
                && options.IsConfigured
-               && videoStatus is (int)BunnyVideoStatus.Finished or (int)BunnyVideoStatus.ResolutionFinished
+               && videoStatus == (int)BunnyVideoObjectStatus.Finished
                && ownerWhitelisted;
     }
 
