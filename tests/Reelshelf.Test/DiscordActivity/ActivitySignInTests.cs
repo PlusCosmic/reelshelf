@@ -134,9 +134,10 @@ public class ActivitySignInTests
         Assert.Null(left);
     }
 
+    // Bunny's video object statuses: 4 is Finished; 3 is still Transcoding.
     [Theory]
-    [InlineData(3, true)]
     [InlineData(4, true)]
+    [InlineData(3, false)]
     [InlineData(2, false)]
     [InlineData(5, false)]
     [InlineData(null, false)]

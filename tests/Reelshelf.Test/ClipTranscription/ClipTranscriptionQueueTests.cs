@@ -11,24 +11,25 @@ public class ClipTranscriptionQueueTests
 
     private static readonly ClipTranscriptionOptions Enabled = new() { AutoQueue = true, OpenRouterApiKey = "key" };
 
-    [Theory]
-    [InlineData((int)BunnyVideoStatus.Finished)]
-    [InlineData((int)BunnyVideoStatus.ResolutionFinished)]
-    public void ShouldAutoQueue_EncodedClipsOfWhitelistedOwners(int status)
+    [Fact]
+    public void ShouldAutoQueue_EncodedClipsOfWhitelistedOwners()
     {
-        Assert.True(ClipTranscriptionService.ShouldAutoQueue(Enabled, status, ownerWhitelisted: true));
+        Assert.True(ClipTranscriptionService.ShouldAutoQueue(
+            Enabled, (int)BunnyVideoObjectStatus.Finished, ownerWhitelisted: true));
     }
 
     [Fact]
     public void ShouldAutoQueue_SkipsOwnersOffTheWhitelist()
     {
         Assert.False(ClipTranscriptionService.ShouldAutoQueue(
-            Enabled, (int)BunnyVideoStatus.Finished, ownerWhitelisted: false));
+            Enabled, (int)BunnyVideoObjectStatus.Finished, ownerWhitelisted: false));
     }
 
     [Theory]
-    [InlineData((int)BunnyVideoStatus.Encoding)]
-    [InlineData((int)BunnyVideoStatus.Failed)]
+    // Still transcoding: the old check took 3 for the webhook's "Finished".
+    [InlineData((int)BunnyVideoObjectStatus.Transcoding)]
+    [InlineData((int)BunnyVideoObjectStatus.Processing)]
+    [InlineData((int)BunnyVideoObjectStatus.Error)]
     [InlineData(null)]
     public void ShouldAutoQueue_SkipsClipsThatAreNotEncoded(int? status)
     {
@@ -38,7 +39,7 @@ public class ClipTranscriptionQueueTests
     [Fact]
     public void ShouldAutoQueue_SkipsWhenOffOrNotConfigured()
     {
-        const int finished = (int)BunnyVideoStatus.Finished;
+        const int finished = (int)BunnyVideoObjectStatus.Finished;
         Assert.False(ClipTranscriptionService.ShouldAutoQueue(
             new ClipTranscriptionOptions { AutoQueue = false, OpenRouterApiKey = "key" }, finished, true));
         Assert.False(ClipTranscriptionService.ShouldAutoQueue(
