@@ -86,7 +86,9 @@ export function UploadTray() {
       queryFn: () => getVideo(item.clipId!),
       refetchInterval: (query: { state: { data?: Clip | null } }) => {
         const clip = query.state.data;
-        return clip && clip.video.status === 3 ? false : 5000;
+        return clip && clipStage(clip.video.status, 0).kind !== "processing"
+          ? false
+          : 5000;
       },
     })),
   });
@@ -102,10 +104,7 @@ export function UploadTray() {
     stage: stageOf(item, item.clipId ? clipById.get(item.clipId) : undefined),
   }));
   const uploading = lines.filter((line) => isUnfinishedUpload(line.item));
-  const processing = lines.filter(
-    (line) =>
-      line.stage?.kind === "processing" || line.stage?.kind === "watchable",
-  );
+  const processing = lines.filter((line) => line.stage?.kind === "processing");
   const failed = lines.filter(
     (line) => !line.stage || line.stage.kind === "failed",
   );

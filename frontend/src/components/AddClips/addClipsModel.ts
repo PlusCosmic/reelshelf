@@ -35,28 +35,25 @@ export function isUnfinishedUpload(item: UploadItem) {
   return UNFINISHED.includes(item.status);
 }
 
-/** Bunny's video statuses, as the API passes them through on each clip. */
-const BunnyStatus = {
-  Queued: 0,
-  Processing: 1,
-  Encoding: 2,
-  Finished: 3,
-  ResolutionFinished: 4,
-  Failed: 5,
-  PresignedUploadFailed: 8,
+/**
+ * The status on Bunny's video object, which is what the API stores on each clip. Not the webhook's
+ * status codes (the API's `BunnyVideoStatus`): the two lists number their steps differently.
+ */
+const BunnyVideoObjectStatus = {
+  Finished: 4,
+  Error: 5,
+  UploadFailed: 6,
 } as const;
 
 export type ClipStage =
   | { kind: "uploading"; progress: number; paused: boolean }
   | { kind: "processing"; progress: number | null }
-  | { kind: "watchable" }
   | { kind: "failed" }
   | { kind: "ready" };
 
 /**
  * Where a clip is on its way to the shelf. An upload still running in this browser wins; after that
- * Bunny's status says whether it is still being processed, playable at a lower resolution while the
- * rest encodes, or done.
+ * Bunny's status says whether it is still being processed, failed, or done.
  */
 export function clipStage(
   status: number,
@@ -71,12 +68,10 @@ export function clipStage(
     };
   }
   switch (status) {
-    case BunnyStatus.Finished:
+    case BunnyVideoObjectStatus.Finished:
       return { kind: "ready" };
-    case BunnyStatus.ResolutionFinished:
-      return { kind: "watchable" };
-    case BunnyStatus.Failed:
-    case BunnyStatus.PresignedUploadFailed:
+    case BunnyVideoObjectStatus.Error:
+    case BunnyVideoObjectStatus.UploadFailed:
       return { kind: "failed" };
     default:
       return {
@@ -93,7 +88,7 @@ export function clipStageFor(clip: Clip, upload?: UploadItem | null) {
 /** True while a clip in the list can still change on its own, so the list is worth refreshing. */
 export function clipStillArriving(clip: Clip) {
   const stage = clipStageFor(clip);
-  return stage.kind === "processing" || stage.kind === "watchable";
+  return stage.kind === "processing";
 }
 
 export function clipStageLabel(stage: ClipStage) {
@@ -104,8 +99,6 @@ export function clipStageLabel(stage: ClipStage) {
       return stage.progress === null
         ? "Processing"
         : `Processing ${stage.progress}%`;
-    case "watchable":
-      return "Watchable · HD soon";
     case "failed":
       return "Couldn’t be processed";
     case "ready":
