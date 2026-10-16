@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { IconMaximize, IconMinimize } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { defaultCloth } from "@/components/Reelshelf/reelshelf-model";
@@ -11,6 +12,7 @@ import {
   ActivityReactionLayer,
 } from "./ActivityReactions";
 import { useWatchRoom, type WatchRoom } from "./useWatchRoom";
+import type { RoomPlayback } from "@/shared/services/watchRoom";
 import {
   ActivityUnavailableError,
   activityImageUrl,
@@ -107,52 +109,7 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
         </p>
       ) : null}
 
-      {playback ? (
-        <div className="rs-activity-now">
-          <ActivityPlayer
-            playback={playback}
-            clockOffsetMs={room.clockOffsetMs}
-            overlay={
-              <ActivityReactionLayer
-                reactions={room.reactions}
-                itemId={playback.itemId}
-              />
-            }
-            host={
-              room.isHost
-                ? {
-                    onPlay: room.play,
-                    onPause: room.pause,
-                    onSeek: room.seek,
-                    onEnded: room.next,
-                  }
-                : null
-            }
-          />
-          <div className="rs-activity-now-details">
-            <div>
-              <h2 className="rs-display rs-activity-now-title">
-                {playback.clip.title}
-              </h2>
-              <p className="rs-activity-role">
-                {[playback.clip.game, `from ${playback.clip.ownerName}'s shelf`]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            </div>
-            {room.isHost ? (
-              <button
-                type="button"
-                className="rs-primary"
-                onClick={() => room.next(playback.itemId)}
-              >
-                {queue.length > 0 ? "Skip" : "Stop"}
-              </button>
-            ) : null}
-          </div>
-          <ActivityReactionBar onReact={room.react} />
-        </div>
-      ) : null}
+      {playback ? <ActivityNowPlaying room={room} playback={playback} /> : null}
 
       {room.error ? (
         <p className="rs-activity-banner" role="alert">
@@ -202,6 +159,100 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
         />
       ) : null}
     </section>
+  );
+}
+
+/**
+ * The playing clip with its details and reactions. Expanding it fills the whole Activity window with the
+ * video; it collapses again on the toggle or Escape, and whenever the room stops playing.
+ */
+function ActivityNowPlaying({
+  room,
+  playback,
+}: {
+  room: WatchRoom;
+  playback: RoomPlayback;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const queue = room.state?.queue ?? [];
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpanded(false);
+    };
+    // The room underneath must not scroll while the video covers it.
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      root.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [expanded]);
+
+  return (
+    <div className={`rs-activity-now${expanded ? " is-expanded" : ""}`}>
+      <ActivityPlayer
+        playback={playback}
+        clockOffsetMs={room.clockOffsetMs}
+        overlay={
+          <>
+            <ActivityReactionLayer
+              reactions={room.reactions}
+              itemId={playback.itemId}
+            />
+            <button
+              type="button"
+              className="rs-icon-button rs-activity-expand"
+              aria-label={expanded ? "Exit full view" : "Full view"}
+              aria-pressed={expanded}
+              title={expanded ? "Exit full view (Esc)" : "Full view"}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? (
+                <IconMinimize size={18} aria-hidden="true" />
+              ) : (
+                <IconMaximize size={18} aria-hidden="true" />
+              )}
+            </button>
+          </>
+        }
+        host={
+          room.isHost
+            ? {
+                onPlay: room.play,
+                onPause: room.pause,
+                onSeek: room.seek,
+                onEnded: room.next,
+              }
+            : null
+        }
+      />
+      <div className="rs-activity-now-details">
+        <div>
+          <h2 className="rs-display rs-activity-now-title">
+            {playback.clip.title}
+          </h2>
+          <p className="rs-activity-role">
+            {[playback.clip.game, `from ${playback.clip.ownerName}'s shelf`]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+        {room.isHost ? (
+          <button
+            type="button"
+            className="rs-primary"
+            onClick={() => room.next(playback.itemId)}
+          >
+            {queue.length > 0 ? "Skip" : "Stop"}
+          </button>
+        ) : null}
+      </div>
+      <ActivityReactionBar onReact={room.react} />
+    </div>
   );
 }
 
