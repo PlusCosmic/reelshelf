@@ -133,15 +133,14 @@ public class ClipStatusRefreshService(
     }
 
     /// <summary>
-    /// True for statuses that mean bytes reached Bunny and are being (or have been) processed. Failed is
-    /// deliberately excluded: a failed video with zero storage is abandoned, and one with storage is kept by
+    /// True for statuses that mean bytes reached Bunny and are being (or have been) processed. Error is
+    /// deliberately excluded: a video in error with zero storage is abandoned, and one with storage is kept by
     /// the storage check that runs before this.
     /// </summary>
-    private static bool IsUploaded(int status)
+    public static bool IsUploaded(int status)
     {
-        return status is not ((int)BunnyVideoStatus.Queued
-            or (int)BunnyVideoStatus.PresignedUploadStarted
-            or (int)BunnyVideoStatus.PresignedUploadFailed
-            or (int)BunnyVideoStatus.Failed);
+        return status is not ((int)BunnyVideoObjectStatus.Created
+            or (int)BunnyVideoObjectStatus.UploadFailed
+            or (int)BunnyVideoObjectStatus.Error);
     }
 }

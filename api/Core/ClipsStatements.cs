@@ -381,7 +381,7 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     /// <summary>
     /// Clips whose video was never uploaded or failed with nothing stored: still in a pre-upload Bunny status
-    /// (or Bunny's general Failed state) with zero storage, reserved at the API before <paramref name="reservedBefore"/>.
+    /// (or Bunny's Error state) with zero storage, reserved at the API before <paramref name="reservedBefore"/>.
     /// These hold quota and their MD5 for their owner until removed.
     /// (created_at is the client-supplied capture time and says nothing about when the upload started.)
     /// </summary>
@@ -392,15 +392,14 @@ public class ClipsStatements(NpgsqlConnection connection)
             FROM clip
             WHERE reserved_at < @reservedBefore
               AND COALESCE(storage_size, 0) = 0
-              AND (video_status IS NULL OR video_status IN (@Queued, @PresignedUploadStarted, @PresignedUploadFailed, @Failed))
+              AND (video_status IS NULL OR video_status IN (@Created, @UploadFailed, @Error))
             """;
         return (await connection.QueryAsync<ClipRow>(sql, new
         {
             reservedBefore,
-            Queued = (int)BunnyVideoStatus.Queued,
-            PresignedUploadStarted = (int)BunnyVideoStatus.PresignedUploadStarted,
-            PresignedUploadFailed = (int)BunnyVideoStatus.PresignedUploadFailed,
-            Failed = (int)BunnyVideoStatus.Failed
+            Created = (int)BunnyVideoObjectStatus.Created,
+            UploadFailed = (int)BunnyVideoObjectStatus.UploadFailed,
+            Error = (int)BunnyVideoObjectStatus.Error
         })).ToList();
     }
 
