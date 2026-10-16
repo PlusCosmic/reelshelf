@@ -3981,6 +3981,52 @@ html:has(.rs-library-route) {
   gap: 12px;
 }
 
+/* Full view: the playing clip covers the Activity window, with its details and reactions in a strip below. */
+.rs-activity-now.is-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  background: var(--bg);
+}
+
+.rs-activity-now.is-expanded .rs-activity-player {
+  flex: 1 1 0;
+  aspect-ratio: auto;
+  min-height: 0;
+}
+
+.rs-activity-now.is-expanded .rs-activity-video {
+  object-fit: contain;
+}
+
+.rs-activity-now.is-expanded .rs-activity-now-title {
+  font-size: 18px;
+}
+
+.rs-activity-now.is-expanded .rs-activity-role {
+  margin-top: 2px;
+}
+
+.rs-activity-expand {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: grid;
+  place-items: center;
+  border-color: transparent;
+  background: color-mix(in oklab, #06100b 65%, transparent);
+  color: #eef2ee;
+}
+
+.rs-activity-expand:hover,
+.rs-activity-expand:focus-visible {
+  background: color-mix(in oklab, #06100b 85%, transparent);
+}
+
 .rs-activity-now-title {
   margin: 0;
   font-size: 22px;
