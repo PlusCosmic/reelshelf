@@ -14,10 +14,12 @@ export type TwitchClipsWindow = 7 | 30 | 90 | null;
 export async function fetchTwitchClips(options: {
   cursor?: string | null;
   days?: TwitchClipsWindow;
+  first?: number;
 }): Promise<TwitchClipsResponse> {
   return createTwitchClipsApi().getTwitchClips({
     cursor: options.cursor ?? undefined,
     days: options.days ?? undefined,
+    first: options.first,
   });
 }
 

@@ -25,6 +25,10 @@
   --empty-cloth: #e9efea;
   --tip-bg: #13261c;
   --tip-ink: #eef2ee;
+  /* Processing on Bunny, told apart from uploading by lightness as well as hue. */
+  --processing: #3f6a96;
+  /* Twitch's bookmark ribbon: a muted Twitch purple, never used as an accent. */
+  --twitch: #7d68b8;
   --radius: 3px;
   --radius-lg: 4px;
   --font-sans:
@@ -62,6 +66,8 @@
   --empty-cloth: #10201a;
   --tip-bg: #e4ebe6;
   --tip-ink: #13241c;
+  --processing: #9fb7d6;
+  --twitch: #a593dc;
 }
 
 * {
@@ -1317,20 +1323,33 @@ html:has(.rs-library-route) {
   overflow-anchor: none;
 }
 
-.rs-library-drop-overlay {
+/* While files are dragged over the library: which way to drop them. */
+.rs-drop-hint {
   position: fixed;
   z-index: 30;
-  inset: 88px 24px 24px;
-  display: grid;
-  place-content: center;
-  gap: 8px;
-  border: 2px dashed var(--accent);
-  border-radius: var(--radius-lg);
-  background: color-mix(in oklab, var(--bg) 88%, var(--accent));
+  top: calc(var(--rs-topbar-height, 64px) + 14px);
+  left: 50%;
+  translate: -50% 0;
+  padding: 10px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--surface);
   color: var(--fg);
+  font-size: 14px;
+  white-space: nowrap;
   pointer-events: none;
-  text-align: center;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 12px 30px -10px
+    color-mix(in oklab, var(--shadow) 60%, transparent);
+}
+
+.rs-drop-hint span {
+  color: var(--fg-soft);
+}
+
+.rs-drop-notice {
+  margin: 12px 0 0;
+  color: var(--danger);
+  font-size: 13px;
 }
 
 /* The library's top: the bookcase, then the pulled-out game's banner or the greeting. */
@@ -6441,5 +6460,476 @@ html:has(.rs-library-route) {
   .rs-shelfbar-menu {
     transition: none;
     animation: none;
+  }
+}
+
+/* ---- Adding clips: drops on the shelf, ghost books, the tray ---- */
+
+.rs-book-spine.drop-target {
+  z-index: 5;
+  transform: translateY(-14px);
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.rs-book-add.dropping {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.rs-book-add.drop-target {
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  transform: translateY(-10px);
+}
+
+/* A bookmark ribbon: this book has Twitch clips waiting to come in. */
+.rs-book-ribbon {
+  position: absolute;
+  top: -6px;
+  right: 18%;
+  z-index: 1;
+  width: 9px;
+  height: 30px;
+  background: var(--twitch);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+  box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.18);
+}
+
+.rs-book-tip-twitch {
+  gap: 5px;
+}
+
+.rs-shelf-divider {
+  flex: none;
+  align-self: flex-end;
+  width: 1px;
+  height: calc(180px * var(--book-scale));
+  margin: 0 12px;
+  background: var(--case-upright);
+}
+
+/* A game with Twitch clips and no book yet: outlined, waiting to be taken down. */
+.rs-book-spine.rs-book-ghost {
+  border: 1.5px dashed color-mix(in oklab, var(--fg-soft) 70%, transparent);
+  border-bottom: 0;
+  background: color-mix(in oklab, var(--twitch) 10%, transparent);
+  color: var(--fg-soft);
+  box-shadow: none;
+}
+
+.rs-book-spine.rs-book-ghost::after {
+  display: none;
+}
+
+.rs-book-spine.rs-book-ghost .rs-book-title {
+  text-shadow: none;
+}
+
+.rs-book-spine.rs-book-ghost:hover,
+.rs-book-spine.rs-book-ghost:focus-visible {
+  border-color: var(--twitch);
+  color: var(--fg);
+}
+
+.rs-book-ghost-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: calc(14px * var(--book-scale));
+  font-weight: 600;
+}
+
+.rs-ghost-card {
+  position: absolute;
+  z-index: 7;
+  display: grid;
+  gap: 4px;
+  width: 250px;
+  padding: 12px 14px 14px;
+  border-radius: var(--radius);
+  background: var(--tip-bg);
+  color: var(--tip-ink);
+  box-shadow: 0 14px 30px -10px
+    color-mix(in oklab, var(--shadow) 60%, transparent);
+  transform: translate(-50%, calc(-100% - 16px));
+}
+
+.rs-ghost-card-meta {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.rs-ghost-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rs-ghost-card-actions button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in oklab, var(--tip-ink) 25%, transparent);
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rs-ghost-card-actions .rs-ghost-add {
+  border-color: var(--fill);
+  background: var(--fill);
+  color: var(--fill-ink);
+  font-weight: 600;
+}
+
+/* Twitch clips of the open book's game, offered under its banner. */
+.rs-twitch-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 20px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+}
+
+.rs-twitch-strip-mark {
+  flex: none;
+  color: var(--twitch);
+}
+
+.rs-twitch-strip-text {
+  display: grid;
+  gap: 3px;
+  min-width: 220px;
+  font-size: 14px;
+}
+
+.rs-twitch-strip-text strong {
+  font-weight: 600;
+}
+
+.rs-twitch-strip-thumbs {
+  flex: 1 1 280px;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rs-twitch-strip-thumb {
+  flex: none;
+  display: grid;
+  gap: 5px;
+  width: 112px;
+  font-size: 11px;
+  color: var(--fg-soft);
+}
+
+.rs-twitch-strip-thumb img {
+  width: 112px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  object-fit: cover;
+  background: var(--track-bg);
+}
+
+.rs-twitch-strip-thumb span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-twitch-strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rs-twitch-strip-actions .rs-primary,
+.rs-twitch-strip-actions .rs-secondary {
+  min-height: 36px;
+  text-decoration: none;
+}
+
+@media (max-width: 720px) {
+  .rs-twitch-strip-thumbs {
+    display: none;
+  }
+}
+
+/* A clip still on its way in: dimmed, with its progress along the bottom of the thumbnail. */
+.rs-thumb.arriving img {
+  opacity: 0.45;
+}
+
+.rs-thumb-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: color-mix(in oklab, var(--scrim) 70%, transparent);
+}
+
+.rs-thumb-progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.rs-thumb-progress.processing span {
+  background: var(--processing);
+}
+
+.rs-row-stage {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-soft);
+}
+
+.rs-row-stage.processing {
+  color: var(--processing);
+}
+
+.rs-row-stage.watchable {
+  color: var(--accent);
+}
+
+.rs-row-stage.failed {
+  color: var(--danger);
+}
+
+/* The corner tray for clips on their way in. */
+.rs-tray {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  width: min(400px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: 0 18px 40px -12px
+    color-mix(in oklab, var(--shadow) 65%, transparent);
+}
+
+.rs-tray:not(.open) {
+  width: auto;
+  max-width: calc(100vw - 32px);
+}
+
+.rs-tray-pill {
+  display: flex;
+  align-items: center;
+}
+
+.rs-tray-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rs-tray-title {
+  font-weight: 600;
+}
+
+.rs-tray-ring circle {
+  fill: none;
+  stroke-width: 3;
+}
+
+.rs-tray-ring circle:first-child {
+  stroke: var(--track-bg);
+}
+
+.rs-tray-ring circle:last-child {
+  stroke: var(--accent);
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.rs-tray-ring.process circle:last-child {
+  stroke: var(--processing);
+}
+
+.rs-tray-icon,
+.rs-tray-text-button {
+  border: 0;
+  background: transparent;
+  color: var(--fg-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.rs-tray-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+}
+
+.rs-tray-text-button {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.rs-tray-icon:hover,
+.rs-tray-text-button:hover {
+  color: var(--fg);
+}
+
+.rs-tray-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rs-tray-head .rs-display {
+  flex: 1;
+  font-size: 17px;
+}
+
+.rs-tray-books {
+  max-height: min(420px, 55vh);
+  overflow-y: auto;
+}
+
+.rs-tray-book {
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rs-tray-book-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rs-tray-book-head i {
+  display: block;
+  width: 5px;
+  height: 16px;
+  border-radius: 1px;
+  background: var(--track-bg);
+}
+
+.rs-tray-book-head a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.rs-tray-book-head a:hover {
+  text-decoration: underline;
+}
+
+.rs-tray-book-head .rs-meta {
+  margin-left: auto;
+  font-weight: 400;
+}
+
+.rs-tray-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px 112px;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 0 0 13px;
+  font-size: 12px;
+}
+
+.rs-tray-line-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-tray-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--track-bg);
+  overflow: hidden;
+}
+
+.rs-tray-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.rs-tray-line.processing .rs-tray-bar span {
+  background: var(--processing);
+}
+
+.rs-tray-line-status {
+  color: var(--fg-soft);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-tray-line.processing .rs-tray-line-status {
+  color: var(--processing);
+}
+
+.rs-tray-line.watchable .rs-tray-line-status,
+.rs-tray-line.ready .rs-tray-line-status {
+  color: var(--accent);
+}
+
+.rs-tray-line.failed .rs-tray-line-status {
+  color: var(--danger);
+}
+
+.rs-tray-line-status button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rs-tray-more {
+  margin: 6px 0 0 13px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-soft);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rs-tray-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  color: var(--fg-soft);
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .rs-tray {
+    right: 16px;
+    bottom: 16px;
   }
 }

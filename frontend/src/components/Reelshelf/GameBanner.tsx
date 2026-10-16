@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { IconUpload } from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 import { StitchedDot } from "./StitchedDot";
 import { StatLine, type ClipTotals } from "./primitives/Stats";
 import { bookBinding, type GameShelfItem } from "./reelshelf-model";
@@ -69,8 +69,8 @@ export function GameBanner({
       </div>
       <div className="rs-game-banner-actions">
         <button type="button" className="rs-primary" onClick={onUpload}>
-          <IconUpload size={16} aria-hidden="true" />
-          Upload clips
+          <IconPlus size={16} aria-hidden="true" />
+          Add clips
         </button>
         <button
           type="button"

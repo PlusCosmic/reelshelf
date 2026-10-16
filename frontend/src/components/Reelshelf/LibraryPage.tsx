@@ -1,10 +1,20 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import type { DragEvent } from "react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import type { GameCategoryResponse } from "@/api-client";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
+import type { TwitchGhost } from "@/components/AddClips/addClipsModel";
+import { TwitchBookStrip } from "@/components/AddClips/TwitchBookStrip";
+import {
+  twitchSuggestionsKey,
+  useTwitchSuggestions,
+} from "@/components/AddClips/twitchSuggestions";
+import { useUploads } from "@/components/AddClips/UploadsProvider";
+import type { BulkUploadFileInput } from "@/hooks/bulkUploadQueue";
+import { useAddGameFromIgdb } from "@/hooks/queries";
 import { useTopTags } from "@/hooks/clips.queries";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
-import { setPendingBulkUploadEntry } from "@/utils/bulkUploadEntry";
 import {
   bulkUploadInputsFromDataTransfer,
   dataTransferHasFiles,
@@ -78,6 +88,14 @@ function libraryReducer(
  */
 export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { addClips } = useUploads();
+  const twitch = useTwitchSuggestions();
+  const addFromIgdb = useAddGameFromIgdb();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Clips dropped on New book wait here while their game is chosen.
+  const [pendingClips, setPendingClips] = useState<BulkUploadFileInput[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
   const { categories, categoryTotals, totals, isLoading, isError } =
     useLibraryData();
   const [state, dispatch] = useReducer(libraryReducer, {
@@ -189,14 +207,39 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     void navigate({ to: "/" });
   };
 
-  const openUpload = async (game: GameShelfItem | null) => {
-    setPendingBulkUploadEntry({
-      files: [],
-      fallbackCategoryId: game?.id ?? null,
-      source: game ? "game" : "library",
-    });
-    await navigate({ to: "/upload" });
+  const twitchCounts = new Map(
+    [...twitch.byCategory].map(([id, clips]) => [id, clips.length]),
+  );
+
+  /** Puts clips into a book; anything that can't be uploaded is mentioned instead. */
+  const fileInto = (inputs: BulkUploadFileInput[], categoryId: string) => {
+    if (!inputs.length) return;
+    const rejected = addClips(inputs, categoryId);
+    setNotice(
+      rejected.length
+        ? `${rejected[0].message}${rejected.length > 1 ? ` ${rejected.length - 1} more skipped.` : ""}`
+        : null,
+    );
   };
+
+  /** Opens a book once the library knows about it, so its page never says it can't be found. */
+  const openBook = async (category: GameCategoryResponse) => {
+    await queryClient.refetchQueries({ queryKey: ["clips", "library"] });
+    void queryClient.invalidateQueries({ queryKey: twitchSuggestionsKey });
+    void navigate({ to: "/games/$slug", params: { slug: category.slug } });
+  };
+
+  const addGhost = (ghost: TwitchGhost, inputs: BulkUploadFileInput[] = []) =>
+    addFromIgdb.mutate(ghost.igdbId, {
+      onSuccess: (category) => {
+        fileInto(inputs, category.id);
+        void openBook(category);
+      },
+    });
+
+  // Read the dropped files while the drop event is still live; the browser forgets them after.
+  const readDrop = (data: DataTransfer) =>
+    bulkUploadInputsFromDataTransfer(data);
 
   function onDragEnter(event: DragEvent<HTMLElement>) {
     if (!dataTransferHasFiles(event.dataTransfer)) return;
@@ -220,21 +263,21 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     }
   }
 
+  function endDrag() {
+    dragDepthRef.current = 0;
+    dispatch({ type: "setDraggingUpload", value: false });
+  }
+
+  // Books on the shelf take their own drops; this one is for the open book's page.
   async function onDrop(event: DragEvent<HTMLElement>) {
     if (!dataTransferHasFiles(event.dataTransfer)) return;
     event.preventDefault();
-    dragDepthRef.current = 0;
-    dispatch({ type: "setDraggingUpload", value: false });
-
-    const files = await bulkUploadInputsFromDataTransfer(event.dataTransfer);
-    if (!files.length) return;
-
-    setPendingBulkUploadEntry({
-      files,
-      fallbackCategoryId: selectedId,
-      source: selected ? "game" : "library",
-    });
-    await navigate({ to: "/upload" });
+    endDrag();
+    if (!selected) {
+      setNotice("Drop clips onto a book, or onto New book for another game.");
+      return;
+    }
+    fileInto(await readDrop(event.dataTransfer), selected.id);
   }
 
   return (
@@ -246,13 +289,33 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
       onDrop={onDrop}
     >
       {state.draggingUpload ? (
-        <div className="rs-library-drop-overlay" role="status">
-          <span className="rs-upload-drop-title">Drop clips to upload</span>
-          <span className="rs-upload-drop-copy">
-            Files and recorder folders will open in the bulk upload queue.
-          </span>
+        <div className="rs-drop-hint" role="status">
+          {selected ? (
+            <>
+              Drop anywhere to add to <strong>{selected.name}</strong>
+              <span> · or onto another book</span>
+            </>
+          ) : (
+            <>
+              Drop on a book to add these clips
+              <span> · or on New book for another game</span>
+            </>
+          )}
         </div>
       ) : null}
+      <input
+        ref={fileInputRef}
+        className="rs-visually-hidden"
+        type="file"
+        accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+        multiple
+        aria-label="Choose clips to add"
+        onChange={(event) => {
+          const files = Array.from(event.currentTarget.files ?? []);
+          event.currentTarget.value = "";
+          if (selected) fileInto(files, selected.id);
+        }}
+      />
 
       <section className="rs-library-top" ref={setTopSection}>
         {/* The greeting heads the page whether or not a book is pulled out, so choosing a game
@@ -274,14 +337,47 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
           onAddGame={() =>
             dispatch({ type: "setAddCategoryOpen", value: true })
           }
+          dropping={state.draggingUpload}
+          onDropOnBook={(game, data) => {
+            endDrag();
+            void readDrop(data).then((inputs) => fileInto(inputs, game.id));
+          }}
+          onDropOnNewBook={(data) => {
+            endDrag();
+            void readDrop(data).then((inputs) => {
+              if (!inputs.length) return;
+              setPendingClips(inputs);
+              dispatch({ type: "setAddCategoryOpen", value: true });
+            });
+          }}
+          twitchCounts={twitchCounts}
+          ghosts={twitch.ghosts}
+          onAddGhost={(ghost) => addGhost(ghost)}
+          onDismissGhost={(ghost) => twitch.dismissGame(ghost.igdbId)}
+          onDropOnGhost={(ghost, data) => {
+            endDrag();
+            void readDrop(data).then((inputs) => addGhost(ghost, inputs));
+          }}
         />
+        {notice ? (
+          <p className="rs-drop-notice" role="status">
+            {notice}
+          </p>
+        ) : null}
 
         {selected ? (
           <GameBanner
             game={selected}
             totals={categoryTotalsFor(categoryTotals, selected.id)}
-            onUpload={() => void openUpload(selected)}
+            onUpload={() => fileInputRef.current?.click()}
             onPutBack={putBack}
+          />
+        ) : null}
+        {selected && twitch.byCategory.get(selected.id)?.length ? (
+          <TwitchBookStrip
+            key={selected.id}
+            categoryId={selected.id}
+            clips={twitch.byCategory.get(selected.id) ?? []}
           />
         ) : null}
       </section>
@@ -350,7 +446,15 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
 
       <AddCategoryModal
         opened={state.addCategoryOpen}
-        onClose={() => dispatch({ type: "setAddCategoryOpen", value: false })}
+        pendingClipCount={pendingClips.length}
+        onClose={() => {
+          setPendingClips([]);
+          dispatch({ type: "setAddCategoryOpen", value: false });
+        }}
+        onAdded={(category) => {
+          fileInto(pendingClips, category.id);
+          void openBook(category);
+        }}
       />
     </main>
   );

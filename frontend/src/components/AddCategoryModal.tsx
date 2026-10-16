@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useId, useState } from "react";
 import type { FormEvent } from "react";
+import type { GameCategoryResponse } from "@/api-client";
 import { IconX } from "@tabler/icons-react";
 import { CustomCategoryPanel } from "@/components/AddCategory/CustomCategoryPanel";
 import { GameSearchPanel } from "@/components/AddCategory/GameSearchPanel";
@@ -17,9 +18,17 @@ import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 interface AddCategoryModalProps {
   opened: boolean;
   onClose: () => void;
+  /** Clips dropped on New book, waiting for the game they belong to. */
+  pendingClipCount?: number;
+  onAdded?: (category: GameCategoryResponse) => void;
 }
 
-export function AddCategoryModal({ opened, onClose }: AddCategoryModalProps) {
+export function AddCategoryModal({
+  opened,
+  onClose,
+  pendingClipCount = 0,
+  onAdded,
+}: AddCategoryModalProps) {
   const titleId = useId();
   const [activeTab, setActiveTab] = useState<AddCategoryTab>("search");
   const [search, setSearch] = useState("");
@@ -56,9 +65,10 @@ export function AddCategoryModal({ opened, onClose }: AddCategoryModalProps) {
 
   const handleAddFromIgdb = (igdbId: number) => {
     addFromIgdbMutation.mutate(igdbId, {
-      onSuccess: () => {
+      onSuccess: (category) => {
         setSearch("");
-        closeModal();
+        onAdded?.(category);
+        onClose();
       },
     });
   };
@@ -71,10 +81,11 @@ export function AddCategoryModal({ opened, onClose }: AddCategoryModalProps) {
     addCustomMutation.mutate(
       { name, coverUrl: customCoverUrl.trim() || undefined },
       {
-        onSuccess: () => {
+        onSuccess: (category) => {
           setCustomName("");
           setCustomCoverUrl("");
-          closeModal();
+          onAdded?.(category);
+          onClose();
         },
       },
     );
@@ -97,7 +108,9 @@ export function AddCategoryModal({ opened, onClose }: AddCategoryModalProps) {
           <div>
             <p className="rs-eyebrow">Bookshelf category</p>
             <h2 className="rs-modal-title" id={titleId}>
-              Add a new book
+              {pendingClipCount > 0
+                ? `Which game ${pendingClipCount === 1 ? "is this clip" : `are these ${pendingClipCount} clips`} from?`
+                : "Add a new book"}
             </h2>
           </div>
           <button

@@ -7,6 +7,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import type { Clip, PagedClipsResponse } from "@/api-client";
+import { clipStillArriving } from "@/components/AddClips/addClipsModel";
 import { storageUsageQueryKey } from "@/hooks/auth.queries";
 import { gamingSessionBounds } from "@/shared/utils/gamingSession";
 import {
@@ -65,6 +66,11 @@ export function useClipsInfinite(filters: ClipsFilters = {}, enabled = true) {
       allPages.length < lastPage.totalPages ? allPages.length + 1 : undefined,
     staleTime: 30_000,
     enabled,
+    // Clips still being processed change on their own; look again until they're done.
+    refetchInterval: (query) =>
+      query.state.data?.pages.some((page) => page.clips.some(clipStillArriving))
+        ? 8000
+        : false,
   });
 }
 

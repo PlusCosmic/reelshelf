@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, DragEvent } from "react";
 import {
   useCallback,
   useEffect,
@@ -7,10 +7,13 @@ import {
   useState,
 } from "react";
 import {
+  IconBrandTwitch,
   IconChevronLeft,
   IconChevronRight,
   IconPlus,
 } from "@tabler/icons-react";
+import type { TwitchGhost } from "@/components/AddClips/addClipsModel";
+import { dataTransferHasFiles } from "@/utils/bulkUploadDrop";
 import {
   bookBinding,
   bookSize,
@@ -26,9 +29,60 @@ type BookcaseProps = {
   onPutBack: () => void;
   /** Leave out for a shelf that only shows games, like the landing page's example. */
   onAddGame?: () => void;
+  /** Files are being dragged over the page: every book, and New book, takes a drop. */
+  dropping?: boolean;
+  onDropOnBook?: (game: GameShelfItem, data: DataTransfer) => void;
+  onDropOnNewBook?: (data: DataTransfer) => void;
+  /** Twitch clips waiting to come in, by book; a ribbon marks each book that has some. */
+  twitchCounts?: ReadonlyMap<string, number>;
+  /** Games with Twitch clips and no book yet, shown as outlined books at the end of the shelf. */
+  ghosts?: TwitchGhost[];
+  onAddGhost?: (ghost: TwitchGhost) => void;
+  onDismissGhost?: (ghost: TwitchGhost) => void;
+  onDropOnGhost?: (ghost: TwitchGhost, data: DataTransfer) => void;
 };
 
 type Tip = { game: GameShelfItem; left: number; top: number };
+type GhostCard = { ghost: TwitchGhost; left: number; top: number };
+type DropTarget = { key: string; left: number; top: number };
+
+/** Drag handlers that make an element take dropped files, marking it while files are over it. */
+function dropHandlers(
+  key: string,
+  onTarget: (key: string | null, element?: HTMLElement) => void,
+  onDrop: ((data: DataTransfer) => void) | undefined,
+) {
+  if (!onDrop) return {};
+  return {
+    onDragOver: (event: DragEvent<HTMLElement>) => {
+      if (!dataTransferHasFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "copy";
+      onTarget(key, event.currentTarget);
+    },
+    onDragLeave: (event: DragEvent<HTMLElement>) => {
+      if (event.currentTarget.contains(event.relatedTarget as Node | null))
+        return;
+      onTarget(null);
+    },
+    onDrop: (event: DragEvent<HTMLElement>) => {
+      if (!dataTransferHasFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onTarget(null);
+      onDrop(event.dataTransfer);
+    },
+  };
+}
+
+function ghostSize(ghost: TwitchGhost) {
+  const fullness = Math.sqrt(Math.min(ghost.clips.length, 300) / 300);
+  return {
+    width: Math.round(46 + 44 * fullness),
+    height: 236 + (ghost.igdbId % 65),
+  };
+}
 
 const ADD_KEY = "add-a-game";
 // Quick enough to never hold anything up, long enough to see where things went.
@@ -54,6 +108,9 @@ function reducedMotion() {
 function Spine({
   game,
   returning,
+  dropTarget,
+  twitchCount,
+  drop,
   onSelect,
   onShowTip,
   onHideTip,
@@ -61,6 +118,9 @@ function Spine({
 }: {
   game: GameShelfItem;
   returning: boolean;
+  dropTarget: boolean;
+  twitchCount: number;
+  drop: ReturnType<typeof dropHandlers>;
   onSelect: () => void;
   onShowTip: (element: HTMLElement) => void;
   onHideTip: () => void;
@@ -79,7 +139,7 @@ function Spine({
     <button
       type="button"
       ref={itemRef}
-      className={`rs-book-spine${empty ? " empty" : ""}${binding.light ? " light" : ""}${returning ? " returning" : ""}`}
+      className={`rs-book-spine${empty ? " empty" : ""}${binding.light ? " light" : ""}${returning ? " returning" : ""}${dropTarget ? " drop-target" : ""}`}
       style={
         {
           "--cloth": binding.cloth,
@@ -94,8 +154,16 @@ function Spine({
       onPointerLeave={onHideTip}
       onFocus={(event) => onShowTip(event.currentTarget)}
       onBlur={onHideTip}
-      aria-label={describe(game)}
+      aria-label={
+        twitchCount > 0
+          ? `${describe(game)}, ${plural(twitchCount, "Twitch clip", "Twitch clips")} to bring in`
+          : describe(game)
+      }
+      {...drop}
     >
+      {twitchCount > 0 ? (
+        <span className="rs-book-ribbon" aria-hidden="true" />
+      ) : null}
       {!empty && game.coverUrl ? (
         <img className="rs-book-weave" src={game.coverUrl} alt="" />
       ) : null}
@@ -174,6 +242,14 @@ export function Bookcase({
   onSelect,
   onPutBack,
   onAddGame,
+  dropping = false,
+  onDropOnBook,
+  onDropOnNewBook,
+  twitchCounts,
+  ghosts = [],
+  onAddGhost,
+  onDismissGhost,
+  onDropOnGhost,
 }: BookcaseProps) {
   const caseRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
@@ -181,6 +257,23 @@ export function Bookcase({
   const items = useRef(new Map<string, HTMLElement>());
   const offsets = useRef(new Map<string, number>());
   const [tip, setTip] = useState<Tip | null>(null);
+  const [ghostCard, setGhostCard] = useState<GhostCard | null>(null);
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+  // A drag that leaves the page ends without a drop; forget which book it was over.
+  if (!dropping && dropTarget) setDropTarget(null);
+  const dropKey = dropping ? (dropTarget?.key ?? null) : null;
+  const setDropKey = (key: string | null, element?: HTMLElement) => {
+    if (!key || !element) return setDropTarget(null);
+    if (dropTarget?.key === key) return;
+    const box = caseRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const rect = element.getBoundingClientRect();
+    setDropTarget({
+      key,
+      left: rect.left + rect.width / 2 - box.left,
+      top: rect.top - box.top,
+    });
+  };
   const [overflow, setOverflow] = useState({ left: false, right: false });
 
   // The book that was pulled out until this render goes back with its own little turn. Worked
@@ -289,6 +382,18 @@ export function Bookcase({
   };
   const hideTip = () => setTip(null);
 
+  const openGhost = (ghost: TwitchGhost, element: HTMLElement) => {
+    const box = caseRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const rect = element.getBoundingClientRect();
+    hideTip();
+    setGhostCard({
+      ghost,
+      left: rect.left + rect.width / 2 - box.left,
+      top: rect.top - box.top,
+    });
+  };
+
   // Nudge the label back inside the case when it would hang off either end.
   useLayoutEffect(() => {
     const element = tipRef.current;
@@ -325,6 +430,13 @@ export function Bookcase({
                 key={game.id}
                 game={game}
                 returning={game.id === returningId}
+                dropTarget={dropping && dropKey === game.id}
+                twitchCount={twitchCounts?.get(game.id) ?? 0}
+                drop={dropHandlers(
+                  game.id,
+                  setDropKey,
+                  onDropOnBook && ((data) => onDropOnBook(game, data)),
+                )}
                 onSelect={() => {
                   hideTip();
                   onSelect(game);
@@ -335,16 +447,59 @@ export function Bookcase({
               />
             ),
           )}
+          {ghosts.length ? (
+            <span className="rs-shelf-divider" aria-hidden="true" />
+          ) : null}
+          {ghosts.map((ghost) => {
+            const size = ghostSize(ghost);
+            const key = `ghost-${ghost.igdbId}`;
+            return (
+              <button
+                key={key}
+                type="button"
+                ref={itemRef(key)}
+                className={`rs-book-spine rs-book-ghost${dropping && dropKey === key ? " drop-target" : ""}`}
+                style={
+                  {
+                    "--book-w": `${size.width}px`,
+                    "--book-h": `${size.height}px`,
+                    "--title-size": `${Math.max(14, Math.min(22, 28 - ghost.gameName.length * 0.6, size.width * 0.3))}px`,
+                  } as CSSProperties
+                }
+                onClick={(event) => openGhost(ghost, event.currentTarget)}
+                aria-haspopup="dialog"
+                aria-label={`${ghost.gameName}, not on your shelf, ${plural(ghost.clips.length, "Twitch clip", "Twitch clips")}`}
+                {...dropHandlers(
+                  key,
+                  setDropKey,
+                  onDropOnGhost && ((data) => onDropOnGhost(ghost, data)),
+                )}
+              >
+                <span className="rs-book-bands" aria-hidden="true" />
+                <span className="rs-book-title" aria-hidden="true">
+                  <span className="rs-book-name">{ghost.gameName}</span>
+                </span>
+                <span className="rs-book-foot" aria-hidden="true">
+                  <span className="rs-book-ghost-count">
+                    <IconBrandTwitch size={13} />
+                    {ghost.clips.length}
+                  </span>
+                  <span className="rs-book-rule" />
+                </span>
+              </button>
+            );
+          })}
           {onAddGame ? (
             <button
               type="button"
               ref={itemRef(ADD_KEY)}
-              className="rs-book-add"
+              className={`rs-book-add${dropping ? " dropping" : ""}${dropping && dropKey === ADD_KEY ? " drop-target" : ""}`}
               onClick={onAddGame}
               aria-label="Add a game or category"
+              {...dropHandlers(ADD_KEY, setDropKey, onDropOnNewBook)}
             >
               <IconPlus size={20} aria-hidden="true" />
-              <span>Add a game</span>
+              <span>{dropping ? "New book" : "Add a game"}</span>
             </button>
           ) : null}
         </div>
@@ -389,8 +544,100 @@ export function Bookcase({
               </>
             ) : null}
           </span>
+          {twitchCounts?.get(tip.game.id) ? (
+            <span className="rs-book-tip-meta rs-book-tip-twitch">
+              <IconBrandTwitch size={13} />
+              {plural(
+                twitchCounts.get(tip.game.id) ?? 0,
+                "Twitch clip",
+                "Twitch clips",
+              )}{" "}
+              to bring in
+            </span>
+          ) : null}
         </div>
       ) : null}
+      {dropKey && dropTarget ? (
+        <DropLabel
+          left={dropTarget.left}
+          top={dropTarget.top}
+          label={
+            dropKey === ADD_KEY
+              ? "Drop to start a new book"
+              : dropKey.startsWith("ghost-")
+                ? `Drop to add ${ghosts.find((g) => `ghost-${g.igdbId}` === dropKey)?.gameName ?? "this game"} to your shelf`
+                : `Drop into ${shelf.find((g) => g.id === dropKey)?.name ?? "this book"}`
+          }
+        />
+      ) : null}
+      {ghostCard ? (
+        <div
+          className="rs-ghost-card"
+          role="dialog"
+          aria-label={ghostCard.ghost.gameName}
+          style={{ left: ghostCard.left, top: ghostCard.top }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setGhostCard(null);
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget))
+              setGhostCard(null);
+          }}
+        >
+          <span className="rs-book-tip-name">{ghostCard.ghost.gameName}</span>
+          <span className="rs-ghost-card-meta">
+            {plural(
+              ghostCard.ghost.clips.length,
+              "of your Twitch clips",
+              "of your Twitch clips",
+            )}{" "}
+            · not on your shelf yet
+          </span>
+          <span className="rs-ghost-card-actions">
+            <button
+              type="button"
+              className="rs-ghost-add"
+              autoFocus
+              onClick={() => {
+                setGhostCard(null);
+                onAddGhost?.(ghostCard.ghost);
+              }}
+            >
+              Add to shelf
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setGhostCard(null);
+                onDismissGhost?.(ghostCard.ghost);
+              }}
+            >
+              Not interested
+            </button>
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** The label over whichever book files are being dragged onto. */
+function DropLabel({
+  left,
+  top,
+  label,
+}: {
+  left: number;
+  top: number;
+  label: string;
+}) {
+  return (
+    <div
+      className="rs-book-tip rs-drop-label"
+      style={{ left, top }}
+      aria-hidden="true"
+    >
+      <span className="rs-book-tip-name">{label}</span>
     </div>
   );
 }

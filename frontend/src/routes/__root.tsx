@@ -14,6 +14,8 @@ import {
   IconSun,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { UploadsProvider } from "@/components/AddClips/UploadsProvider";
+import { UploadTray } from "@/components/AddClips/UploadTray";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
@@ -137,12 +139,6 @@ function AuthenticatedShell({
           >
             Collections
           </Link>
-          <Link
-            to="/upload"
-            className={active("/upload") ? "active" : undefined}
-          >
-            Add clips
-          </Link>
         </nav>
 
         <div className="rs-user">
@@ -238,9 +234,12 @@ function AuthenticatedShell({
           </div>
         </div>
       </header>
-      <main>
-        {user.needsOnboarding ? <EmailOnboarding user={user} /> : <Outlet />}
-      </main>
+      <UploadsProvider>
+        <main>
+          {user.needsOnboarding ? <EmailOnboarding user={user} /> : <Outlet />}
+        </main>
+        <UploadTray />
+      </UploadsProvider>
     </div>
   );
 }
