@@ -91,7 +91,8 @@ describe("clipStage", () => {
 
   it("follows Bunny once the upload is done", () => {
     const done = upload({ status: "uploaded", progress: 100 });
-    expect(clipStage(2, 35, done)).toEqual({
+    // Bunny's video object: 1 uploaded, 3 transcoding, 4 finished, 5 error, 6 upload failed.
+    expect(clipStage(3, 35, done)).toEqual({
       kind: "processing",
       progress: 35,
     });
@@ -99,8 +100,8 @@ describe("clipStage", () => {
       kind: "processing",
       progress: null,
     });
-    expect(clipStage(4, 100, done)).toEqual({ kind: "watchable" });
-    expect(clipStage(3, 100, done)).toEqual({ kind: "ready" });
+    expect(clipStage(4, 100, done)).toEqual({ kind: "ready" });
     expect(clipStage(5, 0, done)).toEqual({ kind: "failed" });
+    expect(clipStage(6, 0, done)).toEqual({ kind: "failed" });
   });
 });

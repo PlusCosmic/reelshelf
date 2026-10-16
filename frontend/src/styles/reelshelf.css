@@ -6696,10 +6696,6 @@ html:has(.rs-library-route) {
   color: var(--processing);
 }
 
-.rs-row-stage.watchable {
-  color: var(--accent);
-}
-
 .rs-row-stage.failed {
   color: var(--danger);
 }
@@ -6888,7 +6884,6 @@ html:has(.rs-library-route) {
   color: var(--processing);
 }
 
-.rs-tray-line.watchable .rs-tray-line-status,
 .rs-tray-line.ready .rs-tray-line-status {
   color: var(--accent);
 }
