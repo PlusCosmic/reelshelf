@@ -17,7 +17,7 @@ public class ClipTranscriptionService(
     IClipTranscriber transcriber,
     ClipSummaryService summaryService,
     IOptionsMonitor<ClipTranscriptionOptions> options,
-    IConfiguration configuration,
+    ClipMediaUrls mediaUrls,
     ILogger<ClipTranscriptionService> logger)
 {
     /// <summary>The largest file the transcription endpoint accepts.</summary>
@@ -112,11 +112,6 @@ public class ClipTranscriptionService(
         Dictionary<Guid, ClipTranscriptionStatements.LatestRunRow> latestRuns =
             (await statements.GetLatestRunsAsync(clips.Select(clip => clip.Id).ToList())).ToDictionary(run => run.ClipId);
 
-        string cdnBaseUrl = configuration["BunnyCdnBaseUrl"]
-                            ?? throw new InvalidOperationException("BunnyCdnBaseUrl is not configured");
-        string libraryId = configuration["BunnyLibraryId"]
-                           ?? throw new InvalidOperationException("Bunny API library ID not configured");
-
         return clips.Select(clip =>
         {
             latestRuns.TryGetValue(clip.Id, out ClipTranscriptionStatements.LatestRunRow? latest);
@@ -128,8 +123,8 @@ public class ClipTranscriptionService(
                 clip.GameSlug,
                 clip.CreatedAt,
                 clip.Length,
-                $"https://player.mediadelivery.net/embed/{libraryId}/{clip.VideoId}?autoplay=false",
-                $"{cdnBaseUrl.TrimEnd('/')}/{clip.VideoId}/thumbnail.jpg",
+                mediaUrls.Embed(clip.VideoId),
+                mediaUrls.Thumbnail(clip.VideoId),
                 latest is null ? null : ClipTranscriptionRun.From(latest),
                 (int)(latest?.RunCount ?? 0));
         }).ToList();
@@ -216,7 +211,7 @@ public class ClipTranscriptionService(
         try
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
-            ClipAudio audio = await ClipAudioExtractor.ExtractAsync(PlaylistUrl(run.VideoId), audioPath, cancellationToken);
+            ClipAudio audio = await ClipAudioExtractor.ExtractAsync(mediaUrls.Playlist(run.VideoId), audioPath, cancellationToken);
             if (!audio.HasAudio)
             {
                 await statements.CompleteRunAsync(run.Id, prompt, audio, null, null,
@@ -313,13 +308,6 @@ public class ClipTranscriptionService(
         }
 
         return current.Model.Trim();
-    }
-
-    private Uri PlaylistUrl(Guid videoId)
-    {
-        string cdnBaseUrl = configuration["BunnyCdnBaseUrl"]
-                            ?? throw new InvalidOperationException("BunnyCdnBaseUrl is not configured");
-        return new Uri($"{cdnBaseUrl.TrimEnd('/')}/{videoId}/playlist.m3u8");
     }
 
     private void TryDelete(string path)

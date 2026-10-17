@@ -13,7 +13,7 @@ public class LegendDetectionService(
     ILegendRecognizerFactory recognizerFactory,
     IHttpClientFactory httpClientFactory,
     IOptionsMonitor<LegendDetectionOptions> options,
-    IConfiguration configuration,
+    ClipMediaUrls mediaUrls,
     ILogger<LegendDetectionService> logger)
 {
     public const string FramesHttpClientName = "legend-detection-frames";
@@ -139,13 +139,12 @@ public class LegendDetectionService(
             throw new NotFoundException("Eval", evalId);
         }
 
-        string cdnBaseUrl = CdnBaseUrl();
         return (await statements.GetEvalMissesAsync(evalId))
             .Select(row => new LegendEvalMiss(
                 row.RunId,
                 row.ClipId,
                 row.Title ?? "Untitled",
-                ThumbnailUrls(cdnBaseUrl, row.VideoId),
+                mediaUrls.DetectionFrames(row.VideoId),
                 row.Status,
                 row.PlayerLegend,
                 row.PlayerLegendConfidence,
@@ -226,10 +225,6 @@ public class LegendDetectionService(
         Dictionary<Guid, LegendDetectionStatements.LabelRow> labels =
             (await statements.GetLabelsAsync(clipIds)).ToDictionary(label => label.ClipId);
 
-        string cdnBaseUrl = CdnBaseUrl();
-        string libraryId = configuration["BunnyLibraryId"]
-                           ?? throw new InvalidOperationException("Bunny API library ID not configured");
-
         return clips.Select(clip =>
         {
             latestRuns.TryGetValue(clip.Id, out LegendDetectionStatements.LatestRunRow? latest);
@@ -240,8 +235,8 @@ public class LegendDetectionService(
                 clip.OwnerName,
                 clip.CreatedAt,
                 clip.Length,
-                $"https://player.mediadelivery.net/embed/{libraryId}/{clip.VideoId}?autoplay=false",
-                ThumbnailUrls(cdnBaseUrl, clip.VideoId),
+                mediaUrls.Embed(clip.VideoId),
+                mediaUrls.DetectionFrames(clip.VideoId),
                 latest is null ? null : LegendDetectionRun.From(latest),
                 (int)(latest?.RunCount ?? 0),
                 label is null
@@ -286,7 +281,6 @@ public class LegendDetectionService(
             (await statements.GetCurrentResultsAsync(clipIds)).ToDictionary(run => run.ClipId);
         Dictionary<Guid, LegendDetectionStatements.LabelRow> labels =
             (await statements.GetLabelsAsync(clipIds)).ToDictionary(label => label.ClipId);
-        string cdnBaseUrl = CdnBaseUrl();
 
         return clips.Select(clip =>
         {
@@ -297,7 +291,7 @@ public class LegendDetectionService(
                 clip.Title ?? "Untitled",
                 clip.OwnerName,
                 clip.CreatedAt,
-                ThumbnailUrls(cdnBaseUrl, clip.VideoId),
+                mediaUrls.DetectionFrames(clip.VideoId),
                 label is null ? null : new LegendBaselineLabel(label.PlayerLegend, label.LabelledAt),
                 result is null
                     ? null
@@ -499,25 +493,11 @@ public class LegendDetectionService(
             run.ClipId, run.Provider, run.Model, provider, model);
     }
 
-    /// <summary>
-    /// The thumbnails Bunny generates while encoding: the main thumbnail plus five more taken through the video.
-    /// </summary>
-    public static List<string> ThumbnailUrls(string cdnBaseUrl, Guid videoId)
-    {
-        string baseUrl = $"{cdnBaseUrl.TrimEnd('/')}/{videoId}";
-        return
-        [
-            $"{baseUrl}/thumbnail.jpg",
-            .. Enumerable.Range(1, 5).Select(index => $"{baseUrl}/thumbnail_{index}.jpg")
-        ];
-    }
-
     private async Task<List<LegendFrame>> DownloadFramesAsync(Guid videoId, CancellationToken cancellationToken)
     {
-        string cdnBaseUrl = CdnBaseUrl();
         HttpClient client = httpClientFactory.CreateClient(FramesHttpClientName);
 
-        LegendFrame?[] frames = await Task.WhenAll(ThumbnailUrls(cdnBaseUrl, videoId).Select(async url =>
+        LegendFrame?[] frames = await Task.WhenAll(mediaUrls.DetectionFrames(videoId).Select(async url =>
         {
             try
             {
@@ -540,12 +520,6 @@ public class LegendDetectionService(
         }));
 
         return frames.OfType<LegendFrame>().ToList();
-    }
-
-    private string CdnBaseUrl()
-    {
-        return configuration["BunnyCdnBaseUrl"]
-               ?? throw new InvalidOperationException("BunnyCdnBaseUrl is not configured");
     }
 
     /// <summary>
