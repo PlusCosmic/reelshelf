@@ -21,6 +21,10 @@ public static class LegendDetectionEndpoints
         group.MapGet("clips/{clipId:guid}/runs", GetRuns).WithName("GetLegendDetectionRuns");
         group.MapPut("clips/{clipId:guid}/label", SetLabel).WithName("SetLegendDetectionLabel");
         group.MapDelete("clips/{clipId:guid}/label", DeleteLabel).WithName("DeleteLegendDetectionLabel");
+        group.MapGet("baseline", GetBaseline).WithName("GetLegendDetectionBaseline");
+        group.MapPut("labels", SetPlayerLabels).WithName("SetLegendDetectionPlayerLabels");
+        group.MapPost("labels/clear", ClearLabels).WithName("ClearLegendDetectionLabels");
+        group.MapGet("reference-sheet", GetReferenceSheet).WithName("GetLegendDetectionReferenceSheet");
         group.MapGet("legends", GetLegends).WithName("GetLegendDetectionLegends");
         group.MapGet("reasoning-efforts", GetReasoningEfforts).WithName("GetLegendDetectionReasoningEfforts");
         group.MapGet("providers", GetProviders).WithName("GetLegendDetectionProviders");
@@ -76,6 +80,37 @@ public static class LegendDetectionEndpoints
         return TypedResults.NoContent();
     }
 
+    public static async Task<List<LegendBaselineClip>> GetBaseline(LegendDetectionService service)
+    {
+        return await service.GetBaselineAsync();
+    }
+
+    /// <summary>Sets the owner's legend on many clips at once, keeping any teammate legends already labelled.</summary>
+    public static async Task<LegendDetectionLabelsSavedResponse> SetPlayerLabels(
+        SetLegendDetectionPlayerLabelsRequest request,
+        AuthenticatedUser user,
+        LegendDetectionService service)
+    {
+        return new LegendDetectionLabelsSavedResponse(await service.SetPlayerLabelsAsync(request.Labels, user.Id));
+    }
+
+    /// <summary>Removes the labels of many clips at once, as the baseline page undoes a confirmed group.</summary>
+    public static async Task<LegendDetectionLabelsClearedResponse> ClearLabels(
+        ClearLegendDetectionLabelsRequest request,
+        LegendDetectionService service)
+    {
+        return new LegendDetectionLabelsClearedResponse(await service.ClearLabelsAsync(request.ClipIds));
+    }
+
+    /// <summary>
+    /// The reference sheet the model is sent: two rows of fourteen labelled portraits, in
+    /// <see cref="ApexLegendNames.All"/> order, so the baseline page can show each legend's portrait.
+    /// </summary>
+    public static FileContentHttpResult GetReferenceSheet(LegendDetectionResources resources)
+    {
+        return TypedResults.File(resources.ReferenceSheet, "image/png");
+    }
+
     public static async Task<NoContent> DeleteLabel(Guid clipId, LegendDetectionService service)
     {
         await service.DeleteLabelAsync(clipId);
@@ -128,6 +163,40 @@ public sealed record LegendDetectionQueuedRunsResponse(int Queued);
 
 /// <summary>A null <c>PlayerLegend</c> means the clip owner's legend can't be identified from the clip.</summary>
 public sealed record SetLegendDetectionLabelRequest(string? PlayerLegend, List<string> TeammateLegends);
+
+public sealed record SetLegendDetectionPlayerLabelsRequest(List<LegendPlayerLabel> Labels);
+
+/// <summary>A null <c>PlayerLegend</c> means the clip owner's legend can't be identified from the clip.</summary>
+public sealed record LegendPlayerLabel(Guid ClipId, string? PlayerLegend);
+
+public sealed record LegendDetectionLabelsSavedResponse(int Saved);
+
+public sealed record ClearLegendDetectionLabelsRequest(List<Guid> ClipIds);
+
+public sealed record LegendDetectionLabelsClearedResponse(int Cleared);
+
+/// <summary>
+/// A clip on the baseline page. <c>Label</c> is the saved owner's legend, if the clip has been labelled;
+/// <c>Result</c> is the latest succeeded run, which Reelshelf currently uses for the clip.
+/// </summary>
+public sealed record LegendBaselineClip(
+    Guid ClipId,
+    string Title,
+    string OwnerName,
+    DateTimeOffset CreatedAt,
+    List<string> FrameUrls,
+    LegendBaselineLabel? Label,
+    LegendBaselineResult? Result);
+
+/// <summary>A null <c>PlayerLegend</c> means the owner's legend can't be identified from the clip.</summary>
+public sealed record LegendBaselineLabel(string? PlayerLegend, DateTimeOffset LabelledAt);
+
+public sealed record LegendBaselineResult(
+    string? PlayerLegend,
+    float? Confidence,
+    string Provider,
+    string Model,
+    bool? HudDetected);
 
 /// <summary>The legends actually in a clip, as set by an admin. Teammates are unordered.</summary>
 public sealed record LegendDetectionLabel(string? PlayerLegend, List<string> TeammateLegends, DateTimeOffset LabelledAt);

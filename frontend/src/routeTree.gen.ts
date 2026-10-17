@@ -20,6 +20,7 @@ import { Route as UploadRouteImport } from './routes/upload'
 import { Route as LibraryIndexRouteImport } from './routes/_library/index'
 import { Route as CollectionsIndexRouteImport } from './routes/collections/index'
 import { Route as CollectionsPlaylistIdRouteImport } from './routes/collections/$playlistId'
+import { Route as LegendDetectionBaselineRouteImport } from './routes/legend-detection_.baseline'
 import { Route as PlaylistsIndexRouteImport } from './routes/playlists/index'
 import { Route as PlaylistsPlaylistIdRouteImport } from './routes/playlists/$playlistId'
 import { Route as ShareTokenRouteImport } from './routes/share/$token'
@@ -80,6 +81,11 @@ const CollectionsPlaylistIdRoute = CollectionsPlaylistIdRouteImport.update({
   path: '/collections/$playlistId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LegendDetectionBaselineRoute = LegendDetectionBaselineRouteImport.update({
+  id: '/legend-detection_/baseline',
+  path: '/legend-detection/baseline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlaylistsIndexRoute = PlaylistsIndexRouteImport.update({
   id: '/playlists/',
   path: '/playlists/',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
+  '/legend-detection/baseline': typeof LegendDetectionBaselineRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/share/$token': typeof ShareTokenRoute
   '/collections/': typeof CollectionsIndexRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
+  '/legend-detection/baseline': typeof LegendDetectionBaselineRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/share/$token': typeof ShareTokenRoute
   '/': typeof LibraryIndexRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
+  '/legend-detection_/baseline': typeof LegendDetectionBaselineRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/share/$token': typeof ShareTokenRoute
   '/_library/': typeof LibraryIndexRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/upload'
     | '/collections/$playlistId'
+    | '/legend-detection/baseline'
     | '/playlists/$playlistId'
     | '/share/$token'
     | '/collections/'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/upload'
     | '/collections/$playlistId'
+    | '/legend-detection/baseline'
     | '/playlists/$playlistId'
     | '/share/$token'
     | '/'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/upload'
     | '/collections/$playlistId'
+    | '/legend-detection_/baseline'
     | '/playlists/$playlistId'
     | '/share/$token'
     | '/_library/'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   UploadRoute: typeof UploadRoute
   CollectionsPlaylistIdRoute: typeof CollectionsPlaylistIdRoute
+  LegendDetectionBaselineRoute: typeof LegendDetectionBaselineRoute
   PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
   ShareTokenRoute: typeof ShareTokenRoute
   CollectionsIndexRoute: typeof CollectionsIndexRoute
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CollectionsPlaylistIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legend-detection_/baseline': {
+      id: '/legend-detection_/baseline'
+      path: '/legend-detection/baseline'
+      fullPath: '/legend-detection/baseline'
+      preLoaderRoute: typeof LegendDetectionBaselineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/playlists/': {
       id: '/playlists/'
       path: '/playlists'
@@ -371,6 +391,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   UploadRoute: UploadRoute,
   CollectionsPlaylistIdRoute: CollectionsPlaylistIdRoute,
+  LegendDetectionBaselineRoute: LegendDetectionBaselineRoute,
   PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,
   ShareTokenRoute: ShareTokenRoute,
   CollectionsIndexRoute: CollectionsIndexRoute,

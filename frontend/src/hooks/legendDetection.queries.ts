@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   archiveLegendRuns,
+  clearLegendLabels,
+  fetchLegendBaseline,
+  setLegendPlayerLabels,
+  type LegendBaselineClip,
+  type PlayerLabel,
   backfillLegendDetection,
   deleteLegendLabel,
   fetchLegendNames,
@@ -19,6 +24,7 @@ import {
 export const legendDetectionQueryKey = ["legend-detection"] as const;
 const reviewClipsQueryKey = [...legendDetectionQueryKey, "clips"] as const;
 const usageQueryKey = [...legendDetectionQueryKey, "usage"] as const;
+const baselineQueryKey = [...legendDetectionQueryKey, "baseline"] as const;
 const runsQueryKey = (clipId: string) =>
   [...legendDetectionQueryKey, "runs", clipId] as const;
 
@@ -84,6 +90,66 @@ export function useQueueLabelledLegendRuns() {
   return useMutation({
     mutationFn: queueLabelledLegendRuns,
     onSuccess: invalidate,
+  });
+}
+
+export function useLegendBaseline(enabled = true) {
+  return useQuery({
+    queryKey: baselineQueryKey,
+    queryFn: fetchLegendBaseline,
+    enabled,
+    retry: false,
+  });
+}
+
+/**
+ * A change to many clips' labels on the baseline page: labels to set, and clips whose label to remove. Applied to
+ * the cached baseline at once, so confirming a group never waits on the network, and rolled back if it fails.
+ */
+export type BaselineLabelChange = {
+  set: PlayerLabel[];
+  clear: string[];
+};
+
+export function useChangeBaselineLabels() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ set, clear }: BaselineLabelChange) => {
+      if (set.length > 0) await setLegendPlayerLabels(set);
+      if (clear.length > 0) await clearLegendLabels(clear);
+    },
+    onMutate: async ({ set, clear }: BaselineLabelChange) => {
+      await queryClient.cancelQueries({ queryKey: baselineQueryKey });
+      const previous =
+        queryClient.getQueryData<LegendBaselineClip[]>(baselineQueryKey);
+      const labelledAt = new Date();
+      const setById = new Map(set.map((label) => [label.clipId, label]));
+      const cleared = new Set(clear);
+      queryClient.setQueryData<LegendBaselineClip[]>(
+        baselineQueryKey,
+        (clips) =>
+          clips?.map((clip) => {
+            const label = setById.get(clip.clipId);
+            if (label)
+              return {
+                ...clip,
+                label: { playerLegend: label.playerLegend, labelledAt },
+              };
+            return cleared.has(clip.clipId) ? { ...clip, label: null } : clip;
+          }),
+      );
+      return { previous };
+    },
+    onError: (_error, _change, context) => {
+      if (context?.previous)
+        queryClient.setQueryData(baselineQueryKey, context.previous);
+    },
+    // The review page and usage table score against labels; the baseline itself is already up to date.
+    onSettled: () =>
+      queryClient.invalidateQueries({
+        queryKey: legendDetectionQueryKey,
+        predicate: (query) => query.queryKey[1] !== "baseline",
+      }),
   });
 }
 

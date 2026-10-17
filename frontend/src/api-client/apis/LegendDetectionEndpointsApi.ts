@@ -15,22 +15,35 @@
 import * as runtime from "../runtime";
 import type {
   BackfillLegendDetectionRequest,
+  ClearLegendDetectionLabelsRequest,
+  LegendBaselineClip,
   LegendDetectionArchiveResponse,
   LegendDetectionBackfillResponse,
+  LegendDetectionLabelsClearedResponse,
+  LegendDetectionLabelsSavedResponse,
   LegendDetectionQueuedRunsResponse,
   LegendDetectionReviewClip,
   LegendDetectionRun,
   LegendDetectionUsage,
   QueueLegendDetectionRunRequest,
   SetLegendDetectionLabelRequest,
+  SetLegendDetectionPlayerLabelsRequest,
 } from "../models/index";
 import {
   BackfillLegendDetectionRequestFromJSON,
   BackfillLegendDetectionRequestToJSON,
+  ClearLegendDetectionLabelsRequestFromJSON,
+  ClearLegendDetectionLabelsRequestToJSON,
+  LegendBaselineClipFromJSON,
+  LegendBaselineClipToJSON,
   LegendDetectionArchiveResponseFromJSON,
   LegendDetectionArchiveResponseToJSON,
   LegendDetectionBackfillResponseFromJSON,
   LegendDetectionBackfillResponseToJSON,
+  LegendDetectionLabelsClearedResponseFromJSON,
+  LegendDetectionLabelsClearedResponseToJSON,
+  LegendDetectionLabelsSavedResponseFromJSON,
+  LegendDetectionLabelsSavedResponseToJSON,
   LegendDetectionQueuedRunsResponseFromJSON,
   LegendDetectionQueuedRunsResponseToJSON,
   LegendDetectionReviewClipFromJSON,
@@ -43,10 +56,16 @@ import {
   QueueLegendDetectionRunRequestToJSON,
   SetLegendDetectionLabelRequestFromJSON,
   SetLegendDetectionLabelRequestToJSON,
+  SetLegendDetectionPlayerLabelsRequestFromJSON,
+  SetLegendDetectionPlayerLabelsRequestToJSON,
 } from "../models/index";
 
 export interface BackfillLegendDetectionOperationRequest {
   backfillLegendDetectionRequest: BackfillLegendDetectionRequest;
+}
+
+export interface ClearLegendDetectionLabelsOperationRequest {
+  clearLegendDetectionLabelsRequest: ClearLegendDetectionLabelsRequest;
 }
 
 export interface DeleteLegendDetectionLabelRequest {
@@ -69,6 +88,10 @@ export interface QueueLegendDetectionRunOperationRequest {
 export interface SetLegendDetectionLabelOperationRequest {
   clipId: string;
   setLegendDetectionLabelRequest: SetLegendDetectionLabelRequest;
+}
+
+export interface SetLegendDetectionPlayerLabelsOperationRequest {
+  setLegendDetectionPlayerLabelsRequest: SetLegendDetectionPlayerLabelsRequest;
 }
 
 /**
@@ -164,6 +187,58 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
 
   /**
    */
+  async clearLegendDetectionLabelsRaw(
+    requestParameters: ClearLegendDetectionLabelsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LegendDetectionLabelsClearedResponse>> {
+    if (requestParameters["clearLegendDetectionLabelsRequest"] == null) {
+      throw new runtime.RequiredError(
+        "clearLegendDetectionLabelsRequest",
+        'Required parameter "clearLegendDetectionLabelsRequest" was null or undefined when calling clearLegendDetectionLabels().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/legend-detection/labels/clear`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: ClearLegendDetectionLabelsRequestToJSON(
+          requestParameters["clearLegendDetectionLabelsRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LegendDetectionLabelsClearedResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async clearLegendDetectionLabels(
+    requestParameters: ClearLegendDetectionLabelsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LegendDetectionLabelsClearedResponse> {
+    const response = await this.clearLegendDetectionLabelsRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   */
   async deleteLegendDetectionLabelRaw(
     requestParameters: DeleteLegendDetectionLabelRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -205,6 +280,41 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteLegendDetectionLabelRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   */
+  async getLegendDetectionBaselineRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LegendBaselineClip>>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/baseline`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LegendBaselineClipFromJSON),
+    );
+  }
+
+  /**
+   */
+  async getLegendDetectionBaseline(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LegendBaselineClip>> {
+    const response = await this.getLegendDetectionBaselineRaw(initOverrides);
+    return await response.value();
   }
 
   /**
@@ -305,6 +415,38 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
     const response =
       await this.getLegendDetectionReasoningEffortsRaw(initOverrides);
     return await response.value();
+  }
+
+  /**
+   */
+  async getLegendDetectionReferenceSheetRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/reference-sheet`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async getLegendDetectionReferenceSheet(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.getLegendDetectionReferenceSheetRaw(initOverrides);
   }
 
   /**
@@ -598,5 +740,57 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.setLegendDetectionLabelRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   */
+  async setLegendDetectionPlayerLabelsRaw(
+    requestParameters: SetLegendDetectionPlayerLabelsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LegendDetectionLabelsSavedResponse>> {
+    if (requestParameters["setLegendDetectionPlayerLabelsRequest"] == null) {
+      throw new runtime.RequiredError(
+        "setLegendDetectionPlayerLabelsRequest",
+        'Required parameter "setLegendDetectionPlayerLabelsRequest" was null or undefined when calling setLegendDetectionPlayerLabels().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/legend-detection/labels`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "PUT",
+        headers: headerParameters,
+        query: queryParameters,
+        body: SetLegendDetectionPlayerLabelsRequestToJSON(
+          requestParameters["setLegendDetectionPlayerLabelsRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LegendDetectionLabelsSavedResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async setLegendDetectionPlayerLabels(
+    requestParameters: SetLegendDetectionPlayerLabelsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LegendDetectionLabelsSavedResponse> {
+    const response = await this.setLegendDetectionPlayerLabelsRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
   }
 }

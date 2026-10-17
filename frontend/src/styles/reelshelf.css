@@ -6097,6 +6097,384 @@ html:has(.rs-library-route) {
 }
 
 /*
+ * The legend baseline: every Apex clip grouped by its answer, as HUD close-ups cut from the Bunny thumbnails, so a
+ * group's odd portrait stands out and the rest are confirmed in one go.
+ */
+.rs-legend-page kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.rs-baseline-intro {
+  max-width: 560px;
+  margin: 6px 0 0;
+}
+
+.rs-baseline-progress {
+  display: grid;
+  gap: 6px;
+  min-width: min(320px, 100%);
+}
+
+.rs-baseline-progress-text {
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-baseline-progress-text strong {
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-baseline-progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--track-bg);
+}
+
+.rs-baseline-progress-track span {
+  display: block;
+  height: 100%;
+  background: var(--fill);
+  transition: width 0.2s ease;
+}
+
+.rs-baseline-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+}
+
+.rs-baseline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.rs-baseline-keys {
+  margin-left: auto;
+}
+
+.rs-baseline-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 24px;
+  align-items: start;
+}
+
+.rs-baseline-groups {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.rs-baseline-group {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+  padding: 12px 14px 14px;
+}
+
+.rs-baseline-group.current {
+  border-color: var(--fg-soft);
+}
+
+.rs-baseline-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rs-baseline-group-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rs-baseline-group-title h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.rs-baseline-portrait {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  background-color: var(--case-back);
+  background-repeat: no-repeat;
+  color: var(--fg-soft);
+  font-weight: 650;
+}
+
+.rs-baseline-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.rs-baseline-tile {
+  display: grid;
+  gap: 5px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: 4px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rs-baseline-tile:hover {
+  border-color: var(--line);
+}
+
+.rs-baseline-tile.moved {
+  border-color: var(--processing);
+}
+
+.rs-baseline-tile.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.rs-baseline-tile.confirmed {
+  opacity: 0.6;
+}
+
+.rs-baseline-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The squad panel's share of a 16:9 frame (23.4% by 17%, bottom left), as LegendHudCropper cuts it. */
+.rs-baseline-hud {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3.744 / 1.53;
+  border-radius: var(--radius);
+  background-color: var(--scrim);
+  background-repeat: no-repeat;
+  background-size: 427.35% 588.24%;
+  background-position: 0 100%;
+}
+
+.rs-baseline-hud.is-missing {
+  background-image: none;
+}
+
+.rs-baseline-tile-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 2px;
+  font-size: 12px;
+}
+
+.rs-baseline-tile-answer {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-baseline-tile.moved .rs-baseline-tile-answer {
+  color: var(--processing);
+}
+
+.rs-baseline-tile-confidence {
+  flex: none;
+  color: var(--fg-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-baseline-tile-confidence.low {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.rs-baseline-panel {
+  position: sticky;
+  top: calc(var(--rs-topbar-height, 0px) + 16px);
+  display: grid;
+  gap: 12px;
+  max-height: calc(100vh - var(--rs-topbar-height, 0px) - 32px);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+  padding: 14px;
+}
+
+.rs-baseline-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rs-baseline-hud.large {
+  border-radius: var(--radius-lg);
+}
+
+.rs-baseline-panel-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--scrim);
+}
+
+.rs-baseline-frames {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.rs-baseline-frame {
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: var(--scrim);
+  padding: 0;
+  cursor: pointer;
+}
+
+.rs-baseline-frame.selected {
+  border-color: var(--accent);
+}
+
+.rs-baseline-frame img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 1px;
+}
+
+.rs-baseline-frame span {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 650;
+  text-shadow: 0 1px 2px var(--scrim);
+}
+
+.rs-baseline-answer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rs-baseline-answer-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.rs-baseline-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rs-baseline-actions .rs-ui-button {
+  flex: 1 1 auto;
+  gap: 8px;
+}
+
+.rs-baseline-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.rs-baseline-picker-label {
+  display: grid;
+  gap: 4px;
+}
+
+.rs-baseline-picker-options {
+  display: grid;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.rs-baseline-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  padding: 4px 6px;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rs-baseline-picker-option:hover,
+.rs-baseline-picker-option.first {
+  background: var(--surface);
+}
+
+.rs-baseline-panel-note {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.rs-baseline-footnote {
+  margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+  .rs-baseline-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .rs-baseline-panel {
+    position: static;
+    max-height: none;
+    order: -1;
+  }
+
+  .rs-baseline-keys {
+    display: none;
+  }
+}
+
+/*
  * The bar below the topbar that takes over from the shelf once it has scrolled away. The anchor is
  * sticky and zero-height, so the bar appears over the list without pushing it down.
  */
