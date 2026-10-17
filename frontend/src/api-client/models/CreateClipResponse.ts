@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from "../runtime";
+import type { UploadTarget } from "./UploadTarget";
+import {
+  UploadTargetFromJSON,
+  UploadTargetFromJSONTyped,
+  UploadTargetToJSON,
+  UploadTargetToJSONTyped,
+} from "./UploadTarget";
+
 /**
  *
  * @export
@@ -30,31 +38,13 @@ export interface CreateClipResponse {
    * @type {string}
    * @memberof CreateClipResponse
    */
-  signature: string;
-  /**
-   *
-   * @type {number}
-   * @memberof CreateClipResponse
-   */
-  expiration: number;
-  /**
-   *
-   * @type {string}
-   * @memberof CreateClipResponse
-   */
-  libraryId: string;
-  /**
-   *
-   * @type {string}
-   * @memberof CreateClipResponse
-   */
   videoId: string;
   /**
    *
-   * @type {string}
+   * @type {UploadTarget}
    * @memberof CreateClipResponse
    */
-  collectionId: string;
+  upload: UploadTarget;
 }
 
 /**
@@ -64,13 +54,8 @@ export function instanceOfCreateClipResponse(
   value: object,
 ): value is CreateClipResponse {
   if (!("clipId" in value) || value["clipId"] === undefined) return false;
-  if (!("signature" in value) || value["signature"] === undefined) return false;
-  if (!("expiration" in value) || value["expiration"] === undefined)
-    return false;
-  if (!("libraryId" in value) || value["libraryId"] === undefined) return false;
   if (!("videoId" in value) || value["videoId"] === undefined) return false;
-  if (!("collectionId" in value) || value["collectionId"] === undefined)
-    return false;
+  if (!("upload" in value) || value["upload"] === undefined) return false;
   return true;
 }
 
@@ -87,11 +72,8 @@ export function CreateClipResponseFromJSONTyped(
   }
   return {
     clipId: json["clip_id"],
-    signature: json["signature"],
-    expiration: json["expiration"],
-    libraryId: json["library_id"],
     videoId: json["video_id"],
-    collectionId: json["collection_id"],
+    upload: UploadTargetFromJSON(json["upload"]),
   };
 }
 
@@ -109,10 +91,7 @@ export function CreateClipResponseToJSONTyped(
 
   return {
     clip_id: value["clipId"],
-    signature: value["signature"],
-    expiration: value["expiration"],
-    library_id: value["libraryId"],
     video_id: value["videoId"],
-    collection_id: value["collectionId"],
+    upload: UploadTargetToJSON(value["upload"]),
   };
 }
