@@ -1837,6 +1837,46 @@
         }
       }
     },
+    "/api/legend-detection/evals/cascade": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendEvalCascade",
+        "parameters": [
+          {
+            "name": "first",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "escalation",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegendCascade"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/legend-detection/prices": {
       "get": {
         "tags": [
@@ -4357,6 +4397,113 @@
               "null",
               "boolean"
             ]
+          }
+        }
+      },
+      "LegendCascade": {
+        "required": [
+          "current_escalate_below",
+          "clips"
+        ],
+        "type": "object",
+        "properties": {
+          "current_escalate_below": {
+            "type": "number",
+            "format": "double"
+          },
+          "clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LegendCascadeClip"
+            }
+          }
+        }
+      },
+      "LegendCascadeClip": {
+        "required": [
+          "clip_id",
+          "label_legend",
+          "first_status",
+          "first_legend",
+          "first_confidence",
+          "first_hud_detected",
+          "first_duration_ms",
+          "first_cost_usd",
+          "escalation_status",
+          "escalation_legend",
+          "escalation_duration_ms",
+          "escalation_cost_usd"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "first_status": {
+            "type": "string"
+          },
+          "first_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "first_confidence": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "float"
+          },
+          "first_hud_detected": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "first_duration_ms": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "first_cost_usd": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "escalation_status": {
+            "type": "string"
+          },
+          "escalation_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "escalation_duration_ms": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "escalation_cost_usd": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },

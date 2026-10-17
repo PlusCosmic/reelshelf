@@ -17,6 +17,7 @@ import type {
   BackfillLegendDetectionRequest,
   ClearLegendDetectionLabelsRequest,
   LegendBaselineClip,
+  LegendCascade,
   LegendDetectionArchiveResponse,
   LegendDetectionBackfillResponse,
   LegendDetectionLabelsClearedResponse,
@@ -39,6 +40,8 @@ import {
   ClearLegendDetectionLabelsRequestToJSON,
   LegendBaselineClipFromJSON,
   LegendBaselineClipToJSON,
+  LegendCascadeFromJSON,
+  LegendCascadeToJSON,
   LegendDetectionArchiveResponseFromJSON,
   LegendDetectionArchiveResponseToJSON,
   LegendDetectionBackfillResponseFromJSON,
@@ -91,6 +94,11 @@ export interface DeleteLegendEvalRequest {
 
 export interface GetLegendDetectionRunsRequest {
   clipId: string;
+}
+
+export interface GetLegendEvalCascadeRequest {
+  first: string;
+  escalation: string;
 }
 
 export interface GetLegendEvalMissesRequest {
@@ -685,6 +693,68 @@ export class LegendDetectionEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LegendDetectionUsage>> {
     const response = await this.getLegendDetectionUsageRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async getLegendEvalCascadeRaw(
+    requestParameters: GetLegendEvalCascadeRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LegendCascade>> {
+    if (requestParameters["first"] == null) {
+      throw new runtime.RequiredError(
+        "first",
+        'Required parameter "first" was null or undefined when calling getLegendEvalCascade().',
+      );
+    }
+
+    if (requestParameters["escalation"] == null) {
+      throw new runtime.RequiredError(
+        "escalation",
+        'Required parameter "escalation" was null or undefined when calling getLegendEvalCascade().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["first"] != null) {
+      queryParameters["first"] = requestParameters["first"];
+    }
+
+    if (requestParameters["escalation"] != null) {
+      queryParameters["escalation"] = requestParameters["escalation"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/legend-detection/evals/cascade`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LegendCascadeFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async getLegendEvalCascade(
+    requestParameters: GetLegendEvalCascadeRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LegendCascade> {
+    const response = await this.getLegendEvalCascadeRaw(
+      requestParameters,
+      initOverrides,
+    );
     return await response.value();
   }
 

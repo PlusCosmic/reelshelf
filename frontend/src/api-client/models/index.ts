@@ -47,6 +47,8 @@ export * from "./ImportedTwitchClipResponse";
 export * from "./LegendBaselineClip";
 export * from "./LegendBaselineLabel";
 export * from "./LegendBaselineResult";
+export * from "./LegendCascade";
+export * from "./LegendCascadeClip";
 export * from "./LegendDetectionArchiveResponse";
 export * from "./LegendDetectionBackfillResponse";
 export * from "./LegendDetectionLabel";

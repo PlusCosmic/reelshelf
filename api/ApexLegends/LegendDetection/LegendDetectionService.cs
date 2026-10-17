@@ -132,6 +132,41 @@ public class LegendDetectionService(
         return (await statements.GetEvalsAsync(ConfidentAt)).Select(LegendEval.From).ToList();
     }
 
+    /// <summary>
+    /// Two evals' answers on each clip both have finished, for working out a cascade on the evals page; see
+    /// <see cref="LegendCascadeClip"/>. <see cref="LegendDetectionOptions.EscalateBelow"/> is the threshold production
+    /// uses today.
+    /// </summary>
+    public async Task<LegendCascade> GetCascadeAsync(Guid firstEvalId, Guid escalationEvalId)
+    {
+        if (!await statements.EvalExistsAsync(firstEvalId))
+        {
+            throw new NotFoundException("Eval", firstEvalId);
+        }
+
+        if (!await statements.EvalExistsAsync(escalationEvalId))
+        {
+            throw new NotFoundException("Eval", escalationEvalId);
+        }
+
+        List<LegendCascadeClip> clips = (await statements.GetCascadeRowsAsync(firstEvalId, escalationEvalId))
+            .Select(row => new LegendCascadeClip(
+                row.ClipId,
+                row.LabelLegend,
+                row.FirstStatus,
+                row.FirstLegend,
+                row.FirstConfidence,
+                row.FirstHudDetected,
+                row.FirstDurationMs,
+                row.FirstCostUsd,
+                row.EscalationStatus,
+                row.EscalationLegend,
+                row.EscalationDurationMs,
+                row.EscalationCostUsd))
+            .ToList();
+        return new LegendCascade(options.CurrentValue.EscalateBelow, clips);
+    }
+
     public async Task<List<LegendEvalMiss>> GetEvalMissesAsync(Guid evalId)
     {
         if (!await statements.EvalExistsAsync(evalId))

@@ -18,6 +18,7 @@ import {
   isRunActive,
   createLegendEval,
   deleteLegendEval,
+  fetchLegendCascade,
   fetchLegendEvalMisses,
   fetchLegendEvals,
   fetchLegendModelPrices,
@@ -103,6 +104,18 @@ export function useLegendEvals(enabled = true) {
       query.state.data?.some((evaluation) => evaluation.queued > 0)
         ? activePollMs
         : false,
+  });
+}
+
+export function useLegendCascade(
+  first: string | undefined,
+  escalation: string | undefined,
+) {
+  return useQuery({
+    queryKey: [...evalsQueryKey, "cascade", first ?? "", escalation ?? ""],
+    queryFn: () => fetchLegendCascade(first!, escalation!),
+    enabled: !!first && !!escalation && first !== escalation,
+    retry: false,
   });
 }
 

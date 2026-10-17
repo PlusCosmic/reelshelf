@@ -85,6 +85,23 @@ public class EvalStorageTests
         Assert.Equal("Ash", misses[0].PlayerLegend);
         Assert.Null(misses[0].LabelLegend);
 
+        // A second eval answers two of the three clips; the third is still queued, so the cascade leaves it out.
+        (Guid? escalationId, _) = await statements.CreateEvalAsync("anthropic", "claude-sonnet-5-5", "low", Guid.NewGuid());
+        await connection.ExecuteAsync("""
+            UPDATE legend_detection_run
+            SET status = 'succeeded', duration_ms = 2500,
+                player_legend = CASE WHEN clip_id = @Right THEN 'Wraith' END
+            WHERE eval_id = @EvalId AND clip_id IN (@Right, @Wrong)
+            """, new { EvalId = escalationId, Right = right, Wrong = wrong });
+        List<LegendDetectionStatements.CascadeRow> cascade =
+            (await statements.GetCascadeRowsAsync(evalId.Value, escalationId!.Value)).OrderBy(row => row.FirstDurationMs).ToList();
+        Assert.Equal([right, wrong], cascade.Select(row => row.ClipId));
+        Assert.Equal(("Wraith", "Wraith", 0.9f), (cascade[0].LabelLegend, cascade[0].FirstLegend, cascade[0].FirstConfidence));
+        Assert.Equal(("Ash", (string?)null, 2500), (cascade[1].FirstLegend, cascade[1].EscalationLegend, cascade[1].EscalationDurationMs));
+        Assert.Equal(priced.CostUsd / 2, cascade[0].FirstCostUsd);
+        Assert.Null(cascade[0].EscalationCostUsd);
+
+        Assert.True(await statements.DeleteEvalAsync(escalationId.Value));
         Assert.True(await statements.DeleteEvalAsync(evalId.Value));
         Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM legend_detection_run"));
         Assert.False(await statements.EvalExistsAsync(evalId.Value));

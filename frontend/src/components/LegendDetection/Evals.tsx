@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { IconTrash } from "@tabler/icons-react";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Select } from "@/components/ui";
 import {
   useChangeBaselineLabels,
+  useLegendCascade,
   useCreateLegendEval,
   useDeleteLegendEval,
   useLegendEvalMisses,
@@ -27,6 +28,11 @@ import {
   formatWall,
   wilsonInterval,
 } from "./legendEvals";
+import {
+  cascadeThresholds,
+  simulateCascade,
+  type CascadeResult,
+} from "./legendCascade";
 import { formatConfidence } from "./legendReview";
 import { useRunOptions } from "./RunOptionsFields";
 
@@ -563,5 +569,236 @@ export function EvalMisses({ evaluation }: { evaluation: LegendEval }) {
         </div>
       )}
     </section>
+  );
+}
+
+/** The cheapest costed eval, as the model a cascade tries first. */
+function defaultFirst(evals: LegendEval[]) {
+  const costed = evals.filter(
+    (evaluation) => costPerThousand(evaluation) !== null,
+  );
+  return [...costed].sort(
+    (a, b) => (costPerThousand(a) ?? 0) - (costPerThousand(b) ?? 0),
+  )[0];
+}
+
+/** The most accurate eval, as the model a cascade escalates to. */
+function defaultEscalation(evals: LegendEval[]) {
+  return [...evals].sort((a, b) => (accuracy(b) ?? 0) - (accuracy(a) ?? 0))[0];
+}
+
+/**
+ * Production's cascade, worked out from two evals already run on the same clips: the first model answers every
+ * clip, and the answers it is unsure of go to the second, as `LegendDetection:EscalationModel` does. Nothing is run
+ * again, so any pair and threshold can be tried for free.
+ */
+export function CascadePanel({ evals }: { evals: LegendEval[] }) {
+  const finished = evals.filter(
+    (evaluation) => evaluation.queued === 0 && evaluation.scored > 0,
+  );
+  const [firstId, setFirstId] = useState<string>();
+  const [escalationId, setEscalationId] = useState<string>();
+  const first =
+    finished.find((evaluation) => evaluation.id === firstId) ??
+    defaultFirst(finished);
+  const escalation =
+    finished.find((evaluation) => evaluation.id === escalationId) ??
+    defaultEscalation(finished.filter((evaluation) => evaluation !== first));
+  const cascade = useLegendCascade(first?.id, escalation?.id);
+  const [threshold, setThreshold] = useState<number>();
+
+  if (finished.length < 2) return null;
+
+  const options = finished.map((evaluation) => ({
+    value: evaluation.id,
+    label: `${evalName(evaluation)} (${evaluation.provider})`,
+  }));
+  const clips = cascade.data?.clips ?? [];
+  const current = cascade.data?.currentEscalateBelow ?? 0.9;
+  const picked = threshold ?? current;
+  const rows = [...new Set([...cascadeThresholds, picked])]
+    .sort((a, b) => a - b)
+    .map((value) => simulateCascade(clips, value));
+  const result = simulateCascade(clips, picked);
+
+  return (
+    <section className="rs-eval-panel">
+      <h2 className="rs-eval-heading">Cascade</h2>
+      <p className="rs-meta">
+        Run the first model on every clip and send the answers it is unsure of
+        to the second, as production's escalation does. Worked out from both
+        evals' answers on the same clips, so nothing is run again.
+      </p>
+      <div className="rs-eval-cascade-controls">
+        <label>
+          <span className="rs-meta">First</span>
+          <Select
+            aria-label="First model"
+            options={options}
+            value={first?.id ?? ""}
+            onValueChange={setFirstId}
+          />
+        </label>
+        <label>
+          <span className="rs-meta">Escalate to</span>
+          <Select
+            aria-label="Escalation model"
+            options={options}
+            value={escalation?.id ?? ""}
+            onValueChange={setEscalationId}
+          />
+        </label>
+        <label className="rs-eval-cascade-threshold">
+          <span className="rs-meta">
+            Escalate below {formatConfidence(picked)} (production:{" "}
+            {formatConfidence(current)})
+          </span>
+          <input
+            type="range"
+            min={0.5}
+            max={1}
+            step={0.01}
+            value={picked}
+            onChange={(event) => setThreshold(Number(event.target.value))}
+          />
+        </label>
+      </div>
+      {first === escalation ? (
+        <div className="rs-empty">Pick two different evals.</div>
+      ) : cascade.isLoading ? (
+        <div className="rs-empty">Loading…</div>
+      ) : cascade.isError ? (
+        <div className="rs-legend-error">{cascade.error.message}</div>
+      ) : clips.length === 0 ? (
+        <div className="rs-empty">
+          These evals have no finished clips in common.
+        </div>
+      ) : (
+        <>
+          <CascadeSummary
+            result={result}
+            first={first!}
+            escalation={escalation!}
+          />
+          <div className="rs-legend-usage">
+            <table className="rs-legend-table">
+              <thead>
+                <tr>
+                  <th scope="col">Escalate below</th>
+                  <th scope="col">Escalated</th>
+                  <th scope="col">Accuracy</th>
+                  <th scope="col">Wrong</th>
+                  <th scope="col">Per 1k clips</th>
+                  <th scope="col">Mean time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <CascadeRow
+                    key={row.threshold}
+                    row={row}
+                    selected={row.threshold === picked}
+                    onSelect={() => setThreshold(row.threshold)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function CascadeSummary({
+  result,
+  first,
+  escalation,
+}: {
+  result: CascadeResult;
+  first: LegendEval;
+  escalation: LegendEval;
+}) {
+  const share = result.correct / result.clips;
+  const [low, high] = wilsonInterval(result.correct, result.clips);
+  const perThousand =
+    result.costUsd === null ? null : (result.costUsd / result.clips) * 1000;
+  const alone = (evaluation: LegendEval) => {
+    const value = accuracy(evaluation);
+    const cost = costPerThousand(evaluation);
+    return `${value === null ? "—" : `${(value * 100).toFixed(1)}%`} at ${cost === null ? "unknown cost" : formatUsd(cost)}`;
+  };
+  return (
+    <div className="rs-eval-cascade-summary">
+      <div>
+        <div className="rs-eyebrow">Accuracy</div>
+        <strong>{(share * 100).toFixed(1)}%</strong>
+        <span className="rs-meta">
+          {" "}
+          ±{(((high - low) / 2) * 100).toFixed(1)}
+        </span>
+      </div>
+      <div>
+        <div className="rs-eyebrow">Escalated</div>
+        <strong>{((result.escalated / result.clips) * 100).toFixed(1)}%</strong>
+        <span className="rs-meta">
+          {" "}
+          {result.escalated} of {result.clips}
+        </span>
+      </div>
+      <div>
+        <div className="rs-eyebrow">Per 1k clips</div>
+        <strong>
+          {perThousand === null ? "Set prices" : formatUsd(perThousand)}
+        </strong>
+      </div>
+      <div>
+        <div className="rs-eyebrow">Mean time</div>
+        <strong>{formatSeconds(result.meanLatencyMs)}</strong>
+      </div>
+      <p className="rs-meta">
+        Alone, {evalName(first)} is {alone(first)} and {evalName(escalation)} is{" "}
+        {alone(escalation)} per 1k clips.
+      </p>
+    </div>
+  );
+}
+
+function CascadeRow({
+  row,
+  selected,
+  onSelect,
+}: {
+  row: CascadeResult;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <tr
+      className={`rs-eval-row${selected ? " selected" : ""}`}
+      aria-selected={selected}
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+    >
+      <th scope="row">{formatConfidence(row.threshold)}</th>
+      <td>
+        {((row.escalated / row.clips) * 100).toFixed(1)}%
+        <span className="rs-meta"> ({row.escalated})</span>
+      </td>
+      <td>{((row.correct / row.clips) * 100).toFixed(1)}%</td>
+      <td>{row.clips - row.correct}</td>
+      <td>
+        {row.costUsd === null
+          ? "—"
+          : formatUsd((row.costUsd / row.clips) * 1000)}
+      </td>
+      <td>{formatSeconds(row.meanLatencyMs)}</td>
+    </tr>
   );
 }
