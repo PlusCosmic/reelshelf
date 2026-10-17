@@ -2,6 +2,7 @@ using System.Text;
 using Dapper;
 using Npgsql;
 using Reelshelf.Bunny.Models;
+using Reelshelf.Video;
 
 namespace Reelshelf.Core;
 
@@ -646,25 +647,6 @@ public class ClipsStatements(NpgsqlConnection connection)
         return await connection.QuerySingleOrDefaultAsync<ClipWithTagsRow>(sql, new { clipId, ownerId });
     }
 
-    public async Task<List<ClipCollectionMergeRow>> GetPendingCollectionMerges(int limit)
-    {
-        const string sql = """
-            SELECT m.collection_id, c.collection_id AS target_collection_id
-            FROM clip_collection_merge m
-            JOIN clip_collection c ON c.owner_id = m.owner_id AND c.game_category_id = m.game_category_id
-            ORDER BY m.collection_id
-            LIMIT @limit
-            """;
-
-        return (await connection.QueryAsync<ClipCollectionMergeRow>(sql, new { limit })).ToList();
-    }
-
-    public async Task DeleteCollectionMerge(Guid collectionId)
-    {
-        const string sql = "DELETE FROM clip_collection_merge WHERE collection_id = @collectionId";
-        await connection.ExecuteAsync(sql, new { collectionId });
-    }
-
     public async Task DeleteClip(Guid clipId)
     {
         const string sql = "DELETE FROM clip WHERE id = @clipId";
@@ -729,10 +711,9 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Replaces the placeholder video id on a reserved clip row with the Bunny video created for it.
+    /// Replaces the placeholder video id on a reserved clip row with the video the host created for it.
     /// </summary>
-    public async Task<ClipRow> AttachBunnyVideo(Guid clipId, Guid videoId, string? title, int? length,
-        string? thumbnailFileName, DateTimeOffset? dateUploaded, long? storageSize, int? videoStatus, int? encodeProgress)
+    public async Task<ClipRow> AttachVideo(Guid clipId, HostedVideo video)
     {
         const string sql = """
             UPDATE clip
@@ -748,21 +729,35 @@ public class ClipsStatements(NpgsqlConnection connection)
             RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_status, encode_progress, file_size
             """;
 
-        return await connection.QuerySingleAsync<ClipRow>(sql,
-            new { clipId, videoId, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress });
+        HostedVideoInfo info = video.Info;
+        return await connection.QuerySingleAsync<ClipRow>(sql, new
+        {
+            clipId,
+            videoId = video.VideoId,
+            title = info.Title,
+            length = info.LengthSeconds,
+            thumbnailFileName = info.ThumbnailFileName,
+            dateUploaded = info.UploadedAt,
+            storageSize = info.StorageSize,
+            videoStatus = info.Status,
+            encodeProgress = info.EncodeProgress
+        });
     }
 
     /// <summary>
-    /// Records the real Bunny video id on a reserved row when full attachment failed, so the abandoned-upload
-    /// purge can still find and delete the video instead of it being orphaned at Bunny.
+    /// Records the real video id on a reserved row when full attachment failed, so the abandoned-upload
+    /// purge can still find and delete the video instead of it being orphaned at the host.
     /// </summary>
     public async Task SetClipVideoId(Guid clipId, Guid videoId)
     {
         await connection.ExecuteAsync("UPDATE clip SET video_id = @videoId WHERE id = @clipId", new { clipId, videoId });
     }
 
-    public async Task UpdateClipMetadata(Guid clipId, string? title, int? length, string? thumbnailFileName,
-        DateTimeOffset? dateUploaded, long? storageSize, int? videoStatus, int? encodeProgress)
+    /// <summary>
+    /// Copies what the video host reports onto the clip row. <paramref name="title"/> is passed separately because
+    /// some callers keep the clip's own title over the host's.
+    /// </summary>
+    public async Task UpdateClipMetadata(Guid clipId, string? title, HostedVideoInfo video)
     {
         const string sql = """
             UPDATE clip
@@ -775,7 +770,17 @@ public class ClipsStatements(NpgsqlConnection connection)
                 encode_progress = @encodeProgress
             WHERE id = @clipId
             """;
-        await connection.ExecuteAsync(sql, new { clipId, title, length, thumbnailFileName, dateUploaded, storageSize, videoStatus, encodeProgress });
+        await connection.ExecuteAsync(sql, new
+        {
+            clipId,
+            title,
+            length = video.LengthSeconds,
+            thumbnailFileName = video.ThumbnailFileName,
+            dateUploaded = video.UploadedAt,
+            storageSize = video.StorageSize,
+            videoStatus = video.Status,
+            encodeProgress = video.EncodeProgress
+        });
     }
 
     public class ClipRow
@@ -823,12 +828,6 @@ public class ClipsStatements(NpgsqlConnection connection)
         public Guid OwnerId { get; set; }
         public Guid CollectionId { get; set; }
         public Guid GameCategoryId { get; set; }
-    }
-
-    public class ClipCollectionMergeRow
-    {
-        public Guid CollectionId { get; set; }
-        public Guid TargetCollectionId { get; set; }
     }
 
     public class ClipViewRow

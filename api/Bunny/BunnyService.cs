@@ -1,20 +1,32 @@
 using Reelshelf.Bunny.Models;
+using Reelshelf.Core;
+using Reelshelf.Games;
+using Reelshelf.Video;
 
 namespace Reelshelf.Bunny;
 
-public class BunnyService : Users.IClipVideoHost
+/// <summary>
+/// Bunny Stream as the clip video host. Videos are filed in one Bunny collection per owner and game category, kept
+/// in <c>clip_collection</c>; a collection is the host's container.
+/// </summary>
+public class BunnyService : IClipVideoHost
 {
     private readonly string _collectionsUrl;
 
     private readonly IConfiguration _configuration;
     private readonly HttpClient _httpClient;
+    private readonly ClipsStatements _clipsStatements;
+    private readonly ILogger<BunnyService> _logger;
 
     private readonly string _videosUrl;
 
-    public BunnyService(HttpClient httpClient, IConfiguration configuration)
+    public BunnyService(HttpClient httpClient, IConfiguration configuration, ClipsStatements clipsStatements,
+        ILogger<BunnyService> logger)
     {
         _httpClient = httpClient;
         _configuration = configuration;
+        _clipsStatements = clipsStatements;
+        _logger = logger;
         var baseUrl =
             $"https://video.bunnycdn.com/library/{configuration["BunnyLibraryId"] ?? throw new InvalidOperationException("Bunny API library ID not configured")}";
         _collectionsUrl = baseUrl + "/collections";
@@ -25,7 +37,45 @@ public class BunnyService : Users.IClipVideoHost
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
     }
 
-    public async Task<BunnyCollection> CreateCollectionAsync(string categorySlug, Guid userId)
+    public async Task<HostedVideo> CreateVideoAsync(Guid ownerId, GameCategory gameCategory, string title)
+    {
+        ClipsStatements.ClipCollectionRow clipCollection =
+            await _clipsStatements.GetCollectionByOwnerAndCategory(ownerId, gameCategory.Id)
+            ?? await GetOrCreateCollectionAsync(ownerId, gameCategory);
+
+        var request = new CreateVideoRequest(title, clipCollection.CollectionId.ToString(), 0);
+        var content = JsonContent.Create(request);
+        content.Headers.Remove("Content-Type");
+        content.Headers.Add("Content-Type", "application/json");
+        var videoResponse = await _httpClient.PostAsync(_videosUrl, content);
+        videoResponse.EnsureSuccessStatusCode();
+        var video = await videoResponse.Content.ReadFromJsonAsync<BunnyVideo>()
+                    ?? throw new InvalidOperationException("Failed to deserialize bunny video");
+        return new HostedVideo(video.Guid, video.CollectionId, ToHostedVideoInfo(video));
+    }
+
+    private async Task<ClipsStatements.ClipCollectionRow> GetOrCreateCollectionAsync(Guid ownerId, GameCategory gameCategory)
+    {
+        BunnyCollection bunnyCollection = await CreateCollectionAsync(gameCategory.Slug, ownerId);
+        ClipsStatements.ClipCollectionRow collection =
+            await _clipsStatements.InsertCollection(ownerId, bunnyCollection.Guid, gameCategory.Id);
+        if (collection.CollectionId != bunnyCollection.Guid)
+        {
+            // A concurrent upload created the category's collection first; ours is empty, so drop it.
+            try
+            {
+                await DeleteContainerAsync(bunnyCollection.Guid);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete unused Bunny collection {CollectionId}", bunnyCollection.Guid);
+            }
+        }
+
+        return collection;
+    }
+
+    private async Task<BunnyCollection> CreateCollectionAsync(string categorySlug, Guid userId)
     {
         var env = _configuration["ASPNETCORE_ENVIRONMENT"] ?? "";
         var content = JsonContent.Create(
@@ -38,37 +88,7 @@ public class BunnyService : Users.IClipVideoHost
         return response ?? throw new InvalidOperationException("Failed to deserialize bunny collection");
     }
 
-    public async Task<PagedVideoResponse> GetVideosForCollectionAsync(Guid collectionId, int page, int pageSize,
-        string? titleSearch = null)
-    {
-        var searchString = titleSearch != null ? $"&search={titleSearch}" : "";
-        var url = _videosUrl + $"?collection={collectionId}&page={page}&itemsPerPage={pageSize}{searchString}";
-        var videosResponse = await _httpClient.GetAsync(url);
-        videosResponse.EnsureSuccessStatusCode();
-        var pagedResponse = await videosResponse.Content.ReadFromJsonAsync<PagedVideoResponse>() ??
-                            throw new InvalidOperationException("Failed to deserialize bunny videos");
-        return pagedResponse;
-    }
-
-    public async Task<BunnyVideo> CreateVideoAsync(Guid collectionId, string videoTitle)
-    {
-        var url = _videosUrl;
-
-        var request = new CreateVideoRequest(videoTitle, collectionId.ToString(), 0);
-        var content = JsonContent.Create(request);
-        content.Headers.Remove("Content-Type");
-        content.Headers.Add("Content-Type", "application/json");
-        var videoResponse = await _httpClient.PostAsync(url, content);
-        videoResponse.EnsureSuccessStatusCode();
-        var response = await videoResponse.Content.ReadFromJsonAsync<BunnyVideo>();
-        return response ?? throw new InvalidOperationException("Failed to deserialize bunny video");
-    }
-
-    /// <summary>
-    /// Streams a video file into an already-created Bunny video. This is the server-side counterpart of the
-    /// browser's TUS upload, used when the bytes come from another service (Twitch) rather than the user's disk.
-    /// </summary>
-    public async Task UploadVideoAsync(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken)
+    public async Task UploadAsync(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken)
     {
         var url = _videosUrl + $"/{videoId}";
         using StreamContent streamContent = new(content);
@@ -82,7 +102,7 @@ public class BunnyService : Users.IClipVideoHost
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task<BunnyVideo?> GetVideoByIdAsync(Guid videoId)
+    public async Task<HostedVideoInfo?> GetVideoAsync(Guid videoId)
     {
         var url = _videosUrl + $"/{videoId}";
         var videoResponse = await _httpClient.GetAsync(url);
@@ -93,29 +113,7 @@ public class BunnyService : Users.IClipVideoHost
 
         videoResponse.EnsureSuccessStatusCode();
         var response = await videoResponse.Content.ReadFromJsonAsync<BunnyVideo>();
-        return response;
-    }
-
-    public async Task UpdateVideoTitleAsync(Guid videoId, string newTitle)
-    {
-        var url = _videosUrl + $"/{videoId}";
-        var content = JsonContent.Create(new { title = newTitle });
-        content.Headers.Remove("Content-Type");
-        content.Headers.Add("Content-Type", "application/json");
-
-        var response = await _httpClient.PostAsync(url, content);
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task MoveVideoToCollectionAsync(Guid videoId, Guid collectionId)
-    {
-        var url = _videosUrl + $"/{videoId}";
-        var content = JsonContent.Create(new { collectionId = collectionId.ToString() });
-        content.Headers.Remove("Content-Type");
-        content.Headers.Add("Content-Type", "application/json");
-
-        var response = await _httpClient.PostAsync(url, content);
-        response.EnsureSuccessStatusCode();
+        return response is null ? null : ToHostedVideoInfo(response);
     }
 
     /// <summary>
@@ -134,10 +132,10 @@ public class BunnyService : Users.IClipVideoHost
         response.EnsureSuccessStatusCode();
     }
 
-    /// <summary>Idempotent like <see cref="DeleteVideoAsync"/>: a collection Bunny no longer knows about counts as deleted.</summary>
-    public async Task DeleteCollectionAsync(Guid collectionId)
+    /// <summary>Deletes a Bunny collection. Idempotent like <see cref="DeleteVideoAsync"/>: a collection Bunny no longer knows about counts as deleted.</summary>
+    public async Task DeleteContainerAsync(Guid containerId)
     {
-        var url = _collectionsUrl + $"/{collectionId}";
+        var url = _collectionsUrl + $"/{containerId}";
         var response = await _httpClient.DeleteAsync(url);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -145,5 +143,17 @@ public class BunnyService : Users.IClipVideoHost
         }
 
         response.EnsureSuccessStatusCode();
+    }
+
+    public static HostedVideoInfo ToHostedVideoInfo(BunnyVideo video)
+    {
+        return new HostedVideoInfo(
+            video.Title,
+            video.Length,
+            video.Status,
+            video.EncodeProgress,
+            video.StorageSize,
+            video.DateUploaded,
+            video.ThumbnailFileName);
     }
 }

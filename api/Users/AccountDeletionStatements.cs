@@ -68,7 +68,7 @@ public class AccountDeletionStatements(NpgsqlConnection connection) : IAccountDe
 
     public async Task<List<Guid>> GetBunnyCollections(Guid userId)
     {
-        // Includes duplicate collections still waiting on ClipCollectionMergeService, which go with the account too.
+        // Includes any duplicate collections V36 set aside in clip_collection_merge, which go with the account too.
         const string sql = """
             SELECT collection_id FROM clip_collection WHERE owner_id = @userId
             UNION

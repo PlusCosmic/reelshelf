@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Reelshelf.Email;
+using Reelshelf.Video;
 
 namespace Reelshelf.Users;
 
@@ -84,7 +85,7 @@ public class AccountDeletionService(
         {
             try
             {
-                await videoHost.DeleteCollectionAsync(collectionId);
+                await videoHost.DeleteContainerAsync(collectionId);
             }
             catch (Exception ex)
             {
@@ -124,13 +125,6 @@ public interface IAccountDeletionStore
 
     /// <summary>Deletes the marked account row only if it owns no clips. True when it was deleted.</summary>
     Task<bool> DeleteAccountIfEmpty(Guid userId);
-}
-
-/// <summary>The video host operations account deletion needs; implemented by <see cref="Bunny.BunnyService"/>.</summary>
-public interface IClipVideoHost
-{
-    Task DeleteVideoAsync(Guid videoId);
-    Task DeleteCollectionAsync(Guid collectionId);
 }
 
 /// <summary>Lets a deletion request start the background pass straight away instead of waiting for the next poll.</summary>

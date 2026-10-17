@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Bunny.Models;
-using Reelshelf.ClipTranscription;
-using Reelshelf.Core;
+using Reelshelf.Video;
 
 namespace Reelshelf.Bunny;
 
@@ -16,11 +14,7 @@ public static class BunnyWebhookEndpoints
 
     public static async Task<Results<Ok, UnauthorizedHttpResult>> ReceiveVideoProgress(
         VideoProgressUpdate update,
-        ClipsStatements clipsStatements,
-        BunnyService bunnyService,
-        ClipsBackfillStatements backfillStatements,
-        LegendDetectionService legendDetectionService,
-        ClipTranscriptionService clipTranscriptionService,
+        ClipVideoUpdateHandler updateHandler,
         IConfiguration configuration,
         HttpContext context,
         ILoggerFactory loggerFactory)
@@ -51,71 +45,7 @@ public static class BunnyWebhookEndpoints
             return TypedResults.Unauthorized();
         }
 
-        logger.LogInformation("[WEBHOOK] Looking up clip by VideoGuid: {VideoGuid}", update.VideoGuid);
-        ClipsStatements.ClipRow? clip = await clipsStatements.GetClipByVideoId(update.VideoGuid);
-        if (clip == null)
-        {
-            logger.LogWarning("[WEBHOOK] No clip found for VideoGuid: {VideoGuid} - ignoring webhook", update.VideoGuid);
-            return TypedResults.Ok();
-        }
-
-        logger.LogInformation("[WEBHOOK] Found clip - ClipId: {ClipId}, Title: {Title}",
-            clip.Id, clip.Title);
-
-        // fetch clip from bunny and update our model in the db
-        logger.LogInformation("[WEBHOOK] Fetching video metadata from Bunny for VideoGuid: {VideoGuid}", update.VideoGuid);
-        BunnyVideo? video = await bunnyService.GetVideoByIdAsync(update.VideoGuid);
-        if (video == null)
-        {
-            logger.LogWarning("[WEBHOOK] Failed to fetch video from Bunny API for VideoGuid: {VideoGuid}", update.VideoGuid);
-            return TypedResults.Ok();
-        }
-
-        logger.LogInformation(
-            "[WEBHOOK] Fetched video from Bunny - Title: {Title}, Length: {Length}s, Status: {Status}, EncodeProgress: {Progress}%",
-            video.Title, video.Length, video.Status, video.EncodeProgress);
-
-        try
-        {
-            await backfillStatements.UpdateClipMetadataAsync(
-                clip.Id,
-                clip.Title ?? video.Title,
-                video.Length,
-                video.ThumbnailFileName,
-                video.DateUploaded,
-                video.StorageSize,
-                video.Status,
-                video.EncodeProgress);
-
-            logger.LogInformation("[WEBHOOK] Successfully updated clip metadata for ClipId: {ClipId}", clip.Id);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "[WEBHOOK] Error updating clip metadata for ClipId: {ClipId}", clip.Id);
-        }
-
-        if (video.Status == (int)BunnyVideoObjectStatus.Finished)
-        {
-            try
-            {
-                await legendDetectionService.QueueForEncodedClipAsync(clip);
-            }
-            catch (Exception ex)
-            {
-                // Detection is optional; failing to queue it must not make Bunny retry the webhook.
-                logger.LogError(ex, "[WEBHOOK] Error queueing legend detection for ClipId: {ClipId}", clip.Id);
-            }
-
-            try
-            {
-                await clipTranscriptionService.QueueForEncodedClipAsync(clip, video.Status);
-            }
-            catch (Exception ex)
-            {
-                // Transcription is optional too; failing to queue it must not make Bunny retry the webhook.
-                logger.LogError(ex, "[WEBHOOK] Error queueing transcription for ClipId: {ClipId}", clip.Id);
-            }
-        }
+        await updateHandler.HandleAsync(update.VideoGuid);
 
         logger.LogInformation("[WEBHOOK] Webhook processing complete for VideoGuid: {VideoGuid}, returning OK", update.VideoGuid);
         return TypedResults.Ok();

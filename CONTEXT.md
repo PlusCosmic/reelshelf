@@ -15,8 +15,12 @@ A user-curated set of clips that the frontend may label as a "collection".
 _Avoid_: Using "collection" in API/domain code when referring to this concept.
 
 **Bunny Collection**:
-An internal Bunny Stream storage grouping used for uploaded videos.
+An internal Bunny Stream storage grouping used for uploaded videos, one per owner and game category. It is a detail of the Bunny **Video Host**; the rest of the API sees it only as a video's container.
 _Avoid_: Exposing this as a user-facing collection.
+
+**Video Host**:
+The service that stores, encodes and serves clip videos (`IClipVideoHost`); Bunny Stream today.
+_Avoid_: Calling Bunny directly from outside `api/Bunny/`.
 
 **Bulk Upload Queue**:
 A temporary review workspace for multiple local clip files before they are saved as clips.

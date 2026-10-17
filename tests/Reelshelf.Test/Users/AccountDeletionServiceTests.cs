@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Reelshelf.Email;
+using Reelshelf.Games;
 using Reelshelf.Users;
+using Reelshelf.Video;
 using Xunit;
 
 namespace Reelshelf.Test.Users;
@@ -222,15 +224,30 @@ public class AccountDeletionServiceTests
             return Task.CompletedTask;
         }
 
-        public Task DeleteCollectionAsync(Guid collectionId)
+        public Task DeleteContainerAsync(Guid containerId)
         {
-            if (FailingCollections.Contains(collectionId))
+            if (FailingCollections.Contains(containerId))
             {
                 throw new HttpRequestException("Bunny is down");
             }
 
-            DeletedCollections.Add(collectionId);
+            DeletedCollections.Add(containerId);
             return Task.CompletedTask;
+        }
+
+        public Task<HostedVideo> CreateVideoAsync(Guid ownerId, GameCategory gameCategory, string title)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task UploadAsync(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<HostedVideoInfo?> GetVideoAsync(Guid videoId)
+        {
+            throw new NotSupportedException();
         }
     }
 
