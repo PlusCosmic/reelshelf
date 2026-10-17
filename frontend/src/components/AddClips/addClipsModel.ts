@@ -76,7 +76,7 @@ export function clipStage(
 }
 
 export function clipStageFor(clip: Clip, upload?: UploadItem | null) {
-  return clipStage(clip.videoStatus, clip.video.encodeProgress, upload);
+  return clipStage(clip.video.status, clip.video.encodeProgress, upload);
 }
 
 /** True while a clip in the list can still change on its own, so the list is worth refreshing. */

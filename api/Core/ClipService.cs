@@ -207,18 +207,10 @@ public class ClipService(
             return null;
         }
 
-        // Get clip collection to retrieve CollectionId
-        ClipsStatements.ClipCollectionRow? clipCollection =
-            await clipsStatements.GetCollectionByOwnerAndCategory(clipWithTags.OwnerId, clipWithTags.GameCategoryId);
-        if (clipCollection == null)
-        {
-            return null;
-        }
-
         bool isViewed = await clipsStatements.IsClipViewed(userId, clipId);
         ClipsStatements.ClipShareRow? share = await clipsStatements.GetActiveShareByClipId(clipId);
 
-        return clipProjection.ProjectClip(clipWithTags, gameCategory, clipCollection, isViewed, share != null);
+        return clipProjection.ProjectClip(clipWithTags, gameCategory, isViewed, share != null);
     }
 
     public async Task<Clip?> AddTagToClip(Guid clipId, Guid userId, string tag)
@@ -381,17 +373,10 @@ public class ClipService(
         List<Guid> categoryIds = pagedClips.Select(c => c.GameCategoryId).Distinct().ToList();
         Dictionary<Guid, GameCategory> categoriesById =
             (await gameCategoryStatements.GetByIdsAsync(categoryIds)).ToDictionary(category => category.Id);
-        // Until V36 runs, production's clip_collection can hold several rows per category (it never got V16's
-        // unique constraint). Nothing reads the collection off a listing, so any one of them will do.
-        Dictionary<Guid, ClipsStatements.ClipCollectionRow> collectionsByCategoryId =
-            (await clipsStatements.GetCollectionsByOwner(userId))
-            .GroupBy(collection => collection.GameCategoryId)
-            .ToDictionary(group => group.Key, group => group.First());
 
         List<Clip> finalClips = clipProjection.ProjectClips(
             pagedClips,
             categoriesById,
-            collectionsByCategoryId,
             viewedClipIds,
             sharedClipIds);
 
@@ -476,6 +461,8 @@ public class ClipService(
             sharedClip.GameName,
             sharedClip.Length ?? 0,
             sharedClip.DateUploaded ?? sharedClip.CreatedAt,
+            mediaUrls.Thumbnail(sharedClip.VideoId),
+            mediaUrls.Playlist(sharedClip.VideoId).ToString(),
             mediaUrls.Embed(sharedClip.VideoId));
     }
 }

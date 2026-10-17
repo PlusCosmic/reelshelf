@@ -349,7 +349,7 @@ function ClipFacts({
             className="rs-watch-facts-game"
           >
             {game?.coverUrl ? <img src={game.coverUrl} alt="" /> : null}
-            {game?.name ?? clip.video.category}
+            {game?.name ?? clip.categorySlug}
           </Link>
         </dd>
         <dt>Recorded</dt>
@@ -357,9 +357,9 @@ function ClipFacts({
           {formatDate(clip.createdAt)}, {formatTime(clip.createdAt)}
         </dd>
         <dt>Length</dt>
-        <dd>{formatDuration(clip.video.length)}</dd>
+        <dd>{formatDuration(clip.video.durationSeconds)}</dd>
         <dt>Size</dt>
-        <dd>{formatSize(clip.video.storageSize)}</dd>
+        <dd>{formatSize(clip.video.storageBytes)}</dd>
         <dt>Watched</dt>
         <dd>{clip.isViewed ? "Yes" : "Not yet"}</dd>
         <dt>Sharing</dt>
@@ -451,7 +451,7 @@ export function ClipPlayerPage({
     );
 
   const { cloth } = game ? bookBinding(game) : { cloth: "var(--accent)" };
-  const gameName = game?.name ?? clip.video.category;
+  const gameName = game?.name ?? clip.categorySlug;
   const collectionSearch: ClipLinkSearch | undefined = playThrough
     ? { collection: playThrough.playlist.id }
     : undefined;
@@ -527,8 +527,8 @@ export function ClipPlayerPage({
             <span>
               {formatDate(clip.createdAt)}, {formatTime(clip.createdAt)}
             </span>
-            <span>{formatDuration(clip.video.length)}</span>
-            <span>{formatSize(clip.video.storageSize)}</span>
+            <span>{formatDuration(clip.video.durationSeconds)}</span>
+            <span>{formatSize(clip.video.storageBytes)}</span>
             {clip.isViewed ? null : (
               <strong>
                 <StitchedDot />

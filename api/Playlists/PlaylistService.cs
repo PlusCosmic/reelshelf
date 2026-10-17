@@ -12,7 +12,8 @@ public class PlaylistService(
     PlaylistAccess playlistAccess,
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements,
-    ClipProjection clipProjection)
+    ClipProjection clipProjection,
+    ClipMediaUrls mediaUrls)
 {
     /// <summary>Throws unless <paramref name="userId"/> made the collection; see <see cref="PlaylistPermissions"/>.</summary>
     private async Task RequireOwner(Guid playlistId, Guid userId, string action)
@@ -73,7 +74,7 @@ public class PlaylistService(
             p.CollaboratorCount,
             p.IsGamingSession,
             games[p.Id].Sum(row => row.Seconds),
-            previews[p.Id].Select(row => new PlaylistPreviewClip(row.ClipId, row.VideoId)).ToList(),
+            previews[p.Id].Select(row => new PlaylistPreviewClip(row.ClipId, row.VideoId, mediaUrls.Thumbnail(row.VideoId))).ToList(),
             games[p.Id]
                 .OrderByDescending(row => row.ClipCount)
                 .Select(row => new PlaylistGameCount(row.GameCategoryId, row.ClipCount))
@@ -115,13 +116,11 @@ public class PlaylistService(
             if (clipWithTags is not null)
             {
                 GameCategory? gameCategory = await gameCategoryStatements.GetByIdAsync(clipWithTags.GameCategoryId);
-                ClipsStatements.ClipCollectionRow? clipCollection =
-                    await clipsStatements.GetCollectionByOwnerAndCategory(clipWithTags.OwnerId, clipWithTags.GameCategoryId);
-                if (gameCategory is not null && clipCollection is not null)
+                if (gameCategory is not null)
                 {
                     bool isViewed = await clipsStatements.IsClipViewed(actor.UserId, clipRow.ClipId);
                     ClipsStatements.ClipShareRow? share = await clipsStatements.GetActiveShareByClipId(clipRow.ClipId);
-                    clipDetails = clipProjection.ProjectClip(clipWithTags, gameCategory, clipCollection, isViewed, share is not null);
+                    clipDetails = clipProjection.ProjectClip(clipWithTags, gameCategory, isViewed, share is not null);
                 }
             }
 

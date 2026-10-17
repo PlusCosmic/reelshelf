@@ -67,6 +67,7 @@ public sealed record ClipTranscriptionReviewClip(
     string GameSlug,
     DateTimeOffset CreatedAt,
     int? LengthSeconds,
+    string PlaybackUrl,
     string EmbedUrl,
     string ThumbnailUrl,
     ClipTranscriptionRun? LatestRun,

@@ -70,8 +70,10 @@ export function ClipThumb({
         <span className="rs-tag-badge">{firstTag}</span>
       ) : null}
       {compact && clip.share.shared ? <SharedIndicator compact /> : null}
-      {clip.video.length > 0 ? (
-        <span className="rs-duration">{formatDuration(clip.video.length)}</span>
+      {clip.video.durationSeconds > 0 ? (
+        <span className="rs-duration">
+          {formatDuration(clip.video.durationSeconds)}
+        </span>
       ) : null}
       {arriving ? (
         <span className={`rs-thumb-progress ${stage.kind}`} aria-hidden="true">
@@ -107,11 +109,11 @@ function ClipCard({
         <h3 className="rs-card-title">{clip.video.title}</h3>
       </Link>
       <div className="rs-meta">
-        <span>{category?.name ?? clip.video.category ?? "Uncategorized"}</span>
+        <span>{category?.name ?? clip.categorySlug ?? "Uncategorized"}</span>
         <span className="rs-dot" />
         <span>{formatDate(clip.createdAt)}</span>
         <span className="rs-dot" />
-        <span>{formatSize(clip.video.storageSize)}</span>
+        <span>{formatSize(clip.video.storageBytes)}</span>
         {!clip.isViewed ? (
           <>
             <span className="rs-dot" />
@@ -218,7 +220,7 @@ function ClipRow({
         </span>
       ) : null}
       <span className="wide-only rs-meta rs-row-duration">
-        {formatDuration(clip.video.length)}
+        {formatDuration(clip.video.durationSeconds)}
       </span>
     </Link>
   );

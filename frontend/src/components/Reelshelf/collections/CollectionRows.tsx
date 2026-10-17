@@ -197,7 +197,7 @@ export function CollectionRows({
                   </span>
                 ) : null}
                 <span className="wide-only rs-meta rs-row-duration">
-                  {formatDuration(clip.video.length)}
+                  {formatDuration(clip.video.durationSeconds)}
                 </span>
               </Link>
               <button

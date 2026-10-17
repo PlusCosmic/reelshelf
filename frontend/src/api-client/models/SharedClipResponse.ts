@@ -48,6 +48,18 @@ export interface SharedClipResponse {
    * @type {string}
    * @memberof SharedClipResponse
    */
+  thumbnailUrl: string;
+  /**
+   *
+   * @type {string}
+   * @memberof SharedClipResponse
+   */
+  playbackUrl: string;
+  /**
+   *
+   * @type {string}
+   * @memberof SharedClipResponse
+   */
   embedUrl: string;
 }
 
@@ -62,6 +74,10 @@ export function instanceOfSharedClipResponse(
   if (!("durationSeconds" in value) || value["durationSeconds"] === undefined)
     return false;
   if (!("uploadedAt" in value) || value["uploadedAt"] === undefined)
+    return false;
+  if (!("thumbnailUrl" in value) || value["thumbnailUrl"] === undefined)
+    return false;
+  if (!("playbackUrl" in value) || value["playbackUrl"] === undefined)
     return false;
   if (!("embedUrl" in value) || value["embedUrl"] === undefined) return false;
   return true;
@@ -83,6 +99,8 @@ export function SharedClipResponseFromJSONTyped(
     game: json["game"],
     durationSeconds: json["duration_seconds"],
     uploadedAt: new Date(json["uploaded_at"]),
+    thumbnailUrl: json["thumbnail_url"],
+    playbackUrl: json["playback_url"],
     embedUrl: json["embed_url"],
   };
 }
@@ -104,6 +122,8 @@ export function SharedClipResponseToJSONTyped(
     game: value["game"],
     duration_seconds: value["durationSeconds"],
     uploaded_at: value["uploadedAt"].toISOString(),
+    thumbnail_url: value["thumbnailUrl"],
+    playback_url: value["playbackUrl"],
     embed_url: value["embedUrl"],
   };
 }

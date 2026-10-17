@@ -13,20 +13,13 @@
  */
 
 import { mapValues } from "../runtime";
-import type { ClipVideoStatus } from "./ClipVideoStatus";
+import type { ClipVideo } from "./ClipVideo";
 import {
-  ClipVideoStatusFromJSON,
-  ClipVideoStatusFromJSONTyped,
-  ClipVideoStatusToJSON,
-  ClipVideoStatusToJSONTyped,
-} from "./ClipVideoStatus";
-import type { BunnyVideo } from "./BunnyVideo";
-import {
-  BunnyVideoFromJSON,
-  BunnyVideoFromJSONTyped,
-  BunnyVideoToJSON,
-  BunnyVideoToJSONTyped,
-} from "./BunnyVideo";
+  ClipVideoFromJSON,
+  ClipVideoFromJSONTyped,
+  ClipVideoToJSON,
+  ClipVideoToJSONTyped,
+} from "./ClipVideo";
 import type { ClipShareSummary } from "./ClipShareSummary";
 import {
   ClipShareSummaryFromJSON,
@@ -79,16 +72,10 @@ export interface Clip {
   createdAt: Date;
   /**
    *
-   * @type {BunnyVideo}
+   * @type {ClipVideo}
    * @memberof Clip
    */
-  video: BunnyVideo;
-  /**
-   *
-   * @type {ClipVideoStatus}
-   * @memberof Clip
-   */
-  videoStatus: ClipVideoStatus;
+  video: ClipVideo;
   /**
    *
    * @type {Array<string>}
@@ -128,8 +115,6 @@ export function instanceOfClip(value: object): value is Clip {
     return false;
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   if (!("video" in value) || value["video"] === undefined) return false;
-  if (!("videoStatus" in value) || value["videoStatus"] === undefined)
-    return false;
   if (!("tags" in value) || value["tags"] === undefined) return false;
   if (!("isViewed" in value) || value["isViewed"] === undefined) return false;
   if (!("share" in value) || value["share"] === undefined) return false;
@@ -156,8 +141,7 @@ export function ClipFromJSONTyped(
     gameCategoryId: json["game_category_id"],
     categorySlug: json["category_slug"],
     createdAt: new Date(json["created_at"]),
-    video: BunnyVideoFromJSON(json["video"]),
-    videoStatus: ClipVideoStatusFromJSON(json["video_status"]),
+    video: ClipVideoFromJSON(json["video"]),
     tags: json["tags"],
     isViewed: json["is_viewed"],
     share: ClipShareSummaryFromJSON(json["share"]),
@@ -184,8 +168,7 @@ export function ClipToJSONTyped(
     game_category_id: value["gameCategoryId"],
     category_slug: value["categorySlug"],
     created_at: value["createdAt"].toISOString(),
-    video: BunnyVideoToJSON(value["video"]),
-    video_status: ClipVideoStatusToJSON(value["videoStatus"]),
+    video: ClipVideoToJSON(value["video"]),
     tags: value["tags"],
     is_viewed: value["isViewed"],
     share: ClipShareSummaryToJSON(value["share"]),

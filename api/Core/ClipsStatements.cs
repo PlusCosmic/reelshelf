@@ -21,22 +21,6 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Every collection the owner has. Normally one row per category, so this is cheap enough to fetch
-    /// whole rather than per clip when projecting a page that spans categories.
-    /// </summary>
-    public async Task<List<ClipCollectionRow>> GetCollectionsByOwner(Guid ownerId)
-    {
-        const string sql = """
-            SELECT id, owner_id, collection_id, game_category_id
-            FROM clip_collection
-            WHERE owner_id = @ownerId
-            ORDER BY id
-            """;
-
-        return (await connection.QueryAsync<ClipCollectionRow>(sql, new { ownerId })).ToList();
-    }
-
-    /// <summary>
     /// Inserts the owner's collection for a category, or returns the one a concurrent upload inserted first.
     /// </summary>
     public async Task<ClipCollectionRow> InsertCollection(Guid ownerId, Guid collectionId, Guid gameCategoryId)

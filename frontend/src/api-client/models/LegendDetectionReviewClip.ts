@@ -69,6 +69,12 @@ export interface LegendDetectionReviewClip {
    * @type {string}
    * @memberof LegendDetectionReviewClip
    */
+  playbackUrl: string;
+  /**
+   *
+   * @type {string}
+   * @memberof LegendDetectionReviewClip
+   */
   embedUrl: string;
   /**
    *
@@ -108,6 +114,8 @@ export function instanceOfLegendDetectionReviewClip(
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   if (!("lengthSeconds" in value) || value["lengthSeconds"] === undefined)
     return false;
+  if (!("playbackUrl" in value) || value["playbackUrl"] === undefined)
+    return false;
   if (!("embedUrl" in value) || value["embedUrl"] === undefined) return false;
   if (!("frameUrls" in value) || value["frameUrls"] === undefined) return false;
   if (!("latestRun" in value) || value["latestRun"] === undefined) return false;
@@ -135,6 +143,7 @@ export function LegendDetectionReviewClipFromJSONTyped(
     ownerName: json["owner_name"],
     createdAt: new Date(json["created_at"]),
     lengthSeconds: json["length_seconds"],
+    playbackUrl: json["playback_url"],
     embedUrl: json["embed_url"],
     frameUrls: json["frame_urls"],
     latestRun: LegendDetectionRunFromJSON(json["latest_run"]),
@@ -163,6 +172,7 @@ export function LegendDetectionReviewClipToJSONTyped(
     owner_name: value["ownerName"],
     created_at: value["createdAt"].toISOString(),
     length_seconds: value["lengthSeconds"],
+    playback_url: value["playbackUrl"],
     embed_url: value["embedUrl"],
     frame_urls: value["frameUrls"],
     latest_run: LegendDetectionRunToJSON(value["latestRun"]),

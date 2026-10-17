@@ -56,7 +56,7 @@ public record PlaylistSummary(
 );
 
 /// <summary>One of the first few clips in a collection's order, enough to show its thumbnail.</summary>
-public record PlaylistPreviewClip(Guid ClipId, Guid VideoId);
+public record PlaylistPreviewClip(Guid ClipId, Guid VideoId, string ThumbnailUrl);
 
 /// <summary>How many of a collection's clips come from one game.</summary>
 public record PlaylistGameCount(Guid GameCategoryId, int ClipCount);

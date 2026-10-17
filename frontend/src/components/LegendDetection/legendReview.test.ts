@@ -63,6 +63,7 @@ function clip(
     ownerName: "Owner",
     createdAt: new Date(),
     lengthSeconds: 30,
+    playbackUrl: "https://cdn.example/playlist.m3u8",
     embedUrl: "https://player.example/embed",
     frameUrls: [],
     latestRun,
