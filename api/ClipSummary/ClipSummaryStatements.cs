@@ -140,7 +140,7 @@ public class ClipSummaryStatements(NpgsqlConnection connection)
                           SELECT legend.player_legend
                           FROM legend_detection_run legend
                           WHERE legend.clip_id = clip.id AND legend.status = 'succeeded'
-                            AND legend.archived_at IS NULL
+                            AND legend.archived_at IS NULL AND legend.trigger <> 'eval'
                           ORDER BY legend.completed_at DESC
                           LIMIT 1)
                       END AS player_legend

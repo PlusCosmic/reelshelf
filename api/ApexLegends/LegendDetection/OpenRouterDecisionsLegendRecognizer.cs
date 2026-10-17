@@ -144,7 +144,8 @@ public sealed class OpenRouterDecisionsLegendRecognizer(
             hudProbability >= 0.5,
             choice == DecisionsLegendRecognizer.Unidentifiable ? null : choice,
             choiceProbability ?? legend.Confidence ?? 0);
-        return new LegendRecognition(result, raw, response.Usage?.InputTokens, null, response.Usage?.OutputTokens);
+        return new LegendRecognition(result, raw, response.Usage?.InputTokens, null, response.Usage?.OutputTokens,
+            CostUsd: response.Usage?.Cost);
     }
 
     private static DecisionAnswer Answer(DecisionsResponse response, string name, string type)
@@ -185,5 +186,6 @@ public sealed class OpenRouterDecisionsLegendRecognizer(
         Dictionary<string, double>? Probabilities,
         double? Confidence);
 
-    private sealed record DecisionsUsage(long? InputTokens, long? OutputTokens);
+    /// <summary><c>Cost</c> is what OpenRouter billed for the request, in US dollars.</summary>
+    private sealed record DecisionsUsage(long? InputTokens, long? OutputTokens, decimal? Cost);
 }

@@ -8,11 +8,14 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     public const string AutoTrigger = "auto";
     public const string ManualTrigger = "manual";
 
+    /// <summary>A run that belongs to an eval: scored against the baseline and never used as a clip's legend.</summary>
+    public const string EvalTrigger = "eval";
+
     private const string RunColumns = """
         id, clip_id, trigger, provider, model, reasoning_effort, prompt_version, status, attempts, frame_count, hud_detected,
         player_legend, player_legend_confidence, player_name, player_name_confidence, teammates::text AS teammates,
-        raw_response, input_tokens, cached_input_tokens, output_tokens, duration_ms, error, created_at, started_at,
-        completed_at
+        raw_response, input_tokens, cached_input_tokens, cache_write_input_tokens, output_tokens, cost_usd,
+        duration_ms, error, eval_id, created_at, started_at, completed_at
         """;
 
     /// <summary>Queues a clip's automatic run. Returns false when the clip already has an unarchived one.</summary>
@@ -66,17 +69,44 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         });
     }
 
-    public async Task<int> QueueManualRunsForLabelledClipsAsync(string provider, string model, string? reasoningEffort)
+    /// <summary>
+    /// Creates an eval and queues one of its runs for every labelled clip. Returns the eval's id and how many runs
+    /// were queued; no eval is created when no clip is labelled.
+    /// </summary>
+    public async Task<(Guid? EvalId, int Queued)> CreateEvalAsync(
+        string provider,
+        string model,
+        string? reasoningEffort,
+        Guid createdBy)
     {
-        const string sql = """
-            INSERT INTO legend_detection_run (clip_id, trigger, provider, model, reasoning_effort)
-            SELECT clip_id, 'manual', @Provider, @Model, @ReasoningEffort
-            FROM legend_detection_label
-            """;
-        return await connection.ExecuteAsync(sql, new
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+        int labelled = await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM legend_detection_label", transaction: transaction);
+        if (labelled == 0)
         {
-            Provider = provider, Model = model, ReasoningEffort = reasoningEffort
-        });
+            return (null, 0);
+        }
+
+        Guid evalId = await connection.ExecuteScalarAsync<Guid>("""
+            INSERT INTO legend_eval (provider, model, reasoning_effort, created_by)
+            VALUES (@Provider, @Model, @ReasoningEffort, @CreatedBy)
+            RETURNING id
+            """, new { Provider = provider, Model = model, ReasoningEffort = reasoningEffort, CreatedBy = createdBy },
+            transaction);
+        int queued = await connection.ExecuteAsync("""
+            INSERT INTO legend_detection_run (clip_id, trigger, provider, model, reasoning_effort, eval_id)
+            SELECT clip_id, 'eval', @Provider, @Model, @ReasoningEffort, @EvalId
+            FROM legend_detection_label
+            """, new { Provider = provider, Model = model, ReasoningEffort = reasoningEffort, EvalId = evalId },
+            transaction);
+        await transaction.CommitAsync();
+        return (evalId, queued);
+    }
+
+    /// <summary>Deletes an eval and its runs, including any still queued. Returns false when there was no such eval.</summary>
+    public async Task<bool> DeleteEvalAsync(Guid evalId)
+    {
+        return await connection.ExecuteAsync("DELETE FROM legend_eval WHERE id = @EvalId", new { EvalId = evalId }) > 0;
     }
 
     /// <summary>
@@ -97,8 +127,8 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
 
     /// <summary>
     /// Claims the next pending run, or a running one whose worker stopped before finishing, and counts the
-    /// attempt. Manual and escalation runs go before automatic ones, so they never wait behind a backfill;
-    /// otherwise the oldest goes first. A run that already failed an attempt waits <paramref name="retryAfter"/>
+    /// attempt. Manual and escalation runs go before automatic ones, so they never wait behind a backfill, and
+    /// eval runs go last, so an eval never holds up a new clip; otherwise the oldest goes first. A run that already failed an attempt waits <paramref name="retryAfter"/>
     /// before it is retried. SKIP LOCKED keeps two API instances from claiming the same run.
     /// </summary>
     public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter)
@@ -113,7 +143,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                   WHERE archived_at IS NULL
                     AND ((status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
                       OR (status = 'running' AND started_at < now() - @StaleAfter))
-                  ORDER BY trigger = 'auto', created_at
+                  ORDER BY trigger = 'eval', trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
             RETURNING run.id, run.clip_id, clip.video_id, run.trigger, run.provider, run.model, run.reasoning_effort,
@@ -143,7 +173,9 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                 raw_response = @RawResponse,
                 input_tokens = @InputTokens,
                 cached_input_tokens = @CachedInputTokens,
+                cache_write_input_tokens = @CacheWriteInputTokens,
                 output_tokens = @OutputTokens,
+                cost_usd = @CostUsd,
                 duration_ms = @DurationMs,
                 error = NULL,
                 completed_at = now()
@@ -165,6 +197,8 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
             InputTokens = (int?)recognition.InputTokens,
             CachedInputTokens = (int?)recognition.CachedInputTokens,
             OutputTokens = (int?)recognition.OutputTokens,
+            CacheWriteInputTokens = (int?)recognition.CacheWriteInputTokens,
+            recognition.CostUsd,
             DurationMs = durationMs
         });
     }
@@ -191,10 +225,16 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         });
     }
 
-    /// <summary>Archives every unarchived run, including queued ones, which will then never be processed.</summary>
+    /// <summary>
+    /// Archives every unarchived run, including queued ones, which will then never be processed. Eval runs are left
+    /// alone: an eval is removed by deleting it.
+    /// </summary>
     public async Task<int> ArchiveAllRunsAsync()
     {
-        const string sql = "UPDATE legend_detection_run SET archived_at = now() WHERE archived_at IS NULL";
+        const string sql = """
+            UPDATE legend_detection_run SET archived_at = now()
+            WHERE archived_at IS NULL AND trigger <> 'eval'
+            """;
         return await connection.ExecuteAsync(sql);
     }
 
@@ -223,7 +263,10 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         return (await connection.QueryAsync<ReviewClipRow>(sql, new { GameCategoryId = gameCategoryId })).ToList();
     }
 
-    /// <summary>The most recent run for each clip, with how many runs the clip has had in total.</summary>
+    /// <summary>
+    /// The most recent run for each clip, with how many runs the clip has had in total. Eval runs are left out, so
+    /// the review list shows what production did.
+    /// </summary>
     public async Task<List<LatestRunRow>> GetLatestRunsAsync(List<Guid> clipIds)
     {
         if (clipIds.Count == 0)
@@ -234,7 +277,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         string sql = $"""
             SELECT DISTINCT ON (clip_id) {RunColumns}, COUNT(*) OVER (PARTITION BY clip_id) AS run_count
             FROM legend_detection_run
-            WHERE clip_id = ANY(@ClipIds) AND archived_at IS NULL
+            WHERE clip_id = ANY(@ClipIds) AND archived_at IS NULL AND trigger <> 'eval'
             ORDER BY clip_id, created_at DESC
             """;
         return (await connection.QueryAsync<LatestRunRow>(sql, new { ClipIds = clipIds })).ToList();
@@ -353,8 +396,8 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Each clip's latest succeeded run, which is the legend the rest of Reelshelf uses for it, such as in clip
-    /// summaries.
+    /// Each clip's latest succeeded run outside evals, which is the legend the rest of Reelshelf uses for it, such
+    /// as in clip summaries.
     /// </summary>
     public async Task<List<LegendDetectionRunRow>> GetCurrentResultsAsync(List<Guid> clipIds)
     {
@@ -366,7 +409,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         string sql = $"""
             SELECT DISTINCT ON (clip_id) {RunColumns}
             FROM legend_detection_run
-            WHERE clip_id = ANY(@ClipIds) AND archived_at IS NULL AND status = 'succeeded'
+            WHERE clip_id = ANY(@ClipIds) AND archived_at IS NULL AND status = 'succeeded' AND trigger <> 'eval'
             ORDER BY clip_id, completed_at DESC
             """;
         return (await connection.QueryAsync<LegendDetectionRunRow>(sql, new { ClipIds = clipIds })).ToList();
@@ -376,6 +419,137 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     {
         return await connection.ExecuteAsync(
             "DELETE FROM legend_detection_label WHERE clip_id = ANY(@ClipIds)", new { ClipIds = clipIds });
+    }
+
+    /// <summary>
+    /// Each run's cost: what the provider billed, else its tokens at the model's prices, else null when the model
+    /// has no input or output price. Cached and cache-write tokens are part of input_tokens and fall back to the
+    /// input price.
+    /// </summary>
+    private const string RunCostSql = """
+        COALESCE(run.cost_usd, (
+            GREATEST(COALESCE(run.input_tokens, 0) - COALESCE(run.cached_input_tokens, 0)
+                     - COALESCE(run.cache_write_input_tokens, 0), 0) * price.input_per_mtok
+            + COALESCE(run.cached_input_tokens, 0) * COALESCE(price.cached_input_per_mtok, price.input_per_mtok)
+            + COALESCE(run.cache_write_input_tokens, 0) * COALESCE(price.cache_write_per_mtok, price.input_per_mtok)
+            + COALESCE(run.output_tokens, 0) * price.output_per_mtok) / 1000000)
+        """;
+
+    /// <summary>
+    /// Every eval with its results, newest first. A run is scored when it has finished on a clip that is still
+    /// labelled: it is correct when its owner's legend matches the label, and a failed run counts as wrong.
+    /// Scoring reads the labels as they are now, so correcting the baseline re-scores every eval. Latency covers
+    /// the model call of succeeded runs only.
+    /// </summary>
+    public async Task<List<EvalRow>> GetEvalsAsync(double confidentAt)
+    {
+        string sql = $$"""
+            WITH scored AS (
+                SELECT run.*,
+                       label.clip_id IS NOT NULL AND run.status IN ('succeeded', 'failed') AS scored,
+                       label.clip_id IS NOT NULL AND run.status = 'succeeded'
+                           AND run.player_legend IS NOT DISTINCT FROM label.player_legend AS correct,
+                       label.clip_id IS NOT NULL AND run.status = 'succeeded'
+                           AND run.player_legend IS DISTINCT FROM label.player_legend
+                           AND run.player_legend IS NOT NULL
+                           AND run.player_legend_confidence >= @ConfidentAt AS confident_mistake,
+                       {{RunCostSql}} AS cost
+                FROM legend_detection_run run
+                LEFT JOIN legend_detection_label label ON label.clip_id = run.clip_id
+                LEFT JOIN legend_model_price price ON price.provider = run.provider AND price.model = run.model
+                WHERE run.eval_id IS NOT NULL
+            )
+            SELECT eval.id, eval.provider, eval.model, eval.reasoning_effort, eval.created_at,
+                   COUNT(run.id) AS runs,
+                   COUNT(*) FILTER (WHERE run.status = 'succeeded') AS succeeded,
+                   COUNT(*) FILTER (WHERE run.status = 'failed') AS failed,
+                   COUNT(*) FILTER (WHERE run.status IN ('pending', 'running')) AS queued,
+                   COUNT(*) FILTER (WHERE run.scored) AS scored,
+                   COUNT(*) FILTER (WHERE run.correct) AS correct,
+                   COUNT(*) FILTER (WHERE run.confident_mistake) AS confident_mistakes,
+                   COALESCE(SUM(run.input_tokens), 0) AS input_tokens,
+                   COALESCE(SUM(run.cached_input_tokens), 0) AS cached_input_tokens,
+                   COALESCE(SUM(run.cache_write_input_tokens), 0) AS cache_write_input_tokens,
+                   COALESCE(SUM(run.output_tokens), 0) AS output_tokens,
+                   SUM(run.cost) AS cost_usd,
+                   COUNT(*) FILTER (WHERE run.status = 'succeeded' AND run.cost IS NULL) AS unpriced,
+                   COUNT(*) FILTER (WHERE run.cost_usd IS NOT NULL) AS billed,
+                   (PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY run.duration_ms)
+                       FILTER (WHERE run.status = 'succeeded'))::int AS p50_duration_ms,
+                   (PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY run.duration_ms)
+                       FILTER (WHERE run.status = 'succeeded'))::int AS p95_duration_ms,
+                   MIN(run.started_at) AS first_started_at,
+                   MAX(run.completed_at) AS last_completed_at,
+                   COALESCE(ARRAY_AGG(DISTINCT run.prompt_version) FILTER (WHERE run.prompt_version IS NOT NULL),
+                            '{}') AS prompt_versions
+            FROM legend_eval eval
+            LEFT JOIN scored run ON run.eval_id = eval.id
+            GROUP BY eval.id
+            ORDER BY eval.created_at DESC
+            """;
+        return (await connection.QueryAsync<EvalRow>(sql, new { ConfidentAt = confidentAt })).ToList();
+    }
+
+    /// <summary>An eval's wrong answers on clips that are labelled: failed runs and runs whose legend is not the label.</summary>
+    public async Task<List<EvalMissRow>> GetEvalMissesAsync(Guid evalId)
+    {
+        const string sql = """
+            SELECT run.id AS run_id, run.clip_id, clip.video_id, clip.title, run.status, run.hud_detected,
+                   run.player_legend, run.player_legend_confidence, run.error, label.player_legend AS label_legend
+            FROM legend_detection_run run
+            JOIN legend_detection_label label ON label.clip_id = run.clip_id
+            JOIN clip ON clip.id = run.clip_id
+            WHERE run.eval_id = @EvalId
+              AND (run.status = 'failed'
+                   OR (run.status = 'succeeded' AND run.player_legend IS DISTINCT FROM label.player_legend))
+            ORDER BY run.status = 'failed', run.player_legend_confidence DESC NULLS LAST
+            """;
+        return (await connection.QueryAsync<EvalMissRow>(sql, new { EvalId = evalId })).ToList();
+    }
+
+    public async Task<bool> EvalExistsAsync(Guid evalId)
+    {
+        return await connection.ExecuteScalarAsync<bool>(
+            "SELECT EXISTS (SELECT 1 FROM legend_eval WHERE id = @EvalId)", new { EvalId = evalId });
+    }
+
+    /// <summary>
+    /// The prices set so far, plus an empty entry for each provider and model an eval has used without one, so the
+    /// page can ask for it. Models whose every finished run was billed by the provider need no price and are left
+    /// out unless one was set.
+    /// </summary>
+    public async Task<List<PriceRow>> GetPricesAsync()
+    {
+        const string sql = """
+            SELECT price.provider, price.model, price.input_per_mtok, price.cached_input_per_mtok,
+                   price.cache_write_per_mtok, price.output_per_mtok
+            FROM legend_model_price price
+            UNION ALL
+            SELECT DISTINCT eval.provider, eval.model, NULL::numeric, NULL::numeric, NULL::numeric, NULL::numeric
+            FROM legend_eval eval
+            WHERE NOT EXISTS (SELECT 1 FROM legend_model_price price
+                              WHERE price.provider = eval.provider AND price.model = eval.model)
+              AND EXISTS (SELECT 1 FROM legend_detection_run run
+                          WHERE run.eval_id = eval.id AND run.status = 'succeeded' AND run.cost_usd IS NULL)
+            ORDER BY provider, model
+            """;
+        return (await connection.QueryAsync<PriceRow>(sql)).ToList();
+    }
+
+    public async Task SetPriceAsync(PriceRow price)
+    {
+        const string sql = """
+            INSERT INTO legend_model_price (provider, model, input_per_mtok, cached_input_per_mtok,
+                                            cache_write_per_mtok, output_per_mtok)
+            VALUES (@Provider, @Model, @InputPerMtok, @CachedInputPerMtok, @CacheWritePerMtok, @OutputPerMtok)
+            ON CONFLICT (provider, model) DO UPDATE
+            SET input_per_mtok = EXCLUDED.input_per_mtok,
+                cached_input_per_mtok = EXCLUDED.cached_input_per_mtok,
+                cache_write_per_mtok = EXCLUDED.cache_write_per_mtok,
+                output_per_mtok = EXCLUDED.output_per_mtok,
+                updated_at = now()
+            """;
+        await connection.ExecuteAsync(sql, price);
     }
 
     public async Task<List<LabelRow>> GetLabelsAsync(List<Guid> clipIds)
@@ -399,6 +573,58 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public string? PlayerLegend { get; set; }
         public string[] TeammateLegends { get; set; } = [];
         public DateTimeOffset LabelledAt { get; set; }
+    }
+
+    public class EvalRow
+    {
+        public Guid Id { get; set; }
+        public string Provider { get; set; } = "";
+        public string Model { get; set; } = "";
+        public string? ReasoningEffort { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public long Runs { get; set; }
+        public long Succeeded { get; set; }
+        public long Failed { get; set; }
+        public long Queued { get; set; }
+        public long Scored { get; set; }
+        public long Correct { get; set; }
+        public long ConfidentMistakes { get; set; }
+        public long InputTokens { get; set; }
+        public long CachedInputTokens { get; set; }
+        public long CacheWriteInputTokens { get; set; }
+        public long OutputTokens { get; set; }
+        public decimal? CostUsd { get; set; }
+        public long Unpriced { get; set; }
+        public long Billed { get; set; }
+        public int? P50DurationMs { get; set; }
+        public int? P95DurationMs { get; set; }
+        public DateTimeOffset? FirstStartedAt { get; set; }
+        public DateTimeOffset? LastCompletedAt { get; set; }
+        public string[] PromptVersions { get; set; } = [];
+    }
+
+    public class EvalMissRow
+    {
+        public Guid RunId { get; set; }
+        public Guid ClipId { get; set; }
+        public Guid VideoId { get; set; }
+        public string? Title { get; set; }
+        public string Status { get; set; } = "";
+        public bool? HudDetected { get; set; }
+        public string? PlayerLegend { get; set; }
+        public float? PlayerLegendConfidence { get; set; }
+        public string? Error { get; set; }
+        public string? LabelLegend { get; set; }
+    }
+
+    public class PriceRow
+    {
+        public string Provider { get; set; } = "";
+        public string Model { get; set; } = "";
+        public decimal? InputPerMtok { get; set; }
+        public decimal? CachedInputPerMtok { get; set; }
+        public decimal? CacheWritePerMtok { get; set; }
+        public decimal? OutputPerMtok { get; set; }
     }
 
     public class ReviewClipRow
@@ -470,9 +696,12 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public string? RawResponse { get; set; }
         public int? InputTokens { get; set; }
         public int? CachedInputTokens { get; set; }
+        public int? CacheWriteInputTokens { get; set; }
         public int? OutputTokens { get; set; }
+        public decimal? CostUsd { get; set; }
         public int? DurationMs { get; set; }
         public string? Error { get; set; }
+        public Guid? EvalId { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset? StartedAt { get; set; }
         public DateTimeOffset? CompletedAt { get; set; }

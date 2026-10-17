@@ -1728,12 +1728,33 @@
         }
       }
     },
-    "/api/legend-detection/labelled/runs": {
+    "/api/legend-detection/evals": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendEvals",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LegendEval"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "LegendDetectionEndpoints"
         ],
-        "operationId": "QueueLegendDetectionLabelledRuns",
+        "operationId": "CreateLegendEval",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1750,10 +1771,112 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LegendDetectionQueuedRunsResponse"
+                  "$ref": "#/components/schemas/LegendEvalCreatedResponse"
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/legend-detection/evals/{evalId}": {
+      "delete": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "DeleteLegendEval",
+        "parameters": [
+          {
+            "name": "evalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/legend-detection/evals/{evalId}/misses": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendEvalMisses",
+        "parameters": [
+          {
+            "name": "evalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LegendEvalMiss"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legend-detection/prices": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendModelPrices",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LegendModelPrice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "SetLegendModelPrice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegendModelPrice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
           }
         }
       }
@@ -4354,18 +4477,6 @@
           }
         }
       },
-      "LegendDetectionQueuedRunsResponse": {
-        "required": [
-          "queued"
-        ],
-        "type": "object",
-        "properties": {
-          "queued": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
       "LegendDetectionReviewClip": {
         "required": [
           "clip_id",
@@ -4700,6 +4811,268 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "LegendEval": {
+        "required": [
+          "id",
+          "provider",
+          "model",
+          "reasoning_effort",
+          "created_at",
+          "runs",
+          "succeeded",
+          "failed",
+          "queued",
+          "scored",
+          "correct",
+          "confident_mistakes",
+          "input_tokens",
+          "cached_input_tokens",
+          "cache_write_input_tokens",
+          "output_tokens",
+          "cost_usd",
+          "cost_billed",
+          "p50_duration_ms",
+          "p95_duration_ms",
+          "wall_seconds",
+          "prompt_versions"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "runs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "succeeded": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "queued": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "scored": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "correct": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "confident_mistakes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cached_input_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cache_write_input_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cost_usd": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "cost_billed": {
+            "type": "boolean"
+          },
+          "p50_duration_ms": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "p95_duration_ms": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "wall_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "prompt_versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LegendEvalCreatedResponse": {
+        "required": [
+          "eval_id",
+          "queued"
+        ],
+        "type": "object",
+        "properties": {
+          "eval_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "queued": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "LegendEvalMiss": {
+        "required": [
+          "run_id",
+          "clip_id",
+          "title",
+          "frame_urls",
+          "status",
+          "player_legend",
+          "confidence",
+          "hud_detected",
+          "error",
+          "label_legend"
+        ],
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "frame_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "player_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "confidence": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "float"
+          },
+          "hud_detected": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "label_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "LegendModelPrice": {
+        "required": [
+          "provider",
+          "model",
+          "input_per_mtok",
+          "cached_input_per_mtok",
+          "cache_write_per_mtok",
+          "output_per_mtok"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "input_per_mtok": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "cached_input_per_mtok": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "cache_write_per_mtok": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "output_per_mtok": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },

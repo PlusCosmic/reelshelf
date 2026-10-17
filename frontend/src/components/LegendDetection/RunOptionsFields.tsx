@@ -20,6 +20,9 @@ export function useRunOptions() {
   };
   return {
     options,
+    provider,
+    model: model.trim(),
+    takesEffort,
     fields: (
       <>
         <ProviderSelect value={provider} onValueChange={setProvider} />
