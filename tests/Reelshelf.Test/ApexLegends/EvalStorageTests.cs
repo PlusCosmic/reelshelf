@@ -8,8 +8,9 @@ namespace Reelshelf.Test.ApexLegends;
 
 /// <summary>
 /// Runs the eval queries against a real Postgres: creating an eval on the labelled clips, scoring and costing it,
-/// listing its misses, and deleting it. Temporary tables with the columns the queries touch stand in for the real
-/// ones and shadow them for this connection.
+/// listing its misses, and deleting it. Tables with the columns the queries touch are made in a schema of the
+/// test's own, which is dropped afterwards. The statements get a closed connection, as they do in the API, where
+/// Dapper opens it for each query.
 /// </summary>
 public class EvalStorageTests
 {
@@ -18,10 +19,29 @@ public class EvalStorageTests
     {
         // The API sets this at startup; the statements' row classes rely on it.
         DefaultTypeMap.MatchNamesWithUnderscores = true;
-        await using NpgsqlDataSource dataSource = ReelshelfDataSource.Create(PostgresFactAttribute.ConnectionString!);
+        string schema = $"eval_test_{Guid.NewGuid():N}";
+        await using (NpgsqlConnection admin = new(PostgresFactAttribute.ConnectionString))
+        {
+            await admin.OpenAsync();
+            await admin.ExecuteAsync($"CREATE SCHEMA {schema}");
+        }
+
+        await using NpgsqlDataSource dataSource = ReelshelfDataSource.Create(
+            $"{PostgresFactAttribute.ConnectionString};Search Path={schema}");
         await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync();
+        try
+        {
+            await RunAsync(connection, new LegendDetectionStatements(dataSource.CreateConnection()));
+        }
+        finally
+        {
+            await connection.ExecuteAsync($"DROP SCHEMA {schema} CASCADE");
+        }
+    }
+
+    private static async Task RunAsync(NpgsqlConnection connection, LegendDetectionStatements statements)
+    {
         await CreateTablesAsync(connection);
-        LegendDetectionStatements statements = new(connection);
 
         Assert.Equal((null, 0), await statements.CreateEvalAsync("anthropic", "claude-haiku-5-5", "low", Guid.NewGuid()));
 
@@ -104,15 +124,15 @@ public class EvalStorageTests
     private static async Task CreateTablesAsync(NpgsqlConnection connection)
     {
         await connection.ExecuteAsync("""
-            CREATE TEMP TABLE clip (id uuid PRIMARY KEY, video_id uuid NOT NULL, title text);
-            CREATE TEMP TABLE legend_detection_label (
+            CREATE TABLE clip (id uuid PRIMARY KEY, video_id uuid NOT NULL, title text);
+            CREATE TABLE legend_detection_label (
                 clip_id uuid PRIMARY KEY REFERENCES clip(id) ON DELETE CASCADE,
                 player_legend text,
                 teammate_legends text[] NOT NULL DEFAULT '{}',
                 labelled_by uuid,
                 labelled_at timestamptz NOT NULL DEFAULT now()
             );
-            CREATE TEMP TABLE legend_eval (
+            CREATE TABLE legend_eval (
                 id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 provider text NOT NULL,
                 model text NOT NULL,
@@ -120,7 +140,7 @@ public class EvalStorageTests
                 created_by uuid,
                 created_at timestamptz NOT NULL DEFAULT now()
             );
-            CREATE TEMP TABLE legend_model_price (
+            CREATE TABLE legend_model_price (
                 provider text NOT NULL,
                 model text NOT NULL,
                 input_per_mtok numeric(12, 6),
@@ -130,7 +150,7 @@ public class EvalStorageTests
                 updated_at timestamptz NOT NULL DEFAULT now(),
                 PRIMARY KEY (provider, model)
             );
-            CREATE TEMP TABLE legend_detection_run (
+            CREATE TABLE legend_detection_run (
                 id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 clip_id uuid NOT NULL REFERENCES clip(id) ON DELETE CASCADE,
                 trigger text NOT NULL,
