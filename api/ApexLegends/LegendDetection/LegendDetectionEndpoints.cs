@@ -331,6 +331,7 @@ public sealed record LegendDetectionReviewClip(
     string OwnerName,
     DateTimeOffset CreatedAt,
     int? LengthSeconds,
+    string PlaybackUrl,
     string EmbedUrl,
     List<string> FrameUrls,
     LegendDetectionRun? LatestRun,

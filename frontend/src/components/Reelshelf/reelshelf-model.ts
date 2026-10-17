@@ -3,7 +3,6 @@ import type {
   ClipCategoryTotals,
   GameCategoryResponse,
 } from "@/api-client";
-import { videoEmbedUrl, videoThumbnailUrl } from "@/shared/utils/clipMediaUrls";
 
 export interface GameShelfItem extends GameCategoryResponse {
   clipCount: number;
@@ -159,11 +158,14 @@ export function categoryForClip(
 }
 
 export function thumbnailUrl(clip: Clip) {
-  return videoThumbnailUrl(clip.video.guid);
+  return clip.video.thumbnailUrl;
 }
 
+/** The API's embed player URL with autoplay switched on or off. */
 export function playerUrl(clip: Clip, autoplay = false) {
-  return videoEmbedUrl(clip.video.videoLibraryId, clip.video.guid, autoplay);
+  const url = new URL(clip.video.embedUrl);
+  url.searchParams.set("autoplay", String(autoplay));
+  return url.toString();
 }
 
 export function formatDuration(seconds = 0) {

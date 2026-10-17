@@ -20,7 +20,7 @@ _Avoid_: Exposing this as a user-facing collection.
 
 **Video Host**:
 The service that stores, encodes and serves clip videos (`IClipVideoHost`); Bunny Stream today.
-_Avoid_: Calling Bunny directly from outside `api/Bunny/`.
+_Avoid_: Calling Bunny directly from outside `api/Bunny/`, or building a video's URLs anywhere but `ClipMediaUrls`; clients take the URLs the API hands out.
 
 **Clip Video Status**:
 Where a clip's video is on its way to playable, in the app's own terms (`ClipVideoStatus`): awaiting upload, uploaded, processing, ready, encode failed or upload failed. A clip plays, shares and is transcribed only when ready. The **Video Host** maps its own statuses onto these.

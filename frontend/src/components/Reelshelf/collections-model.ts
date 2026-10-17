@@ -60,7 +60,9 @@ export function gamesFromCounts(
 
 /** Total running time, rounded to whole minutes the way the rows show it. */
 export function collectionMinutes(clips: Clip[]) {
-  return minutesOf(clips.reduce((total, clip) => total + clip.video.length, 0));
+  return minutesOf(
+    clips.reduce((total, clip) => total + clip.video.durationSeconds, 0),
+  );
 }
 
 export function minutesOf(seconds: number) {

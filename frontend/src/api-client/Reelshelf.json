@@ -3079,93 +3079,6 @@
           }
         }
       },
-      "BunnyVideo": {
-        "required": [
-          "video_library_id",
-          "guid",
-          "title",
-          "date_uploaded",
-          "length",
-          "status",
-          "framerate",
-          "thumbnail_count",
-          "encode_progress",
-          "storage_size",
-          "collection_id",
-          "thumbnail_file_name",
-          "thumbnail_blurhash",
-          "category",
-          "moments",
-          "meta_tags"
-        ],
-        "type": "object",
-        "properties": {
-          "video_library_id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "guid": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "type": "string"
-          },
-          "date_uploaded": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "length": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "status": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "framerate": {
-            "type": "number",
-            "format": "double"
-          },
-          "thumbnail_count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "encode_progress": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "storage_size": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "collection_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "thumbnail_file_name": {
-            "type": "string"
-          },
-          "thumbnail_blurhash": {
-            "type": "string"
-          },
-          "category": {
-            "type": "string"
-          },
-          "moments": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Moment"
-            }
-          },
-          "meta_tags": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MetaTag"
-            }
-          }
-        }
-      },
       "ClearLegendDetectionLabelsRequest": {
         "required": [
           "clip_ids"
@@ -3190,7 +3103,6 @@
           "category_slug",
           "created_at",
           "video",
-          "video_status",
           "tags",
           "is_viewed",
           "share",
@@ -3222,10 +3134,7 @@
             "format": "date-time"
           },
           "video": {
-            "$ref": "#/components/schemas/BunnyVideo"
-          },
-          "video_status": {
-            "$ref": "#/components/schemas/ClipVideoStatus"
+            "$ref": "#/components/schemas/ClipVideo"
           },
           "tags": {
             "type": "array",
@@ -3620,6 +3529,7 @@
           "game_slug",
           "created_at",
           "length_seconds",
+          "playback_url",
           "embed_url",
           "thumbnail_url",
           "latest_run",
@@ -3653,6 +3563,9 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "playback_url": {
+            "type": "string"
           },
           "embed_url": {
             "type": "string"
@@ -3900,6 +3813,58 @@
               "integer"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "ClipVideo": {
+        "required": [
+          "id",
+          "title",
+          "duration_seconds",
+          "status",
+          "encode_progress",
+          "storage_bytes",
+          "uploaded_at",
+          "thumbnail_url",
+          "playback_url",
+          "embed_url"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ClipVideoStatus"
+          },
+          "encode_progress": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "storage_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "thumbnail_url": {
+            "type": "string"
+          },
+          "playback_url": {
+            "type": "string"
+          },
+          "embed_url": {
+            "type": "string"
           }
         }
       },
@@ -4484,6 +4449,7 @@
           "owner_name",
           "created_at",
           "length_seconds",
+          "playback_url",
           "embed_url",
           "frame_urls",
           "latest_run",
@@ -4512,6 +4478,9 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "playback_url": {
+            "type": "string"
           },
           "embed_url": {
             "type": "string"
@@ -5170,37 +5139,6 @@
           }
         }
       },
-      "MetaTag": {
-        "required": [
-          "property",
-          "value"
-        ],
-        "type": "object",
-        "properties": {
-          "property": {
-            "type": "string"
-          },
-          "value": {
-            "type": "string"
-          }
-        }
-      },
-      "Moment": {
-        "required": [
-          "label",
-          "timestamp"
-        ],
-        "type": "object",
-        "properties": {
-          "label": {
-            "type": "string"
-          },
-          "timestamp": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
       "PagedClipsResponse": {
         "required": [
           "clips",
@@ -5381,7 +5319,8 @@
       "PlaylistPreviewClip": {
         "required": [
           "clip_id",
-          "video_id"
+          "video_id",
+          "thumbnail_url"
         ],
         "type": "object",
         "properties": {
@@ -5392,6 +5331,9 @@
           "video_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "thumbnail_url": {
+            "type": "string"
           }
         }
       },
@@ -5695,6 +5637,8 @@
           "game",
           "duration_seconds",
           "uploaded_at",
+          "thumbnail_url",
+          "playback_url",
           "embed_url"
         ],
         "type": "object",
@@ -5712,6 +5656,12 @@
           "uploaded_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "thumbnail_url": {
+            "type": "string"
+          },
+          "playback_url": {
+            "type": "string"
           },
           "embed_url": {
             "type": "string"

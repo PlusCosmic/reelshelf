@@ -1,13 +1,8 @@
-using Reelshelf.Bunny.Models;
 using Reelshelf.Games;
 using Reelshelf.Video;
 
 namespace Reelshelf.Core.Models;
 
-/// <param name="Video">
-/// Bunny's view of the video. Its <c>status</c> is Bunny's number and is going away; read <paramref name="VideoStatus"/>.
-/// </param>
-/// <param name="VideoStatus">Where the clip's video is on its way to playable.</param>
 public record Clip(
     Guid ClipId,
     Guid OwnerId,
@@ -15,14 +10,33 @@ public record Clip(
     Guid GameCategoryId,
     string CategorySlug,
     DateTimeOffset CreatedAt,
-    BunnyVideo Video,
-    ClipVideoStatus VideoStatus,
+    ClipVideo Video,
     IReadOnlyList<string> Tags,
     bool IsViewed,
     ClipShareSummary Share,
     object? GameMetadata)
 {
 }
+
+/// <summary>
+/// A clip's video in the app's own terms, with every media URL built by the API (<see cref="ClipMediaUrls"/>), so
+/// clients never name the video host.
+/// </summary>
+/// <param name="Status">Where the video is on its way to playable.</param>
+/// <param name="EncodeProgress">The host's encoding progress, 0 to 100, while <paramref name="Status"/> is processing.</param>
+/// <param name="PlaybackUrl">The HLS playlist.</param>
+/// <param name="EmbedUrl">The host's embed player, without autoplay; still used by the iframe player.</param>
+public record ClipVideo(
+    Guid Id,
+    string Title,
+    int DurationSeconds,
+    ClipVideoStatus Status,
+    int EncodeProgress,
+    long StorageBytes,
+    DateTimeOffset UploadedAt,
+    string ThumbnailUrl,
+    string PlaybackUrl,
+    string EmbedUrl);
 
 public record PagedClipsResponse(List<Clip> Clips, long TotalClips, long TotalPages);
 
@@ -53,4 +67,6 @@ public record SharedClipResponse(
     string Game,
     int DurationSeconds,
     DateTimeOffset UploadedAt,
+    string ThumbnailUrl,
+    string PlaybackUrl,
     string EmbedUrl);

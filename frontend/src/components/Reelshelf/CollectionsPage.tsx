@@ -11,7 +11,6 @@ import {
 } from "./collections-model";
 import { CollectionFormDialog } from "./collections/CollectionFormDialog";
 import { Avatar, SearchBox } from "./ReelshelfPrimitives";
-import { videoThumbnailUrl } from "@/shared/utils/clipMediaUrls";
 import {
   formatDate,
   makeGameShelf,
@@ -42,12 +41,7 @@ function Mosaic({
     >
       {shown.length === 0 ? <span>Empty</span> : null}
       {shown.map((clip) => (
-        <img
-          key={clip.clipId}
-          src={videoThumbnailUrl(clip.videoId)}
-          alt=""
-          loading="lazy"
-        />
+        <img key={clip.clipId} src={clip.thumbnailUrl} alt="" loading="lazy" />
       ))}
       {games.length > 0 ? (
         <span className="rs-ledger-share">

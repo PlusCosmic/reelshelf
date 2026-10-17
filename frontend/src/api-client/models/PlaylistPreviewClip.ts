@@ -31,6 +31,12 @@ export interface PlaylistPreviewClip {
    * @memberof PlaylistPreviewClip
    */
   videoId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof PlaylistPreviewClip
+   */
+  thumbnailUrl: string;
 }
 
 /**
@@ -41,6 +47,8 @@ export function instanceOfPlaylistPreviewClip(
 ): value is PlaylistPreviewClip {
   if (!("clipId" in value) || value["clipId"] === undefined) return false;
   if (!("videoId" in value) || value["videoId"] === undefined) return false;
+  if (!("thumbnailUrl" in value) || value["thumbnailUrl"] === undefined)
+    return false;
   return true;
 }
 
@@ -58,6 +66,7 @@ export function PlaylistPreviewClipFromJSONTyped(
   return {
     clipId: json["clip_id"],
     videoId: json["video_id"],
+    thumbnailUrl: json["thumbnail_url"],
   };
 }
 
@@ -76,5 +85,6 @@ export function PlaylistPreviewClipToJSONTyped(
   return {
     clip_id: value["clipId"],
     video_id: value["videoId"],
+    thumbnail_url: value["thumbnailUrl"],
   };
 }

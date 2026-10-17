@@ -28,7 +28,7 @@ function stageOf(item: UploadItem, clip: Clip | undefined): ClipStage | null {
   if (isUnfinishedUpload(item))
     return clipStage(ClipVideoStatus.AwaitingUpload, 0, item);
   return clip
-    ? clipStage(clip.videoStatus, clip.video.encodeProgress)
+    ? clipStage(clip.video.status, clip.video.encodeProgress)
     : { kind: "processing", progress: null };
 }
 
@@ -91,7 +91,7 @@ export function UploadTray() {
       queryFn: () => getVideo(item.clipId!),
       refetchInterval: (query: { state: { data?: Clip | null } }) => {
         const clip = query.state.data;
-        return clip && clipStage(clip.videoStatus, 0).kind !== "processing"
+        return clip && clipStage(clip.video.status, 0).kind !== "processing"
           ? false
           : 5000;
       },

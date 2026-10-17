@@ -184,19 +184,4 @@ public class BunnyService : IClipVideoHost
         BunnyVideoObjectStatus.UploadFailed => ClipVideoStatus.UploadFailed,
         _ => ClipVideoStatus.Processing
     };
-
-    /// <summary>
-    /// The nearest Bunny number for a clip's status, only for the deprecated <see cref="BunnyVideo.Status"/> the
-    /// clip contract still carries. Every processing step reads back as <see cref="BunnyVideoObjectStatus.Processing"/>.
-    /// </summary>
-    public static int ToBunnyStatus(ClipVideoStatus status) => (int)(status switch
-    {
-        ClipVideoStatus.AwaitingUpload => BunnyVideoObjectStatus.Created,
-        ClipVideoStatus.Uploaded => BunnyVideoObjectStatus.Uploaded,
-        ClipVideoStatus.Processing => BunnyVideoObjectStatus.Processing,
-        ClipVideoStatus.Ready => BunnyVideoObjectStatus.Finished,
-        ClipVideoStatus.EncodeFailed => BunnyVideoObjectStatus.Error,
-        ClipVideoStatus.UploadFailed => BunnyVideoObjectStatus.UploadFailed,
-        _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
-    });
 }

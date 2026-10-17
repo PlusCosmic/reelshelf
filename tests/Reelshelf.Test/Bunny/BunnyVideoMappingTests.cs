@@ -74,13 +74,4 @@ public class BunnyVideoMappingTests
         Assert.Equal(playable, status.IsPlayable());
         Assert.Equal(uploaded, status.IsUploaded());
     }
-
-    [Fact]
-    public void ToBunnyStatus_RoundTripsEveryStatus()
-    {
-        foreach (ClipVideoStatus status in Enum.GetValues<ClipVideoStatus>())
-        {
-            Assert.Equal(status, BunnyService.ToClipVideoStatus(BunnyService.ToBunnyStatus(status)));
-        }
-    }
 }
