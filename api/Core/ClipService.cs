@@ -2,18 +2,18 @@ using Npgsql;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
-using Reelshelf.Bunny;
 using Reelshelf.Bunny.Models;
 using Reelshelf.Core.Models;
 using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
 using Reelshelf.Storage;
+using Reelshelf.Video;
 
 namespace Reelshelf.Core;
 
 public class ClipService(
-    BunnyService bunnyService,
+    IClipVideoHost videoHost,
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection,
@@ -43,7 +43,7 @@ public class ClipService(
     }
 
     /// <summary>
-    /// Reserves storage and creates the Bunny video a clip's bytes will be uploaded into. Returns null when the
+    /// Reserves storage and creates the hosted video a clip's bytes will be uploaded into. Returns null when the
     /// owner already has this video (same MD5 for the game, or the same <paramref name="source"/> clip).
     /// </summary>
     public async Task<CreateClipResponse?> CreateClip(Guid gameCategoryId, string videoTitle,
@@ -64,7 +64,7 @@ public class ClipService(
         }
 
 
-        // Get the category to get the slug for Bunny CDN collection naming
+        // The host files the video by category (Bunny names its collection after the slug)
         GameCategory? gameCategory = await gameCategoryStatements.GetByIdAsync(gameCategoryId);
         if (gameCategory == null)
         {
@@ -84,11 +84,11 @@ public class ClipService(
         // Cheap unlocked check first so a plainly over-limit request fails before taking the lock.
         await storageQuotaService.EnsureCanStore(userId, fileSize);
 
-        // Reserve quota before anything is created at Bunny. The clip row is inserted with a placeholder
+        // Reserve quota before anything is created at the video host. The clip row is inserted with a placeholder
         // video id under a per-owner lock so concurrent requests cannot all pass the check on the same stale
-        // usage figure, and so a request that will be rejected never spends a Bunny operation, collection
+        // usage figure, and so a request that will be rejected never spends a host operation, container
         // creation included. No network calls happen inside the lock, and disposing the lock returns the
-        // pooled connection before the Bunny calls below.
+        // pooled connection before the host calls below.
         Guid placeholderVideoId = Guid.NewGuid();
         ClipsStatements.ClipRow reserved;
         await using (ClipsStatements.OwnerStorageLock reservation = await clipsStatements.BeginOwnerStorageLock(userId))
@@ -116,13 +116,10 @@ public class ClipService(
             await reservation.CommitAsync();
         }
 
-        ClipsStatements.ClipCollectionRow clipCollection;
-        BunnyVideo video;
+        HostedVideo video;
         try
         {
-            clipCollection = await clipsStatements.GetCollectionByOwnerAndCategory(userId, gameCategoryId)
-                             ?? await CreateCollectionAsync(userId, gameCategory);
-            video = await bunnyService.CreateVideoAsync(clipCollection.CollectionId, videoTitle);
+            video = await videoHost.CreateVideoAsync(userId, gameCategory, videoTitle);
         }
         catch
         {
@@ -134,20 +131,11 @@ public class ClipService(
         ClipsStatements.ClipRow clip;
         try
         {
-            clip = await clipsStatements.AttachBunnyVideo(
-                reserved.Id,
-                video.Guid,
-                video.Title,
-                video.Length,
-                video.ThumbnailFileName,
-                video.DateUploaded,
-                video.StorageSize,
-                video.Status,
-                video.EncodeProgress);
+            clip = await clipsStatements.AttachVideo(reserved.Id, video);
         }
         catch
         {
-            await DiscardUnattachedVideoAsync(reserved.Id, video.Guid);
+            await DiscardUnattachedVideoAsync(reserved.Id, video.VideoId);
             throw;
         }
 
@@ -159,7 +147,7 @@ public class ClipService(
                            ?? throw new InvalidOperationException("Bunny API library ID not configured");
         string secretKey = configuration["BunnyAccessKey"]
                            ?? throw new InvalidOperationException("Bunny access key not configured");
-        byte[] signature = Encoding.UTF8.GetBytes(libraryId + secretKey + expiration + video.Guid);
+        byte[] signature = Encoding.UTF8.GetBytes(libraryId + secretKey + expiration + video.VideoId);
         byte[] hash = SHA256.HashData(signature);
         string? hashString = Convert.ToHexString(hash);
         return new CreateClipResponse(
@@ -167,58 +155,37 @@ public class ClipService(
             hashString ?? throw new InvalidOperationException("Hash computation failed"),
             expiration,
             libraryId,
-            video.Guid,
-            video.CollectionId);
+            video.VideoId,
+            video.ContainerId);
     }
 
     /// <summary>Server-side upload of a clip's bytes into the video <see cref="CreateClip"/> prepared for it.</summary>
     public Task UploadVideo(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken)
     {
-        return bunnyService.UploadVideoAsync(videoId, content, contentLength, cancellationToken);
-    }
-
-    private async Task<ClipsStatements.ClipCollectionRow> CreateCollectionAsync(Guid userId, GameCategory gameCategory)
-    {
-        BunnyCollection bunnyCollection = await bunnyService.CreateCollectionAsync(gameCategory.Slug, userId);
-        ClipsStatements.ClipCollectionRow collection =
-            await clipsStatements.InsertCollection(userId, bunnyCollection.Guid, gameCategory.Id);
-        if (collection.CollectionId != bunnyCollection.Guid)
-        {
-            // A concurrent upload created the category's collection first; ours is empty, so drop it.
-            try
-            {
-                await bunnyService.DeleteCollectionAsync(bunnyCollection.Guid);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to delete unused Bunny collection {CollectionId}", bunnyCollection.Guid);
-            }
-        }
-
-        return collection;
+        return videoHost.UploadAsync(videoId, content, contentLength, cancellationToken);
     }
 
     /// <summary>
-    /// A video was created at Bunny but could not be attached to its reserved row. Delete the video and the
-    /// reservation; if the Bunny delete fails, keep the row and record the real video id on it so the
+    /// A video was created at the host but could not be attached to its reserved row. Delete the video and the
+    /// reservation; if the host's delete fails, keep the row and record the real video id on it so the
     /// abandoned-upload purge can finish the job rather than leaving a billable orphan.
     /// </summary>
     private async Task DiscardUnattachedVideoAsync(Guid clipId, Guid videoId)
     {
         try
         {
-            await bunnyService.DeleteVideoAsync(videoId);
+            await videoHost.DeleteVideoAsync(videoId);
         }
         catch (Exception deleteError)
         {
-            logger.LogWarning(deleteError, "Failed to delete Bunny video {VideoId} after attaching it to clip {ClipId} failed; keeping the row for the purge", videoId, clipId);
+            logger.LogWarning(deleteError, "Failed to delete video {VideoId} after attaching it to clip {ClipId} failed; keeping the row for the purge", videoId, clipId);
             try
             {
                 await clipsStatements.SetClipVideoId(clipId, videoId);
             }
             catch (Exception recordError)
             {
-                logger.LogError(recordError, "Could not record Bunny video {VideoId} on clip {ClipId}; the video may be orphaned", videoId, clipId);
+                logger.LogError(recordError, "Could not record video {VideoId} on clip {ClipId}; the video may be orphaned", videoId, clipId);
             }
 
             return;
@@ -462,7 +429,7 @@ public class ClipService(
             return false;
         }
 
-        await bunnyService.DeleteVideoAsync(clip.VideoId);
+        await videoHost.DeleteVideoAsync(clip.VideoId);
         await clipsStatements.DeleteClip(clipId);
 
         // Usage went down; clear the "nearly full" marker if the owner is back under the threshold.

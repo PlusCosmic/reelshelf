@@ -1,5 +1,5 @@
-using Reelshelf.Bunny;
 using Reelshelf.Bunny.Models;
+using Reelshelf.Video;
 
 namespace Reelshelf.Core;
 
@@ -34,7 +34,7 @@ public class ClipStatusRefreshService(
         {
             using IServiceScope scope = scopeFactory.CreateScope();
             ClipsStatements clipsStatements = scope.ServiceProvider.GetRequiredService<ClipsStatements>();
-            BunnyService bunnyService = scope.ServiceProvider.GetRequiredService<BunnyService>();
+            IClipVideoHost videoHost = scope.ServiceProvider.GetRequiredService<IClipVideoHost>();
 
             List<ClipsStatements.ClipRow> clipsNeedingUpdate = await clipsStatements.GetClipsNeedingStatusUpdate();
 
@@ -53,24 +53,15 @@ public class ClipStatusRefreshService(
             {
                 try
                 {
-                    BunnyVideo? video = await bunnyService.GetVideoByIdAsync(clip.VideoId);
+                    HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
                     if (video == null)
                     {
-                        logger.LogWarning("Video {VideoId} not found in Bunny CDN for clip {ClipId}", clip.VideoId, clip.Id);
+                        logger.LogWarning("Video {VideoId} not found at the video host for clip {ClipId}", clip.VideoId, clip.Id);
                         failed++;
                         continue;
                     }
 
-                    await clipsStatements.UpdateClipMetadata(
-                        clip.Id,
-                        video.Title,
-                        video.Length,
-                        video.ThumbnailFileName,
-                        video.DateUploaded,
-                        video.StorageSize,
-                        video.Status,
-                        video.EncodeProgress
-                    );
+                    await clipsStatements.UpdateClipMetadata(clip.Id, video.Title, video);
 
                     updated++;
                 }
@@ -95,7 +86,7 @@ public class ClipStatusRefreshService(
         {
             using IServiceScope scope = scopeFactory.CreateScope();
             ClipsStatements clipsStatements = scope.ServiceProvider.GetRequiredService<ClipsStatements>();
-            BunnyService bunnyService = scope.ServiceProvider.GetRequiredService<BunnyService>();
+            IClipVideoHost videoHost = scope.ServiceProvider.GetRequiredService<IClipVideoHost>();
 
             List<ClipsStatements.ClipRow> candidates =
                 await clipsStatements.GetAbandonedClips(DateTimeOffset.UtcNow - AbandonedUploadAge);
@@ -104,16 +95,16 @@ public class ClipStatusRefreshService(
             {
                 try
                 {
-                    // Re-check with Bunny so a clip whose webhook was missed is refreshed rather than deleted.
-                    BunnyVideo? video = await bunnyService.GetVideoByIdAsync(clip.VideoId);
-                    if (video is not null && (video.StorageSize > 0 || IsUploaded(video.Status)))
+                    // Re-check with the host so a clip whose update notification was missed is refreshed rather than deleted.
+                    HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
+                    if (!IsAbandoned(video))
                     {
                         continue;
                     }
 
                     if (video is not null)
                     {
-                        await bunnyService.DeleteVideoAsync(clip.VideoId);
+                        await videoHost.DeleteVideoAsync(clip.VideoId);
                     }
 
                     await clipsStatements.DeleteClip(clip.Id);
@@ -130,6 +121,15 @@ public class ClipStatusRefreshService(
         {
             logger.LogError(e, "Failed to purge abandoned uploads");
         }
+    }
+
+    /// <summary>
+    /// True when a reserved clip's video never received its bytes: the host has no such video, or it stores
+    /// nothing and its status says nothing was uploaded.
+    /// </summary>
+    public static bool IsAbandoned(HostedVideoInfo? video)
+    {
+        return video is null || (video.StorageSize <= 0 && !IsUploaded(video.Status));
     }
 
     /// <summary>

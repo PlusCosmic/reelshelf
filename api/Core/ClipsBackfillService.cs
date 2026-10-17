@@ -1,14 +1,12 @@
-using Reelshelf.Bunny;
-using Reelshelf.Bunny.Models;
 using Reelshelf.Games;
+using Reelshelf.Video;
 
 namespace Reelshelf.Core;
 
 public class ClipsBackfillService(
-    ClipsBackfillStatements backfillStatements,
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements,
-    BunnyService bunnyService,
+    IClipVideoHost videoHost,
     ILogger<ClipsBackfillService> logger)
 {
     private const string ApexLegendsSlug = "apex-legends";
@@ -39,26 +37,17 @@ public class ClipsBackfillService(
         {
             try
             {
-                BunnyVideo? bunnyVideo = await bunnyService.GetVideoByIdAsync(clip.VideoId);
+                HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
 
-                if (bunnyVideo is null)
+                if (video is null)
                 {
-                    logger.LogWarning("Video {VideoId} for clip {ClipId} not found in Bunny CDN",
+                    logger.LogWarning("Video {VideoId} for clip {ClipId} not found at the video host",
                         clip.VideoId, clip.Id);
                     failureCount++;
                     continue;
                 }
 
-                await backfillStatements.UpdateClipMetadataAsync(
-                    clip.Id,
-                    bunnyVideo.Title,
-                    bunnyVideo.Length,
-                    bunnyVideo.ThumbnailFileName,
-                    bunnyVideo.DateUploaded,
-                    bunnyVideo.StorageSize,
-                    bunnyVideo.Status,
-                    bunnyVideo.EncodeProgress
-                );
+                await clipsStatements.UpdateClipMetadata(clip.Id, video.Title, video);
 
                 successCount++;
                 logger.LogInformation("Backfilled clip {ClipId} with video {VideoId}",
