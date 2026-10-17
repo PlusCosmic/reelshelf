@@ -1814,6 +1814,102 @@
         }
       }
     },
+    "/api/legend-detection/baseline": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendDetectionBaseline",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LegendBaselineClip"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legend-detection/labels": {
+      "put": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "SetLegendDetectionPlayerLabels",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLegendDetectionPlayerLabelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegendDetectionLabelsSavedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legend-detection/labels/clear": {
+      "post": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "ClearLegendDetectionLabels",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearLegendDetectionLabelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegendDetectionLabelsClearedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/legend-detection/reference-sheet": {
+      "get": {
+        "tags": [
+          "LegendDetectionEndpoints"
+        ],
+        "operationId": "GetLegendDetectionReferenceSheet",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/legend-detection/legends": {
       "get": {
         "tags": [
@@ -2947,6 +3043,21 @@
           }
         }
       },
+      "ClearLegendDetectionLabelsRequest": {
+        "required": [
+          "clip_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
       "Clip": {
         "required": [
           "clip_id",
@@ -4059,6 +4170,116 @@
           }
         }
       },
+      "LegendBaselineClip": {
+        "required": [
+          "clip_id",
+          "title",
+          "owner_name",
+          "created_at",
+          "frame_urls",
+          "label",
+          "result"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "owner_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "frame_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "label": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LegendBaselineLabel"
+              }
+            ]
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LegendBaselineResult"
+              }
+            ]
+          }
+        }
+      },
+      "LegendBaselineLabel": {
+        "required": [
+          "player_legend",
+          "labelled_at"
+        ],
+        "type": "object",
+        "properties": {
+          "player_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "labelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LegendBaselineResult": {
+        "required": [
+          "player_legend",
+          "confidence",
+          "provider",
+          "model",
+          "hud_detected"
+        ],
+        "type": "object",
+        "properties": {
+          "player_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "confidence": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "float"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "hud_detected": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
       "LegendDetectionArchiveResponse": {
         "required": [
           "archived"
@@ -4106,6 +4327,30 @@
           "labelled_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "LegendDetectionLabelsClearedResponse": {
+        "required": [
+          "cleared"
+        ],
+        "type": "object",
+        "properties": {
+          "cleared": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "LegendDetectionLabelsSavedResponse": {
+        "required": [
+          "saved"
+        ],
+        "type": "object",
+        "properties": {
+          "saved": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -4455,6 +4700,25 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "LegendPlayerLabel": {
+        "required": [
+          "clip_id",
+          "player_legend"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "player_legend": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -5034,6 +5298,20 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          }
+        }
+      },
+      "SetLegendDetectionPlayerLabelsRequest": {
+        "required": [
+          "labels"
+        ],
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LegendPlayerLabel"
             }
           }
         }

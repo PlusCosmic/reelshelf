@@ -1,14 +1,17 @@
 import type {
   DetectedTeammate,
+  LegendBaselineClip,
   LegendDetectionLabel,
   LegendDetectionReviewClip,
   LegendDetectionRun,
   LegendDetectionUsage,
 } from "@/api-client";
+import { apiConfig } from "../config/apiConfig";
 import { createLegendDetectionApi } from "./apiClients";
 
 export type {
   DetectedTeammate,
+  LegendBaselineClip,
   LegendDetectionLabel,
   LegendDetectionReviewClip,
   LegendDetectionRun,
@@ -118,6 +121,39 @@ export async function setLegendLabel(
 export async function deleteLegendLabel(clipId: string): Promise<void> {
   await createLegendDetectionApi().deleteLegendDetectionLabel({ clipId });
 }
+
+/** Every Apex Legends clip with its saved label and the result Reelshelf currently uses for it. */
+export async function fetchLegendBaseline(): Promise<LegendBaselineClip[]> {
+  return createLegendDetectionApi().getLegendDetectionBaseline();
+}
+
+/** The owner's legend for one clip; null means it can't be identified from the clip. */
+export type PlayerLabel = { clipId: string; playerLegend: string | null };
+
+/** Saves the owner's legend on many clips at once, keeping any teammate legends; returns how many were saved. */
+export async function setLegendPlayerLabels(
+  labels: PlayerLabel[],
+): Promise<number> {
+  const response =
+    await createLegendDetectionApi().setLegendDetectionPlayerLabels({
+      setLegendDetectionPlayerLabelsRequest: { labels },
+    });
+  return response.saved;
+}
+
+/** Removes the labels of many clips at once; returns how many there were. */
+export async function clearLegendLabels(clipIds: string[]): Promise<number> {
+  const response = await createLegendDetectionApi().clearLegendDetectionLabels({
+    clearLegendDetectionLabelsRequest: { clipIds },
+  });
+  return response.cleared;
+}
+
+/**
+ * The reference sheet the model is sent: two rows of labelled portraits in the order of the legend names, so a
+ * legend's portrait can be cut out of it with CSS.
+ */
+export const legendReferenceSheetUrl = `${apiConfig.baseUrl}/api/legend-detection/reference-sheet`;
 
 export function isRunActive(run: LegendDetectionRun | null | undefined) {
   return run?.status === "pending" || run?.status === "running";

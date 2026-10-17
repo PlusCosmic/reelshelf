@@ -328,6 +328,56 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         await connection.ExecuteAsync("DELETE FROM legend_detection_label WHERE clip_id = @ClipId", new { ClipId = clipId });
     }
 
+    /// <summary>
+    /// Sets the owner's legend on many clips at once, keeping any teammate legends a label already has. Ids of
+    /// clips that no longer exist are skipped. Returns how many labels were written.
+    /// </summary>
+    public async Task<int> SetPlayerLabelsAsync(Guid[] clipIds, string?[] playerLegends, Guid labelledBy)
+    {
+        const string sql = """
+            INSERT INTO legend_detection_label (clip_id, player_legend, labelled_by)
+            SELECT input.clip_id, input.player_legend, @LabelledBy
+            FROM unnest(@ClipIds::uuid[], @PlayerLegends::text[]) AS input(clip_id, player_legend)
+            JOIN clip ON clip.id = input.clip_id
+            ON CONFLICT (clip_id) DO UPDATE
+            SET player_legend = EXCLUDED.player_legend,
+                labelled_by = EXCLUDED.labelled_by,
+                labelled_at = now()
+            """;
+        return await connection.ExecuteAsync(sql, new
+        {
+            ClipIds = clipIds,
+            PlayerLegends = playerLegends,
+            LabelledBy = labelledBy
+        });
+    }
+
+    /// <summary>
+    /// Each clip's latest succeeded run, which is the legend the rest of Reelshelf uses for it, such as in clip
+    /// summaries.
+    /// </summary>
+    public async Task<List<LegendDetectionRunRow>> GetCurrentResultsAsync(List<Guid> clipIds)
+    {
+        if (clipIds.Count == 0)
+        {
+            return [];
+        }
+
+        string sql = $"""
+            SELECT DISTINCT ON (clip_id) {RunColumns}
+            FROM legend_detection_run
+            WHERE clip_id = ANY(@ClipIds) AND archived_at IS NULL AND status = 'succeeded'
+            ORDER BY clip_id, completed_at DESC
+            """;
+        return (await connection.QueryAsync<LegendDetectionRunRow>(sql, new { ClipIds = clipIds })).ToList();
+    }
+
+    public async Task<int> DeleteLabelsAsync(Guid[] clipIds)
+    {
+        return await connection.ExecuteAsync(
+            "DELETE FROM legend_detection_label WHERE clip_id = ANY(@ClipIds)", new { ClipIds = clipIds });
+    }
+
     public async Task<List<LabelRow>> GetLabelsAsync(List<Guid> clipIds)
     {
         if (clipIds.Count == 0)

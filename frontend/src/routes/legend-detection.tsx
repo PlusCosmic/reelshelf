@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { Chip } from "@/components/Reelshelf/ReelshelfPrimitives";
@@ -155,6 +155,12 @@ function LegendReview() {
           <h1 className="rs-display rs-h2">Check what the model saw.</h1>
         </div>
         <div className="rs-legend-backfill">
+          <Link
+            to="/legend-detection/baseline"
+            className="rs-ui-button rs-ui-button-secondary rs-ui-button-md"
+          >
+            Baseline
+          </Link>
           <Button onClick={onArchive} disabled={archive.isPending}>
             {archive.isPending ? "Archiving…" : "Start fresh"}
           </Button>
