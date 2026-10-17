@@ -21,6 +21,7 @@ public static class LegendDetectionEndpoints
         group.MapPost("evals", CreateEval).WithName("CreateLegendEval");
         group.MapDelete("evals/{evalId:guid}", DeleteEval).WithName("DeleteLegendEval");
         group.MapGet("evals/{evalId:guid}/misses", GetEvalMisses).WithName("GetLegendEvalMisses");
+        group.MapGet("evals/cascade", GetCascade).WithName("GetLegendEvalCascade");
         group.MapGet("prices", GetPrices).WithName("GetLegendModelPrices");
         group.MapPut("prices", SetPrice).WithName("SetLegendModelPrice");
         group.MapGet("clips/{clipId:guid}/runs", GetRuns).WithName("GetLegendDetectionRuns");
@@ -88,6 +89,18 @@ public static class LegendDetectionEndpoints
     {
         await service.DeleteEvalAsync(evalId);
         return TypedResults.NoContent();
+    }
+
+    /// <summary>
+    /// Two evals' answers clip by clip, so the page can show what production would get from the first model with
+    /// its unsure answers escalated to the second, at any threshold, without running either again.
+    /// </summary>
+    public static async Task<LegendCascade> GetCascade(
+        Guid first,
+        Guid escalation,
+        LegendDetectionService service)
+    {
+        return await service.GetCascadeAsync(first, escalation);
     }
 
     public static async Task<List<LegendEvalMiss>> GetEvalMisses(Guid evalId, LegendDetectionService service)
@@ -258,6 +271,30 @@ public sealed record LegendEval(
             row.PromptVersions.ToList());
     }
 }
+
+/// <summary>
+/// Two evals compared clip by clip. <c>CurrentEscalateBelow</c> is the threshold production escalates below today.
+/// </summary>
+public sealed record LegendCascade(double CurrentEscalateBelow, List<LegendCascadeClip> Clips);
+
+/// <summary>
+/// One labelled clip both evals have finished. Production escalates a run that succeeded, saw the owner's HUD and
+/// gave no legend or one below the threshold; a failed run is not escalated. Costs are null when a run has neither a
+/// billed cost nor a price.
+/// </summary>
+public sealed record LegendCascadeClip(
+    Guid ClipId,
+    string? LabelLegend,
+    string FirstStatus,
+    string? FirstLegend,
+    float? FirstConfidence,
+    bool? FirstHudDetected,
+    int? FirstDurationMs,
+    decimal? FirstCostUsd,
+    string EscalationStatus,
+    string? EscalationLegend,
+    int? EscalationDurationMs,
+    decimal? EscalationCostUsd);
 
 /// <summary>
 /// A clip an eval got wrong: a failed run (<c>Status</c> "failed", with its <c>Error</c>), or a legend that is not

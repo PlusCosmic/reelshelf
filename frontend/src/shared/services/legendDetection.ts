@@ -1,5 +1,7 @@
 import type {
   DetectedTeammate,
+  LegendCascade,
+  LegendCascadeClip,
   LegendBaselineClip,
   LegendEval,
   LegendEvalMiss,
@@ -14,6 +16,8 @@ import { createLegendDetectionApi } from "./apiClients";
 
 export type {
   DetectedTeammate,
+  LegendCascade,
+  LegendCascadeClip,
   LegendBaselineClip,
   LegendEval,
   LegendEvalMiss,
@@ -84,6 +88,14 @@ export async function createLegendEval(
 /** Deletes an eval with its runs, including any still queued. */
 export async function deleteLegendEval(evalId: string): Promise<void> {
   await createLegendDetectionApi().deleteLegendEval({ evalId });
+}
+
+/** Two evals' answers clip by clip, for working out a cascade from the first to the second. */
+export async function fetchLegendCascade(
+  first: string,
+  escalation: string,
+): Promise<LegendCascade> {
+  return createLegendDetectionApi().getLegendEvalCascade({ first, escalation });
 }
 
 /** The clips an eval got wrong or failed on. */

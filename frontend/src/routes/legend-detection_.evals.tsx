@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
   AccuracyCostChart,
+  CascadePanel,
   EvalForm,
   EvalMisses,
   EvalTable,
@@ -104,6 +105,7 @@ function LegendEvals() {
             </section>
             <PriceTable />
           </div>
+          <CascadePanel evals={evals} />
           {selected ? (
             <EvalMisses key={selected.id} evaluation={selected} />
           ) : null}

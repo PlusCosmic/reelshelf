@@ -517,6 +517,41 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         return (await connection.QueryAsync<EvalRow>(sql, new { ConfidentAt = confidentAt })).ToList();
     }
 
+    /// <summary>
+    /// Two evals' finished runs side by side on every labelled clip both have answered, with each run's cost, so a
+    /// cascade (the first model, escalating unsure answers to the second) can be worked out without new runs.
+    /// </summary>
+    public async Task<List<CascadeRow>> GetCascadeRowsAsync(Guid firstEvalId, Guid escalationEvalId)
+    {
+        string sql = $$"""
+            WITH first_run AS (
+                SELECT run.clip_id, run.status, run.player_legend, run.player_legend_confidence, run.hud_detected,
+                       run.duration_ms, {{RunCostSql}} AS cost
+                FROM legend_detection_run run
+                LEFT JOIN legend_model_price price ON price.provider = run.provider AND price.model = run.model
+                WHERE run.eval_id = @FirstEvalId AND run.status IN ('succeeded', 'failed')
+            ),
+            escalation_run AS (
+                SELECT run.clip_id, run.status, run.player_legend, run.duration_ms, {{RunCostSql}} AS cost
+                FROM legend_detection_run run
+                LEFT JOIN legend_model_price price ON price.provider = run.provider AND price.model = run.model
+                WHERE run.eval_id = @EscalationEvalId AND run.status IN ('succeeded', 'failed')
+            )
+            SELECT label.clip_id, label.player_legend AS label_legend,
+                   first_run.status AS first_status, first_run.player_legend AS first_legend,
+                   first_run.player_legend_confidence AS first_confidence,
+                   first_run.hud_detected AS first_hud_detected, first_run.duration_ms AS first_duration_ms,
+                   first_run.cost AS first_cost_usd,
+                   escalation_run.status AS escalation_status, escalation_run.player_legend AS escalation_legend,
+                   escalation_run.duration_ms AS escalation_duration_ms, escalation_run.cost AS escalation_cost_usd
+            FROM legend_detection_label label
+            JOIN first_run ON first_run.clip_id = label.clip_id
+            JOIN escalation_run ON escalation_run.clip_id = label.clip_id
+            """;
+        return (await connection.QueryAsync<CascadeRow>(sql,
+            new { FirstEvalId = firstEvalId, EscalationEvalId = escalationEvalId })).ToList();
+    }
+
     /// <summary>An eval's wrong answers on clips that are labelled: failed runs and runs whose legend is not the label.</summary>
     public async Task<List<EvalMissRow>> GetEvalMissesAsync(Guid evalId)
     {
@@ -628,6 +663,22 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public DateTimeOffset? FirstStartedAt { get; set; }
         public DateTimeOffset? LastCompletedAt { get; set; }
         public string[] PromptVersions { get; set; } = [];
+    }
+
+    public class CascadeRow
+    {
+        public Guid ClipId { get; set; }
+        public string? LabelLegend { get; set; }
+        public string FirstStatus { get; set; } = "";
+        public string? FirstLegend { get; set; }
+        public float? FirstConfidence { get; set; }
+        public bool? FirstHudDetected { get; set; }
+        public int? FirstDurationMs { get; set; }
+        public decimal? FirstCostUsd { get; set; }
+        public string EscalationStatus { get; set; } = "";
+        public string? EscalationLegend { get; set; }
+        public int? EscalationDurationMs { get; set; }
+        public decimal? EscalationCostUsd { get; set; }
     }
 
     public class EvalMissRow
