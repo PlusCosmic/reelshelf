@@ -75,6 +75,7 @@ public class OpenRouterDecisionsRequestTests
         Assert.Equal(9000, recognition.InputTokens);
         Assert.Null(recognition.CachedInputTokens);
         Assert.Equal(0, recognition.OutputTokens);
+        Assert.Equal(0.0004m, recognition.CostUsd);
     }
 
     [Fact]

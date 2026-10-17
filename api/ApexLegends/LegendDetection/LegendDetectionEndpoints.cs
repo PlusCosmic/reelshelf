@@ -17,7 +17,12 @@ public static class LegendDetectionEndpoints
         group.MapPost("backfill", Backfill).WithName("BackfillLegendDetection");
         group.MapPost("archive", ArchiveAllRuns).WithName("ArchiveLegendDetectionRuns");
         group.MapPost("clips/{clipId:guid}/runs", QueueRun).WithName("QueueLegendDetectionRun");
-        group.MapPost("labelled/runs", QueueLabelledRuns).WithName("QueueLegendDetectionLabelledRuns");
+        group.MapGet("evals", GetEvals).WithName("GetLegendEvals");
+        group.MapPost("evals", CreateEval).WithName("CreateLegendEval");
+        group.MapDelete("evals/{evalId:guid}", DeleteEval).WithName("DeleteLegendEval");
+        group.MapGet("evals/{evalId:guid}/misses", GetEvalMisses).WithName("GetLegendEvalMisses");
+        group.MapGet("prices", GetPrices).WithName("GetLegendModelPrices");
+        group.MapPut("prices", SetPrice).WithName("SetLegendModelPrice");
         group.MapGet("clips/{clipId:guid}/runs", GetRuns).WithName("GetLegendDetectionRuns");
         group.MapPut("clips/{clipId:guid}/label", SetLabel).WithName("SetLegendDetectionLabel");
         group.MapDelete("clips/{clipId:guid}/label", DeleteLabel).WithName("DeleteLegendDetectionLabel");
@@ -61,13 +66,44 @@ public static class LegendDetectionEndpoints
             request.ReasoningEffort));
     }
 
-    /// <summary>Queues a manual run for every labelled clip; see <see cref="QueueLegendDetectionRunRequest"/>.</summary>
-    public static async Task<LegendDetectionQueuedRunsResponse> QueueLabelledRuns(
+    public static async Task<List<LegendEval>> GetEvals(LegendDetectionService service)
+    {
+        return await service.GetEvalsAsync();
+    }
+
+    /// <summary>
+    /// Runs a provider, model and reasoning effort on every labelled clip; the options work as in
+    /// <see cref="QueueLegendDetectionRunRequest"/>.
+    /// </summary>
+    public static async Task<LegendEvalCreatedResponse> CreateEval(
         QueueLegendDetectionRunRequest request,
+        AuthenticatedUser user,
         LegendDetectionService service)
     {
-        return new LegendDetectionQueuedRunsResponse(
-            await service.QueueLabelledRunsAsync(request.Provider, request.Model, request.ReasoningEffort));
+        return await service.CreateEvalAsync(request.Provider, request.Model, request.ReasoningEffort, user.Id);
+    }
+
+    /// <summary>Deletes an eval with its runs, including any still queued.</summary>
+    public static async Task<NoContent> DeleteEval(Guid evalId, LegendDetectionService service)
+    {
+        await service.DeleteEvalAsync(evalId);
+        return TypedResults.NoContent();
+    }
+
+    public static async Task<List<LegendEvalMiss>> GetEvalMisses(Guid evalId, LegendDetectionService service)
+    {
+        return await service.GetEvalMissesAsync(evalId);
+    }
+
+    public static async Task<List<LegendModelPrice>> GetPrices(LegendDetectionService service)
+    {
+        return await service.GetPricesAsync();
+    }
+
+    public static async Task<NoContent> SetPrice(LegendModelPrice request, LegendDetectionService service)
+    {
+        await service.SetPriceAsync(request);
+        return TypedResults.NoContent();
     }
 
     public static async Task<NoContent> SetLabel(
@@ -159,7 +195,94 @@ public sealed record LegendDetectionBackfillResponse(int Queued);
 
 public sealed record LegendDetectionArchiveResponse(int Archived);
 
-public sealed record LegendDetectionQueuedRunsResponse(int Queued);
+public sealed record LegendEvalCreatedResponse(Guid EvalId, int Queued);
+
+/// <summary>
+/// One eval's results. <c>Scored</c> counts finished runs on clips that are still labelled, which
+/// <c>Correct</c> and <c>ConfidentMistakes</c> are out of; failed runs count as wrong. <c>CostUsd</c> is null
+/// while any succeeded run has neither a billed cost nor a price for its model; <c>CostBilled</c> is true when
+/// every succeeded run's cost came from the provider's bill. Latency is the model call of succeeded runs;
+/// <c>WallSeconds</c> runs from the first run starting to the last finishing, once none is queued.
+/// </summary>
+public sealed record LegendEval(
+    Guid Id,
+    string Provider,
+    string Model,
+    string? ReasoningEffort,
+    DateTimeOffset CreatedAt,
+    int Runs,
+    int Succeeded,
+    int Failed,
+    int Queued,
+    int Scored,
+    int Correct,
+    int ConfidentMistakes,
+    long InputTokens,
+    long CachedInputTokens,
+    long CacheWriteInputTokens,
+    long OutputTokens,
+    decimal? CostUsd,
+    bool CostBilled,
+    int? P50DurationMs,
+    int? P95DurationMs,
+    int? WallSeconds,
+    List<string> PromptVersions)
+{
+    public static LegendEval From(LegendDetectionStatements.EvalRow row)
+    {
+        int? wallSeconds = row.Queued == 0 && row.FirstStartedAt is { } started && row.LastCompletedAt is { } finished
+            ? (int)Math.Round((finished - started).TotalSeconds)
+            : null;
+        return new LegendEval(
+            row.Id,
+            row.Provider,
+            row.Model,
+            row.ReasoningEffort,
+            row.CreatedAt,
+            (int)row.Runs,
+            (int)row.Succeeded,
+            (int)row.Failed,
+            (int)row.Queued,
+            (int)row.Scored,
+            (int)row.Correct,
+            (int)row.ConfidentMistakes,
+            row.InputTokens,
+            row.CachedInputTokens,
+            row.CacheWriteInputTokens,
+            row.OutputTokens,
+            row.Unpriced > 0 || row.Succeeded == 0 ? null : row.CostUsd,
+            row.Succeeded > 0 && row.Billed >= row.Succeeded,
+            row.P50DurationMs,
+            row.P95DurationMs,
+            wallSeconds,
+            row.PromptVersions.ToList());
+    }
+}
+
+/// <summary>
+/// A clip an eval got wrong: a failed run (<c>Status</c> "failed", with its <c>Error</c>), or a legend that is not
+/// the label. A null legend means the run, or the label, says the owner's legend can't be identified.
+/// </summary>
+public sealed record LegendEvalMiss(
+    Guid RunId,
+    Guid ClipId,
+    string Title,
+    List<string> FrameUrls,
+    string Status,
+    string? PlayerLegend,
+    float? Confidence,
+    bool? HudDetected,
+    string? Error,
+    string? LabelLegend);
+
+/// <summary>A model's prices in US dollars per million tokens. Cached and cache-write prices fall back to input when null.</summary>
+public sealed record LegendModelPrice(
+    string Provider,
+    string Model,
+    decimal? InputPerMtok,
+    decimal? CachedInputPerMtok,
+    decimal? CacheWritePerMtok,
+    decimal? OutputPerMtok);
 
 /// <summary>A null <c>PlayerLegend</c> means the clip owner's legend can't be identified from the clip.</summary>
 public sealed record SetLegendDetectionLabelRequest(string? PlayerLegend, List<string> TeammateLegends);

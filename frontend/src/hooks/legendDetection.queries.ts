@@ -16,7 +16,12 @@ import {
   fetchLegendRuns,
   fetchLegendUsage,
   isRunActive,
-  queueLabelledLegendRuns,
+  createLegendEval,
+  deleteLegendEval,
+  fetchLegendEvalMisses,
+  fetchLegendEvals,
+  fetchLegendModelPrices,
+  setLegendModelPrice,
   queueLegendRun,
   type LegendRunOptions,
 } from "@/shared/services/legendDetection";
@@ -85,10 +90,55 @@ export function useQueueLegendRun() {
   });
 }
 
-export function useQueueLabelledLegendRuns() {
+const evalsQueryKey = [...legendDetectionQueryKey, "evals"] as const;
+
+/** Polls while any eval still has queued runs, so its row fills in as runs finish. */
+export function useLegendEvals(enabled = true) {
+  return useQuery({
+    queryKey: evalsQueryKey,
+    queryFn: fetchLegendEvals,
+    enabled,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.some((evaluation) => evaluation.queued > 0)
+        ? activePollMs
+        : false,
+  });
+}
+
+export function useLegendEvalMisses(evalId: string | undefined) {
+  return useQuery({
+    queryKey: [...evalsQueryKey, "misses", evalId ?? ""],
+    queryFn: () => fetchLegendEvalMisses(evalId!),
+    enabled: !!evalId,
+    retry: false,
+  });
+}
+
+export function useCreateLegendEval() {
+  const invalidate = useInvalidateLegendDetection();
+  return useMutation({ mutationFn: createLegendEval, onSuccess: invalidate });
+}
+
+export function useDeleteLegendEval() {
+  const invalidate = useInvalidateLegendDetection();
+  return useMutation({ mutationFn: deleteLegendEval, onSuccess: invalidate });
+}
+
+export function useLegendModelPrices(enabled = true) {
+  return useQuery({
+    queryKey: [...legendDetectionQueryKey, "prices"],
+    queryFn: fetchLegendModelPrices,
+    enabled,
+    retry: false,
+  });
+}
+
+/** Saving a price re-costs every eval, so both are refreshed. */
+export function useSetLegendModelPrice() {
   const invalidate = useInvalidateLegendDetection();
   return useMutation({
-    mutationFn: queueLabelledLegendRuns,
+    mutationFn: setLegendModelPrice,
     onSuccess: invalidate,
   });
 }

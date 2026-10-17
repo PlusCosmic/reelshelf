@@ -6458,6 +6458,289 @@ html:has(.rs-library-route) {
   margin-top: 20px;
 }
 
+/* Legend evals: one model on every baseline clip, compared for accuracy, cost and speed. */
+.rs-eval-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+  padding: 12px 14px;
+}
+
+.rs-eval-form-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 220px));
+  flex: 2 1 480px;
+  gap: 8px;
+}
+
+.rs-eval-form-fields > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.rs-eval-form > .rs-meta {
+  flex: 1 1 220px;
+}
+
+.rs-eval-row {
+  cursor: pointer;
+}
+
+.rs-eval-row:hover > *,
+.rs-eval-row.selected > * {
+  background: var(--surface);
+}
+
+.rs-eval-row.selected > th {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.rs-eval-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.rs-eval-table th[scope="row"] {
+  text-align: left;
+}
+
+.rs-eval-model {
+  font-weight: 600;
+}
+
+.rs-eval-accuracy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rs-eval-accuracy-track {
+  position: relative;
+  width: 110px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--track-bg);
+}
+
+.rs-eval-accuracy-range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.rs-eval-accuracy-mark {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--accent-ink);
+}
+
+.rs-eval-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr));
+  gap: 20px;
+  margin: 20px 0;
+  align-items: start;
+}
+
+.rs-eval-panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+  padding: 14px 16px;
+}
+
+.rs-eval-panel .rs-legend-usage {
+  margin-bottom: 0;
+  background: var(--bg);
+}
+
+.rs-eval-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.rs-eval-price {
+  width: 84px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-eval-chart {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.rs-eval-chart-plot {
+  position: relative;
+  height: 260px;
+  margin: 8px 16px 26px 44px;
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.rs-eval-chart-ytick,
+.rs-eval-chart-xtick {
+  position: absolute;
+  color: var(--fg-soft);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-eval-chart-ytick {
+  left: -44px;
+  width: 38px;
+  text-align: right;
+  transform: translateY(50%);
+}
+
+.rs-eval-chart-grid {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 1px dashed var(--line);
+  pointer-events: none;
+}
+
+.rs-eval-chart-xtick {
+  bottom: -22px;
+  transform: translateX(-50%);
+}
+
+.rs-eval-chart-point {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  padding: 4px;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  transform: translate(-9px, 50%);
+  cursor: pointer;
+}
+
+.rs-eval-chart-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-soft);
+}
+
+.rs-eval-chart-point.selected .rs-eval-chart-dot {
+  width: 14px;
+  height: 14px;
+  background: var(--accent-ink);
+  box-shadow:
+    0 0 0 2px var(--bg-soft),
+    0 0 0 4px var(--accent);
+}
+
+.rs-eval-chart-point.selected .rs-eval-chart-label {
+  font-weight: 650;
+}
+
+.rs-eval-chart-label {
+  white-space: nowrap;
+}
+
+.rs-eval-misses-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 260px);
+  gap: 20px;
+  align-items: start;
+}
+
+.rs-eval-misses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.rs-eval-miss {
+  display: grid;
+  gap: 8px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: 6px;
+}
+
+.rs-eval-miss-answers {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.rs-eval-miss-answers .rs-legend-error {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-eval-miss-said {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rs-eval-miss-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rs-eval-miss-actions a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-eval-pairs ol {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-eval-pairs li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .rs-eval-misses-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .rs-baseline-layout {
     grid-template-columns: 1fr;

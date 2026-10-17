@@ -181,13 +181,19 @@ public sealed record DetectedPlayer(
 
 public sealed record DetectedTeammate(int Slot, string? Name, string? Legend, double NameConfidence, double LegendConfidence);
 
-/// <remarks><see cref="CachedInputTokens"/> is the part of <see cref="InputTokens"/> served from the provider's cache.</remarks>
+/// <remarks>
+/// <see cref="CachedInputTokens"/> is the part of <see cref="InputTokens"/> served from the provider's cache, and
+/// <see cref="CacheWriteInputTokens"/> the part written to it. <see cref="CostUsd"/> is what the provider billed,
+/// for providers that report it.
+/// </remarks>
 public sealed record LegendRecognition(
     LegendDetectionResult Result,
     string RawResponse,
     long? InputTokens,
     long? CachedInputTokens,
-    long? OutputTokens);
+    long? OutputTokens,
+    long? CacheWriteInputTokens = null,
+    decimal? CostUsd = null);
 
 /// <summary>Identifies the clip owner's legend from a clip's frames using one particular model.</summary>
 public interface ILegendRecognizer

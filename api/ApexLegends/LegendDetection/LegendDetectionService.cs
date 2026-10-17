@@ -105,16 +105,95 @@ public class LegendDetectionService(
     }
 
     /// <summary>
-    /// Queues a manual run for every labelled clip, so a provider, model or reasoning effort can be scored
-    /// against the labels on the usage table in one go.
+    /// Starts an eval: one run of the provider, model and reasoning effort on every clip in the baseline (every
+    /// labelled clip), scored against the labels on the evals page. Eval runs are claimed after every other run.
     /// </summary>
-    public async Task<int> QueueLabelledRunsAsync(string? provider, string? model, string? reasoningEffort)
+    public async Task<LegendEvalCreatedResponse> CreateEvalAsync(
+        string? provider,
+        string? model,
+        string? reasoningEffort,
+        Guid createdBy)
     {
         (string resolvedProvider, string resolvedModel, string? effort) = Resolve(provider, model, reasoningEffort);
-        int queued = await statements.QueueManualRunsForLabelledClipsAsync(resolvedProvider, resolvedModel, effort);
-        logger.LogInformation("Queued {Count} legend detection runs on labelled clips with {Provider}/{Model}",
-            queued, resolvedProvider, resolvedModel);
-        return queued;
+        (Guid? evalId, int queued) =
+            await statements.CreateEvalAsync(resolvedProvider, resolvedModel, effort, createdBy);
+        if (evalId is null)
+        {
+            throw new BadRequestException("No clip is labelled yet: confirm clips on the baseline page first");
+        }
+
+        logger.LogInformation("Started legend eval {EvalId} with {Provider}/{Model} ({ReasoningEffort}) on {Count} clips",
+            evalId, resolvedProvider, resolvedModel, effort ?? "default effort", queued);
+        return new LegendEvalCreatedResponse(evalId.Value, queued);
+    }
+
+    public async Task<List<LegendEval>> GetEvalsAsync()
+    {
+        return (await statements.GetEvalsAsync(ConfidentAt)).Select(LegendEval.From).ToList();
+    }
+
+    public async Task<List<LegendEvalMiss>> GetEvalMissesAsync(Guid evalId)
+    {
+        if (!await statements.EvalExistsAsync(evalId))
+        {
+            throw new NotFoundException("Eval", evalId);
+        }
+
+        string cdnBaseUrl = CdnBaseUrl();
+        return (await statements.GetEvalMissesAsync(evalId))
+            .Select(row => new LegendEvalMiss(
+                row.RunId,
+                row.ClipId,
+                row.Title ?? "Untitled",
+                ThumbnailUrls(cdnBaseUrl, row.VideoId),
+                row.Status,
+                row.PlayerLegend,
+                row.PlayerLegendConfidence,
+                row.HudDetected,
+                row.Error,
+                row.LabelLegend))
+            .ToList();
+    }
+
+    public async Task DeleteEvalAsync(Guid evalId)
+    {
+        if (!await statements.DeleteEvalAsync(evalId))
+        {
+            throw new NotFoundException("Eval", evalId);
+        }
+    }
+
+    public async Task<List<LegendModelPrice>> GetPricesAsync()
+    {
+        return (await statements.GetPricesAsync())
+            .Select(row => new LegendModelPrice(row.Provider, row.Model, row.InputPerMtok, row.CachedInputPerMtok,
+                row.CacheWritePerMtok, row.OutputPerMtok))
+            .ToList();
+    }
+
+    /// <summary>Sets a model's prices in US dollars per million tokens; a null price is not known.</summary>
+    public async Task SetPriceAsync(LegendModelPrice price)
+    {
+        if (string.IsNullOrWhiteSpace(price.Provider) || string.IsNullOrWhiteSpace(price.Model))
+        {
+            throw new BadRequestException("A price needs a provider and a model");
+        }
+
+        decimal?[] values = [price.InputPerMtok, price.CachedInputPerMtok, price.CacheWritePerMtok, price.OutputPerMtok];
+        if (values.Any(value => value is < 0))
+        {
+            throw new BadRequestException("Prices cannot be negative");
+        }
+
+        await statements.SetPriceAsync(new LegendDetectionStatements.PriceRow
+        {
+            Provider = price.Provider.Trim().ToLowerInvariant(),
+            Model = price.Model.Trim(),
+            InputPerMtok = price.InputPerMtok,
+            CachedInputPerMtok = price.CachedInputPerMtok,
+            CacheWritePerMtok = price.CacheWritePerMtok,
+            OutputPerMtok = price.OutputPerMtok
+        });
     }
 
     /// <summary>The providers a run can be queued against.</summary>

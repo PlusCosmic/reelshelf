@@ -86,6 +86,8 @@ public class AnthropicRequestTests
         Assert.Equal(4000, recognition.InputTokens);
         Assert.Equal(3000, recognition.CachedInputTokens);
         Assert.Equal(250, recognition.OutputTokens);
+        Assert.Equal(400, recognition.CacheWriteInputTokens);
+        Assert.Null(recognition.CostUsd);
     }
 
     [Fact]

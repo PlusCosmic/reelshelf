@@ -60,8 +60,9 @@ public sealed class AnthropicLegendRecognizer(
         // Anthropic counts cache reads and writes apart from input_tokens; the usage table expects them included.
         Usage usage = message.Usage;
         long cacheRead = usage.CacheReadInputTokens ?? 0;
-        long inputTokens = usage.InputTokens + cacheRead + (usage.CacheCreationInputTokens ?? 0);
-        return new LegendRecognition(result, raw, inputTokens, cacheRead, usage.OutputTokens);
+        long cacheWrite = usage.CacheCreationInputTokens ?? 0;
+        long inputTokens = usage.InputTokens + cacheRead + cacheWrite;
+        return new LegendRecognition(result, raw, inputTokens, cacheRead, usage.OutputTokens, cacheWrite);
     }
 
     internal MessageCreateParams BuildRequest(

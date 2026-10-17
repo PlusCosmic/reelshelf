@@ -1,6 +1,9 @@
 import type {
   DetectedTeammate,
   LegendBaselineClip,
+  LegendEval,
+  LegendEvalMiss,
+  LegendModelPrice,
   LegendDetectionLabel,
   LegendDetectionReviewClip,
   LegendDetectionRun,
@@ -12,6 +15,9 @@ import { createLegendDetectionApi } from "./apiClients";
 export type {
   DetectedTeammate,
   LegendBaselineClip,
+  LegendEval,
+  LegendEvalMiss,
+  LegendModelPrice,
   LegendDetectionLabel,
   LegendDetectionReviewClip,
   LegendDetectionRun,
@@ -60,15 +66,44 @@ export async function queueLegendRun(
   });
 }
 
-/** Queues a run for every labelled clip, so the usage table can score it; returns how many were queued. */
-export async function queueLabelledLegendRuns(
+/** Every eval with its results, newest first. */
+export async function fetchLegendEvals(): Promise<LegendEval[]> {
+  return createLegendDetectionApi().getLegendEvals();
+}
+
+/** Runs a provider, model and effort on every clip in the baseline; returns the new eval's id. */
+export async function createLegendEval(
   options: LegendRunOptions,
-): Promise<number> {
-  const response =
-    await createLegendDetectionApi().queueLegendDetectionLabelledRuns({
-      queueLegendDetectionRunRequest: options,
-    });
-  return response.queued;
+): Promise<string> {
+  const response = await createLegendDetectionApi().createLegendEval({
+    queueLegendDetectionRunRequest: options,
+  });
+  return response.evalId;
+}
+
+/** Deletes an eval with its runs, including any still queued. */
+export async function deleteLegendEval(evalId: string): Promise<void> {
+  await createLegendDetectionApi().deleteLegendEval({ evalId });
+}
+
+/** The clips an eval got wrong or failed on. */
+export async function fetchLegendEvalMisses(
+  evalId: string,
+): Promise<LegendEvalMiss[]> {
+  return createLegendDetectionApi().getLegendEvalMisses({ evalId });
+}
+
+/** Prices set so far, plus an empty one for each model an eval used that has none. */
+export async function fetchLegendModelPrices(): Promise<LegendModelPrice[]> {
+  return createLegendDetectionApi().getLegendModelPrices();
+}
+
+export async function setLegendModelPrice(
+  price: LegendModelPrice,
+): Promise<void> {
+  await createLegendDetectionApi().setLegendModelPrice({
+    legendModelPrice: price,
+  });
 }
 
 /** The providers with an API key, which a run can be queued against. */
