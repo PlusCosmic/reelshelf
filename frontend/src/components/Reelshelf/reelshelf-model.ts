@@ -3,7 +3,7 @@ import type {
   ClipCategoryTotals,
   GameCategoryResponse,
 } from "@/api-client";
-import { apiConfig } from "@/shared/config/apiConfig";
+import { videoEmbedUrl, videoThumbnailUrl } from "@/shared/utils/clipMediaUrls";
 
 export interface GameShelfItem extends GameCategoryResponse {
   clipCount: number;
@@ -162,13 +162,8 @@ export function thumbnailUrl(clip: Clip) {
   return videoThumbnailUrl(clip.video.guid);
 }
 
-/** A clip's thumbnail from its video id alone, which is its Bunny video guid. */
-export function videoThumbnailUrl(videoId: string) {
-  return `${apiConfig.bunnyBaseUrl}/${videoId}/thumbnail.jpg`;
-}
-
 export function playerUrl(clip: Clip, autoplay = false) {
-  return `https://player.mediadelivery.net/embed/${clip.video.videoLibraryId}/${clip.video.guid}?autoplay=${autoplay}`;
+  return videoEmbedUrl(clip.video.videoLibraryId, clip.video.guid, autoplay);
 }
 
 export function formatDuration(seconds = 0) {

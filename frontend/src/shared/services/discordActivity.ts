@@ -5,6 +5,11 @@ import type {
   ActivityParticipantResponse,
   ActivitySessionResponse,
 } from "@/api-client";
+import {
+  activityVideoCdnBaseUrl,
+  videoPlaylistUrl,
+  videoThumbnailUrl,
+} from "@/shared/utils/clipMediaUrls";
 import { createDiscordActivityApi } from "./apiClients";
 
 export type {
@@ -25,16 +30,13 @@ export function activityImageUrl(
   return url.replace(/^https:\/\/cdn\.discordapp\.com\//, "/discord-cdn/");
 }
 
-/**
- * Bunny's video host reaches the Activity through the `/bunny-cdn` URL Mapping
- * (→ vz-cd8f9809-39a.b-cdn.net). The HLS playlists use relative paths, so segments follow the same mapping.
- */
+/** The video CDN reaches the Activity through its own URL Mapping; see {@link activityVideoCdnBaseUrl}. */
 export function activityStreamUrl(videoId: string): string {
-  return `/bunny-cdn/${videoId}/playlist.m3u8`;
+  return videoPlaylistUrl(videoId, activityVideoCdnBaseUrl);
 }
 
 export function activityThumbnailUrl(videoId: string): string {
-  return `/bunny-cdn/${videoId}/thumbnail.jpg`;
+  return videoThumbnailUrl(videoId, activityVideoCdnBaseUrl);
 }
 
 /** A room member's own clips, newest first; guests are refused with a 403. */

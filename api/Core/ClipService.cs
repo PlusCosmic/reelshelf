@@ -19,6 +19,7 @@ public class ClipService(
     ClipProjection clipProjection,
     StorageQuotaService storageQuotaService,
     StorageWarningService storageWarningService,
+    ClipMediaUrls mediaUrls,
     IConfiguration configuration,
     ILogger<ClipService> logger)
 {
@@ -28,13 +29,6 @@ public class ClipService(
     private static string NormalizeTag(string tag)
     {
         return tag.Trim().ToLowerInvariant();
-    }
-
-    private string BuildEmbedUrl(Guid videoId)
-    {
-        string libraryId = configuration["BunnyLibraryId"]
-                           ?? throw new InvalidOperationException("Bunny API library ID not configured");
-        return $"https://player.mediadelivery.net/embed/{libraryId}/{videoId}?autoplay=false";
     }
 
     private static bool IsPlayable(int? videoStatus)
@@ -503,6 +497,6 @@ public class ClipService(
             sharedClip.GameName,
             sharedClip.Length ?? 0,
             sharedClip.DateUploaded ?? sharedClip.CreatedAt,
-            BuildEmbedUrl(sharedClip.VideoId));
+            mediaUrls.Embed(sharedClip.VideoId));
     }
 }
