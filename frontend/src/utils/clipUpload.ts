@@ -14,7 +14,6 @@ export type CreateVideoForUpload = (request: {
 
 export type TusClipUploadOptions = {
   file: File;
-  title: string;
   response: CreateClipResponse;
   onProgress: (uploaded: number, total: number) => void;
   onSuccess: () => void;
@@ -49,36 +48,40 @@ export async function createPreparedClipUpload({
     createdAt,
   });
 
-  if (!response?.signature) {
+  if (!response?.upload) {
     throw new Error("The upload could not be prepared.");
   }
 
   return response;
 }
 
+/**
+ * Uploads the file to wherever the API prepared the clip's video. The API names the endpoint, the headers that
+ * authorise the upload and the host's own metadata; only what describes the file itself is added here.
+ */
 export function createTusClipUpload({
   file,
   onError,
   onProgress,
   onSuccess,
   response,
-  title,
 }: TusClipUploadOptions) {
+  const { upload } = response;
+  if (upload.protocol !== "tus") {
+    throw new Error(
+      `The upload could not start: unsupported upload protocol "${upload.protocol}".`,
+    );
+  }
+
   return new tus.Upload(file, {
-    endpoint: "https://video.bunnycdn.com/tusupload",
+    endpoint: upload.endpoint,
     retryDelays: [0, 1000, 3000, 5000, 10000],
     metadata: {
+      ...upload.metadata,
       filename: file.name,
       filetype: file.type || "video/mp4",
-      title,
-      collection: response.collectionId,
     },
-    headers: {
-      AuthorizationSignature: response.signature,
-      AuthorizationExpire: response.expiration.toString(),
-      VideoId: response.videoId,
-      LibraryId: response.libraryId,
-    },
+    headers: { ...upload.headers },
     onProgress,
     onSuccess,
     onError,

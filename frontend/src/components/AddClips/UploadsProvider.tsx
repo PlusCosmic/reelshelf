@@ -142,7 +142,6 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
           const upload = createTusClipUpload({
             file: item.file,
             response,
-            title: item.title,
             onProgress: (uploaded, total) =>
               patch(item.id, {
                 progress: total > 0 ? Math.round((uploaded / total) * 100) : 0,

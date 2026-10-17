@@ -1,6 +1,5 @@
 using Npgsql;
 using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
 using Reelshelf.Bunny.Models;
 using Reelshelf.Core.Models;
@@ -20,7 +19,6 @@ public class ClipService(
     StorageQuotaService storageQuotaService,
     StorageWarningService storageWarningService,
     ClipMediaUrls mediaUrls,
-    IConfiguration configuration,
     ILogger<ClipService> logger)
 {
     private const int ShareTokenByteLength = 32;
@@ -142,21 +140,7 @@ public class ClipService(
         // The clip now counts toward usage; warn the owner once if this pushed them near their limit.
         await storageWarningService.Evaluate(userId, await storageQuotaService.GetQuota(userId));
 
-        long expiration = DateTimeOffset.Now.AddHours(1).ToUnixTimeSeconds();
-        string libraryId = configuration["BunnyLibraryId"]
-                           ?? throw new InvalidOperationException("Bunny API library ID not configured");
-        string secretKey = configuration["BunnyAccessKey"]
-                           ?? throw new InvalidOperationException("Bunny access key not configured");
-        byte[] signature = Encoding.UTF8.GetBytes(libraryId + secretKey + expiration + video.VideoId);
-        byte[] hash = SHA256.HashData(signature);
-        string? hashString = Convert.ToHexString(hash);
-        return new CreateClipResponse(
-            clip.Id,
-            hashString ?? throw new InvalidOperationException("Hash computation failed"),
-            expiration,
-            libraryId,
-            video.VideoId,
-            video.ContainerId);
+        return new CreateClipResponse(clip.Id, video.VideoId, videoHost.CreateUploadTarget(video, videoTitle));
     }
 
     /// <summary>Server-side upload of a clip's bytes into the video <see cref="CreateClip"/> prepared for it.</summary>

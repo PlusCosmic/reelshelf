@@ -1,5 +1,8 @@
+using Reelshelf.Video;
+
 namespace Reelshelf.Core.Models;
 
-public record CreateClipResponse(Guid ClipId, string Signature, long Expiration, string LibraryId, Guid VideoId, Guid CollectionId)
+/// <summary>A clip reserved for upload, and where the browser sends its bytes.</summary>
+public record CreateClipResponse(Guid ClipId, Guid VideoId, UploadTarget Upload)
 {
 }
