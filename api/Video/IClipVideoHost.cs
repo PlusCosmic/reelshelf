@@ -15,6 +15,12 @@ public interface IClipVideoHost
     Task<HostedVideo> CreateVideoAsync(Guid ownerId, GameCategory gameCategory, string title);
 
     /// <summary>
+    /// Where the browser uploads the bytes of a video <see cref="CreateVideoAsync"/> made, authorised for that video
+    /// only and for a limited time. <paramref name="title"/> is the title the video was created with.
+    /// </summary>
+    UploadTarget CreateUploadTarget(HostedVideo video, string title);
+
+    /// <summary>
     /// Streams a video file into a video <see cref="CreateVideoAsync"/> made. This is the server-side counterpart of
     /// the browser's upload, used when the bytes come from another service (Twitch) rather than the user's disk.
     /// </summary>

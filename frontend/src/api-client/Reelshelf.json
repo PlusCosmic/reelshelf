@@ -3916,11 +3916,8 @@
       "CreateClipResponse": {
         "required": [
           "clip_id",
-          "signature",
-          "expiration",
-          "library_id",
           "video_id",
-          "collection_id"
+          "upload"
         ],
         "type": "object",
         "properties": {
@@ -3928,23 +3925,12 @@
             "type": "string",
             "format": "uuid"
           },
-          "signature": {
-            "type": "string"
-          },
-          "expiration": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "library_id": {
-            "type": "string"
-          },
           "video_id": {
             "type": "string",
             "format": "uuid"
           },
-          "collection_id": {
-            "type": "string",
-            "format": "uuid"
+          "upload": {
+            "$ref": "#/components/schemas/UploadTarget"
           }
         }
       },
@@ -5911,6 +5897,40 @@
         "properties": {
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "UploadTarget": {
+        "required": [
+          "protocol",
+          "endpoint",
+          "headers",
+          "metadata",
+          "expires_at"
+        ],
+        "type": "object",
+        "properties": {
+          "protocol": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

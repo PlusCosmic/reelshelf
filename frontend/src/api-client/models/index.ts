@@ -89,5 +89,6 @@ export * from "./TwitchClipsResponse";
 export * from "./TwitchClipsState";
 export * from "./UpdatePlaylistRequest";
 export * from "./UpdateTitleRequest";
+export * from "./UploadTarget";
 export * from "./UserProfile";
 export * from "./VideoProgressUpdate";
