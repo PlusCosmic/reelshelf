@@ -188,6 +188,87 @@ public class LegendDetectionService(
         await statements.SetLabelAsync(clipId, player, teammates, labelledBy);
     }
 
+    /// <summary>
+    /// Every Apex Legends clip with what the baseline page needs to confirm its owner's legend: its saved label,
+    /// and the result Reelshelf currently uses for it (the latest succeeded run), which stands in until the clip
+    /// is labelled.
+    /// </summary>
+    public async Task<List<LegendBaselineClip>> GetBaselineAsync()
+    {
+        GameCategory? apex = await gameCategoryStatements.GetBySlugAsync(ApexLegendsSlug);
+        if (apex is null)
+        {
+            return [];
+        }
+
+        List<LegendDetectionStatements.ReviewClipRow> clips = await statements.GetClipsForReviewAsync(apex.Id);
+        List<Guid> clipIds = clips.Select(clip => clip.Id).ToList();
+        Dictionary<Guid, LegendDetectionStatements.LegendDetectionRunRow> results =
+            (await statements.GetCurrentResultsAsync(clipIds)).ToDictionary(run => run.ClipId);
+        Dictionary<Guid, LegendDetectionStatements.LabelRow> labels =
+            (await statements.GetLabelsAsync(clipIds)).ToDictionary(label => label.ClipId);
+        string cdnBaseUrl = CdnBaseUrl();
+
+        return clips.Select(clip =>
+        {
+            results.TryGetValue(clip.Id, out LegendDetectionStatements.LegendDetectionRunRow? result);
+            labels.TryGetValue(clip.Id, out LegendDetectionStatements.LabelRow? label);
+            return new LegendBaselineClip(
+                clip.Id,
+                clip.Title ?? "Untitled",
+                clip.OwnerName,
+                clip.CreatedAt,
+                ThumbnailUrls(cdnBaseUrl, clip.VideoId),
+                label is null ? null : new LegendBaselineLabel(label.PlayerLegend, label.LabelledAt),
+                result is null
+                    ? null
+                    : new LegendBaselineResult(result.PlayerLegend, result.PlayerLegendConfidence, result.Provider,
+                        result.Model, result.HudDetected));
+        }).ToList();
+    }
+
+    /// <summary>The most labels one request may set, comfortably more than there are Apex clips.</summary>
+    public const int MaxLabelsPerRequest = 5000;
+
+    /// <summary>
+    /// Records the owner's legend on many clips at once, as the baseline page confirms a group. Teammate legends
+    /// already on a label are kept. Returns how many labels were written.
+    /// </summary>
+    public async Task<int> SetPlayerLabelsAsync(List<LegendPlayerLabel> labels, Guid labelledBy)
+    {
+        if (labels.Count > MaxLabelsPerRequest)
+        {
+            throw new BadRequestException($"At most {MaxLabelsPerRequest} labels can be set at once");
+        }
+
+        // The last label given for a clip wins, as it would if they were sent one at a time.
+        List<LegendPlayerLabel> distinct = labels
+            .GroupBy(label => label.ClipId)
+            .Select(group => group.Last())
+            .ToList();
+        if (distinct.Count == 0)
+        {
+            return 0;
+        }
+
+        string?[] legends = distinct
+            .Select(label => label.PlayerLegend is null ? null : CanonicalLegend(label.PlayerLegend))
+            .ToArray();
+        return await statements.SetPlayerLabelsAsync(
+            distinct.Select(label => label.ClipId).ToArray(), legends, labelledBy);
+    }
+
+    /// <summary>Removes the labels of many clips at once. Returns how many there were.</summary>
+    public async Task<int> ClearLabelsAsync(List<Guid> clipIds)
+    {
+        if (clipIds.Count > MaxLabelsPerRequest)
+        {
+            throw new BadRequestException($"At most {MaxLabelsPerRequest} labels can be cleared at once");
+        }
+
+        return clipIds.Count == 0 ? 0 : await statements.DeleteLabelsAsync(clipIds.Distinct().ToArray());
+    }
+
     public async Task DeleteLabelAsync(Guid clipId)
     {
         await statements.DeleteLabelAsync(clipId);
