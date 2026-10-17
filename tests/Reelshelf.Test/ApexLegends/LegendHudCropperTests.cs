@@ -36,6 +36,23 @@ public class LegendHudCropperTests
     }
 
     [Fact]
+    public async Task ReferenceSheetHalves_FitJevsImageLimits()
+    {
+        IReadOnlyList<LegendFrame> halves =
+            await new LegendDetectionResources().ReferenceSheetHalvesAsync(CancellationToken.None);
+
+        Assert.Equal(2, halves.Count);
+        foreach (LegendFrame half in halves)
+        {
+            Assert.Equal("image/png", half.MediaType);
+            IMediaAnalysis analysis = await FFProbe.AnalyseAsync(new MemoryStream(half.Data));
+            // Jev takes 256 to 1,568 pixels a side.
+            Assert.Equal(1525, analysis.PrimaryVideoStream!.Width);
+            Assert.Equal(450, analysis.PrimaryVideoStream.Height);
+        }
+    }
+
+    [Fact]
     public async Task CropOwnerPanel_Throws_WhenTheFrameIsNotAnImage()
     {
         await Assert.ThrowsAnyAsync<Exception>(() =>

@@ -11,7 +11,10 @@ overview followed by a close-up of its bottom-left HUD panel (see `LegendHudCrop
 
 The `openai-decisions` provider (`DecisionsLegendRecognizer`) sends `decisions-prompt.md` as leading text instead,
 with the same reference sheet and screenshots, and asks the Decisions API two questions in place of the schema. Keep
-the two prompts' guidance on spectating and the HUD in step.
+the two prompts' guidance on spectating and the HUD in step. The `openrouter-decisions` provider sends
+`decisions-prompt.md` too, and the `anthropic` provider `prompt.md` and `response-schema.json`; both send the
+reference sheet as its left and right halves, labelled as such, because the whole sheet is too wide for Jev and
+Claude would scale it down.
 
 Each run records a prompt version, a hash of all three files, so editing any of them automatically separates
 new results from old ones. When a legend is added to the sheet, add it to `ApexLegendNames` too; legends the

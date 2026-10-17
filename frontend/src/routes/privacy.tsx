@@ -11,7 +11,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyRoute() {
   return (
-    <LegalPage title="Privacy policy" updated="3 October 2026">
+    <LegalPage title="Privacy policy" updated="17 October 2026">
       <p>
         This explains what Reelshelf, run by {legalOperator}, collects, why, and
         who else handles it. We don't sell your data, show ads or use tracking
@@ -55,7 +55,9 @@ function PrivacyRoute() {
         <li>
           <strong>Apex Legends detection:</strong> for Apex clips, still frames
           are sent to OpenAI to recognise which legend you're playing, so clips
-          can be sorted by legend.
+          can be sorted by legend. To compare how well models do this, we may
+          also send the same frames to Anthropic, or through OpenRouter to the
+          model providers behind it.
         </li>
         <li>
           <strong>Speech transcription:</strong> for some accounts, a clip's
@@ -91,8 +93,8 @@ function PrivacyRoute() {
           being linked or your storage being nearly full.
         </li>
         <li>
-          <strong>OpenAI and OpenRouter</strong> (and the providers behind it)
-          for the analysis above.
+          <strong>OpenAI, Anthropic and OpenRouter</strong> (and the providers
+          behind it) for the analysis above.
         </li>
         <li>
           <strong>Our hosting provider</strong> runs the servers and database.
@@ -105,10 +107,10 @@ function PrivacyRoute() {
       <h2>Where your data is stored</h2>
       <p>
         Reelshelf is run from the UK. Our servers, database and clip storage are
-        in Germany. Discord, Twitch, OpenAI, OpenRouter and Resend are based in
-        the US, so data they handle leaves the UK and EU. We rely on their
-        standard data protection terms, such as standard contractual clauses or
-        the UK–US data bridge, to protect it.
+        in Germany. Discord, Twitch, OpenAI, Anthropic, OpenRouter and Resend
+        are based in the US, so data they handle leaves the UK and EU. We rely
+        on their standard data protection terms, such as standard contractual
+        clauses or the UK–US data bridge, to protect it.
       </p>
 
       <h2>Sharing and visibility</h2>

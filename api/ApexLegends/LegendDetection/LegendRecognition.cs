@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Anthropic;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using OpenAI;
@@ -48,7 +49,10 @@ public sealed class LegendDetectionOptions
     /// <summary>How many runs each API instance sends to the model at once. Read when the API starts.</summary>
     public int Concurrency { get; set; } = 4;
 
-    /// <summary>Credentials per provider, e.g. <c>LegendDetection:Providers:openai:ApiKey</c>.</summary>
+    /// <summary>
+    /// Credentials per provider, e.g. <c>LegendDetection:Providers:openai:ApiKey</c>. The Decisions providers use
+    /// the key of the API they call: <c>openai</c> or <c>openrouter</c>.
+    /// </summary>
     public Dictionary<string, LegendDetectionProviderOptions> Providers { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 }
@@ -290,6 +294,8 @@ public interface ILegendRecognizerFactory
 
 /// <remarks>
 /// <see cref="OpenAIDecisions"/> is OpenAI's Decisions API, which uses the <see cref="OpenAI"/> provider's key.
+/// <see cref="OpenRouterDecisions"/> is OpenRouter's Decisions API, for decisions models such as TypeSafe's Jev, with
+/// the <see cref="OpenRouter"/> key. <see cref="Anthropic"/> is Claude on Anthropic's own API.
 /// </remarks>
 public sealed class LegendRecognizerFactory(
     IOptionsMonitor<LegendDetectionOptions> options,
@@ -298,8 +304,13 @@ public sealed class LegendRecognizerFactory(
 {
     public const string OpenAI = "openai";
     public const string OpenAIDecisions = "openai-decisions";
+    public const string OpenRouter = "openrouter";
+    public const string OpenRouterDecisions = "openrouter-decisions";
+    public const string Anthropic = "anthropic";
 
-    private static readonly string[] SupportedProviders = [OpenAI, OpenAIDecisions];
+    public const string AnthropicHttpClientName = "LegendDetection.Anthropic";
+
+    private static readonly string[] SupportedProviders = [OpenAI, OpenAIDecisions, OpenRouterDecisions, Anthropic];
 
     public bool IsConfigured(string provider)
     {
@@ -314,12 +325,17 @@ public sealed class LegendRecognizerFactory(
 
     public bool SupportsReasoningEffort(string provider)
     {
-        return !IsDecisions(provider);
+        return !IsDecisions(provider) && !IsOpenRouterDecisions(provider);
     }
 
     public string? DefaultModel(string provider)
     {
-        return IsDecisions(provider) ? DecisionsLegendRecognizer.DefaultModel : null;
+        if (IsDecisions(provider))
+        {
+            return DecisionsLegendRecognizer.DefaultModel;
+        }
+
+        return IsOpenRouterDecisions(provider) ? OpenRouterDecisionsLegendRecognizer.DefaultModel : null;
     }
 
     public ILegendRecognizer Create(string provider, string model, string? reasoningEffort)
@@ -337,6 +353,26 @@ public sealed class LegendRecognizerFactory(
                 providerOptions.ApiKey,
                 model,
                 resources);
+        }
+
+        if (IsOpenRouterDecisions(provider))
+        {
+            return new OpenRouterDecisionsLegendRecognizer(
+                httpClientFactory.CreateClient(OpenRouterDecisionsLegendRecognizer.HttpClientName),
+                providerOptions.ApiKey,
+                model,
+                resources);
+        }
+
+        if (string.Equals(provider, Anthropic, StringComparison.OrdinalIgnoreCase))
+        {
+            AnthropicClient client = new()
+            {
+                ApiKey = providerOptions.ApiKey,
+                HttpClient = httpClientFactory.CreateClient(AnthropicHttpClientName),
+                Timeout = TimeSpan.FromMinutes(2)
+            };
+            return new AnthropicLegendRecognizer(client, model, reasoningEffort, resources);
         }
 
         IChatClient chatClient = provider.ToLowerInvariant() switch
@@ -458,9 +494,14 @@ public sealed class LegendRecognizerFactory(
         return string.Equals(provider, OpenAIDecisions, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsOpenRouterDecisions(string provider)
+    {
+        return string.Equals(provider, OpenRouterDecisions, StringComparison.OrdinalIgnoreCase);
+    }
+
     private LegendDetectionProviderOptions? ProviderOptions(string provider)
     {
-        string credentials = IsDecisions(provider) ? OpenAI : provider;
+        string credentials = IsDecisions(provider) ? OpenAI : IsOpenRouterDecisions(provider) ? OpenRouter : provider;
         return options.CurrentValue.Providers.TryGetValue(credentials, out LegendDetectionProviderOptions? providerOptions)
             ? providerOptions
             : null;

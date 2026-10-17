@@ -172,6 +172,28 @@ public class DecisionsRequestTests
     }
 
     [Fact]
+    public void Factory_UsesTheOpenRouterKey_ForOpenRouterDecisions_AndBuildsAnthropic()
+    {
+        LegendRecognizerFactory factory = Factory(new LegendDetectionOptions
+        {
+            Providers =
+            {
+                ["openrouter"] = new LegendDetectionProviderOptions { ApiKey = "or-key" },
+                ["anthropic"] = new LegendDetectionProviderOptions { ApiKey = "ant-key" }
+            }
+        });
+
+        Assert.Equal(["openrouter-decisions", "anthropic"], factory.ConfiguredProviders());
+        Assert.IsType<OpenRouterDecisionsLegendRecognizer>(factory.Create("openrouter-decisions", "typesafe/jev-1.14", null));
+        Assert.IsType<AnthropicLegendRecognizer>(factory.Create("Anthropic", "claude-haiku-5-5", "low"));
+        Assert.False(factory.SupportsReasoningEffort("openrouter-decisions"));
+        Assert.True(factory.SupportsReasoningEffort("anthropic"));
+        Assert.Equal("typesafe/jev-1.14", factory.DefaultModel("openrouter-decisions"));
+        Assert.Null(factory.DefaultModel("anthropic"));
+        Assert.False(factory.IsConfigured("openrouter"));
+    }
+
+    [Fact]
     public void Factory_WithoutAnOpenAIKey_ConfiguresNothing()
     {
         Assert.Empty(Factory(new LegendDetectionOptions()).ConfiguredProviders());

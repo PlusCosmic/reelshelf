@@ -9,7 +9,9 @@ namespace Reelshelf.ApexLegends.LegendDetection;
 /// The prompt, response schema and reference sheet embedded from <c>Resources/</c>. They are identical on every
 /// request, so they are loaded once. <see cref="PromptVersion"/> is a hash of all three and the recognizer's
 /// request layout, recorded on each run so results from different prompts are never compared as the same.
-/// <see cref="DecisionsPromptVersion"/> does the same for the Decisions API's prompt, sheet and request layout.
+/// <see cref="DecisionsPromptVersion"/> does the same for the Decisions API's prompt, sheet and request layout, and
+/// <see cref="AnthropicPromptVersion"/> and <see cref="OpenRouterDecisionsPromptVersion"/> for the recognizers that
+/// send the sheet in halves.
 /// </summary>
 public sealed class LegendDetectionResources
 {
@@ -19,6 +21,11 @@ public sealed class LegendDetectionResources
     public string PromptVersion { get; }
     public string DecisionsPrompt { get; }
     public string DecisionsPromptVersion { get; }
+    public string AnthropicPromptVersion { get; }
+    public string OpenRouterDecisionsPromptVersion { get; }
+
+    private readonly Lock sheetHalvesLock = new();
+    private Task<IReadOnlyList<LegendFrame>>? sheetHalves;
 
     public LegendDetectionResources()
     {
@@ -45,6 +52,35 @@ public sealed class LegendDetectionResources
         hash.AppendData(ReferenceSheet);
         hash.AppendData(Encoding.UTF8.GetBytes(DecisionsLegendRecognizer.RequestLayoutVersion));
         DecisionsPromptVersion = Convert.ToHexStringLower(hash.GetHashAndReset())[..12];
+
+        hash.AppendData(prompt);
+        hash.AppendData(schema);
+        hash.AppendData(ReferenceSheet);
+        hash.AppendData(Encoding.UTF8.GetBytes("anthropic:" + AnthropicLegendRecognizer.RequestLayoutVersion));
+        AnthropicPromptVersion = Convert.ToHexStringLower(hash.GetHashAndReset())[..12];
+
+        hash.AppendData(decisionsPrompt);
+        hash.AppendData(ReferenceSheet);
+        hash.AppendData(Encoding.UTF8.GetBytes(
+            "openrouter-decisions:" + OpenRouterDecisionsLegendRecognizer.RequestLayoutVersion));
+        OpenRouterDecisionsPromptVersion = Convert.ToHexStringLower(hash.GetHashAndReset())[..12];
+    }
+
+    /// <summary>
+    /// <see cref="ReferenceSheet"/> cut into halves by <see cref="LegendHudCropper.SplitReferenceSheetAsync"/>, made
+    /// once with ffmpeg and kept; a failed attempt is retried on the next call.
+    /// </summary>
+    public Task<IReadOnlyList<LegendFrame>> ReferenceSheetHalvesAsync(CancellationToken cancellationToken)
+    {
+        lock (sheetHalvesLock)
+        {
+            if (sheetHalves is null || sheetHalves.IsFaulted || sheetHalves.IsCanceled)
+            {
+                sheetHalves = LegendHudCropper.SplitReferenceSheetAsync(ReferenceSheet, CancellationToken.None);
+            }
+
+            return sheetHalves.WaitAsync(cancellationToken);
+        }
     }
 
     private static byte[] Read(string name)

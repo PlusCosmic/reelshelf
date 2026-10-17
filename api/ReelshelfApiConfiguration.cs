@@ -289,6 +289,11 @@ internal static class ReelshelfApiConfiguration
             client => client.Timeout = TimeSpan.FromSeconds(30));
         builder.Services.AddHttpClient(DecisionsLegendRecognizer.HttpClientName,
             client => client.Timeout = TimeSpan.FromMinutes(2));
+        builder.Services.AddHttpClient(OpenRouterDecisionsLegendRecognizer.HttpClientName,
+            client => client.Timeout = TimeSpan.FromMinutes(2));
+        // The Anthropic SDK applies its own timeout per attempt, so the HttpClient's must not cut it short.
+        builder.Services.AddHttpClient(LegendRecognizerFactory.AnthropicHttpClientName,
+            client => client.Timeout = Timeout.InfiniteTimeSpan);
 
         // Clip transcription stays idle until ClipTranscription:OpenRouterApiKey is configured.
         builder.Services.Configure<ClipTranscriptionOptions>(
