@@ -161,13 +161,6 @@ export function thumbnailUrl(clip: Clip) {
   return clip.video.thumbnailUrl;
 }
 
-/** The API's embed player URL with autoplay switched on or off. */
-export function playerUrl(clip: Clip, autoplay = false) {
-  const url = new URL(clip.video.embedUrl);
-  url.searchParams.set("autoplay", String(autoplay));
-  return url.toString();
-}
-
 export function formatDuration(seconds = 0) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
   const h = Math.floor(safeSeconds / 3600);

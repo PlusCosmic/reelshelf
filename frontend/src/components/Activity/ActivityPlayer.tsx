@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IconVolume, IconVolume2, IconVolumeOff } from "@tabler/icons-react";
 import { activityStreamUrl } from "@/shared/services/discordActivity";
+import { attachHlsStream } from "@/shared/utils/hlsStream";
 import {
   correctDrift,
   expectedPosition,
@@ -47,9 +48,10 @@ export type HostControls = {
 };
 
 /**
- * Plays the room's clip from Bunny's HLS stream in a plain `<video>`; the Activity cannot nest Bunny's embed
- * player. The host's player is the room's source of truth: its own controls drive playback and each change is
- * sent to the room. Everyone else follows the room, without controls of their own.
+ * Plays the room's clip from its HLS stream, through the Activity's CDN mapping, in a plain `<video>` of its own
+ * rather than the site's ClipVideoPlayer, since the room drives it. The host's player is the room's source of
+ * truth: its own controls drive playback and each change is sent to the room. Everyone else follows the room,
+ * without controls of their own.
  */
 export function ActivityPlayer({
   playback,
@@ -145,7 +147,7 @@ export function ActivityPlayer({
     };
     video.addEventListener("loadedmetadata", onLoaded, { once: true });
 
-    const detach = attachStream(video, source, () => setFailed(true));
+    const detach = attachHlsStream(video, source, () => setFailed(true));
     return () => {
       video.removeEventListener("loadedmetadata", onLoaded);
       detach();
@@ -298,50 +300,4 @@ export function ActivityPlayer({
       )}
     </>
   );
-}
-
-/**
- * Attaches an HLS stream: hls.js where MediaSource exists, the native player on iOS webviews (Discord
- * mobile). Returns the detach function.
- */
-function attachStream(
-  video: HTMLVideoElement,
-  source: string,
-  onFatal: () => void,
-): () => void {
-  if (
-    !("MediaSource" in window) &&
-    video.canPlayType("application/vnd.apple.mpegurl")
-  ) {
-    video.addEventListener("error", onFatal);
-    video.src = source;
-    return () => {
-      video.removeEventListener("error", onFatal);
-      video.removeAttribute("src");
-      video.load();
-    };
-  }
-
-  let cancelled = false;
-  let destroy: (() => void) | undefined;
-  // Loaded on first play, and the light build: clips need no subtitles, alternate audio or DRM.
-  void import("hls.js/light").then(({ default: Hls }) => {
-    if (cancelled) return;
-    if (!Hls.isSupported()) {
-      onFatal();
-      return;
-    }
-    const hls = new Hls();
-    hls.on(Hls.Events.ERROR, (_event, data) => {
-      if (data.fatal) onFatal();
-    });
-    hls.loadSource(source);
-    hls.attachMedia(video);
-    destroy = () => hls.destroy();
-  });
-
-  return () => {
-    cancelled = true;
-    destroy?.();
-  };
 }

@@ -24,8 +24,7 @@ public record Clip(
 /// </summary>
 /// <param name="Status">Where the video is on its way to playable.</param>
 /// <param name="EncodeProgress">The host's encoding progress, 0 to 100, while <paramref name="Status"/> is processing.</param>
-/// <param name="PlaybackUrl">The HLS playlist.</param>
-/// <param name="EmbedUrl">The host's embed player, without autoplay; still used by the iframe player.</param>
+/// <param name="PlaybackUrl">The HLS playlist, which every player plays.</param>
 public record ClipVideo(
     Guid Id,
     string Title,
@@ -35,8 +34,7 @@ public record ClipVideo(
     long StorageBytes,
     DateTimeOffset UploadedAt,
     string ThumbnailUrl,
-    string PlaybackUrl,
-    string EmbedUrl);
+    string PlaybackUrl);
 
 public record PagedClipsResponse(List<Clip> Clips, long TotalClips, long TotalPages);
 
@@ -68,5 +66,4 @@ public record SharedClipResponse(
     int DurationSeconds,
     DateTimeOffset UploadedAt,
     string ThumbnailUrl,
-    string PlaybackUrl,
-    string EmbedUrl);
+    string PlaybackUrl);

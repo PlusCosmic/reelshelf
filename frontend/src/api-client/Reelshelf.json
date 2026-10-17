@@ -3530,7 +3530,6 @@
           "created_at",
           "length_seconds",
           "playback_url",
-          "embed_url",
           "thumbnail_url",
           "latest_run",
           "run_count"
@@ -3565,9 +3564,6 @@
             "format": "int32"
           },
           "playback_url": {
-            "type": "string"
-          },
-          "embed_url": {
             "type": "string"
           },
           "thumbnail_url": {
@@ -3826,8 +3822,7 @@
           "storage_bytes",
           "uploaded_at",
           "thumbnail_url",
-          "playback_url",
-          "embed_url"
+          "playback_url"
         ],
         "type": "object",
         "properties": {
@@ -3861,9 +3856,6 @@
             "type": "string"
           },
           "playback_url": {
-            "type": "string"
-          },
-          "embed_url": {
             "type": "string"
           }
         }
@@ -4450,7 +4442,6 @@
           "created_at",
           "length_seconds",
           "playback_url",
-          "embed_url",
           "frame_urls",
           "latest_run",
           "run_count",
@@ -4480,9 +4471,6 @@
             "format": "int32"
           },
           "playback_url": {
-            "type": "string"
-          },
-          "embed_url": {
             "type": "string"
           },
           "frame_urls": {
@@ -5638,8 +5626,7 @@
           "duration_seconds",
           "uploaded_at",
           "thumbnail_url",
-          "playback_url",
-          "embed_url"
+          "playback_url"
         ],
         "type": "object",
         "properties": {
@@ -5661,9 +5648,6 @@
             "type": "string"
           },
           "playback_url": {
-            "type": "string"
-          },
-          "embed_url": {
             "type": "string"
           }
         }

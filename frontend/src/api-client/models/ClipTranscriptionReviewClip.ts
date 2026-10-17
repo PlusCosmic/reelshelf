@@ -80,12 +80,6 @@ export interface ClipTranscriptionReviewClip {
    * @type {string}
    * @memberof ClipTranscriptionReviewClip
    */
-  embedUrl: string;
-  /**
-   *
-   * @type {string}
-   * @memberof ClipTranscriptionReviewClip
-   */
   thumbnailUrl: string;
   /**
    *
@@ -117,7 +111,6 @@ export function instanceOfClipTranscriptionReviewClip(
     return false;
   if (!("playbackUrl" in value) || value["playbackUrl"] === undefined)
     return false;
-  if (!("embedUrl" in value) || value["embedUrl"] === undefined) return false;
   if (!("thumbnailUrl" in value) || value["thumbnailUrl"] === undefined)
     return false;
   if (!("latestRun" in value) || value["latestRun"] === undefined) return false;
@@ -147,7 +140,6 @@ export function ClipTranscriptionReviewClipFromJSONTyped(
     createdAt: new Date(json["created_at"]),
     lengthSeconds: json["length_seconds"],
     playbackUrl: json["playback_url"],
-    embedUrl: json["embed_url"],
     thumbnailUrl: json["thumbnail_url"],
     latestRun: ClipTranscriptionRunFromJSON(json["latest_run"]),
     runCount: json["run_count"],
@@ -177,7 +169,6 @@ export function ClipTranscriptionReviewClipToJSONTyped(
     created_at: value["createdAt"].toISOString(),
     length_seconds: value["lengthSeconds"],
     playback_url: value["playbackUrl"],
-    embed_url: value["embedUrl"],
     thumbnail_url: value["thumbnailUrl"],
     latest_run: ClipTranscriptionRunToJSON(value["latestRun"]),
     run_count: value["runCount"],
