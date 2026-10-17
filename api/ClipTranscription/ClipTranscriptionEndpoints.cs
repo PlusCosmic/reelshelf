@@ -68,7 +68,6 @@ public sealed record ClipTranscriptionReviewClip(
     DateTimeOffset CreatedAt,
     int? LengthSeconds,
     string PlaybackUrl,
-    string EmbedUrl,
     string ThumbnailUrl,
     ClipTranscriptionRun? LatestRun,
     int RunCount);

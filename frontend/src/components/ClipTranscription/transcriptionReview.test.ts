@@ -48,7 +48,6 @@ function clip(
     createdAt: new Date(),
     lengthSeconds: 30,
     playbackUrl: "",
-    embedUrl: "",
     thumbnailUrl: "",
     latestRun,
     runCount: latestRun ? 1 : 0,

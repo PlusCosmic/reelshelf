@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
+import { ClipVideoPlayer } from "@/components/Video/ClipVideoPlayer";
 import { useSharedClip } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 import {
@@ -50,13 +51,11 @@ function SharedClipRoute() {
       {clip ? (
         <section className="rs-public-player-wrap">
           <div className="rs-player rs-public-player">
-            <iframe
-              src={clip.embedUrl}
-              loading="lazy"
+            <ClipVideoPlayer
+              src={clip.playbackUrl}
+              poster={clip.thumbnailUrl}
               title={clip.title}
               className="rs-player-frame"
-              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen;"
-              allowFullScreen
             />
           </div>
           <div className="rs-public-details">

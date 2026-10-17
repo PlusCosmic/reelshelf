@@ -8,13 +8,12 @@ public class ClipMediaUrlsTests
 {
     private static readonly Guid VideoId = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
-    private static ClipMediaUrls Create(string cdnBaseUrl, string libraryId = "12345")
+    private static ClipMediaUrls Create(string cdnBaseUrl)
     {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["BunnyCdnBaseUrl"] = cdnBaseUrl,
-                ["BunnyLibraryId"] = libraryId
+                ["BunnyCdnBaseUrl"] = cdnBaseUrl
             })
             .Build();
         return new ClipMediaUrls(configuration);
@@ -48,15 +47,5 @@ public class ClipMediaUrlsTests
 
         Assert.Equal(new Uri($"https://cdn.example/{VideoId}/playlist.m3u8"), urls.Playlist(VideoId));
         Assert.Equal($"https://cdn.example/{VideoId}/thumbnail.jpg", urls.Thumbnail(VideoId));
-    }
-
-    [Fact]
-    public void Embed_UsesTheLibraryId()
-    {
-        ClipMediaUrls urls = Create("https://cdn.example");
-
-        Assert.Equal($"https://player.mediadelivery.net/embed/12345/{VideoId}?autoplay=false", urls.Embed(VideoId));
-        Assert.Equal($"https://player.mediadelivery.net/embed/12345/{VideoId}?autoplay=true",
-            urls.Embed(VideoId, autoplay: true));
     }
 }

@@ -5,6 +5,7 @@ import {
   formatDate,
   formatDuration,
 } from "@/components/Reelshelf/reelshelf-model";
+import { ClipVideoPlayer } from "@/components/Video/ClipVideoPlayer";
 import { Badge, Button } from "@/components/ui";
 import { useLegendRuns, useQueueLegendRun } from "@/hooks/queries";
 import { LegendLabelEditor } from "./LegendLabelEditor";
@@ -58,13 +59,11 @@ export function LegendReviewDetail({
       </div>
 
       <div className="rs-player">
-        <iframe
-          src={clip.embedUrl}
-          loading="lazy"
+        <ClipVideoPlayer
+          src={clip.playbackUrl}
+          poster={clip.frameUrls[0]}
           title={clip.title}
           className="rs-player-frame"
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen;"
-          allowFullScreen
         />
       </div>
 

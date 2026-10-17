@@ -55,12 +55,6 @@ export interface SharedClipResponse {
    * @memberof SharedClipResponse
    */
   playbackUrl: string;
-  /**
-   *
-   * @type {string}
-   * @memberof SharedClipResponse
-   */
-  embedUrl: string;
 }
 
 /**
@@ -79,7 +73,6 @@ export function instanceOfSharedClipResponse(
     return false;
   if (!("playbackUrl" in value) || value["playbackUrl"] === undefined)
     return false;
-  if (!("embedUrl" in value) || value["embedUrl"] === undefined) return false;
   return true;
 }
 
@@ -101,7 +94,6 @@ export function SharedClipResponseFromJSONTyped(
     uploadedAt: new Date(json["uploaded_at"]),
     thumbnailUrl: json["thumbnail_url"],
     playbackUrl: json["playback_url"],
-    embedUrl: json["embed_url"],
   };
 }
 
@@ -124,6 +116,5 @@ export function SharedClipResponseToJSONTyped(
     uploaded_at: value["uploadedAt"].toISOString(),
     thumbnail_url: value["thumbnailUrl"],
     playback_url: value["playbackUrl"],
-    embed_url: value["embedUrl"],
   };
 }

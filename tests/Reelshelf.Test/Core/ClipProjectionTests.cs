@@ -24,8 +24,7 @@ public class ClipProjectionTests
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["BunnyCdnBaseUrl"] = "https://cdn.example/",
-                ["BunnyLibraryId"] = "12345"
+                ["BunnyCdnBaseUrl"] = "https://cdn.example/"
             })
             .Build();
         return new ClipProjection(new ClipMediaUrls(configuration));
@@ -70,8 +69,7 @@ public class ClipProjectionTests
                 1_234_567,
                 CreatedAt.AddMinutes(1),
                 $"https://cdn.example/{VideoId}/thumbnail.jpg",
-                $"https://cdn.example/{VideoId}/playlist.m3u8",
-                $"https://player.mediadelivery.net/embed/12345/{VideoId}?autoplay=false"),
+                $"https://cdn.example/{VideoId}/playlist.m3u8"),
             clip.Video);
     }
 

@@ -81,12 +81,6 @@ export interface ClipVideo {
    * @memberof ClipVideo
    */
   playbackUrl: string;
-  /**
-   *
-   * @type {string}
-   * @memberof ClipVideo
-   */
-  embedUrl: string;
 }
 
 /**
@@ -108,7 +102,6 @@ export function instanceOfClipVideo(value: object): value is ClipVideo {
     return false;
   if (!("playbackUrl" in value) || value["playbackUrl"] === undefined)
     return false;
-  if (!("embedUrl" in value) || value["embedUrl"] === undefined) return false;
   return true;
 }
 
@@ -133,7 +126,6 @@ export function ClipVideoFromJSONTyped(
     uploadedAt: new Date(json["uploaded_at"]),
     thumbnailUrl: json["thumbnail_url"],
     playbackUrl: json["playback_url"],
-    embedUrl: json["embed_url"],
   };
 }
 
@@ -159,6 +151,5 @@ export function ClipVideoToJSONTyped(
     uploaded_at: value["uploadedAt"].toISOString(),
     thumbnail_url: value["thumbnailUrl"],
     playback_url: value["playbackUrl"],
-    embed_url: value["embedUrl"],
   };
 }

@@ -20,6 +20,7 @@ import {
   useClipsInfinite,
 } from "@/hooks/clips.queries";
 import { useClip, useMarkAsViewed } from "@/hooks/queries";
+import { ClipVideoPlayer } from "@/components/Video/ClipVideoPlayer";
 import { fetchPlaylistById } from "@/shared/services/playlists";
 import { collectionClips } from "./collections-model";
 import type { ClipLinkSearch } from "./primitives/ClipViews";
@@ -35,7 +36,6 @@ import {
   formatDuration,
   formatSize,
   makeGameShelf,
-  playerUrl,
   thumbnailUrl,
   type GameShelfItem,
 } from "./reelshelf-model";
@@ -49,49 +49,6 @@ declare module "@tanstack/react-router" {
     /** Set when a collection moves on to its next clip by itself, so that clip starts playing. */
     autoplay?: boolean;
   }
-}
-
-/**
- * Calls onEnded when the embedded video finishes. Bunny's player speaks the Player.js protocol over
- * postMessage: once it says it is ready, ask it to report "ended".
- */
-function usePlayerEnded(
-  frame: HTMLIFrameElement | null,
-  onEnded: (() => void) | null,
-) {
-  const latest = useRef(onEnded);
-  latest.current = onEnded;
-  useEffect(() => {
-    if (!frame) return;
-    const listen = (event: MessageEvent) => {
-      if (event.source !== frame.contentWindow) return;
-      let data: unknown = event.data;
-      try {
-        if (typeof data === "string") data = JSON.parse(data);
-      } catch {
-        return;
-      }
-      if (!data || typeof data !== "object") return;
-      const message = data as { context?: string; event?: string };
-      if (message.context !== "player.js") return;
-      if (message.event === "ready") {
-        frame.contentWindow?.postMessage(
-          JSON.stringify({
-            context: "player.js",
-            version: "0.0.11",
-            method: "addEventListener",
-            value: "ended",
-            listener: "ended",
-          }),
-          "*",
-        );
-      } else if (message.event === "ended") {
-        latest.current?.();
-      }
-    };
-    window.addEventListener("message", listen);
-    return () => window.removeEventListener("message", listen);
-  }, [frame]);
 }
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
@@ -389,7 +346,6 @@ export function ClipPlayerPage({
   const autoplay = useRouterState({
     select: (router) => router.location.state.autoplay === true,
   });
-  const [frame, setFrame] = useState<HTMLIFrameElement | null>(null);
   const { data: playlist } = useQuery({
     queryKey: ["playlists", collectionId],
     queryFn: () => fetchPlaylistById(collectionId!),
@@ -415,8 +371,7 @@ export function ClipPlayerPage({
   const upNext = playThrough
     ? (playThrough.clips[playThrough.index + 1] ?? null)
     : null;
-  usePlayerEnded(
-    frame,
+  const playNext =
     upNext && playThrough
       ? () =>
           void navigate({
@@ -425,8 +380,7 @@ export function ClipPlayerPage({
             search: { collection: playThrough.playlist.id },
             state: { autoplay: true },
           })
-      : null,
-  );
+      : undefined;
   const { data: sessionData } = useClipSession(clip);
   const session = useMemo(() => sessionData?.clips ?? [], [sessionData]);
   const { data: neighbours } = useClipNeighbours(clip);
@@ -491,7 +445,7 @@ export function ClipPlayerPage({
             direction="older"
             inCollection={collectionSearch?.collection}
           />
-          {/* The thumbnail sits behind the embed so loading looks like the video arriving; the
+          {/* The thumbnail sits behind the video so loading looks like the video arriving; the
               cloth gradient underneath covers a missing thumbnail. */}
           <div
             className="rs-player"
@@ -499,19 +453,18 @@ export function ClipPlayerPage({
               backgroundImage: `url("${thumbnailUrl(clip)}"), linear-gradient(135deg, var(--game-a), var(--game-b))`,
             }}
           >
-            <iframe
-              ref={setFrame}
-              src={playerUrl(clip, autoplay && !!playThrough)}
-              loading="lazy"
+            <ClipVideoPlayer
+              src={clip.video.playbackUrl}
+              poster={thumbnailUrl(clip)}
               title={clip.video.title}
               className="rs-player-frame"
-              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen;"
-              allowFullScreen
-              onLoad={() => {
+              autoPlay={autoplay && !!playThrough}
+              onLoaded={() => {
                 if (!clip.isViewed && !markViewed.isPending) {
-                  markViewed.mutate(clipId);
+                  markViewed.mutate(clip.clipId);
                 }
               }}
+              onEnded={playNext}
             />
           </div>
           <NeighbourLink

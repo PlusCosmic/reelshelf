@@ -5,6 +5,7 @@ import {
   formatDate,
   formatDuration,
 } from "@/components/Reelshelf/reelshelf-model";
+import { ClipVideoPlayer } from "@/components/Video/ClipVideoPlayer";
 import { Badge, Button, Input } from "@/components/ui";
 import {
   useQueueTranscriptionRun,
@@ -56,13 +57,11 @@ export function TranscriptionReviewDetail({
       </div>
 
       <div className="rs-player">
-        <iframe
-          src={clip.embedUrl}
-          loading="lazy"
+        <ClipVideoPlayer
+          src={clip.playbackUrl}
+          poster={clip.thumbnailUrl}
           title={clip.title}
           className="rs-player-frame"
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen;"
-          allowFullScreen
         />
       </div>
 

@@ -124,7 +124,6 @@ public class ClipTranscriptionService(
                 clip.CreatedAt,
                 clip.Length,
                 mediaUrls.Playlist(clip.VideoId).ToString(),
-                mediaUrls.Embed(clip.VideoId),
                 mediaUrls.Thumbnail(clip.VideoId),
                 latest is null ? null : ClipTranscriptionRun.From(latest),
                 (int)(latest?.RunCount ?? 0));
