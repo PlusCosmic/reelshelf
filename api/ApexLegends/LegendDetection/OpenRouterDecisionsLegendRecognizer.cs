@@ -10,8 +10,9 @@ namespace Reelshelf.ApexLegends.LegendDetection;
 /// (<c>POST /api/alpha/decisions</c>), such as TypeSafe's Jev. It asks the same two questions as
 /// <see cref="DecisionsLegendRecognizer"/>, in OpenRouter's shape: the prompt, sheet and screenshots go in
 /// <c>state</c>, and the HUD question is a <c>noul</c> whose answer is the probability it is true. Jev takes images
-/// of at most 1,568 pixels a side, so the reference sheet goes in halves. There is no reasoning effort and no prompt
-/// caching to ask for.
+/// of 256 to 1,568 pixels a side, so the reference sheet goes in halves and each screenshot is fitted to those bounds:
+/// the close-up of a 1440p or 4K frame is too wide, and that of a frame under about 500 pixels tall too short. There
+/// is no reasoning effort and no prompt caching to ask for.
 /// </summary>
 public sealed class OpenRouterDecisionsLegendRecognizer(
     HttpClient httpClient,
@@ -27,7 +28,12 @@ public sealed class OpenRouterDecisionsLegendRecognizer(
     /// Bump whenever the request built here changes in a way the model sees; it is part of
     /// <see cref="LegendDetectionResources.OpenRouterDecisionsPromptVersion"/>.
     /// </summary>
-    public const string RequestLayoutVersion = "1";
+    public const string RequestLayoutVersion = "2";
+
+    /// <summary>Jev's image limits: each side 256 to 1,568 pixels, and at least 78,400 pixels in all.</summary>
+    public const int MinImageSide = 256;
+    public const int MaxImageSide = 1568;
+    public const int MinImagePixels = 78_400;
 
     private static readonly JsonSerializerOptions ReadOptions = new()
     {
@@ -41,10 +47,14 @@ public sealed class OpenRouterDecisionsLegendRecognizer(
         CancellationToken cancellationToken)
     {
         IReadOnlyList<LegendFrame> sheetHalves = await resources.ReferenceSheetHalvesAsync(cancellationToken);
+        LegendScreenshot[] fitted = await Task.WhenAll(screenshots.Select(async screenshot =>
+            new LegendScreenshot(
+                await FitAsync(screenshot.Overview, cancellationToken),
+                await FitAsync(screenshot.Panel, cancellationToken))));
         using HttpRequestMessage request = new(HttpMethod.Post, Endpoint)
         {
             Content = new StringContent(
-                BuildRequest(sheetHalves, screenshots).ToJsonString(), Encoding.UTF8, "application/json")
+                BuildRequest(sheetHalves, fitted).ToJsonString(), Encoding.UTF8, "application/json")
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
@@ -68,6 +78,11 @@ public sealed class OpenRouterDecisionsLegendRecognizer(
             ex.Data["RawResponse"] = raw;
             throw;
         }
+    }
+
+    private static Task<LegendFrame> FitAsync(LegendFrame frame, CancellationToken cancellationToken)
+    {
+        return LegendHudCropper.FitAsync(frame, MinImageSide, MaxImageSide, MinImagePixels, cancellationToken);
     }
 
     internal JsonObject BuildRequest(IReadOnlyList<LegendFrame> sheetHalves, IReadOnlyList<LegendScreenshot> screenshots)

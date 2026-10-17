@@ -38,6 +38,25 @@ public static class LegendHudCropper
         return FilterAsync(frame, OverviewFilter, cancellationToken);
     }
 
+    /// <summary>
+    /// <paramref name="frame"/> scaled, keeping its shape, so neither side is over <paramref name="maxSide"/>
+    /// pixels and, when it is small, so both sides reach <paramref name="minSide"/> and it has at least
+    /// <paramref name="minPixels"/> pixels, as a JPEG. An image already within bounds keeps its size. Sides are
+    /// rounded up to even numbers, which JPEG encoding needs.
+    /// </summary>
+    public static Task<LegendFrame> FitAsync(
+        LegendFrame frame,
+        int minSide,
+        int maxSide,
+        int minPixels,
+        CancellationToken cancellationToken)
+    {
+        string factor = FormattableString.Invariant(
+            $"if(gt(max(iw,ih),{maxSide}),{maxSide}/max(iw,ih),max(1,max({minSide}/min(iw,ih),sqrt({minPixels}/(iw*ih)))))");
+        string filter = $"scale=w='ceil(iw*{factor}/2)*2':h='ceil(ih*{factor}/2)*2':flags=lanczos";
+        return FilterAsync(frame, filter, cancellationToken);
+    }
+
     /// <summary>Both images for one frame, as the recognizer sends them.</summary>
     public static async Task<LegendScreenshot> PrepareAsync(LegendFrame frame, CancellationToken cancellationToken)
     {
