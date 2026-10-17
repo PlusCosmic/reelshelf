@@ -79,6 +79,33 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         string? reasoningEffort,
         Guid createdBy)
     {
+        // Dapper opens the connection for each query on its own, but a transaction needs it open throughout.
+        bool openedConnection = false;
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+            openedConnection = true;
+        }
+
+        try
+        {
+            return await CreateEvalInTransactionAsync(provider, model, reasoningEffort, createdBy);
+        }
+        finally
+        {
+            if (openedConnection)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    private async Task<(Guid? EvalId, int Queued)> CreateEvalInTransactionAsync(
+        string provider,
+        string model,
+        string? reasoningEffort,
+        Guid createdBy)
+    {
         await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
         int labelled = await connection.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM legend_detection_label", transaction: transaction);
