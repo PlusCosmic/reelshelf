@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Reelshelf.Core;
 using Reelshelf.Games;
+using Reelshelf.Video;
 
 namespace Reelshelf.DiscordActivity;
 
@@ -63,7 +64,7 @@ public sealed class WatchRoomHub(
         }
 
         ClipsStatements.ClipWithTagsRow? clip = await clips.GetClipWithTagsByIdAndOwner(clipId, accountId);
-        if (clip is null || !ActivityClipService.IsPlayable(clip.VideoStatus))
+        if (clip is null || !clip.VideoStatus.IsPlayable())
         {
             throw new HubException("That clip can't be played");
         }

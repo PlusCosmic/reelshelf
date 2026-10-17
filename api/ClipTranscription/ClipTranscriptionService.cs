@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using Reelshelf.Auth;
-using Reelshelf.Bunny.Models;
 using Reelshelf.ClipSummary;
 using Reelshelf.Core;
 using Reelshelf.Exceptions;
 using Reelshelf.Users;
+using Reelshelf.Video;
 
 namespace Reelshelf.ClipTranscription;
 
@@ -33,11 +33,11 @@ public class ClipTranscriptionService(
     /// Whether a clip that just finished encoding gets its automatic run: automatic queueing is on, transcription
     /// is configured, the video is encoded and the owner is whitelisted.
     /// </summary>
-    public static bool ShouldAutoQueue(ClipTranscriptionOptions options, int? videoStatus, bool ownerWhitelisted)
+    public static bool ShouldAutoQueue(ClipTranscriptionOptions options, ClipVideoStatus videoStatus, bool ownerWhitelisted)
     {
         return options.AutoQueue
                && options.IsConfigured
-               && videoStatus == (int)BunnyVideoObjectStatus.Finished
+               && videoStatus.IsPlayable()
                && ownerWhitelisted;
     }
 
@@ -45,7 +45,7 @@ public class ClipTranscriptionService(
     /// Queues the automatic run for a clip whose video has finished encoding, when its owner is whitelisted. Safe
     /// to call on every webhook: a clip only ever gets one automatic run.
     /// </summary>
-    public async Task QueueForEncodedClipAsync(ClipsStatements.ClipRow clip, int videoStatus)
+    public async Task QueueForEncodedClipAsync(ClipsStatements.ClipRow clip, ClipVideoStatus videoStatus)
     {
         ClipTranscriptionOptions current = options.CurrentValue;
         if (!ShouldAutoQueue(current, videoStatus, ownerWhitelisted: true))

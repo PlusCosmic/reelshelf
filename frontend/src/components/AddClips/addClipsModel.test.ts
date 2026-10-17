@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TwitchClipSummary } from "@/api-client";
+import { ClipVideoStatus, type TwitchClipSummary } from "@/api-client";
 import { clipStage, sortTwitchClips, type UploadItem } from "./addClipsModel";
 
 function twitchClip(
@@ -81,27 +81,38 @@ describe("sortTwitchClips", () => {
 });
 
 describe("clipStage", () => {
-  it("shows an upload still running in this tab over Bunny's status", () => {
-    expect(clipStage(0, 0, upload({ progress: 40 }))).toEqual({
+  it("shows an upload still running in this tab over the clip's status", () => {
+    expect(
+      clipStage(ClipVideoStatus.AwaitingUpload, 0, upload({ progress: 40 })),
+    ).toEqual({
       kind: "uploading",
       progress: 40,
       paused: false,
     });
   });
 
-  it("follows Bunny once the upload is done", () => {
+  it("follows the clip's status once the upload is done", () => {
     const done = upload({ status: "uploaded", progress: 100 });
-    // Bunny's video object: 1 uploaded, 3 transcoding, 4 finished, 5 error, 6 upload failed.
-    expect(clipStage(3, 35, done)).toEqual({
+    expect(clipStage(ClipVideoStatus.Processing, 35, done)).toEqual({
       kind: "processing",
       progress: 35,
     });
-    expect(clipStage(1, 0, done)).toEqual({
+    expect(clipStage(ClipVideoStatus.Uploaded, 0, done)).toEqual({
       kind: "processing",
       progress: null,
     });
-    expect(clipStage(4, 100, done)).toEqual({ kind: "ready" });
-    expect(clipStage(5, 0, done)).toEqual({ kind: "failed" });
-    expect(clipStage(6, 0, done)).toEqual({ kind: "failed" });
+    expect(clipStage(ClipVideoStatus.AwaitingUpload, 0, done)).toEqual({
+      kind: "processing",
+      progress: null,
+    });
+    expect(clipStage(ClipVideoStatus.Ready, 100, done)).toEqual({
+      kind: "ready",
+    });
+    expect(clipStage(ClipVideoStatus.EncodeFailed, 0, done)).toEqual({
+      kind: "failed",
+    });
+    expect(clipStage(ClipVideoStatus.UploadFailed, 0, done)).toEqual({
+      kind: "failed",
+    });
   });
 });

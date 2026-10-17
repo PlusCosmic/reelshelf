@@ -40,16 +40,18 @@ public interface IClipVideoHost
 public sealed record HostedVideo(Guid VideoId, Guid ContainerId, HostedVideoInfo Info);
 
 /// <summary>What the host reports about a video, as stored on its <c>clip</c> row.</summary>
-/// <param name="Status">
-/// The raw status stored in <c>clip.video_status</c>. For now this is Bunny's video object numbering
-/// (<see cref="Bunny.Models.BunnyVideoObjectStatus"/>), whichever host reports it.
-/// </param>
+/// <param name="Status">The host's status mapped onto the app's own, stored in <c>clip.video_state</c>.</param>
 /// <param name="ThumbnailFileName">The thumbnail's file name, or null when the host no longer stores one.</param>
+/// <param name="HostStatus">
+/// The host's own status number, written only to the legacy <c>clip.video_status</c> column so the previous app
+/// image keeps working during a deploy. Nothing reads it; it goes when that column is dropped.
+/// </param>
 public sealed record HostedVideoInfo(
     string Title,
     int LengthSeconds,
-    int Status,
+    ClipVideoStatus Status,
     int EncodeProgress,
     long StorageSize,
     DateTimeOffset UploadedAt,
-    string? ThumbnailFileName);
+    string? ThumbnailFileName,
+    int HostStatus);

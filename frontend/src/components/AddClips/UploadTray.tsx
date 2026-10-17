@@ -2,7 +2,11 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
 import { IconChevronDown, IconChevronUp, IconX } from "@tabler/icons-react";
-import type { Clip, GameCategoryResponse } from "@/api-client";
+import {
+  ClipVideoStatus,
+  type Clip,
+  type GameCategoryResponse,
+} from "@/api-client";
 import { useCategories } from "@/hooks/queries";
 import { getVideo } from "@/shared/services/clips";
 import { bookBinding } from "@/components/Reelshelf/reelshelf-model";
@@ -21,9 +25,10 @@ const SHOWN_PER_BOOK = 4;
 
 function stageOf(item: UploadItem, clip: Clip | undefined): ClipStage | null {
   if (item.status === "error" || item.status === "duplicate") return null;
-  if (isUnfinishedUpload(item)) return clipStage(0, 0, item);
+  if (isUnfinishedUpload(item))
+    return clipStage(ClipVideoStatus.AwaitingUpload, 0, item);
   return clip
-    ? clipStage(clip.video.status, clip.video.encodeProgress)
+    ? clipStage(clip.videoStatus, clip.video.encodeProgress)
     : { kind: "processing", progress: null };
 }
 
@@ -86,7 +91,7 @@ export function UploadTray() {
       queryFn: () => getVideo(item.clipId!),
       refetchInterval: (query: { state: { data?: Clip | null } }) => {
         const clip = query.state.data;
-        return clip && clipStage(clip.video.status, 0).kind !== "processing"
+        return clip && clipStage(clip.videoStatus, 0).kind !== "processing"
           ? false
           : 5000;
       },

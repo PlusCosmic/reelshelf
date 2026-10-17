@@ -1,6 +1,6 @@
 using Reelshelf.ApexLegends.LegendDetection;
-using Reelshelf.Bunny.Models;
 using Reelshelf.ClipTranscription;
+using Reelshelf.Video;
 using Xunit;
 
 namespace Reelshelf.Test.ClipTranscription;
@@ -15,23 +15,23 @@ public class ClipTranscriptionQueueTests
     public void ShouldAutoQueue_EncodedClipsOfWhitelistedOwners()
     {
         Assert.True(ClipTranscriptionService.ShouldAutoQueue(
-            Enabled, (int)BunnyVideoObjectStatus.Finished, ownerWhitelisted: true));
+            Enabled, ClipVideoStatus.Ready, ownerWhitelisted: true));
     }
 
     [Fact]
     public void ShouldAutoQueue_SkipsOwnersOffTheWhitelist()
     {
         Assert.False(ClipTranscriptionService.ShouldAutoQueue(
-            Enabled, (int)BunnyVideoObjectStatus.Finished, ownerWhitelisted: false));
+            Enabled, ClipVideoStatus.Ready, ownerWhitelisted: false));
     }
 
     [Theory]
-    // Still transcoding: the old check took 3 for the webhook's "Finished".
-    [InlineData((int)BunnyVideoObjectStatus.Transcoding)]
-    [InlineData((int)BunnyVideoObjectStatus.Processing)]
-    [InlineData((int)BunnyVideoObjectStatus.Error)]
-    [InlineData(null)]
-    public void ShouldAutoQueue_SkipsClipsThatAreNotEncoded(int? status)
+    [InlineData(ClipVideoStatus.AwaitingUpload)]
+    [InlineData(ClipVideoStatus.Uploaded)]
+    [InlineData(ClipVideoStatus.Processing)]
+    [InlineData(ClipVideoStatus.EncodeFailed)]
+    [InlineData(ClipVideoStatus.UploadFailed)]
+    public void ShouldAutoQueue_SkipsClipsThatAreNotEncoded(ClipVideoStatus status)
     {
         Assert.False(ClipTranscriptionService.ShouldAutoQueue(Enabled, status, ownerWhitelisted: true));
     }
@@ -39,7 +39,7 @@ public class ClipTranscriptionQueueTests
     [Fact]
     public void ShouldAutoQueue_SkipsWhenOffOrNotConfigured()
     {
-        const int finished = (int)BunnyVideoObjectStatus.Finished;
+        const ClipVideoStatus finished = ClipVideoStatus.Ready;
         Assert.False(ClipTranscriptionService.ShouldAutoQueue(
             new ClipTranscriptionOptions { AutoQueue = false, OpenRouterApiKey = "key" }, finished, true));
         Assert.False(ClipTranscriptionService.ShouldAutoQueue(

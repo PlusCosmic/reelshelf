@@ -29,11 +29,6 @@ public class ClipService(
         return tag.Trim().ToLowerInvariant();
     }
 
-    private static bool IsPlayable(int? videoStatus)
-    {
-        return videoStatus == (int)BunnyVideoObjectStatus.Finished;
-    }
-
     private static string GenerateShareToken()
     {
         byte[] bytes = RandomNumberGenerator.GetBytes(ShareTokenByteLength);
@@ -430,7 +425,7 @@ public class ClipService(
             return null;
         }
 
-        if (!IsPlayable(clip.VideoStatus))
+        if (!clip.VideoStatus.IsPlayable())
         {
             throw new ConflictException("This clip is still processing and cannot be shared yet");
         }
@@ -469,7 +464,7 @@ public class ClipService(
     public async Task<SharedClipResponse?> GetSharedClip(string token)
     {
         ClipsStatements.SharedClipRow? sharedClip = await clipsStatements.GetSharedClipByToken(token);
-        if (sharedClip == null || !IsPlayable(sharedClip.VideoStatus))
+        if (sharedClip == null || !sharedClip.VideoStatus.IsPlayable())
         {
             return null;
         }

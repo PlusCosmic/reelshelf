@@ -14,7 +14,7 @@ public class BunnyUploadTargetTests
     private static readonly DateTimeOffset Now = new(2026, 10, 17, 12, 0, 0, TimeSpan.Zero);
 
     private static HostedVideo Video() =>
-        new(VideoId, CollectionId, new HostedVideoInfo("Triple kill", 0, 0, 0, 0, Now, null));
+        new(VideoId, CollectionId, new HostedVideoInfo("Triple kill", 0, ClipVideoStatus.AwaitingUpload, 0, 0, Now, null, HostStatus: 0));
 
     [Fact]
     public void Create_SignsLikeBunnysPresignedTusUpload()

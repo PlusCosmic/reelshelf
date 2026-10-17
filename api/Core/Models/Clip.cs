@@ -1,8 +1,13 @@
 using Reelshelf.Bunny.Models;
 using Reelshelf.Games;
+using Reelshelf.Video;
 
 namespace Reelshelf.Core.Models;
 
+/// <param name="Video">
+/// Bunny's view of the video. Its <c>status</c> is Bunny's number and is going away; read <paramref name="VideoStatus"/>.
+/// </param>
+/// <param name="VideoStatus">Where the clip's video is on its way to playable.</param>
 public record Clip(
     Guid ClipId,
     Guid OwnerId,
@@ -11,6 +16,7 @@ public record Clip(
     string CategorySlug,
     DateTimeOffset CreatedAt,
     BunnyVideo Video,
+    ClipVideoStatus VideoStatus,
     IReadOnlyList<string> Tags,
     bool IsViewed,
     ClipShareSummary Share,

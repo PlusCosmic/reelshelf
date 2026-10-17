@@ -1,3 +1,4 @@
+using Reelshelf.Bunny;
 using Reelshelf.Bunny.Models;
 using Reelshelf.Core.Models;
 using Reelshelf.Games;
@@ -23,7 +24,7 @@ public class ClipProjection(IConfiguration configuration)
             row.Title ?? "Untitled",
             row.DateUploaded ?? DateTimeOffset.UtcNow,
             row.Length ?? 0,
-            row.VideoStatus ?? 0,
+            BunnyService.ToBunnyStatus(row.VideoStatus),
             0,
             0,
             row.EncodeProgress ?? 0,
@@ -44,6 +45,7 @@ public class ClipProjection(IConfiguration configuration)
             gameCategory.Slug,
             row.CreatedAt,
             video,
+            row.VideoStatus,
             ParseTags(row.TagNames),
             isViewed,
             new ClipShareSummary(isShared),

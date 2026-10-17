@@ -29,6 +29,7 @@ export * from "./ClipTranscriptionBackfillResponse";
 export * from "./ClipTranscriptionReviewClip";
 export * from "./ClipTranscriptionRun";
 export * from "./ClipTranscriptionUsage";
+export * from "./ClipVideoStatus";
 export * from "./CreateClipResponse";
 export * from "./CreateGamingSessionPlaylistRequest";
 export * from "./CreatePlaylistRequest";
