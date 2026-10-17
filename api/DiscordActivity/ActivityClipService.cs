@@ -1,6 +1,6 @@
-using Reelshelf.Bunny.Models;
 using Reelshelf.Core;
 using Reelshelf.Games;
+using Reelshelf.Video;
 
 namespace Reelshelf.DiscordActivity;
 
@@ -45,13 +45,9 @@ public sealed class ActivityClipService(ClipsStatements clips, GameCategoryState
                 gameNames.GetValueOrDefault(row.GameCategoryId, ""),
                 row.Length ?? 0,
                 row.CreatedAt,
-                IsPlayable(row.VideoStatus)))
+                row.VideoStatus.IsPlayable()))
             .ToList();
 
         return new ActivityClipsResponse(items, page * PageSize < rows.TotalCount);
     }
-
-    /// <summary>A clip plays once Bunny has finished encoding it.</summary>
-    public static bool IsPlayable(int? videoStatus) =>
-        videoStatus == (int)BunnyVideoObjectStatus.Finished;
 }

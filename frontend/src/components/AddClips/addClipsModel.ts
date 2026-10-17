@@ -1,4 +1,8 @@
-import type { Clip, TwitchClipSummary } from "@/api-client";
+import {
+  ClipVideoStatus,
+  type Clip,
+  type TwitchClipSummary,
+} from "@/api-client";
 
 export type UploadStatus =
   | "queued"
@@ -35,16 +39,6 @@ export function isUnfinishedUpload(item: UploadItem) {
   return UNFINISHED.includes(item.status);
 }
 
-/**
- * The status on Bunny's video object, which is what the API stores on each clip. Not the webhook's
- * status codes (the API's `BunnyVideoStatus`): the two lists number their steps differently.
- */
-const BunnyVideoObjectStatus = {
-  Finished: 4,
-  Error: 5,
-  UploadFailed: 6,
-} as const;
-
 export type ClipStage =
   | { kind: "uploading"; progress: number; paused: boolean }
   | { kind: "processing"; progress: number | null }
@@ -53,10 +47,10 @@ export type ClipStage =
 
 /**
  * Where a clip is on its way to the shelf. An upload still running in this browser wins; after that
- * Bunny's status says whether it is still being processed, failed, or done.
+ * the clip's video status says whether it is still being processed, failed, or done.
  */
 export function clipStage(
-  status: number,
+  status: ClipVideoStatus,
   encodeProgress: number,
   upload?: UploadItem | null,
 ): ClipStage {
@@ -68,10 +62,10 @@ export function clipStage(
     };
   }
   switch (status) {
-    case BunnyVideoObjectStatus.Finished:
+    case ClipVideoStatus.Ready:
       return { kind: "ready" };
-    case BunnyVideoObjectStatus.Error:
-    case BunnyVideoObjectStatus.UploadFailed:
+    case ClipVideoStatus.EncodeFailed:
+    case ClipVideoStatus.UploadFailed:
       return { kind: "failed" };
     default:
       return {
@@ -82,7 +76,7 @@ export function clipStage(
 }
 
 export function clipStageFor(clip: Clip, upload?: UploadItem | null) {
-  return clipStage(clip.video.status, clip.video.encodeProgress, upload);
+  return clipStage(clip.videoStatus, clip.video.encodeProgress, upload);
 }
 
 /** True while a clip in the list can still change on its own, so the list is worth refreshing. */

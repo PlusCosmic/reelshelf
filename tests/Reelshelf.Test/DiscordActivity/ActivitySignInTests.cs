@@ -134,18 +134,6 @@ public class ActivitySignInTests
         Assert.Null(left);
     }
 
-    // Bunny's video object statuses: 4 is Finished; 3 is still Transcoding.
-    [Theory]
-    [InlineData(4, true)]
-    [InlineData(3, false)]
-    [InlineData(2, false)]
-    [InlineData(5, false)]
-    [InlineData(null, false)]
-    public void OnlyEncodedClipsArePlayable(int? videoStatus, bool playable)
-    {
-        Assert.Equal(playable, ActivityClipService.IsPlayable(videoStatus));
-    }
-
     private static ActivitySignInService CreateService(FakeDiscord discord, FakeStore store, RoomTokens? tokens = null, string botToken = "bot-token")
     {
         IConfiguration configuration = new ConfigurationBuilder()

@@ -150,10 +150,44 @@ public class BunnyService : IClipVideoHost
         return new HostedVideoInfo(
             video.Title,
             video.Length,
-            video.Status,
+            ToClipVideoStatus(video.Status),
             video.EncodeProgress,
             video.StorageSize,
             video.DateUploaded,
-            video.ThumbnailFileName);
+            video.ThumbnailFileName,
+            video.Status);
     }
+
+    /// <summary>
+    /// Maps the status on Bunny's video object onto the app's. A number Bunny adds later counts as still
+    /// processing, so the clip is neither played nor purged and the status refresh keeps checking it.
+    /// </summary>
+    public static ClipVideoStatus ToClipVideoStatus(int status) => (BunnyVideoObjectStatus)status switch
+    {
+        BunnyVideoObjectStatus.Created => ClipVideoStatus.AwaitingUpload,
+        BunnyVideoObjectStatus.Uploaded => ClipVideoStatus.Uploaded,
+        BunnyVideoObjectStatus.Processing
+            or BunnyVideoObjectStatus.Transcoding
+            or BunnyVideoObjectStatus.JitSegmenting
+            or BunnyVideoObjectStatus.JitPlaylistsCreated => ClipVideoStatus.Processing,
+        BunnyVideoObjectStatus.Finished => ClipVideoStatus.Ready,
+        BunnyVideoObjectStatus.Error => ClipVideoStatus.EncodeFailed,
+        BunnyVideoObjectStatus.UploadFailed => ClipVideoStatus.UploadFailed,
+        _ => ClipVideoStatus.Processing
+    };
+
+    /// <summary>
+    /// The nearest Bunny number for a clip's status, only for the deprecated <see cref="BunnyVideo.Status"/> the
+    /// clip contract still carries. Every processing step reads back as <see cref="BunnyVideoObjectStatus.Processing"/>.
+    /// </summary>
+    public static int ToBunnyStatus(ClipVideoStatus status) => (int)(status switch
+    {
+        ClipVideoStatus.AwaitingUpload => BunnyVideoObjectStatus.Created,
+        ClipVideoStatus.Uploaded => BunnyVideoObjectStatus.Uploaded,
+        ClipVideoStatus.Processing => BunnyVideoObjectStatus.Processing,
+        ClipVideoStatus.Ready => BunnyVideoObjectStatus.Finished,
+        ClipVideoStatus.EncodeFailed => BunnyVideoObjectStatus.Error,
+        ClipVideoStatus.UploadFailed => BunnyVideoObjectStatus.UploadFailed,
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
+    });
 }

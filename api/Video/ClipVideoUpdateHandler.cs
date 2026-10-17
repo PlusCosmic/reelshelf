@@ -1,5 +1,4 @@
 using Reelshelf.ApexLegends.LegendDetection;
-using Reelshelf.Bunny.Models;
 using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
 
@@ -53,7 +52,7 @@ public class ClipVideoUpdateHandler(
             logger.LogError(ex, "[VIDEO UPDATE] Error updating clip metadata for ClipId: {ClipId}", clip.Id);
         }
 
-        if (video.Status == (int)BunnyVideoObjectStatus.Finished)
+        if (video.Status.IsPlayable())
         {
             try
             {

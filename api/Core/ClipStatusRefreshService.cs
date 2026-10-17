@@ -1,4 +1,3 @@
-using Reelshelf.Bunny.Models;
 using Reelshelf.Video;
 
 namespace Reelshelf.Core;
@@ -129,18 +128,6 @@ public class ClipStatusRefreshService(
     /// </summary>
     public static bool IsAbandoned(HostedVideoInfo? video)
     {
-        return video is null || (video.StorageSize <= 0 && !IsUploaded(video.Status));
-    }
-
-    /// <summary>
-    /// True for statuses that mean bytes reached Bunny and are being (or have been) processed. Error is
-    /// deliberately excluded: a video in error with zero storage is abandoned, and one with storage is kept by
-    /// the storage check that runs before this.
-    /// </summary>
-    public static bool IsUploaded(int status)
-    {
-        return status is not ((int)BunnyVideoObjectStatus.Created
-            or (int)BunnyVideoObjectStatus.UploadFailed
-            or (int)BunnyVideoObjectStatus.Error);
+        return video is null || (video.StorageSize <= 0 && !video.Status.IsUploaded());
     }
 }

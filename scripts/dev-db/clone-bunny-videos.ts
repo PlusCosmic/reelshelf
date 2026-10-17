@@ -16,7 +16,11 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const BunnyStatusProcessing = 1;
+// Bunny's "uploaded" status on its video object, written to the legacy video_status column, and the app's own
+// name for it in video_state (V38). A copy taken before prod ran V38 has no video_state; dev's migration then
+// backfills it from video_status when clips-dev starts.
+const BunnyStatusUploaded = 1;
+const ClipVideoStateUploaded = "uploaded";
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
@@ -233,10 +237,18 @@ async function cloneVideo(row: PendingVideo, workDir: string): Promise<string> {
 
     await db.begin(async (tx) => {
       // ClipStatusRefreshService picks up the dev video's length, thumbnail and size once Bunny has encoded it.
-      await tx`
-        UPDATE clip
-        SET video_id = ${devVideo.guid}, video_status = ${BunnyStatusProcessing}, encode_progress = 0
-        WHERE id = ${row.clip_id} AND video_id = ${row.prod_video_id}`;
+      if (hasVideoState) {
+        await tx`
+          UPDATE clip
+          SET video_id = ${devVideo.guid}, video_status = ${BunnyStatusUploaded},
+              video_state = ${ClipVideoStateUploaded}, encode_progress = 0
+          WHERE id = ${row.clip_id} AND video_id = ${row.prod_video_id}`;
+      } else {
+        await tx`
+          UPDATE clip
+          SET video_id = ${devVideo.guid}, video_status = ${BunnyStatusUploaded}, encode_progress = 0
+          WHERE id = ${row.clip_id} AND video_id = ${row.prod_video_id}`;
+      }
       await tx`
         UPDATE dev_copy_video SET state = 'swapped', source = ${source}, error = NULL, updated_at = now()
         WHERE clip_id = ${row.clip_id}`;
@@ -323,6 +335,13 @@ if (!prepared) {
   );
   process.exit(3);
 }
+
+const [{ has_video_state: hasVideoState }]: { has_video_state: boolean }[] =
+  await db`
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'clip' AND column_name = 'video_state'
+  ) AS has_video_state`;
 
 await cloneCollections();
 const failed = await cloneVideos();

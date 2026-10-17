@@ -3190,6 +3190,7 @@
           "category_slug",
           "created_at",
           "video",
+          "video_status",
           "tags",
           "is_viewed",
           "share",
@@ -3222,6 +3223,9 @@
           },
           "video": {
             "$ref": "#/components/schemas/BunnyVideo"
+          },
+          "video_status": {
+            "$ref": "#/components/schemas/ClipVideoStatus"
           },
           "tags": {
             "type": "array",
@@ -3898,6 +3902,16 @@
             "format": "int32"
           }
         }
+      },
+      "ClipVideoStatus": {
+        "enum": [
+          "awaiting_upload",
+          "uploaded",
+          "processing",
+          "ready",
+          "encode_failed",
+          "upload_failed"
+        ]
       },
       "CreateClipResponse": {
         "required": [
