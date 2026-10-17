@@ -11,10 +11,10 @@ import {
 } from "./collections-model";
 import { CollectionFormDialog } from "./collections/CollectionFormDialog";
 import { Avatar, SearchBox } from "./ReelshelfPrimitives";
+import { videoThumbnailUrl } from "@/shared/utils/clipMediaUrls";
 import {
   formatDate,
   makeGameShelf,
-  videoThumbnailUrl,
   type GameShelfItem,
 } from "./reelshelf-model";
 import { useLibraryData, usePlaylistsData } from "./useLibraryData";

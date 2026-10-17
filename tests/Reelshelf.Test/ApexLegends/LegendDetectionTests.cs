@@ -113,24 +113,6 @@ public class LegendDetectionTests
     }
 
     [Fact]
-    public void ThumbnailUrls_AreTheSixBunnyThumbnails()
-    {
-        Guid videoId = Guid.Parse("11111111-2222-3333-4444-555555555555");
-
-        List<string> urls = LegendDetectionService.ThumbnailUrls("https://cdn.example/", videoId);
-
-        Assert.Equal(
-        [
-            $"https://cdn.example/{videoId}/thumbnail.jpg",
-            $"https://cdn.example/{videoId}/thumbnail_1.jpg",
-            $"https://cdn.example/{videoId}/thumbnail_2.jpg",
-            $"https://cdn.example/{videoId}/thumbnail_3.jpg",
-            $"https://cdn.example/{videoId}/thumbnail_4.jpg",
-            $"https://cdn.example/{videoId}/thumbnail_5.jpg"
-        ], urls);
-    }
-
-    [Fact]
     public void Resources_AreEmbedded_AndVersionedByContent()
     {
         LegendDetectionResources resources = new();

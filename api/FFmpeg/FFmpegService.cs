@@ -1,4 +1,5 @@
 using FFMpegCore;
+using Reelshelf.Core;
 using Reelshelf.Exceptions;
 
 namespace Reelshelf.FFmpeg;
@@ -23,11 +24,13 @@ public class FFmpegService
     }
 
     private readonly ILogger<FFmpegService> _logger;
+    private readonly ClipMediaUrls _mediaUrls;
     private readonly string _outputPath;
 
-    public FFmpegService(ILogger<FFmpegService> logger, IConfiguration configuration)
+    public FFmpegService(ILogger<FFmpegService> logger, IConfiguration configuration, ClipMediaUrls mediaUrls)
     {
         _logger = logger;
+        _mediaUrls = mediaUrls;
         // appsettings.json ships the key empty, so blank means unset; otherwise ffmpeg would write into the
         // working directory, which the app user cannot write to in the production image.
         string? configuredPath = configuration["FFmpegOutputPath"];
@@ -152,7 +155,7 @@ public class FFmpegService
 
     private async Task<string> DownloadHlsVideoCoreAsync(Guid videoId, CancellationToken cancellationToken)
     {
-        string hlsUrl = $"https://vz-cd8f9809-39a.b-cdn.net/{videoId}/playlist.m3u8";
+        Uri hlsUrl = _mediaUrls.Playlist(videoId);
         // Unique per request: the endpoint streams the file with DeleteOnClose, so two requests for the
         // same video must never share a path.
         string outputFileName = $"{videoId}-{Guid.NewGuid():N}.mp4";
@@ -166,7 +169,7 @@ public class FFmpegService
             // Using -c copy to avoid re-encoding (stream copy)
             // The -bsf:a aac_adtstoasc bitstream filter is applied automatically when needed
             await FFMpegArguments
-                .FromUrlInput(new Uri(hlsUrl))
+                .FromUrlInput(hlsUrl)
                 .OutputToFile(outputPath, overwrite: true, options => options
                     .CopyChannel() // Equivalent to -c copy (no re-encoding)
                     .WithCustomArgument("-bsf:a aac_adtstoasc")) // AAC bitstream filter

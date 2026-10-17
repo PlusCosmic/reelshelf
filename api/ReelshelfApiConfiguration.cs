@@ -250,6 +250,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<PlaylistAccess>();
         builder.Services.AddScoped<IGamingSessionPlaylistStore, GamingSessionPlaylistStore>();
         builder.Services.AddScoped<ClipProjection>();
+        builder.Services.AddSingleton<ClipMediaUrls>();
         builder.Services.AddScoped<ClipService>();
         builder.Services.AddScoped<ClipLibraryService>();
         builder.Services.AddScoped<ClipsBackfillService>();
