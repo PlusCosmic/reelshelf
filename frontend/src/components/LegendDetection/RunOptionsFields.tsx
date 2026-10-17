@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Input, Select } from "@/components/ui";
 import { useLegendProviders } from "@/hooks/queries";
 import {
-  decisionsProvider,
+  decisionsProviders,
   type LegendRunOptions,
 } from "@/shared/services/legendDetection";
 import { ReasoningEffortSelect } from "./ReasoningEffortSelect";
@@ -12,7 +12,7 @@ export function useRunOptions() {
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
   const [reasoningEffort, setReasoningEffort] = useState("");
-  const takesEffort = provider !== decisionsProvider;
+  const takesEffort = !decisionsProviders.includes(provider);
   const options: LegendRunOptions = {
     provider: provider || null,
     model: model.trim() || null,

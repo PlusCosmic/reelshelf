@@ -33,8 +33,11 @@ export async function fetchLegendUsage(): Promise<LegendDetectionUsage[]> {
   return createLegendDetectionApi().getLegendDetectionUsage();
 }
 
-/** OpenAI's Decisions API: it has its own default model and takes no reasoning effort. */
-export const decisionsProvider = "openai-decisions";
+/** The Decisions APIs (OpenAI's, and OpenRouter's for models such as Jev): each has its own default model and takes no reasoning effort. */
+export const decisionsProviders: readonly string[] = [
+  "openai-decisions",
+  "openrouter-decisions",
+];
 
 /** Which provider, model and reasoning effort to run; null uses the configured default. */
 export type LegendRunOptions = {

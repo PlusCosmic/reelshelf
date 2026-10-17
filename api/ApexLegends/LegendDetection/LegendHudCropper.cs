@@ -24,6 +24,8 @@ public static class LegendHudCropper
 
     private static readonly string OverviewFilter = $"scale='min({OverviewWidth},iw)':-2:flags=lanczos";
 
+    private static readonly string[] SheetHalfFilters = ["crop=iw/2:ih:0:0", "crop=iw/2:ih:iw/2:0"];
+
     /// <summary>The bottom-left panel from <paramref name="frame"/> as a JPEG. Throws when ffmpeg cannot read the frame.</summary>
     public static Task<LegendFrame> CropOwnerPanelAsync(LegendFrame frame, CancellationToken cancellationToken)
     {
@@ -44,7 +46,24 @@ public static class LegendHudCropper
         return new LegendScreenshot(await overview, await panel);
     }
 
-    private static async Task<LegendFrame> FilterAsync(LegendFrame frame, string filter, CancellationToken cancellationToken)
+    /// <summary>
+    /// The reference sheet's left and right halves, seven legends a row each, as PNGs. The whole sheet is too wide for
+    /// Jev, which takes at most 1,568 pixels a side, and Claude would scale it down until the labels blur.
+    /// </summary>
+    public static async Task<IReadOnlyList<LegendFrame>> SplitReferenceSheetAsync(
+        byte[] sheet,
+        CancellationToken cancellationToken)
+    {
+        LegendFrame frame = new(sheet, "image/png");
+        return await Task.WhenAll(SheetHalfFilters.Select(filter =>
+            FilterAsync(frame, filter, cancellationToken, png: true)));
+    }
+
+    private static async Task<LegendFrame> FilterAsync(
+        LegendFrame frame,
+        string filter,
+        CancellationToken cancellationToken,
+        bool png = false)
     {
         using MemoryStream input = new(frame.Data);
         using MemoryStream output = new();
@@ -52,12 +71,12 @@ public static class LegendHudCropper
             .FromPipeInput(new StreamPipeSource(input), options => options.ForceFormat("image2pipe"))
             .OutputToPipe(new StreamPipeSink(output), options => options
                 .WithCustomArgument($"-vf {filter}")
-                .WithCustomArgument("-frames:v 1 -q:v 2")
-                .WithVideoCodec("mjpeg")
+                .WithCustomArgument(png ? "-frames:v 1" : "-frames:v 1 -q:v 2")
+                .WithVideoCodec(png ? "png" : "mjpeg")
                 .ForceFormat("image2pipe"))
             .CancellableThrough(cancellationToken)
             .ProcessAsynchronously();
 
-        return new LegendFrame(output.ToArray(), "image/jpeg");
+        return new LegendFrame(output.ToArray(), png ? "image/png" : "image/jpeg");
     }
 }

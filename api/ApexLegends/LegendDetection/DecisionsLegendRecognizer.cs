@@ -35,11 +35,11 @@ public sealed class DecisionsLegendRecognizer(
     /// </summary>
     public const string RequestLayoutVersion = "1";
 
-    private const string HudInstructions =
+    internal const string HudInstructions =
         "Is the clip owner's own squad panel visible in the bottom-left of at least one screenshot while they are " +
         "playing, rather than spectating a teammate or behind a menu?";
 
-    private const string LegendInstructions =
+    internal const string LegendInstructions =
         "Which legend is the clip owner playing? Match their portrait in the usable close-ups against the reference " +
         "sheet. Choose unidentifiable when the clip owner's own panel is never visible while they are playing, or " +
         "the portrait cannot be matched reliably.";
