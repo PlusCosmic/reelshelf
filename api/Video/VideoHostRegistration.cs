@@ -25,7 +25,7 @@ public static class VideoHostRegistration
     /// Registers the routing for every host added with <see cref="AddClipVideoHost{THost, TMediaUrls}"/>, and the
     /// policy for new uploads from <c>VideoHost</c> configuration. Call it after the hosts are added: it throws at
     /// startup when <c>VideoHost:NewUploads</c> names a host that isn't registered, rather than failing every new
-    /// upload by a listed user, or quietly sending them to Bunny and leaving clips to move later.
+    /// upload, or quietly sending them to Bunny and leaving clips to move later.
     /// </summary>
     public static IServiceCollection AddClipVideoHostRouting(this IServiceCollection services, IConfiguration configuration)
     {

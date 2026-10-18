@@ -16,8 +16,7 @@ One bucket per environment (dev and prod never share one), set with:
 
 The `r2` host is registered only when all five are set; setting only some of them, or a media URL that isn't an
 https origin, fails startup. `VideoHost:NewUploads=r2` without R2 configured fails startup too. With R2 configured,
-new uploads by the account ids in `VideoHost:Users` go to R2 (`VideoHost:NewUploads=r2`, `VideoHost:Users:0=<id>`);
-everyone else stays on Bunny.
+every new upload goes to R2 once `VideoHost:NewUploads=r2`; existing clips stay where they are.
 
 The API uses AWSSDK.S3 with S3-compatible calls only (put, multipart, presign, list, delete), so a later move to S3
 is a copy job and a new endpoint. Payload signing and the SDK's default checksums are off, since R2 accepts neither

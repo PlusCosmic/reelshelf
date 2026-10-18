@@ -12,9 +12,6 @@ namespace Reelshelf.Test.Video;
 
 public class ClipVideoHostsTests
 {
-    private static readonly Guid Listed = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
-    private static readonly Guid Unlisted = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
-
     [Fact]
     public void For_RoutesByTheClipsVideoHost()
     {
@@ -63,43 +60,27 @@ public class ClipVideoHostsTests
     }
 
     [Fact]
-    public void Policy_ByDefault_SendsEveryoneToBunny()
+    public void Policy_ByDefault_SendsNewUploadsToBunny()
     {
         NewUploadVideoHostPolicy policy = NewUploadVideoHostPolicy.FromConfiguration(Configuration());
 
         Assert.Equal(VideoHostNames.Bunny, policy.NewUploads);
-        Assert.Equal(VideoHostNames.Bunny, policy.HostFor(Listed));
-        Assert.Equal(VideoHostNames.Bunny, policy.HostFor(Unlisted));
     }
 
     [Fact]
-    public void Policy_SendsOnlyListedUsersToTheConfiguredHost()
+    public void Policy_SendsEveryNewUploadToTheConfiguredHost()
     {
         NewUploadVideoHostPolicy policy = NewUploadVideoHostPolicy.FromConfiguration(Configuration(
-            ("VideoHost:NewUploads", "r2"),
-            ("VideoHost:Users:0", Listed.ToString())));
-
-        Assert.Equal(VideoHostNames.R2, policy.HostFor(Listed));
-        Assert.Equal(VideoHostNames.Bunny, policy.HostFor(Unlisted));
-    }
-
-    [Fact]
-    public void Policy_WithNoUsersListed_SendsEveryoneToBunny()
-    {
-        NewUploadVideoHostPolicy policy = NewUploadVideoHostPolicy.FromConfiguration(Configuration(
-            ("VideoHost:NewUploads", "R2")));
+            ("VideoHost:NewUploads", " R2 ")));
 
         Assert.Equal(VideoHostNames.R2, policy.NewUploads);
-        Assert.Equal(VideoHostNames.Bunny, policy.HostFor(Listed));
     }
 
-    [Theory]
-    [InlineData("VideoHost:NewUploads", "s3")]
-    [InlineData("VideoHost:Users:0", "harry")]
-    public void Policy_RefusesBadConfiguration(string key, string value)
+    [Fact]
+    public void Policy_RefusesAnUnknownHost()
     {
         Assert.Throws<InvalidOperationException>(() =>
-            NewUploadVideoHostPolicy.FromConfiguration(Configuration((key, value))));
+            NewUploadVideoHostPolicy.FromConfiguration(Configuration(("VideoHost:NewUploads", "s3"))));
     }
 
     [Fact]
@@ -109,9 +90,7 @@ public class ClipVideoHostsTests
         services.AddClipVideoHost<FakeHost, FakeMediaUrls>(VideoHostNames.Bunny);
 
         InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
-            services.AddClipVideoHostRouting(Configuration(
-                ("VideoHost:NewUploads", "r2"),
-                ("VideoHost:Users:0", Listed.ToString()))));
+            services.AddClipVideoHostRouting(Configuration(("VideoHost:NewUploads", "r2"))));
         Assert.Contains("'r2'", error.Message);
     }
 
@@ -124,7 +103,7 @@ public class ClipVideoHostsTests
         services.AddClipVideoHostRouting(Configuration());
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        Assert.Equal(VideoHostNames.Bunny, provider.GetRequiredService<NewUploadVideoHostPolicy>().HostFor(Listed));
+        Assert.Equal(VideoHostNames.Bunny, provider.GetRequiredService<NewUploadVideoHostPolicy>().NewUploads);
     }
 
     /// <summary>
