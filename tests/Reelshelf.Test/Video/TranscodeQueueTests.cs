@@ -41,8 +41,8 @@ public class TranscodeQueueTests
         // A delayed report never takes the percentage back.
         Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.ReportProgressAsync(job.RunId, job.LeaseId, 30, false));
         Assert.Equal(("processing", 40), await test.ClipStateAsync(clipId));
-        Assert.NotNull(await test.Connection.ExecuteScalarAsync<DateTimeOffset?>(
-            "SELECT thumbnails_ready_at FROM transcode_run WHERE id = @RunId", new { job.RunId }));
+        Assert.True(await test.Connection.ExecuteScalarAsync<bool>(
+            "SELECT thumbnails_ready_at IS NOT NULL FROM transcode_run WHERE id = @RunId", new { job.RunId }));
 
         using JsonDocument outputs = JsonDocument.Parse("""{"video": "clips/x/v1/av1.mp4", "thumbnail": "clips/x/v1/thumb.jpg"}""");
         Assert.Equal(TranscodeReportOutcome.Applied,
