@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -32,9 +33,10 @@ public sealed record WorkerFailRequest(Guid LeaseId, string Error, bool Retryabl
 public sealed record WorkerReleaseRequest(Guid LeaseId);
 
 /// <summary>
-/// The transcode workers' API (docs/video-pipeline/workers-and-jobs.md). Workers authenticate with the shared
-/// secret through <see cref="WorkerAuthentication.Policy"/>, never the site cookie, and every endpoint requires it.
+/// The transcode workers' API (docs/video-pipeline/workers-and-jobs.md). Workers authenticate with one of the
+/// worker secrets through <see cref="WorkerAuthentication.Policy"/>, never the site cookie, and every endpoint requires it.
 /// The endpoints are left out of the OpenAPI document: the worker is not a client of the generated frontend API.
+/// Claims, completions, failures and releases are logged with the name of the secret the worker used.
 /// </summary>
 public static class WorkerEndpoints
 {
@@ -64,9 +66,9 @@ public static class WorkerEndpoints
     }
 
     /// <summary>The next job, or 204 when there is none and the worker should poll again later.</summary>
-    private static async Task<Results<Ok<WorkerJobResponse>, NoContent>> Claim(TranscodeQueue queue)
+    private static async Task<Results<Ok<WorkerJobResponse>, NoContent>> Claim(TranscodeQueue queue, ClaimsPrincipal user)
     {
-        ClaimedTranscodeRun? run = await queue.ClaimAsync();
+        ClaimedTranscodeRun? run = await queue.ClaimAsync(WorkerAuthentication.WorkerName(user));
         if (run is null)
         {
             return TypedResults.NoContent();
@@ -97,7 +99,8 @@ public static class WorkerEndpoints
     private static async Task<Results<NoContent, BadRequest<string>, NotFound, Conflict<string>>> Complete(
         Guid runId,
         WorkerCompleteRequest request,
-        TranscodeQueue queue)
+        TranscodeQueue queue,
+        ClaimsPrincipal user)
     {
         if (request.LeaseId == Guid.Empty)
         {
@@ -121,13 +124,14 @@ public static class WorkerEndpoints
         }
 
         return ToResult(await queue.CompleteAsync(runId, request.LeaseId, request.Outputs, request.LengthSeconds,
-            request.SizeBytes));
+            request.SizeBytes, WorkerAuthentication.WorkerName(user)));
     }
 
     private static async Task<Results<NoContent, BadRequest<string>, NotFound, Conflict<string>>> Fail(
         Guid runId,
         WorkerFailRequest request,
-        TranscodeQueue queue)
+        TranscodeQueue queue,
+        ClaimsPrincipal user)
     {
         if (request.LeaseId == Guid.Empty)
         {
@@ -139,7 +143,8 @@ public static class WorkerEndpoints
             return TypedResults.BadRequest("error is required");
         }
 
-        return ToResult(await queue.FailAsync(runId, request.LeaseId, request.Error.Trim(), request.Retryable));
+        return ToResult(await queue.FailAsync(runId, request.LeaseId, request.Error.Trim(), request.Retryable,
+            WorkerAuthentication.WorkerName(user)));
     }
 
     /// <summary>
@@ -150,14 +155,15 @@ public static class WorkerEndpoints
     private static async Task<Results<NoContent, BadRequest<string>, NotFound, Conflict<string>>> Release(
         Guid runId,
         WorkerReleaseRequest request,
-        TranscodeQueue queue)
+        TranscodeQueue queue,
+        ClaimsPrincipal user)
     {
         if (request.LeaseId == Guid.Empty)
         {
             return TypedResults.BadRequest("lease_id is required");
         }
 
-        return ToResult(await queue.ReleaseAsync(runId, request.LeaseId));
+        return ToResult(await queue.ReleaseAsync(runId, request.LeaseId, WorkerAuthentication.WorkerName(user)));
     }
 
     /// <summary>
@@ -185,6 +191,7 @@ public static class WorkerSetup
     {
         builder.Services.Configure<TranscodingOptions>(builder.Configuration.GetSection(TranscodingOptions.SectionName));
         builder.Services.Configure<WorkerOptions>(builder.Configuration.GetSection(WorkerOptions.SectionName));
+        builder.Services.AddHostedService<WorkerSecretsCheck>();
         builder.Services.AddScoped<TranscodeStatements>();
         builder.Services.AddScoped<TranscodeQueue>();
         builder.Services.Configure<Migration.MigrationOptions>(
