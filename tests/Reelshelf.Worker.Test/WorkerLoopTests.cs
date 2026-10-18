@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -37,6 +38,16 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
     /// <summary>The worker's services against the fake API, with <paramref name="overrides"/> on top of the test settings.</summary>
     private ServiceProvider BuildServices(Dictionary<string, string?>? overrides = null)
     {
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(Settings(overrides)).Build();
+        ServiceCollection collection = new();
+        collection.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug));
+        collection.AddTranscodeWorker(configuration);
+        return collection.BuildServiceProvider();
+    }
+
+    /// <summary>The test settings, with <paramref name="overrides"/> on top.</summary>
+    private Dictionary<string, string?> Settings(Dictionary<string, string?>? overrides = null)
+    {
         Dictionary<string, string?> settings = new()
         {
             ["Worker:ApiBaseUrl"] = api.BaseUrl,
@@ -53,11 +64,7 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
             settings[key] = value;
         }
 
-        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
-        ServiceCollection collection = new();
-        collection.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug));
-        collection.AddTranscodeWorker(configuration);
-        return collection.BuildServiceProvider();
+        return settings;
     }
 
     /// <summary>
@@ -429,6 +436,34 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
         Assert.Null(api.Failure);
         Assert.NotNull(api.Release);
         Assert.Empty(api.Uploads);
+    }
+
+    [SvtAv1Fact]
+    public async Task ExitWhenIdleAfter_FinishesTheJob_ThenStopsTheHostOnceIdle()
+    {
+        string source = await Av1SourceAsync();
+        api.Enqueue(JobTypes.Thumbnails, source, OutputFiles.Frames);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        builder.Configuration.AddInMemoryCollection(Settings(new Dictionary<string, string?>
+        {
+            ["Worker:ExitWhenIdleAfter"] = "00:00:01",
+            ["Worker:IdlePollInterval"] = "00:00:00.100",
+            ["Worker:MaxIdlePollInterval"] = "00:00:00.400"
+        }));
+        builder.Services.AddTranscodeWorker(builder.Configuration);
+        using IHost host = builder.Build();
+
+        // The host stops by itself: nothing here ever asks it to.
+        Stopwatch elapsed = Stopwatch.StartNew();
+        await host.RunAsync().WaitAsync(TimeSpan.FromMinutes(2));
+
+        Assert.NotNull(api.Completion);
+        Assert.Null(api.Failure);
+        Assert.Equal(0, Environment.ExitCode);
+        // A second of idling after the job, with the last wait cut short at the limit.
+        Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(60), $"The worker took {elapsed.Elapsed} to exit");
+        // The job's claim, then empty ones until the limit.
+        Assert.True(api.Claims >= 3, $"Only {api.Claims} claims");
     }
 
     [SvtAv1Fact]

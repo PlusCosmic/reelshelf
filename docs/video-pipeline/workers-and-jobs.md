@@ -140,11 +140,16 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   `Worker:Secret`) are required, and startup fails without them or without libsvtav1 and libopus in ffmpeg. The rest
   have defaults: `Preset` (SVT-AV1, 8), `LogicalProcessors` (SVT-AV1 `lp`, 0 = all cores), `TargetBitrateKbps`
   (4000), `AudioBitrateKbps` (128), `Niceness` (10), `IdlePollInterval`/`MaxIdlePollInterval` (5 s doubling to 60 s),
-  `ErrorBackoff`/`MaxErrorBackoff` (5 s to 5 min), `HeartbeatInterval` (30 s), `ShutdownGrace` (20 s),
+  `ErrorBackoff`/`MaxErrorBackoff` (5 s to 5 min), `ExitWhenIdleAfter` (unset), `HeartbeatInterval` (30 s), `ShutdownGrace` (20 s),
   `MaxSourceBytes` (8 GiB, which also caps a remuxed HLS source), `RemuxTimeout` (20 min), `WorkDirectory` (`/work` in the image) and `FfmpegPath`/`FfprobePath`. It holds no
   storage keys: everything goes through the job's presigned URLs, and the secret is only ever sent to the API.
 - **Loop:** one job at a time. Claim; on 204 wait, doubling while the queue stays empty; on an API error, back off
-  the same way. Each job gets its own directory, deleted when it ends (and leftovers from a crash are deleted at
+  the same way. With `ExitWhenIdleAfter` set (#246; zero or negative fails startup), the worker logs and exits with
+  code 0 once it has gone that long without claiming a job, so a one-shot overflow worker stops by itself when the
+  queue is empty and scaling in never kills an encode. Any claim resets the clock; the idle waits still double, but
+  the last one is cut short so the final empty claim lands at the limit; failed claims and the waits after them
+  don't count (nor reset it), so an API outage doesn't make the whole pool exit. Unset, it polls for ever, as the
+  dedicated worker does. Each job gets its own directory, deleted when it ends (and leftovers from a crash are deleted at
   startup). The source is streamed to disk and probed: one ffprobe can't read, with no video stream or no duration,
   or a trim that keeps nothing fails with `retryable: false`.
 - **Frames first:** the six frames are taken from the kept range, uploaded, and then the first progress report says
@@ -221,8 +226,9 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
 ## The overflow pool (built in #248)
 
 When `transcode_run` backs up (a burst of uploads, or the Bunny migration), the API starts extra one-shot workers on
-AWS Fargate Spot with ECS `RunTask`. They run the same image as the dedicated worker and stop themselves once the
-queue is empty, so the API only ever starts tasks and never stops one. The code is in
+AWS Fargate Spot with ECS `RunTask`. They run the same image as the dedicated worker, with `Worker__ExitWhenIdleAfter`
+set in the task definition (#246), so they stop themselves once the queue is empty. The API only ever starts tasks
+and never stops one. The code is in
 `api/Video/Transcoding/Overflow/`. The AWS resources (cluster, task definition, networking, IAM) are
 PlusCosmic/infrastructure#214.
 

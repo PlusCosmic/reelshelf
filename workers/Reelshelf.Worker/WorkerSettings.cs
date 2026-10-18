@@ -27,6 +27,13 @@ public sealed class WorkerSettings
 
     public TimeSpan MaxErrorBackoff { get; set; } = TimeSpan.FromMinutes(5);
 
+    /// <summary>
+    /// When set, the worker exits (code 0) once it has gone this long without claiming a job, for one-shot overflow
+    /// workers that should stop once the queue is empty. Time spent backing off after API errors doesn't count. Unset
+    /// (the default) polls for ever.
+    /// </summary>
+    public TimeSpan? ExitWhenIdleAfter { get; set; }
+
     /// <summary>SVT-AV1 preset, 0 (slowest, best) to 13 (fastest).</summary>
     public int Preset { get; set; } = 8;
 
@@ -89,6 +96,11 @@ public sealed class WorkerSettings
         if (LogicalProcessors < 0 || TargetBitrateKbps <= 0 || AudioBitrateKbps <= 0 || MaxSourceBytes <= 0)
         {
             return "Worker:LogicalProcessors, TargetBitrateKbps, AudioBitrateKbps and MaxSourceBytes must be positive";
+        }
+
+        if (ExitWhenIdleAfter <= TimeSpan.Zero)
+        {
+            return "Worker:ExitWhenIdleAfter must be positive when set";
         }
 
         if (RemuxTimeout <= TimeSpan.Zero)
