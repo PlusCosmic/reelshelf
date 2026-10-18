@@ -46,9 +46,14 @@
 - **Frame rate:** the encoding notes cap output at 30 fps. Many game clips are recorded at 60; confirm 30 is
   wanted, or allow 60 for sources that have it.
 - **Originals:** keep the uploaded file or only the AV1 output? It decides re-encode quality later (a better
-  encoder, a fallback, new bitrates), what counts toward the storage quota, and the storage bill.
-- **Downloads:** serve the AV1 file as-is, or convert to H.264 on demand (some local players and editors can't
-  open AV1)?
+  encoder, a fallback, new bitrates), what counts toward the storage quota, and the storage bill. Planned trimming
+  needs the original to re-trim without quality loss, so the question is really how long to keep it (for
+  example a 30-day grace period). See [workers-and-jobs.md](workers-and-jobs.md#trimming-planned-feature).
+- **Downloads:** a presigned R2 redirect, with no work on the API server (see
+  [workers-and-jobs.md](workers-and-jobs.md#downloads)). Still open: serve the AV1 file as-is, or convert to H.264
+  on demand as a worker job (some local players and editors can't open AV1).
+- **Clip versions:** a re-trim produces a new video version, so the run tables need to record which version a run
+  used and supersede older ones.
 - **Quota:** what `storage_size` means once we own storage (AV1 output only, or plus the original or previews).
 - **Migration from Bunny:** Bunny may hold only transcodes, so migration probably re-encodes Bunny's best rendition
   into AV1 through the same queue. The per-clip host column lets both hosts run side by side during the move.
