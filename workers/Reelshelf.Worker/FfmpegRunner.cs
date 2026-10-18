@@ -186,7 +186,23 @@ public sealed class FfmpegRunner(IOptions<WorkerSettings> options)
             }
 
             throw new FfmpegException(
-                $"{Path.GetFileName(tool)} exited with code {process.ExitCode}{(tail.Length > 0 ? ": " + tail : "")}");
+                $"{Path.GetFileName(tool)} {DescribeExit(process.ExitCode)}{(tail.Length > 0 ? ": " + tail : "")}");
         }
     }
+
+    /// <summary>
+    /// How a tool ended. A process killed by a signal reports 128 plus the signal's number, and a crash leaves
+    /// nothing on stderr, so naming the signal is what tells a segfault in ffmpeg or an encoder library apart from
+    /// an encode error.
+    /// </summary>
+    internal static string DescribeExit(int exitCode) =>
+        (exitCode - 128) switch
+        {
+            4 => $"crashed with SIGILL (exit code {exitCode}): an instruction this CPU doesn't support",
+            6 => $"crashed with SIGABRT (exit code {exitCode})",
+            7 => $"crashed with SIGBUS (exit code {exitCode})",
+            9 => $"was killed with SIGKILL (exit code {exitCode}), usually for running out of memory",
+            11 => $"crashed with SIGSEGV (exit code {exitCode}), a bug in ffmpeg or an encoder library",
+            _ => $"exited with code {exitCode}"
+        };
 }

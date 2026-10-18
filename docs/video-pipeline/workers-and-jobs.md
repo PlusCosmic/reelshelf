@@ -95,7 +95,7 @@ upload completes and passes its checks (#213, see [r2-bucket.md](r2-bucket.md#br
 ## The worker (built in #214)
 
 `workers/Reelshelf.Worker/` is a .NET console app (generic host) with its own image, `ghcr.io/pluscosmic/reelshelf-worker`
-(`workers/Reelshelf.Worker/Dockerfile`: the .NET runtime on Ubuntu 24.04 with the distribution's ffmpeg, running as
+(`workers/Reelshelf.Worker/Dockerfile`: the .NET runtime on Debian 13 with the distribution's ffmpeg 7.1 and SVT-AV1 2.3, running as
 the image's unprivileged `app` user). It calls ffmpeg and ffprobe as processes with argument lists rather than
 through FFMpegCore, so it can run them under `nice` and read `-progress`. Its tests are in `tests/Reelshelf.Worker.Test/`.
 
@@ -156,7 +156,9 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   `[SvtAv1Fact]` tests that run the whole loop against `FakeWorkerApi` (the worker endpoints and a bucket on a
   loopback `HttpListener`) on `lavfi` test clips: transcode with a trim, HDR at 1440p, stream-copy and frame-accurate
   trims, thumbnails, a lost lease, unreadable input, shutdown and an empty queue. They skip when the local ffmpeg has
-  no libsvtav1; Ubuntu 24.04's ffmpeg (CI's runner and the image) has it.
+  no libsvtav1. CI's runner has Ubuntu 24.04's ffmpeg (SVT-AV1 1.7), older than the image's. The image moved off
+  1.7 because it segfaulted inside `libSvtAv1Enc` on the dedicated server's VM (one CPU socket per vCPU) for an
+  ordinary 1080p60 H.264 clip that 2.3 encodes there; the same clip encoded with 1.7 on a one-socket desktop.
 
 ## Downloads
 

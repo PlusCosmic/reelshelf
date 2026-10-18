@@ -11,10 +11,13 @@ COPY ["workers/Reelshelf.Worker/", "workers/Reelshelf.Worker/"]
 RUN dotnet publish "workers/Reelshelf.Worker/Reelshelf.Worker.csproj" -c $BUILD_CONFIGURATION -o /app/publish \
     --no-restore /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/runtime:10.0-noble AS final
+# Debian 13 (trixie), the default for .NET 10: its ffmpeg 7.1 has SVT-AV1 2.3. Ubuntu 24.04's SVT-AV1 1.7
+# segfaulted inside libSvtAv1Enc on the dedicated server's VM (which reports one CPU socket per vCPU) for an
+# ordinary 1080p60 H.264 clip that 2.3 encodes there without trouble.
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS final
 USER root
-# Ubuntu 24.04's ffmpeg is built with SVT-AV1, Opus and zimg (zscale, for tone-mapping HDR). The build fails
-# if any of them is missing, rather than shipping a worker that refuses to start or refuses HDR.
+# Debian's ffmpeg is built with SVT-AV1, Opus and zimg (zscale, for tone-mapping HDR). The build fails if any of
+# them is missing, rather than shipping a worker that refuses to start or refuses HDR.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
