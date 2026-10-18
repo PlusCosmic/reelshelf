@@ -65,10 +65,15 @@ public static class TranscodeRunTypes
 /// <param name="SourceKey">The storage key the job reads from: the upload for a transcode, else the current output.</param>
 /// <param name="TrimStartSeconds">Where a trim starts, when the job applies one.</param>
 /// <param name="TrimEndSeconds">Where a trim ends, when the job applies one.</param>
+/// <param name="FrameAccurate">
+/// For a <c>trim</c>: re-encode the range instead of stream-copying it from the nearest keyframes. The worker reads it
+/// only when true.
+/// </param>
 public sealed record TranscodeRunInput(
     string? SourceKey = null,
     double? TrimStartSeconds = null,
-    double? TrimEndSeconds = null)
+    double? TrimEndSeconds = null,
+    bool? FrameAccurate = null)
 {
     internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {

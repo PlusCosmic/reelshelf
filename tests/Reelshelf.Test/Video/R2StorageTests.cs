@@ -156,6 +156,14 @@ public class R2StorageTests
         Assert.Contains("R2:MediaBaseUrl", error.Message);
     }
 
+    [Fact]
+    public void JobInput_UsesTheKeysTheWorkerReads()
+    {
+        Assert.Equal("""{"trim_start_seconds":1.5,"trim_end_seconds":9,"frame_accurate":true}""",
+            new TranscodeRunInput(TrimStartSeconds: 1.5, TrimEndSeconds: 9, FrameAccurate: true).ToJson());
+        Assert.Equal("""{"source_key":"uploads/x"}""", new TranscodeRunInput("uploads/x").ToJson());
+    }
+
     [Theory]
     [InlineData("av01.0.08M.08,opus", "av01.0.08M.08,opus")]
     [InlineData(" av01.0.08M.08 , opus ", "av01.0.08M.08,opus")]
