@@ -11,12 +11,14 @@ const bunny: ActivityMediaRef = {
   host: "bunny",
   path: videoId,
   type: "application/vnd.apple.mpegurl",
+  hasThumbnail: true,
 };
 
 const r2: ActivityMediaRef = {
   host: "r2",
   path: `clips/${videoId}/v2`,
   type: 'video/mp4; codecs="av01.0.08M.08,opus"',
+  hasThumbnail: true,
 };
 
 describe("clipMediaUrls", () => {
@@ -36,6 +38,19 @@ describe("clipMediaUrls", () => {
       type: 'video/mp4; codecs="av01.0.08M.08,opus"',
     });
     expect(activityThumbnailUrl(r2)).toBe(
+      `/media/clips/${videoId}/v2/thumbnail.jpg`,
+    );
+  });
+
+  it("has no stream or thumbnail for a clip that hasn't got them yet", () => {
+    const processing: ActivityMediaRef = {
+      ...r2,
+      type: null,
+      hasThumbnail: false,
+    };
+    expect(activityStreamSource(processing)).toBeNull();
+    expect(activityThumbnailUrl(processing)).toBeNull();
+    expect(activityThumbnailUrl({ ...processing, hasThumbnail: true })).toBe(
       `/media/clips/${videoId}/v2/thumbnail.jpg`,
     );
   });

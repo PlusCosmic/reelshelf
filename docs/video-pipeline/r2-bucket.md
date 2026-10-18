@@ -101,6 +101,27 @@ uploads), and completion shares clip preparation's rate limit.
 A cache rule on the media hostname caches `/clips/` and respects the origin's `Cache-Control`. `uploads/` is never
 served from the media domain: workers read it with a presigned URL on the S3 endpoint.
 
+**404s.** R2 answers a missing object with a 404 and no `Cache-Control`. With the rule's edge TTL set to "use
+cache-control header if present, use default Cloudflare caching behavior if not", Cloudflare then applies its
+default TTL by status code, which for a 404 (and 410) is **3 minutes**
+([Cloudflare: status code TTLs](https://developers.cloudflare.com/cache/how-to/configure-cache-status-code/)).
+("Bypass cache if not present" wouldn't cache it.) So the API never hands out a URL before its file exists (#229):
+
+- an R2 clip's `thumbnail_url` and detection frames are null (`[]`) until its worker reports `thumbnails_ready`
+  for the clip's current version (`transcode_run.thumbnails_ready_at`) or the clip is `ready`
+  (`ClipVideoColumns.ThumbnailsReadySql`, read on every query that hands out media);
+- every clip's `sources` are empty until it is `ready`, so no player asks for an `av1.mp4` that isn't there.
+
+The first request for a thumbnail is then after it was uploaded, and gets a 200. Before this, the browser asked for
+the thumbnail as soon as the clip was listed, never retried the `<img>` that failed, and could be served the cached
+404 for minutes after the file existed.
+
+**Optional, for the owner to set:** a status-code TTL on the same rule, so a 404 is never cached even if something
+asks too early (a client holding an old response, someone pasting a URL). In the dashboard: Caching → Cache Rules →
+the `/clips/` rule → Edge TTL → "Cache TTL by status code", add status 404, "No store". Through the API it is an
+`edge_ttl.status_code_ttl` entry `{ "status_code": 404, "value": -1 }` on the rule's `set_cache_settings` action.
+Nothing depends on it; the API's gating above is what keeps 404s from being requested.
+
 ## Presigned URLs for workers
 
 At claim time (`POST /api/worker/claim`) the API presigns, for at least `Transcoding:StaleAfter` plus an hour:
@@ -117,6 +138,6 @@ above, so the worker must send exactly those. See [workers-and-jobs.md](workers-
 
 Discord's CSP lets the Activity load only through URL Mappings on the Discord application. Besides `/bunny-cdn`,
 it needs **`/media` → the media domain** (e.g. `media.reelshelf.app` for prod). The API hands the Activity each
-clip's host, folder (`clips/{clipId}/v{n}` for R2) and stream type (`ActivityMedia`), and
-`frontend/src/shared/utils/clipMediaUrls.ts` builds `/media/clips/{clipId}/v{n}/av1.mp4` and `thumbnail.jpg` from
-them.
+clip's host, folder (`clips/{clipId}/v{n}` for R2), stream type and whether it has a thumbnail yet
+(`ActivityMedia`; the type is null until the clip is ready), and `frontend/src/shared/utils/clipMediaUrls.ts`
+builds `/media/clips/{clipId}/v{n}/av1.mp4` and `thumbnail.jpg` from them, only once each exists.

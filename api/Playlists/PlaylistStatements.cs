@@ -75,10 +75,11 @@ public class PlaylistStatements(NpgsqlConnection connection)
     /// </summary>
     public async Task<PlaylistListExtras> GetListExtras(Guid[] playlistIds)
     {
-        const string previewSql = @"
-            SELECT playlist_id, clip_id, video_id, video_host, video_version, video_codecs, video_height
+        string previewSql = $@"
+            SELECT playlist_id, clip_id, video_id, video_host, video_version, video_codecs, video_height, video_state, thumbnails_ready
             FROM (
                 SELECT pc.playlist_id, c.id AS clip_id, c.video_id, c.video_host, c.video_version, c.video_codecs, c.video_height,
+                       c.video_state, {ClipVideoColumns.ThumbnailsReadySql("c")},
                        ROW_NUMBER() OVER (PARTITION BY pc.playlist_id ORDER BY pc.position, pc.added_at) AS n
                 FROM playlist_clips pc
                 INNER JOIN clip c ON c.id = pc.clip_id
@@ -119,6 +120,9 @@ public class PlaylistStatements(NpgsqlConnection connection)
         public int VideoVersion { get; set; } = 1;
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
+        public string VideoState { get; set; } = ClipVideoStatus.AwaitingUpload.ToDatabase();
+        public ClipVideoStatus VideoStatus => ClipVideoStatuses.FromDatabase(VideoState);
+        public bool ThumbnailsReady { get; set; }
     }
 
     public class GameCountRow

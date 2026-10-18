@@ -12,10 +12,14 @@ public class ClipMediaUrls(IServiceProvider services)
 {
     public const string HlsType = "application/vnd.apple.mpegurl";
 
-    /// <summary>What players play, in the order they try them.</summary>
+    /// <summary>
+    /// What players play, in the order they try them. None until the video is ready, at every host, so no player
+    /// tries a file that doesn't exist yet; clients show the clip's processing state instead.
+    /// </summary>
     public List<PlaybackSource> Sources(ClipVideoRef video)
     {
-        return For(video.VideoHost).Sources(video);
+        IClipVideoMediaUrls host = For(video.VideoHost);
+        return video.Status.IsPlayable() ? host.Sources(video) : [];
     }
 
     /// <summary>The stream for server-side readers (ffmpeg); players use <see cref="Sources"/>.</summary>
@@ -24,12 +28,16 @@ public class ClipMediaUrls(IServiceProvider services)
         return For(video.VideoHost).ServerStream(video);
     }
 
-    public string Thumbnail(ClipVideoRef video)
+    /// <summary>The main thumbnail, or null while the host has none to show yet (see <see cref="IClipVideoMediaUrls.Thumbnail"/>).</summary>
+    public string? Thumbnail(ClipVideoRef video)
     {
         return For(video.VideoHost).Thumbnail(video);
     }
 
-    /// <summary>The six frames legend detection reads: the main thumbnail plus five more taken through the video.</summary>
+    /// <summary>
+    /// The six frames legend detection reads: the main thumbnail plus five more taken through the video. Empty while
+    /// the host has none yet, like <see cref="Thumbnail"/>.
+    /// </summary>
     public List<string> DetectionFrames(ClipVideoRef video)
     {
         return For(video.VideoHost).DetectionFrames(video);

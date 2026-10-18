@@ -4,7 +4,9 @@ namespace Reelshelf.Video.R2;
 
 /// <summary>
 /// Media URLs for an R2 clip, on the media domain (<c>R2:MediaBaseUrl</c>) under its current version's folder
-/// (<see cref="R2ObjectKeys"/>). Unsigned for now, like Bunny's.
+/// (<see cref="R2ObjectKeys"/>). Unsigned for now, like Bunny's. The thumbnails are handed out only once they exist
+/// (<see cref="ClipVideoRef.ThumbnailsReady"/>): the worker uploads them before it encodes, and a request made before
+/// that would get a 404 the browser never retries and Cloudflare may cache.
 /// </summary>
 public class R2MediaUrls(R2Options options) : IClipVideoMediaUrls
 {
@@ -26,21 +28,25 @@ public class R2MediaUrls(R2Options options) : IClipVideoMediaUrls
         return new Uri(File(video, R2ObjectKeys.Av1));
     }
 
-    public string Thumbnail(ClipVideoRef video)
+    public string? Thumbnail(ClipVideoRef video)
     {
-        return File(video, R2ObjectKeys.Thumbnail);
+        return ThumbnailsExist(video) ? File(video, R2ObjectKeys.Thumbnail) : null;
     }
 
     /// <summary>The worker writes the same six frames Bunny does, under the same names.</summary>
     public List<string> DetectionFrames(ClipVideoRef video)
     {
-        return R2ObjectKeys.Thumbnails.Select(fileName => File(video, fileName)).ToList();
+        return ThumbnailsExist(video)
+            ? R2ObjectKeys.Thumbnails.Select(fileName => File(video, fileName)).ToList()
+            : [];
     }
 
     public string MediaPath(ClipVideoRef video)
     {
         return R2ObjectKeys.VersionFolder(video.VideoId, video.VideoVersion);
     }
+
+    private static bool ThumbnailsExist(ClipVideoRef video) => video.Status.IsPlayable() || video.ThumbnailsReady;
 
     private string File(ClipVideoRef video, string fileName)
     {

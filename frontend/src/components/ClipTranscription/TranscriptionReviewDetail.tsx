@@ -5,7 +5,7 @@ import {
   formatDate,
   formatDuration,
 } from "@/components/Reelshelf/reelshelf-model";
-import { ClipVideoPlayer } from "@/components/Video/ClipVideoPlayer";
+import { ClipVideoStage } from "@/components/Video/ClipVideoStage";
 import { Badge, Button, Input } from "@/components/ui";
 import {
   useQueueTranscriptionRun,
@@ -57,7 +57,8 @@ export function TranscriptionReviewDetail({
       </div>
 
       <div className="rs-player">
-        <ClipVideoPlayer
+        <ClipVideoStage
+          status={clip.videoStatus}
           sources={clip.sources}
           poster={clip.thumbnailUrl}
           title={clip.title}

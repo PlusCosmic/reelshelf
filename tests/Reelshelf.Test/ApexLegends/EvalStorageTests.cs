@@ -2,6 +2,7 @@ using Dapper;
 using Npgsql;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Core;
+using Reelshelf.Video;
 using Xunit;
 
 namespace Reelshelf.Test.ApexLegends;
@@ -85,6 +86,7 @@ public class EvalStorageTests
         Assert.Equal("Ash", misses[0].PlayerLegend);
         Assert.Null(misses[0].LabelLegend);
         Assert.All(misses, miss => Assert.Equal("bunny", miss.VideoHost));
+        Assert.All(misses, miss => Assert.Equal((ClipVideoStatus.Ready, true), (miss.VideoStatus, miss.ThumbnailsReady)));
 
         // A second eval answers two of the three clips; the third is still queued, so the cascade leaves it out.
         (Guid? escalationId, _) = await statements.CreateEvalAsync("anthropic", "claude-sonnet-5-5", "low", Guid.NewGuid());
@@ -143,7 +145,10 @@ public class EvalStorageTests
     {
         await connection.ExecuteAsync("""
             CREATE TABLE clip (id uuid PRIMARY KEY, video_id uuid NOT NULL, video_host text NOT NULL DEFAULT 'bunny',
-                               video_version integer NOT NULL DEFAULT 1, video_codecs text, video_height integer, title text);
+                               video_version integer NOT NULL DEFAULT 1, video_codecs text, video_height integer, title text,
+                               video_state text NOT NULL DEFAULT 'ready');
+            -- What the media columns' thumbnails_ready reads.
+            CREATE TABLE transcode_run (clip_id uuid NOT NULL, video_version int NOT NULL, thumbnails_ready_at timestamptz);
             CREATE TABLE legend_detection_label (
                 clip_id uuid PRIMARY KEY REFERENCES clip(id) ON DELETE CASCADE,
                 player_legend text,

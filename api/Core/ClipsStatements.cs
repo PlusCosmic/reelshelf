@@ -151,7 +151,8 @@ public class ClipsStatements(NpgsqlConnection connection)
                     c.video_version,
                     c.video_codecs,
                     c.video_height,
-                    c.encode_progress
+                    c.encode_progress,
+                    {ClipVideoColumns.ThumbnailsReadySql("c")}
                 FROM clip c
                 WHERE {where}
             ),
@@ -174,11 +175,12 @@ public class ClipsStatements(NpgsqlConnection connection)
                     f.video_codecs,
                     f.video_height,
                     f.encode_progress,
+                    f.thumbnails_ready,
                     STRING_AGG(t.name, ',' ORDER BY t.name) as tag_names
                 FROM filtered f
                 LEFT JOIN clip_tag ct ON f.id = ct.clip_id
                 LEFT JOIN tag t ON ct.tag_id = t.id
-                GROUP BY f.id, f.owner_id, f.video_id, f.game_category_id, f.md5_hash, f.created_at, f.title, f.length, f.thumbnail_file_name, f.date_uploaded, f.storage_size, f.video_state, f.video_host, f.video_version, f.video_codecs, f.video_height, f.encode_progress
+                GROUP BY f.id, f.owner_id, f.video_id, f.game_category_id, f.md5_hash, f.created_at, f.title, f.length, f.thumbnail_file_name, f.date_uploaded, f.storage_size, f.video_state, f.video_host, f.video_version, f.video_codecs, f.video_height, f.encode_progress, f.thumbnails_ready
             )
             SELECT *
             FROM tagged
@@ -398,7 +400,7 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     public async Task<ClipWithTagsRow?> GetClipWithTagsById(Guid clipId)
     {
-        const string sql = """
+        string sql = $"""
             SELECT
                 c.id,
                 c.owner_id,
@@ -417,6 +419,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.video_codecs,
                 c.video_height,
                 c.encode_progress,
+                {ClipVideoColumns.ThumbnailsReadySql("c")},
                 STRING_AGG(t.name, ',') as tag_names
             FROM clip c
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
@@ -591,7 +594,7 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     public async Task<SharedClipRow?> GetSharedClipByToken(string token)
     {
-        const string sql = """
+        string sql = $"""
             SELECT
                 cs.id as share_id,
                 cs.token,
@@ -608,6 +611,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.video_version,
                 c.video_codecs,
                 c.video_height,
+                {ClipVideoColumns.ThumbnailsReadySql("c")},
                 gc.name as game_name
             FROM clip_share cs
             INNER JOIN clip c ON c.id = cs.clip_id
@@ -621,7 +625,7 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     public async Task<ClipWithTagsRow?> GetClipWithTagsByIdAndOwner(Guid clipId, Guid ownerId)
     {
-        const string sql = """
+        string sql = $"""
             SELECT
                 c.id,
                 c.owner_id,
@@ -640,6 +644,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.video_codecs,
                 c.video_height,
                 c.encode_progress,
+                {ClipVideoColumns.ThumbnailsReadySql("c")},
                 STRING_AGG(t.name, ',') as tag_names
             FROM clip c
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
@@ -901,6 +906,12 @@ public class ClipsStatements(NpgsqlConnection connection)
         public int VideoVersion { get; set; } = 1;
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
+
+        /// <summary>
+        /// <see cref="ClipVideoColumns.ThumbnailsReadySql"/>. Only the queries that hand out media select it; the
+        /// others read it as false, which nothing that reads them uses.
+        /// </summary>
+        public bool ThumbnailsReady { get; set; }
         public int? EncodeProgress { get; set; }
         public long? FileSize { get; set; }
     }
@@ -974,6 +985,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         public int VideoVersion { get; set; } = 1;
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
+        public bool ThumbnailsReady { get; set; }
         public string GameName { get; set; } = string.Empty;
     }
 
@@ -1002,6 +1014,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         public int VideoVersion { get; set; } = 1;
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
+        public bool ThumbnailsReady { get; set; }
         public int? EncodeProgress { get; set; }
     }
 

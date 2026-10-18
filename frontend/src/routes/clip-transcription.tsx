@@ -270,12 +270,16 @@ function ClipRow({
       aria-current={selected ? "true" : undefined}
       onClick={onSelect}
     >
-      <img
-        className="rs-legend-row-thumb"
-        src={clip.thumbnailUrl}
-        alt=""
-        loading="lazy"
-      />
+      {clip.thumbnailUrl ? (
+        <img
+          className="rs-legend-row-thumb"
+          src={clip.thumbnailUrl}
+          alt=""
+          loading="lazy"
+        />
+      ) : (
+        <span className="rs-legend-row-thumb" />
+      )}
       <span className="rs-legend-row-text">
         <strong>{clip.title}</strong>
         <span className="rs-meta">

@@ -72,6 +72,8 @@ function clip(clipId: string, isViewed = false): Clip {
     share: { shared: false },
     video: {
       title: `Clip ${clipId}`,
+      status: "ready",
+      encodeProgress: 100,
       durationSeconds: 30,
       storageBytes: 1_000,
       thumbnailUrl: `https://cdn.example/${clipId}/thumbnail.jpg`,
@@ -204,5 +206,57 @@ describe("ClipPlayerPage", () => {
     view.video.dispatchEvent(new Event("loadedmetadata"));
 
     expect(mocks.markViewed.mock.calls).toEqual([["a"], ["b"]]);
+  });
+
+  it("shows a clip still processing in place of the player, with its progress", () => {
+    const processing = clip("p");
+    processing.video = {
+      ...processing.video,
+      status: "processing",
+      encodeProgress: 42,
+      thumbnailUrl: null,
+      sources: [],
+    };
+    mocks.clips.set("p", processing);
+    const view = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ClipPlayerPage slug="apex-legends" clipId="p" />
+      </QueryClientProvider>,
+    );
+
+    expect(view.container.querySelector("video")).toBeNull();
+    expect(view.getByRole("status").textContent).toContain("Processing 42%");
+    expect(view.queryByText("This clip can't play on this device.")).toBeNull();
+    // No thumbnail yet: the cloth shows, and nothing asks for a file that isn't there.
+    expect(view.container.querySelector(".rs-player img")).toBeNull();
+    expect(
+      (view.container.querySelector(".rs-player") as HTMLElement).style
+        .backgroundImage,
+    ).not.toContain("url(");
+  });
+
+  it("turns into the player once the clip is ready", () => {
+    const processing = clip("p");
+    processing.video = { ...processing.video, status: "uploaded", sources: [] };
+    mocks.clips.set("p", processing);
+    const client = new QueryClient();
+    // A fresh element each time, as a refetch would re-render the page.
+    const page = () => (
+      <QueryClientProvider client={client}>
+        <ClipPlayerPage slug="apex-legends" clipId="p" />
+      </QueryClientProvider>
+    );
+    const view = render(page());
+    expect(view.container.querySelector("video")).toBeNull();
+    expect(
+      view.container
+        .querySelector(".rs-video-processing-thumb")
+        ?.getAttribute("src"),
+    ).toBe("https://cdn.example/p/thumbnail.jpg");
+
+    mocks.clips.set("p", clip("p"));
+    view.rerender(page());
+    expect(view.container.querySelector("video")).not.toBeNull();
+    expect(view.queryByRole("status")).toBeNull();
   });
 });

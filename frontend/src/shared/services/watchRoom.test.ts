@@ -15,6 +15,7 @@ const playback = (overrides: Partial<RoomPlayback> = {}): RoomPlayback => ({
       host: "bunny",
       path: "v",
       type: "application/vnd.apple.mpegurl",
+      hasThumbnail: true,
     },
   },
   playing: true,

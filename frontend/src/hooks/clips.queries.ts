@@ -66,10 +66,11 @@ export function useClipsInfinite(filters: ClipsFilters = {}, enabled = true) {
       allPages.length < lastPage.totalPages ? allPages.length + 1 : undefined,
     staleTime: 30_000,
     enabled,
-    // Clips still being processed change on their own; look again until they're done.
+    // Clips still being processed change on their own (a thumbnail, progress, then ready); look again
+    // every few seconds until they're done.
     refetchInterval: (query) =>
       query.state.data?.pages.some((page) => page.clips.some(clipStillArriving))
-        ? 8000
+        ? 5000
         : false,
   });
 }
@@ -162,7 +163,19 @@ export function useClip(clipId: string | undefined | null) {
     },
     enabled: !!clipId,
     staleTime: 60_000,
+    refetchInterval: (query) => arrivingClipRefetchInterval(query.state.data),
   });
+}
+
+/** How often an open clip that's still processing is fetched again. */
+export const CLIP_ARRIVING_POLL_MS = 3000;
+
+/**
+ * A clip still being processed gets its thumbnail, progress and then its player on its own, so an open one is
+ * fetched again every few seconds until it's ready or has failed.
+ */
+export function arrivingClipRefetchInterval(clip: Clip | null | undefined) {
+  return clip && clipStillArriving(clip) ? CLIP_ARRIVING_POLL_MS : false;
 }
 
 export function useMarkAsViewed() {

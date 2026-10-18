@@ -63,6 +63,7 @@ function clip(
     ownerName: "Owner",
     createdAt: new Date(),
     lengthSeconds: 30,
+    videoStatus: "ready",
     sources: [
       {
         url: "https://cdn.example/playlist.m3u8",

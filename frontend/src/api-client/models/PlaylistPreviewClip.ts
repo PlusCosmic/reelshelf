@@ -36,7 +36,7 @@ export interface PlaylistPreviewClip {
    * @type {string}
    * @memberof PlaylistPreviewClip
    */
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
 }
 
 /**

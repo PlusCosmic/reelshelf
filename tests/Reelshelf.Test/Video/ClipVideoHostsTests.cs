@@ -176,7 +176,7 @@ public class ClipVideoHostsTests
 
         public Uri ServerStream(ClipVideoRef video) => new("https://fake.example/playlist.m3u8");
 
-        public string Thumbnail(ClipVideoRef video) => "fake";
+        public string? Thumbnail(ClipVideoRef video) => "fake";
 
         public List<string> DetectionFrames(ClipVideoRef video) => [];
 

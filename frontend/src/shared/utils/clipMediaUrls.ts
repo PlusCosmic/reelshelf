@@ -23,17 +23,20 @@ export type ActivityMediaRef = {
   host: string;
   /** The video's folder under its host's media origin. */
   path: string;
-  /** The stream's MIME type, with codecs where known. */
-  type: string;
+  /** The stream's MIME type, with codecs where known; null until the clip is ready and has a stream. */
+  type: string | null;
+  /** Whether the clip's thumbnail exists yet. An R2 clip's appears only once its worker has made it. */
+  hasThumbnail: boolean;
 };
 
 /**
  * What the Activity's player plays, through the host's mapping. Bunny's HLS playlist uses relative paths, so its
- * segments come the same way. Null for a host the Activity has no mapping for.
+ * segments come the same way. Null for a host the Activity has no mapping for, or a clip with no stream yet.
  */
 export function activityStreamSource(
-  media: ActivityMediaRef,
+  media: Pick<ActivityMediaRef, "host" | "path" | "type">,
 ): PlaybackSource | null {
+  if (media.type === null) return null;
   switch (media.host) {
     case "bunny":
       return {
@@ -50,8 +53,12 @@ export function activityStreamSource(
   }
 }
 
-/** The clip's main thumbnail through the host's mapping; both hosts call it `thumbnail.jpg`. */
+/**
+ * The clip's main thumbnail through the host's mapping; both hosts call it `thumbnail.jpg`. Null until it exists,
+ * so a request never caches a 404 for it.
+ */
 export function activityThumbnailUrl(media: ActivityMediaRef): string | null {
+  if (!media.hasThumbnail) return null;
   switch (media.host) {
     case "bunny":
       return `${activityVideoCdnBaseUrl}/${media.path}/thumbnail.jpg`;

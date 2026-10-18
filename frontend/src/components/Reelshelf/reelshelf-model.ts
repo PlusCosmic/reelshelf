@@ -157,6 +157,7 @@ export function categoryForClip(
   );
 }
 
+/** The clip's thumbnail, or null until it exists (an R2 clip's worker hasn't made it yet). */
 export function thumbnailUrl(clip: Clip) {
   return clip.video.thumbnailUrl;
 }

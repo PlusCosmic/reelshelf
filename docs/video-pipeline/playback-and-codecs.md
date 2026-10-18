@@ -27,7 +27,12 @@ an MP4 URL.
    `MediaCapabilities.decodingInfo({ type: "file", ... })` (at its height, or 1080p, at 60 fps), falling back to
    `canPlayType`, and is played as `video.src`; HLS keeps hls.js where MediaSource exists and the browser's own
    player where it doesn't. When none can play, `ClipVideoPlayer` shows "This clip can't play on this device"
-   instead of a black box. That message is where a fallback flow would plug in.
+   instead of a black box. That message is where a fallback flow would plug in, and it means only that: a `ready`
+   clip whose sources this device can't decode. A clip that isn't `ready` has no `sources` (`[]` from the API, at
+   either host, #229), and every page shows `ClipVideoStage`'s processing state in place of the player: the
+   thumbnail once it exists, "Processing" with the encode's percentage, or a message for `encode_failed` and
+   `upload_failed`. An open clip that is still processing is fetched again every 3 seconds (the library every 5),
+   so its thumbnail, progress and then the player turn up on their own.
 3. **Encoding:** AV1 in MP4 with `-movflags +faststart` and sensible keyframe spacing for seeking. Opus or AAC
    audio (see the downloads point below).
 4. **Serving:** HTTP Range (206) support, which Safari requires for `<video>`. CORS is not needed for a plain

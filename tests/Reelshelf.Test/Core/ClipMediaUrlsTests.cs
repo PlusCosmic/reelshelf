@@ -109,11 +109,51 @@ public class ClipMediaUrlsTests
         Assert.Null(source.Height);
     }
 
+    [Theory]
+    [InlineData(ClipVideoStatus.AwaitingUpload)]
+    [InlineData(ClipVideoStatus.Uploaded)]
+    [InlineData(ClipVideoStatus.Processing)]
+    [InlineData(ClipVideoStatus.EncodeFailed)]
+    [InlineData(ClipVideoStatus.UploadFailed)]
+    public void AnR2ClipThatIsNotReady_HasNoMedia_UntilItsThumbnailsAreReported(ClipVideoStatus status)
+    {
+        ClipMediaUrls urls = Create("https://cdn.example");
+        ClipVideoRef video = new(VideoHostNames.R2, VideoId, Status: status);
+
+        Assert.Empty(urls.Sources(video));
+        Assert.Null(urls.Thumbnail(video));
+        Assert.Empty(urls.DetectionFrames(video));
+        // The folder is known from the start; only the files in it wait.
+        Assert.Equal($"clips/{VideoId}/v1", urls.MediaPath(video));
+
+        ClipVideoRef reported = video with { ThumbnailsReady = true };
+        Assert.Empty(urls.Sources(reported));
+        Assert.Equal($"https://media.example/clips/{VideoId}/v1/thumbnail.jpg", urls.Thumbnail(reported));
+        Assert.Equal(6, urls.DetectionFrames(reported).Count);
+    }
+
+    [Theory]
+    [InlineData(ClipVideoStatus.AwaitingUpload)]
+    [InlineData(ClipVideoStatus.Processing)]
+    [InlineData(ClipVideoStatus.EncodeFailed)]
+    public void ABunnyClipThatIsNotReady_HasNoSources_ButKeepsItsThumbnails(ClipVideoStatus status)
+    {
+        ClipMediaUrls urls = Create("https://cdn.example");
+        ClipVideoRef video = Bunny with { Status = status };
+
+        Assert.Empty(urls.Sources(video));
+        Assert.Equal($"https://cdn.example/{VideoId}/thumbnail.jpg", urls.Thumbnail(video));
+        Assert.Equal(6, urls.DetectionFrames(video).Count);
+    }
+
     [Fact]
     public void AnUnregisteredHost_Throws()
     {
         ClipMediaUrls urls = Create("https://cdn.example");
 
         Assert.Throws<InvalidOperationException>(() => urls.Thumbnail(new ClipVideoRef("elsewhere", VideoId)));
+        // Even for a video with no sources to hand out yet.
+        Assert.Throws<InvalidOperationException>(() =>
+            urls.Sources(new ClipVideoRef("elsewhere", VideoId, Status: ClipVideoStatus.Processing)));
     }
 }

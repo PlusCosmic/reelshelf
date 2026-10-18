@@ -120,11 +120,15 @@ export function ActivityClipPicker({
                 disabled={!clip.ready || queued}
                 onClick={() => onPick(clip)}
               >
-                <img
-                  src={activityThumbnailUrl(clip.media) ?? undefined}
-                  alt=""
-                  loading="lazy"
-                />
+                {activityThumbnailUrl(clip.media) ? (
+                  <img
+                    src={activityThumbnailUrl(clip.media)!}
+                    alt=""
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="rs-activity-clip-placeholder" />
+                )}
                 <span className="rs-activity-clip-title">{clip.title}</span>
                 <span className="rs-activity-clip-meta">
                   {queued

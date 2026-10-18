@@ -95,7 +95,7 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
     /// </summary>
     public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter)
     {
-        const string sql = """
+        string sql = $"""
             UPDATE clip_transcription_run run
             SET status = 'running', attempts = run.attempts + 1, started_at = now()
             FROM clip
@@ -108,7 +108,8 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
                   ORDER BY trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, run.trigger, run.model, run.attempts,
+            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height,
+                      clip.video_state, {ClipVideoColumns.ThumbnailsReadySql("clip")}, run.trigger, run.model, run.attempts,
                       game.name AS game_name, game.slug AS game_slug
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql,
@@ -211,8 +212,10 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
     /// <summary>Clips owned by the given accounts, plus any other clip that has been transcribed, newest first.</summary>
     public async Task<List<ReviewClipRow>> GetClipsForReviewAsync(List<Guid> ownerIds)
     {
-        const string sql = """
-            SELECT clip.id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, clip.title, clip.length, clip.created_at,
+        string sql = $"""
+            SELECT clip.id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height,
+                   clip.video_state, {ClipVideoColumns.ThumbnailsReadySql("clip")},
+                   clip.title, clip.length, clip.created_at,
                    COALESCE(owner.global_name, owner.username) AS owner_name,
                    game.name AS game_name, game.slug AS game_slug
             FROM clip
@@ -296,6 +299,9 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         public int VideoVersion { get; set; } = 1;
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
+        public string VideoState { get; set; } = ClipVideoStatus.AwaitingUpload.ToDatabase();
+        public ClipVideoStatus VideoStatus => ClipVideoStatuses.FromDatabase(VideoState);
+        public bool ThumbnailsReady { get; set; }
         public string? Title { get; set; }
         public int? Length { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
@@ -337,6 +343,9 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         public int VideoVersion { get; set; } = 1;
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
+        public string VideoState { get; set; } = ClipVideoStatus.AwaitingUpload.ToDatabase();
+        public ClipVideoStatus VideoStatus => ClipVideoStatuses.FromDatabase(VideoState);
+        public bool ThumbnailsReady { get; set; }
         public string Trigger { get; set; } = "";
         public string Model { get; set; } = "";
         public int Attempts { get; set; }

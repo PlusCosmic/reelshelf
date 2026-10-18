@@ -45,6 +45,7 @@ public class ClipProjectionTests
     public void ProjectClip_FillsTheVideoAndItsUrls()
     {
         ClipsStatements.ClipWithTagsRow row = Row();
+        row.VideoState = ClipVideoStatus.Ready.ToDatabase();
 
         Clip clip = Create().ProjectClip(row, Category, isViewed: true, isShared: false);
 
@@ -63,13 +64,50 @@ public class ClipProjectionTests
                 VideoId,
                 "Third party",
                 42,
-                ClipVideoStatus.Processing,
+                ClipVideoStatus.Ready,
                 35,
                 1_234_567,
                 CreatedAt.AddMinutes(1),
                 $"https://cdn.example/{VideoId}/thumbnail.jpg",
                 sources),
             clip.Video);
+    }
+
+    [Theory]
+    [InlineData(ClipVideoStatus.AwaitingUpload)]
+    [InlineData(ClipVideoStatus.Uploaded)]
+    [InlineData(ClipVideoStatus.Processing)]
+    [InlineData(ClipVideoStatus.EncodeFailed)]
+    [InlineData(ClipVideoStatus.UploadFailed)]
+    public void ProjectClip_HandsOutNoSourcesUntilTheVideoIsReady(ClipVideoStatus status)
+    {
+        ClipsStatements.ClipWithTagsRow bunny = Row();
+        bunny.VideoState = status.ToDatabase();
+        ClipsStatements.ClipWithTagsRow r2 = Row();
+        r2.VideoHost = VideoHostNames.R2;
+        r2.VideoState = status.ToDatabase();
+
+        ClipVideo bunnyVideo = Create().ProjectClip(bunny, Category, isViewed: false, isShared: false).Video;
+        ClipVideo r2Video = Create().ProjectClip(r2, Category, isViewed: false, isShared: false).Video;
+
+        Assert.Empty(bunnyVideo.Sources);
+        Assert.Empty(r2Video.Sources);
+        // Bunny's thumbnail is handed out as before; an R2 clip's waits for its worker.
+        Assert.Equal($"https://cdn.example/{VideoId}/thumbnail.jpg", bunnyVideo.ThumbnailUrl);
+        Assert.Null(r2Video.ThumbnailUrl);
+    }
+
+    [Fact]
+    public void ProjectClip_HandsOutAnR2ThumbnailOnceTheWorkerReportsIt()
+    {
+        ClipsStatements.ClipWithTagsRow row = Row();
+        row.VideoHost = VideoHostNames.R2;
+        row.ThumbnailsReady = true;
+
+        ClipVideo video = Create().ProjectClip(row, Category, isViewed: false, isShared: false).Video;
+
+        Assert.Equal($"https://media.example/clips/{VideoId}/v1/thumbnail.jpg", video.ThumbnailUrl);
+        Assert.Empty(video.Sources);
     }
 
     [Fact]
