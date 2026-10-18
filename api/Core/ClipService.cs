@@ -462,6 +462,6 @@ public class ClipService(
             sharedClip.Length ?? 0,
             sharedClip.DateUploaded ?? sharedClip.CreatedAt,
             mediaUrls.Thumbnail(sharedClip.VideoId),
-            mediaUrls.Playlist(sharedClip.VideoId).ToString());
+            mediaUrls.Sources(sharedClip.VideoId));
     }
 }

@@ -454,7 +454,7 @@ export function ClipPlayerPage({
             }}
           >
             <ClipVideoPlayer
-              src={clip.video.playbackUrl}
+              sources={clip.video.sources}
               poster={thumbnailUrl(clip)}
               title={clip.video.title}
               className="rs-player-frame"

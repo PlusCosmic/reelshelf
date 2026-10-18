@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Reelshelf.Core;
+using Reelshelf.Core.Models;
 using Xunit;
 
 namespace Reelshelf.Test.Core;
@@ -47,5 +48,16 @@ public class ClipMediaUrlsTests
 
         Assert.Equal(new Uri($"https://cdn.example/{VideoId}/playlist.m3u8"), urls.Playlist(VideoId));
         Assert.Equal($"https://cdn.example/{VideoId}/thumbnail.jpg", urls.Thumbnail(VideoId));
+    }
+
+    [Fact]
+    public void Sources_AreTheHlsPlaylistAloneForABunnyVideo()
+    {
+        List<PlaybackSource> sources = Create("https://cdn.example/").Sources(VideoId);
+
+        PlaybackSource source = Assert.Single(sources);
+        Assert.Equal($"https://cdn.example/{VideoId}/playlist.m3u8", source.Url);
+        Assert.Equal("application/vnd.apple.mpegurl", source.Type);
+        Assert.Null(source.Height);
     }
 }

@@ -58,7 +58,7 @@ export function TranscriptionReviewDetail({
 
       <div className="rs-player">
         <ClipVideoPlayer
-          src={clip.playbackUrl}
+          sources={clip.sources}
           poster={clip.thumbnailUrl}
           title={clip.title}
           className="rs-player-frame"
