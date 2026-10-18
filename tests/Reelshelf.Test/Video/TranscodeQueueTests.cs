@@ -275,6 +275,7 @@ public class TranscodeQueueTests
                     storage_size bigint,
                     video_status integer,
                     video_state text NOT NULL DEFAULT 'awaiting_upload',
+                    video_host text NOT NULL DEFAULT 'bunny',
                     encode_progress integer,
                     file_size bigint
                 )
@@ -306,8 +307,8 @@ public class TranscodeQueueTests
         {
             Guid clipId = Guid.NewGuid();
             await Connection.ExecuteAsync("""
-                INSERT INTO clip (id, owner_id, video_id, game_category_id, title, video_state)
-                VALUES (@ClipId, @OwnerId, @VideoId, @GameCategoryId, 'Clip', @VideoState)
+                INSERT INTO clip (id, owner_id, video_id, game_category_id, title, video_state, video_host)
+                VALUES (@ClipId, @OwnerId, @VideoId, @GameCategoryId, 'Clip', @VideoState, 'r2')
                 """, new
             {
                 ClipId = clipId, OwnerId = Guid.NewGuid(), VideoId = Guid.NewGuid(), GameCategoryId = Guid.NewGuid(),

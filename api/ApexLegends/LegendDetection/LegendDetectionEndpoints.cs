@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
+using Reelshelf.Core.Models;
 
 namespace Reelshelf.ApexLegends.LegendDetection;
 
@@ -368,7 +369,7 @@ public sealed record LegendDetectionReviewClip(
     string OwnerName,
     DateTimeOffset CreatedAt,
     int? LengthSeconds,
-    string PlaybackUrl,
+    List<PlaybackSource> Sources,
     List<string> FrameUrls,
     LegendDetectionRun? LatestRun,
     int RunCount,

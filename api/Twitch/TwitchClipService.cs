@@ -155,7 +155,7 @@ public sealed class TwitchClipService(
         {
             await using Stream body = await download.Content.ReadAsStreamAsync(cancellationToken);
             await using CountingStream counted = new(body);
-            await clipService.UploadVideo(created.VideoId, counted, reportedLength, cancellationToken);
+            await clipService.UploadVideo(created.ClipId, counted, reportedLength, cancellationToken);
 
             if (reportedLength is null && counted.BytesRead > 0)
             {

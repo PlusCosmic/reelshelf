@@ -32,7 +32,7 @@ public static class FFmpegEndpoints
 
         try
         {
-            FFmpegService.DownloadedVideo download = await ffmpegService.DownloadHlsVideoAsync(videoId, cancellationToken);
+            FFmpegService.DownloadedVideo download = await ffmpegService.DownloadHlsVideoAsync(clip.VideoHost, videoId, cancellationToken);
             FileStream fileStream;
             try
             {

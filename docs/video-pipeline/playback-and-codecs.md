@@ -10,19 +10,24 @@
 
 ## How the app depends on HLS today
 
-Only the players hard-depend on it. `attachHlsStream` (`frontend/src/shared/utils/hlsStream.ts`) hands the URL
-to hls.js wherever MediaSource exists, and hls.js fails on an MP4. `ClipMediaUrls.Playlist` and the Activity's
-`activityStreamUrl` hardcode `playlist.m3u8`. Everything else takes a URL that ffmpeg can read: transcription
-audio and downloads work unchanged against an MP4 URL.
+Only Bunny's own outputs: `ClipMediaUrls.Playlist` (which ffmpeg reads for transcription audio and downloads) and
+the Activity's `activityStreamUrl` hardcode `playlist.m3u8`. The players no longer assume HLS (items 1 and 2
+below). Everything else takes a URL that ffmpeg can read: transcription audio and downloads work unchanged against
+an MP4 URL.
 
 ## What switching needs
 
-1. **Contract:** replace `playback_url` with a `sources` list whose entries carry a full MIME type with codecs,
-   e.g. `{ url, type: 'video/mp4; codecs="av01.0.08M.08"', height }`. One AV1 entry for now.
-2. **Player:** generalise `attachHlsStream` to `attachStream`, which sets `video.src` for MP4 and keeps hls.js
-   only for Bunny's HLS while both hosts exist. Before attaching, check `MediaCapabilities.decodingInfo()` (or
-   `canPlayType`); if AV1 can't play, show "This clip can't play on this device" instead of a black box. That
-   message is where a fallback flow would plug in.
+1. **Contract (done, #210):** `playback_url` is replaced by `sources`, a list of `PlaybackSource` entries
+   `{ url, type, height? }` whose `type` is a full MIME type with codecs, e.g.
+   `{ url, type: 'video/mp4; codecs="av01.0.08M.08"', height: 1080 }`, built by `ClipMediaUrls.Sources`. A Bunny
+   clip is one HLS source `{ url: .../playlist.m3u8, type: "application/vnd.apple.mpegurl" }`; an R2 clip will be
+   one AV1 entry for now.
+2. **Player (done, #210):** `attachStream(video, sources, { onFatal, onUnsupported })` in
+   `frontend/src/shared/utils/videoStream.ts` tries the sources in order. An MP4 is asked about with
+   `MediaCapabilities.decodingInfo({ type: "file", ... })` (at its height, or 1080p, at 60 fps), falling back to
+   `canPlayType`, and is played as `video.src`; HLS keeps hls.js where MediaSource exists and the browser's own
+   player where it doesn't. When none can play, `ClipVideoPlayer` shows "This clip can't play on this device"
+   instead of a black box. That message is where a fallback flow would plug in.
 3. **Encoding:** AV1 in MP4 with `-movflags +faststart` and sensible keyframe spacing for seeking. Opus or AAC
    audio (see the downloads point below).
 4. **Serving:** HTTP Range (206) support, which Safari requires for `<video>`. CORS is not needed for a plain

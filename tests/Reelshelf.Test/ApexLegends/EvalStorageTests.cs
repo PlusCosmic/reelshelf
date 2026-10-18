@@ -84,6 +84,7 @@ public class EvalStorageTests
         Assert.Equal([wrong, failed], misses.Select(miss => miss.ClipId));
         Assert.Equal("Ash", misses[0].PlayerLegend);
         Assert.Null(misses[0].LabelLegend);
+        Assert.All(misses, miss => Assert.Equal("bunny", miss.VideoHost));
 
         // A second eval answers two of the three clips; the third is still queued, so the cascade leaves it out.
         (Guid? escalationId, _) = await statements.CreateEvalAsync("anthropic", "claude-sonnet-5-5", "low", Guid.NewGuid());
@@ -141,7 +142,7 @@ public class EvalStorageTests
     private static async Task CreateTablesAsync(NpgsqlConnection connection)
     {
         await connection.ExecuteAsync("""
-            CREATE TABLE clip (id uuid PRIMARY KEY, video_id uuid NOT NULL, title text);
+            CREATE TABLE clip (id uuid PRIMARY KEY, video_id uuid NOT NULL, video_host text NOT NULL DEFAULT 'bunny', title text);
             CREATE TABLE legend_detection_label (
                 clip_id uuid PRIMARY KEY REFERENCES clip(id) ON DELETE CASCADE,
                 player_legend text,

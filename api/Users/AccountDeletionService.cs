@@ -6,13 +6,13 @@ namespace Reelshelf.Users;
 
 /// <summary>
 /// Deletes an account and everything in it. A request marks the account and removes its sign-in identities at
-/// once, so it can't be used again; <see cref="AccountDeletionBackgroundService"/> then deletes its Bunny videos
-/// and collections and finally the account row, which cascades to the rest of its data. Every step is idempotent,
-/// so a pass that fails part-way is simply repeated.
+/// once, so it can't be used again; <see cref="AccountDeletionBackgroundService"/> then deletes its videos and
+/// their containers (Bunny's collections), each at its own host, and finally the account row, which cascades to the
+/// rest of its data. Every step is idempotent, so a pass that fails part-way is simply repeated.
 /// </summary>
 public class AccountDeletionService(
     IAccountDeletionStore store,
-    IClipVideoHost videoHost,
+    ClipVideoHosts videoHosts,
     IEmailSender emailSender,
     AccountDeletionSignal signal,
     ILogger<AccountDeletionService> logger)
@@ -59,14 +59,14 @@ public class AccountDeletionService(
             {
                 try
                 {
-                    await videoHost.DeleteVideoAsync(clip.VideoId);
+                    await videoHosts.For(clip.VideoHost).DeleteVideoAsync(clip.VideoId);
                     deletedClipIds.Add(clip.ClipId);
                 }
                 catch (Exception ex)
                 {
                     videosFailed = true;
-                    logger.LogError(ex, "Failed to delete Bunny video {VideoId} of clip {ClipId} for deleted account {UserId}",
-                        clip.VideoId, clip.ClipId, userId);
+                    logger.LogError(ex, "Failed to delete {VideoHost} video {VideoId} of clip {ClipId} for deleted account {UserId}",
+                        clip.VideoHost, clip.VideoId, clip.ClipId, userId);
                 }
             });
 
@@ -80,16 +80,18 @@ public class AccountDeletionService(
             return false;
         }
 
-        // The collection ids are only kept on rows that go with the account, so collections are removed first.
-        foreach (Guid collectionId in await store.GetBunnyCollections(userId))
+        // The container ids are only kept on rows that go with the account, so containers are removed first. Only
+        // hosts that file videos in containers have any (Bunny's collections).
+        foreach (OwnedVideoContainer container in await store.GetVideoContainers(userId))
         {
             try
             {
-                await videoHost.DeleteContainerAsync(collectionId);
+                await videoHosts.For(container.VideoHost).DeleteContainerAsync(container.ContainerId);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to delete Bunny collection {CollectionId} for deleted account {UserId}", collectionId, userId);
+                logger.LogError(ex, "Failed to delete {VideoHost} container {ContainerId} for deleted account {UserId}",
+                    container.VideoHost, container.ContainerId, userId);
                 return false;
             }
         }
@@ -108,7 +110,10 @@ public class AccountDeletionService(
 
 public sealed record AccountDeletionRequest(string? Email);
 
-public sealed record OwnedClipVideo(Guid ClipId, Guid VideoId);
+public sealed record OwnedClipVideo(Guid ClipId, Guid VideoId, string VideoHost);
+
+/// <summary>A container one of the account's videos was filed in, at the host that keeps it.</summary>
+public sealed record OwnedVideoContainer(string VideoHost, Guid ContainerId);
 
 public interface IAccountDeletionStore
 {
@@ -121,7 +126,7 @@ public interface IAccountDeletionStore
     Task<List<Guid>> GetAccountsPendingDeletion();
     Task<List<OwnedClipVideo>> GetClipVideos(Guid userId);
     Task DeleteClips(Guid userId, IReadOnlyCollection<Guid> clipIds);
-    Task<List<Guid>> GetBunnyCollections(Guid userId);
+    Task<List<OwnedVideoContainer>> GetVideoContainers(Guid userId);
 
     /// <summary>Deletes the marked account row only if it owns no clips. True when it was deleted.</summary>
     Task<bool> DeleteAccountIfEmpty(Guid userId);

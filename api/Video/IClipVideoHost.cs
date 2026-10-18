@@ -4,7 +4,10 @@ namespace Reelshelf.Video;
 
 /// <summary>
 /// The service that stores, encodes and serves clip videos. Everything outside the host's own folder goes through
-/// this rather than a provider's client; <see cref="Bunny.BunnyService"/> is the only implementation today.
+/// this rather than a provider's client. Each clip records the host that holds its video (<c>clip.video_host</c>,
+/// one of <see cref="VideoHostNames"/>) and <see cref="ClipVideoHosts"/> routes its calls there; hosts are
+/// registered under their name with <see cref="VideoHostRegistration.AddClipVideoHost{THost, TMediaUrls}"/>.
+/// <see cref="Bunny.BunnyService"/> is the only implementation today.
 /// </summary>
 public interface IClipVideoHost
 {
@@ -32,7 +35,10 @@ public interface IClipVideoHost
     /// <summary>Idempotent: a video the host no longer knows about counts as deleted.</summary>
     Task DeleteVideoAsync(Guid videoId);
 
-    /// <summary>Idempotent like <see cref="DeleteVideoAsync"/>: a container the host no longer knows about counts as deleted.</summary>
+    /// <summary>
+    /// Idempotent like <see cref="DeleteVideoAsync"/>: a container the host no longer knows about counts as deleted.
+    /// A host that doesn't file videos in containers has none to delete and does nothing.
+    /// </summary>
     Task DeleteContainerAsync(Guid containerId);
 }
 

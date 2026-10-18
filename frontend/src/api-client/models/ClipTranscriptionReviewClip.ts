@@ -20,6 +20,13 @@ import {
   ClipTranscriptionRunToJSON,
   ClipTranscriptionRunToJSONTyped,
 } from "./ClipTranscriptionRun";
+import type { PlaybackSource } from "./PlaybackSource";
+import {
+  PlaybackSourceFromJSON,
+  PlaybackSourceFromJSONTyped,
+  PlaybackSourceToJSON,
+  PlaybackSourceToJSONTyped,
+} from "./PlaybackSource";
 
 /**
  *
@@ -71,10 +78,10 @@ export interface ClipTranscriptionReviewClip {
   lengthSeconds: number | null;
   /**
    *
-   * @type {string}
+   * @type {Array<PlaybackSource>}
    * @memberof ClipTranscriptionReviewClip
    */
-  playbackUrl: string;
+  sources: Array<PlaybackSource>;
   /**
    *
    * @type {string}
@@ -109,8 +116,7 @@ export function instanceOfClipTranscriptionReviewClip(
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   if (!("lengthSeconds" in value) || value["lengthSeconds"] === undefined)
     return false;
-  if (!("playbackUrl" in value) || value["playbackUrl"] === undefined)
-    return false;
+  if (!("sources" in value) || value["sources"] === undefined) return false;
   if (!("thumbnailUrl" in value) || value["thumbnailUrl"] === undefined)
     return false;
   if (!("latestRun" in value) || value["latestRun"] === undefined) return false;
@@ -139,7 +145,7 @@ export function ClipTranscriptionReviewClipFromJSONTyped(
     gameSlug: json["game_slug"],
     createdAt: new Date(json["created_at"]),
     lengthSeconds: json["length_seconds"],
-    playbackUrl: json["playback_url"],
+    sources: (json["sources"] as Array<any>).map(PlaybackSourceFromJSON),
     thumbnailUrl: json["thumbnail_url"],
     latestRun: ClipTranscriptionRunFromJSON(json["latest_run"]),
     runCount: json["run_count"],
@@ -168,7 +174,7 @@ export function ClipTranscriptionReviewClipToJSONTyped(
     game_slug: value["gameSlug"],
     created_at: value["createdAt"].toISOString(),
     length_seconds: value["lengthSeconds"],
-    playback_url: value["playbackUrl"],
+    sources: (value["sources"] as Array<any>).map(PlaybackSourceToJSON),
     thumbnail_url: value["thumbnailUrl"],
     latest_run: ClipTranscriptionRunToJSON(value["latestRun"]),
     run_count: value["runCount"],

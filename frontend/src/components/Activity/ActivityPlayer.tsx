@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IconVolume, IconVolume2, IconVolumeOff } from "@tabler/icons-react";
 import { activityStreamUrl } from "@/shared/services/discordActivity";
-import { attachHlsStream } from "@/shared/utils/hlsStream";
+import { attachStream, hlsType } from "@/shared/utils/videoStream";
 import {
   correctDrift,
   expectedPosition,
@@ -147,7 +147,11 @@ export function ActivityPlayer({
     };
     video.addEventListener("loadedmetadata", onLoaded, { once: true });
 
-    const detach = attachHlsStream(video, source, () => setFailed(true));
+    const fail = () => setFailed(true);
+    const detach = attachStream(video, [{ url: source, type: hlsType }], {
+      onFatal: fail,
+      onUnsupported: fail,
+    });
     return () => {
       video.removeEventListener("loadedmetadata", onLoaded);
       detach();
