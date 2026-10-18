@@ -73,8 +73,8 @@ public class BunnyCopyStatementsTests
         Assert.True(await test.Statements.DeleteCopyAsync(copy, KeepFor, Record(deletedAtHost)));
         Assert.Equal([bunnyVideoId], deletedAtHost);
         Assert.Null(await test.BunnyVideoIdAsync(clip));
-        Assert.NotNull(await test.Connection.ExecuteScalarAsync<DateTimeOffset?>(
-            "SELECT migrated_at FROM clip WHERE id = @clip", new { clip }));
+        Assert.True(await test.Connection.ExecuteScalarAsync<bool>(
+            "SELECT migrated_at IS NOT NULL FROM clip WHERE id = @clip", new { clip }));
 
         // Once swept, it's neither selected nor deleted again.
         Assert.Empty(await test.Statements.GetExpiredCopiesAsync(KeepFor, [], limit: 10));
