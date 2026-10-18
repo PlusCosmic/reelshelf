@@ -5,13 +5,13 @@ we know and what we've decided while the design is still moving, so separate ses
 from the same facts. When the design settles, the decisions move into an ADR under `docs/adr/` and this folder
 is deleted.
 
-| File                                                         | What it holds                                                              |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| [current-state.md](current-state.md)                         | What the app relies on from the video host today, after the #188 refactor  |
-| [playback-and-codecs.md](playback-and-codecs.md)             | HLS vs progressive MP4, AV1, the H.264 fallback and downloads              |
+| File                                                         | What it holds                                                             |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| [current-state.md](current-state.md)                         | What the app relies on from the video host today, after the #188 refactor |
+| [playback-and-codecs.md](playback-and-codecs.md)             | HLS vs progressive MP4, AV1, the H.264 fallback and downloads             |
 | [storage-transcoding-queue.md](storage-transcoding-queue.md) | R2, encoding and the queue: decisions, costs, and how they fit the app    |
-| [workers-and-jobs.md](workers-and-jobs.md)                   | The worker service, job types, thumbnails, downloads and trimming          |
-| [open-questions.md](open-questions.md)                       | Undecided points and known follow-ups                                      |
+| [workers-and-jobs.md](workers-and-jobs.md)                   | The worker service, job types, thumbnails, downloads and trimming         |
+| [open-questions.md](open-questions.md)                       | Undecided points and known follow-ups                                     |
 
 Conventions:
 
