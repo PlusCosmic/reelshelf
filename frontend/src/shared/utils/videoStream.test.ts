@@ -6,6 +6,7 @@ import {
   canPlayProgressive,
   hlsPlayback,
   hlsType,
+  splitCodecs,
 } from "./videoStream";
 
 const hls = vi.hoisted(() => {
@@ -113,6 +114,29 @@ describe("hlsPlayback", () => {
   });
 });
 
+describe("splitCodecs", () => {
+  it("splits one video and one audio codec into their own types", () => {
+    expect(splitCodecs('video/mp4; codecs="av01.0.08M.08,opus"')).toEqual({
+      video: 'video/mp4; codecs="av01.0.08M.08"',
+      audio: 'audio/mp4; codecs="opus"',
+    });
+    expect(splitCodecs('video/mp4; codecs="avc1.640028, mp4a.40.2"')).toEqual({
+      video: 'video/mp4; codecs="avc1.640028"',
+      audio: 'audio/mp4; codecs="mp4a.40.2"',
+    });
+  });
+
+  it("leaves a type with one codec, none, or no clear split as it is", () => {
+    for (const type of [
+      av1Type,
+      "video/mp4",
+      'video/mp4; codecs="av01.0.08M.08,avc1.640028"',
+    ]) {
+      expect(splitCodecs(type)).toEqual({ video: type });
+    }
+  });
+});
+
 describe("canPlayProgressive", () => {
   it("asks MediaCapabilities about the file at the source's size", async () => {
     const decodingInfo = mockMediaCapabilities(() =>
@@ -129,6 +153,23 @@ describe("canPlayProgressive", () => {
         width: 1280,
         height: 720,
       }) as unknown,
+    });
+  });
+
+  it("asks about the video and audio codecs separately, since MediaCapabilities takes one codec per stream", async () => {
+    const decodingInfo = mockMediaCapabilities(() =>
+      Promise.resolve({ supported: true }),
+    );
+    expect(
+      await canPlayProgressive(video(), {
+        ...av1Source,
+        type: 'video/mp4; codecs="av01.0.08M.08,opus"',
+      }),
+    ).toBe(true);
+    expect(decodingInfo).toHaveBeenCalledWith({
+      type: "file",
+      video: expect.objectContaining({ contentType: av1Type }) as unknown,
+      audio: { contentType: 'audio/mp4; codecs="opus"' },
     });
   });
 
