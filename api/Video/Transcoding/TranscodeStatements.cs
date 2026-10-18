@@ -56,10 +56,12 @@ public class TranscodeStatements(NpgsqlConnection connection)
     /// Claims the next job for a worker and counts the attempt: a pending one whose retry delay has passed, or a
     /// running one whose worker has not reported for <paramref name="staleAfter"/>, lowest priority first and then
     /// the oldest. Each claim issues a new lease, and the run comes back with its clip's current video version, which
-    /// a trim reads from. SKIP LOCKED keeps two workers (or API instances) from claiming
-    /// the same job; a row another claim changed meanwhile is re-checked against the conditions and skipped.
+    /// a trim reads from, and its current host and video id, which a migrate job reads its Bunny stream by. With
+    /// <paramref name="includeMigrate"/> false, <c>migrate</c> jobs are left where they are. SKIP LOCKED keeps two
+    /// workers (or API instances) from claiming the same job; a row another claim changed meanwhile is re-checked
+    /// against the conditions and skipped.
     /// </summary>
-    public async Task<ClaimedRunRow?> ClaimNextRunAsync(int maxAttempts, TimeSpan staleAfter)
+    public async Task<ClaimedRunRow?> ClaimNextRunAsync(int maxAttempts, TimeSpan staleAfter, bool includeMigrate = true)
     {
         const string sql = """
             UPDATE transcode_run run
@@ -69,20 +71,24 @@ public class TranscodeStatements(NpgsqlConnection connection)
                 heartbeat_at = now(),
                 lease_id = gen_random_uuid(),
                 progress = NULL
-            WHERE run.id = (
+            FROM clip
+            WHERE clip.id = run.clip_id AND run.id = (
                 SELECT id FROM transcode_run
                 WHERE attempts < @MaxAttempts
                   AND ((status = 'pending' AND available_at <= now())
                     OR (status = 'running' AND heartbeat_at < now() - @StaleAfter))
+                  AND (@IncludeMigrate OR type <> 'migrate')
                 ORDER BY priority, created_at
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED)
             RETURNING run.id, run.clip_id, run.type, run.video_version, run.input::text AS input, run.attempts,
                       run.lease_id,
-                      (SELECT clip.video_version FROM clip WHERE clip.id = run.clip_id) AS current_video_version
+                      clip.video_version AS current_video_version,
+                      clip.video_host AS current_video_host,
+                      clip.video_id AS current_video_id
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql,
-            new { MaxAttempts = maxAttempts, StaleAfter = staleAfter });
+            new { MaxAttempts = maxAttempts, StaleAfter = staleAfter, IncludeMigrate = includeMigrate });
     }
 
     /// <summary>
@@ -191,6 +197,13 @@ public class TranscodeStatements(NpgsqlConnection connection)
             new { RunId = runId, LeaseId = leaseId, MaxReleases = maxReleases });
     }
 
+    /// <summary>The clip's host and current version, or null when there is no such clip.</summary>
+    public async Task<ClipVersionRow?> GetClipVersionAsync(Guid clipId)
+    {
+        const string sql = "SELECT video_host, video_version FROM clip WHERE id = @ClipId";
+        return await connection.QuerySingleOrDefaultAsync<ClipVersionRow>(sql, new { ClipId = clipId });
+    }
+
     public async Task<RunStateRow?> GetRunAsync(Guid runId)
     {
         const string sql = """
@@ -242,6 +255,12 @@ public class TranscodeStatements(NpgsqlConnection connection)
         public int Attempts { get; set; }
         public Guid LeaseId { get; set; }
         public int CurrentVideoVersion { get; set; } = 1;
+
+        /// <summary>The clip's <c>video_host</c> now; a migrate job is handed out only while it is still Bunny.</summary>
+        public string CurrentVideoHost { get; set; } = "";
+
+        /// <summary>The clip's <c>video_id</c> now: for a clip on Bunny, its Bunny video.</summary>
+        public Guid CurrentVideoId { get; set; }
     }
 
     public sealed class ProgressRunRow
@@ -272,6 +291,12 @@ public class TranscodeStatements(NpgsqlConnection connection)
 
         /// <summary>The lease the job was last handed back under by a shutting-down worker.</summary>
         public Guid? ReleasedLeaseId { get; set; }
+    }
+
+    public sealed class ClipVersionRow
+    {
+        public string VideoHost { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
     }
 
     public sealed class ReleasedRunRow

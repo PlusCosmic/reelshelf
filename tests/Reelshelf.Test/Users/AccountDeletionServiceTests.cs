@@ -4,6 +4,7 @@ using Reelshelf.Email;
 using Reelshelf.Games;
 using Reelshelf.Users;
 using Reelshelf.Video;
+using Reelshelf.Video.Transcoding;
 using Xunit;
 
 namespace Reelshelf.Test.Users;
@@ -15,12 +16,12 @@ public class AccountDeletionServiceTests
     private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Host, FakeSender Sender, AccountDeletionSignal Signal) Build(
         string? email = "harry@example.com")
     {
-        var (service, store, host, _, sender, signal) = BuildWithTwoHosts(email);
+        var (service, store, host, _, sender, signal, _) = BuildWithTwoHosts(email);
         return (service, store, host, sender, signal);
     }
 
     /// <summary>Bunny (the default for clips and collections the tests add) and a second host without containers.</summary>
-    private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Bunny, FakeVideoHost Other, FakeSender Sender, AccountDeletionSignal Signal) BuildWithTwoHosts(
+    private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Bunny, FakeVideoHost Other, FakeSender Sender, AccountDeletionSignal Signal, FakeTranscodeStorage Storage) BuildWithTwoHosts(
         string? email = "harry@example.com")
     {
         FakeStore store = new() { Email = email };
@@ -32,8 +33,9 @@ public class AccountDeletionServiceTests
         ClipVideoHosts hosts = new(services.BuildServiceProvider());
         FakeSender sender = new();
         AccountDeletionSignal signal = new();
-        AccountDeletionService service = new(store, hosts, sender, signal, NullLogger<AccountDeletionService>.Instance);
-        return (service, store, bunny, other, sender, signal);
+        FakeTranscodeStorage storage = new();
+        AccountDeletionService service = new(store, hosts, storage, sender, signal, NullLogger<AccountDeletionService>.Instance);
+        return (service, store, bunny, other, sender, signal, storage);
     }
 
     [Theory]
@@ -162,7 +164,7 @@ public class AccountDeletionServiceTests
     [Fact]
     public async Task Process_DeletesEachVideoAndContainerAtItsOwnHost()
     {
-        var (service, store, bunny, other, _, _) = BuildWithTwoHosts();
+        var (service, store, bunny, other, _, _, storage) = BuildWithTwoHosts();
         store.AddClips(2);
         store.AddClips(3, VideoHostNames.R2);
         Guid bunnyCollection = Guid.NewGuid();
@@ -170,6 +172,7 @@ public class AccountDeletionServiceTests
         Guid otherContainer = Guid.NewGuid();
         store.OtherContainers.Add(new OwnedVideoContainer(VideoHostNames.R2, otherContainer));
         List<Guid> bunnyVideos = store.Clips.Where(clip => clip.VideoHost == VideoHostNames.Bunny).Select(clip => clip.VideoId).ToList();
+        List<Guid> bunnyClips = store.Clips.Where(clip => clip.VideoHost == VideoHostNames.Bunny).Select(clip => clip.ClipId).ToList();
         List<Guid> otherVideos = store.Clips.Where(clip => clip.VideoHost == VideoHostNames.R2).Select(clip => clip.VideoId).ToList();
         await service.Request(UserId);
 
@@ -180,6 +183,29 @@ public class AccountDeletionServiceTests
         Assert.Equal([bunnyCollection], bunny.DeletedCollections);
         Assert.Equal([otherContainer], other.DeletedCollections);
         Assert.True(store.AccountDeleted);
+        // A Bunny clip's R2 copy, which a migrate job may have written, goes too; an R2 clip's host deletes its own.
+        Assert.Equal(bunnyClips.Select(clipId => (clipId, 1)).Order(), storage.DeletedVersions.Order());
+    }
+
+    private sealed class FakeTranscodeStorage : ITranscodeStorage
+    {
+        private readonly Lock _lock = new();
+        public List<(Guid ClipId, int Version)> DeletedVersions { get; } = [];
+
+        public TranscodeJobUrls UrlsFor(Guid clipId, string jobType, int videoVersion, int currentVersion, TimeSpan lifetime) =>
+            TranscodeJobUrls.None;
+
+        public Task DeleteSourceAsync(Guid clipId) => Task.CompletedTask;
+
+        public Task DeleteVersionAsync(Guid clipId, int videoVersion)
+        {
+            lock (_lock)
+            {
+                DeletedVersions.Add((clipId, videoVersion));
+            }
+
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeStore : IAccountDeletionStore

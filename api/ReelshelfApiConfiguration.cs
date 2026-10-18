@@ -27,6 +27,7 @@ using Reelshelf.QueueMetrics;
 using Reelshelf.Storage;
 using Reelshelf.Twitch;
 using Reelshelf.Video;
+using Reelshelf.Video.Migration;
 using Reelshelf.Video.R2;
 using Reelshelf.Video.Transcoding;
 using StackExchange.Redis;
@@ -338,6 +339,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<ClipTranscriptionBackgroundService>();
             builder.Services.AddHostedService<ClipSummaryBackgroundService>();
             builder.Services.AddHostedService<AccountDeletionBackgroundService>();
+            builder.Services.AddHostedService<BunnyMigrationBackfillService>();
         }
     }
 }

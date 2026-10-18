@@ -48,7 +48,7 @@ public static class R2ObjectKeys
     /// <summary>The files a job of <paramref name="jobType"/> writes, which is what its worker gets a PUT URL for.</summary>
     public static IReadOnlyList<string> OutputsFor(string jobType) => jobType switch
     {
-        TranscodeRunTypes.Transcode => AllOutputs,
+        TranscodeRunTypes.Transcode or TranscodeRunTypes.Migrate => AllOutputs,
         TranscodeRunTypes.Thumbnails => Thumbnails,
         TranscodeRunTypes.Trim => [Av1, .. Thumbnails],
         _ => []

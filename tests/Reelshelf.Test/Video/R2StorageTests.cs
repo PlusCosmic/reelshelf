@@ -42,6 +42,7 @@ public class R2StorageTests
         Assert.Equal(["av1.mp4", .. Thumbnails, "preview.mp4"], R2ObjectKeys.OutputsFor(TranscodeRunTypes.Transcode));
         Assert.Equal(Thumbnails, R2ObjectKeys.OutputsFor(TranscodeRunTypes.Thumbnails));
         Assert.Equal(["av1.mp4", .. Thumbnails], R2ObjectKeys.OutputsFor(TranscodeRunTypes.Trim));
+        Assert.Equal(["av1.mp4", .. Thumbnails, "preview.mp4"], R2ObjectKeys.OutputsFor(TranscodeRunTypes.Migrate));
         Assert.Empty(R2ObjectKeys.OutputsFor(TranscodeRunTypes.Fallback));
         Assert.Equal("video/mp4", R2ObjectKeys.ContentType("preview.mp4"));
         Assert.Equal("image/jpeg", R2ObjectKeys.ContentType("thumbnail_3.jpg"));
@@ -114,6 +115,23 @@ public class R2StorageTests
 
         Assert.Equal($"/reelshelf-dev/clips/{ClipId}/v2/av1.mp4", new Uri(urls.SourceUrl!).AbsolutePath);
         Assert.Equal(Sorted(Thumbnails), Sorted(urls.UploadUrls!.Keys));
+    }
+
+    [Fact]
+    public void AMigrateJob_WritesEveryOutputOfVersionOne_AndReadsNothingFromTheBucket()
+    {
+        using R2Storage storage = new(Options, NullLogger<R2Storage>.Instance);
+
+        TranscodeJobUrls urls = storage.UrlsFor(ClipId, TranscodeRunTypes.Migrate, 1, 1, TimeSpan.FromHours(2));
+
+        // Its source is the clip's Bunny playlist, which the queue adds.
+        Assert.Null(urls.SourceUrl);
+        Assert.Equal(Sorted(["av1.mp4", .. Thumbnails, "preview.mp4"]), Sorted(urls.UploadUrls!.Keys));
+        foreach ((string fileName, string url) in urls.UploadUrls)
+        {
+            Assert.Equal($"/reelshelf-dev/clips/{ClipId}/v1/{fileName}", new Uri(url).AbsolutePath);
+            Assert.Contains("cache-control", HttpUtility.ParseQueryString(new Uri(url).Query)["X-Amz-SignedHeaders"]);
+        }
     }
 
     [Fact]

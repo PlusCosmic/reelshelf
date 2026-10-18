@@ -8,6 +8,7 @@ using Reelshelf.Exceptions;
 using Reelshelf.Games;
 using Reelshelf.Storage;
 using Reelshelf.Video;
+using Reelshelf.Video.Transcoding;
 
 namespace Reelshelf.Core;
 
@@ -20,6 +21,7 @@ public class ClipService(
     StorageQuotaService storageQuotaService,
     StorageWarningService storageWarningService,
     ClipMediaUrls mediaUrls,
+    ITranscodeStorage transcodeStorage,
     ILogger<ClipService> logger)
 {
     private const int ShareTokenByteLength = 32;
@@ -418,6 +420,12 @@ public class ClipService(
         }
 
         await videoHosts.For(clip.VideoHost).DeleteVideoAsync(clip.VideoId);
+        if (clip.VideoHost == VideoHostNames.Bunny)
+        {
+            // A migrate job may have written the clip's R2 copy already; deleting the clip cascades to the job.
+            await transcodeStorage.DeleteVersionAsync(clipId, TranscodeQueue.MigratedVideoVersion);
+        }
+
         await clipsStatements.DeleteClip(clipId);
 
         // Usage went down; clear the "nearly full" marker if the owner is back under the threshold.

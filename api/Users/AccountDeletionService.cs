@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Reelshelf.Email;
 using Reelshelf.Video;
+using Reelshelf.Video.Transcoding;
 
 namespace Reelshelf.Users;
 
@@ -13,6 +14,7 @@ namespace Reelshelf.Users;
 public class AccountDeletionService(
     IAccountDeletionStore store,
     ClipVideoHosts videoHosts,
+    ITranscodeStorage transcodeStorage,
     IEmailSender emailSender,
     AccountDeletionSignal signal,
     ILogger<AccountDeletionService> logger)
@@ -60,6 +62,12 @@ public class AccountDeletionService(
                 try
                 {
                     await videoHosts.For(clip.VideoHost).DeleteVideoAsync(clip.VideoId);
+                    if (clip.VideoHost == VideoHostNames.Bunny)
+                    {
+                        // A migrate job may have written the clip's R2 copy already; the job goes with the clip.
+                        await transcodeStorage.DeleteVersionAsync(clip.ClipId, TranscodeQueue.MigratedVideoVersion);
+                    }
+
                     deletedClipIds.Add(clip.ClipId);
                 }
                 catch (Exception ex)

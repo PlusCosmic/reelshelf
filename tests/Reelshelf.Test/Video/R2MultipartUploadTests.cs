@@ -375,7 +375,7 @@ public class R2MultipartUploadTests
             NpgsqlConnection scoped = dataSource.CreateConnection();
             TranscodeStatements transcodeStatements = new(scoped);
             // Enqueueing touches only the statements.
-            TranscodeQueue queue = new(transcodeStatements, null!, null!,
+            TranscodeQueue queue = new(transcodeStatements, null!, null!, null!,
                 new FixedOptions<TranscodingOptions>(new TranscodingOptions()), NullLogger<TranscodeQueue>.Instance);
             Host = new R2VideoHost(_storage, new ClipsStatements(scoped), transcodeStatements, queue, Probe,
                 TimeProvider.System, NullLogger<R2VideoHost>.Instance);

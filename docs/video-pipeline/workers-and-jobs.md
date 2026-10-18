@@ -100,6 +100,26 @@ upload completes and passes its checks (#213, see [r2-bucket.md](r2-bucket.md#br
   written for these clips and stays NULL until the column is dropped.
 - **Early detection:** with `Transcoding:QueueDetectionOnThumbnails` (off by default), the first progress report
   with `thumbnails_ready` queues legend detection instead of waiting for the encode.
+- **Moving clips off Bunny (`migrate`, #239, V44):** see [bunny-migration.md](bunny-migration.md) for the plan.
+  `BunnyMigrationBackfillService` (`api/Video/Migration/`) queues them where `Migration:Enabled` is true (default
+  false) and R2 is configured, keeping up to `Migration:BatchSize` (20) pending or running, from the `ready` clips on
+  `bunny`, oldest first. It skips a clip with any job pending or running, and any clip that has ever had a `migrate`:
+  a failed one is for a person to look at, and a succeeded one whose clip is on Bunny again was switched back on
+  purpose. Deleting the run lets the backfill take the clip again. They are queued at priority 10, so every other job
+  goes first. The claim never hands one out without R2 (unlike the other types, which go out with null URLs), and
+  fails one whose clip is no longer on Bunny instead of handing it out. A claimed `migrate` has `video_version` 1, an
+  empty `input`, a `source_url` that is the clip's public, unsigned Bunny HLS master playlist
+  (`https://<pull zone>/{videoId}/playlist.m3u8`, from `BunnyMediaUrls`), and the `transcode` keys under
+  `clips/{clipId}/v1/` in `upload_urls`. Progress and completion bodies are those of a `transcode`, and
+  `retryable: false` means the Bunny source is gone or unreadable. Progress, release and failure never touch the
+  clip, which plays from Bunny throughout; a final failure leaves it there. Completion moves a clip still on
+  `bunny`, in the run's transaction: `bunny_video_id` takes its Bunny `video_id`, `migrated_at` is set, and it is
+  `ready` on `r2` with `video_id` its clip id, `video_version` 1, the codecs, height, length and AV1 size reported,
+  and `file_size` and the legacy `video_status` cleared. Nothing is queued after it, since detection, transcripts and
+  summaries are keyed by clip. If the clip left Bunny meanwhile, the run still succeeds, the clip is left alone, and
+  `clips/{clipId}/v1/` is deleted, unless the clip itself plays from R2 version 1. A clip deleted meanwhile takes its
+  job with it (`transcode_run` cascades from `clip`, so the worker's completion gets 404), so deleting a Bunny clip
+  also deletes `clips/{clipId}/v1/`; a PUT the worker makes after that is left in the bucket.
 - **Credential:** the endpoints require the `Worker` policy: `Authorization: Bearer <Worker:Secret>`, compared in
   constant time. A secret that is unset or shorter than 32 characters refuses every request. The site cookie never
   satisfies the policy, and the secret authorises nothing else. Requests are rate limited per address

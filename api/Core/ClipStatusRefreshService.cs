@@ -68,7 +68,7 @@ public class ClipStatusRefreshService(
                         continue;
                     }
 
-                    await clipsStatements.UpdateClipMetadata(clip.Id, video.Title, video);
+                    await clipsStatements.UpdateClipMetadata(clip.Id, clip.VideoHost, clip.VideoId, video.Title, video);
 
                     updated++;
                 }
