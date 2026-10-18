@@ -3429,6 +3429,17 @@ html:has(.rs-library-route) {
   isolation: isolate;
 }
 
+/* The player is 16:9 at its column's width, which on a wide screen is taller than the window. Cap the width
+   so its height fits under the top bar and the game strip (60px and its 3px stitch) with the layout's 36px
+   above and some room below, but never shrink it past a usable size on a very short window. */
+.rs-watch-stage .rs-player {
+  max-width: max(
+    480px,
+    calc((100dvh - var(--rs-topbar-height, 64px) - 63px - 36px - 28px) * 16 / 9)
+  );
+  margin-inline: auto;
+}
+
 .rs-watch-stage-art,
 .rs-watch-neighbour,
 .rs-watch-facts,
@@ -3678,6 +3689,11 @@ html:has(.rs-library-route) {
   .rs-watch.theatre .rs-player {
     flex: none;
     width: min(1040px, 100% - 2 * (128px + 28px));
+    /* The stage's own 44px padding above and below takes the place of the layout's. */
+    max-width: max(
+      480px,
+      calc((100dvh - var(--rs-topbar-height, 64px) - 63px - 88px) * 16 / 9)
+    );
     box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
   }
 
