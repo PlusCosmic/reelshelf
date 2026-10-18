@@ -9,41 +9,84 @@ namespace Reelshelf.Worker;
 /// worker has the job now). Waits longer while the queue is empty or the API is failing. On SIGTERM a job whose encode
 /// is under way gets <see cref="WorkerSettings.ShutdownGrace"/> to finish; past that it is stopped and released, which
 /// puts it back in the queue without using an attempt. A job that hasn't started encoding is stopped and released at
-/// once. Releasing is only for shutdown: a job that fails, ffmpeg crashing included, is reported as failed.
+/// once. Releasing is only for shutdown: a job that fails, ffmpeg crashing included, is reported as failed. With
+/// <see cref="WorkerSettings.ExitWhenIdleAfter"/> set, the worker stops the host (exit code 0) once it has gone that
+/// long without claiming a job.
 /// </summary>
 public sealed class WorkerLoop(
     WorkerApiClient api,
     JobRunner runner,
     FfmpegRunner ffmpeg,
     IOptions<WorkerSettings> options,
-    ILogger<WorkerLoop> logger) : BackgroundService
+    ILogger<WorkerLoop> logger,
+    IHostApplicationLifetime? lifetime = null,
+    TimeProvider? timeProvider = null) : BackgroundService
 {
     /// <summary>How long a report may take once the worker is shutting down.</summary>
     private static readonly TimeSpan ShutdownReportBudget = TimeSpan.FromSeconds(10);
 
     private readonly WorkerSettings settings = options.Value;
+    private readonly TimeProvider time = timeProvider ?? TimeProvider.System;
     private FfmpegCapabilities? capabilities;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await StartAsync();
+        if (await PollAsync(RunOnceAsync, stoppingToken))
+        {
+            // Exiting when idle is the expected end of an overflow worker, not a failure.
+            Environment.ExitCode = 0;
+            lifetime?.StopApplication();
+        }
 
+        logger.LogInformation("Worker stopped");
+    }
+
+    /// <summary>
+    /// Runs <paramref name="runOnce"/> (a claim, and the job when there was one) until shutdown, waiting between empty
+    /// claims and after API errors. True when it stopped because it had gone <see cref="WorkerSettings.ExitWhenIdleAfter"/>
+    /// without claiming a job; false on shutdown.
+    /// </summary>
+    internal async Task<bool> PollAsync(Func<CancellationToken, Task<bool>> runOnce, CancellationToken stoppingToken)
+    {
         Backoff idle = new(settings.IdlePollInterval, settings.MaxIdlePollInterval);
         Backoff errors = new(settings.ErrorBackoff, settings.MaxErrorBackoff);
+        // Time spent on empty claims and the waits after them since the last job; the waits after API errors don't
+        // count, so an outage of the API doesn't make every overflow worker exit.
+        TimeSpan idleFor = TimeSpan.Zero;
+        TimeSpan? exitAfter = settings.ExitWhenIdleAfter;
         while (!stoppingToken.IsCancellationRequested)
         {
+            DateTimeOffset started = time.GetUtcNow();
             TimeSpan delay;
+            bool countsAsIdle;
             try
             {
-                if (await RunOnceAsync(stoppingToken))
+                if (await runOnce(stoppingToken))
                 {
                     idle.Reset();
                     errors.Reset();
+                    idleFor = TimeSpan.Zero;
                     continue;
                 }
 
                 errors.Reset();
+                idleFor += time.GetUtcNow() - started;
+                if (idleFor >= exitAfter)
+                {
+                    logger.LogInformation("No job claimed for {Idle}; exiting (Worker:ExitWhenIdleAfter is {Limit})",
+                        idleFor, exitAfter);
+                    return true;
+                }
+
                 delay = idle.Next();
+                if (exitAfter - idleFor is { } remaining && remaining < delay)
+                {
+                    // Claim once more right at the limit rather than sleeping past it.
+                    delay = remaining;
+                }
+
+                countsAsIdle = true;
             }
             catch (Exception exception)
             {
@@ -54,20 +97,27 @@ public sealed class WorkerLoop(
                 }
 
                 delay = errors.Next();
+                countsAsIdle = false;
                 logger.LogWarning("Could not claim a job, retrying in {Delay}: {Error}", delay, exception.Message);
             }
 
+            DateTimeOffset waiting = time.GetUtcNow();
             try
             {
-                await Task.Delay(delay, stoppingToken);
+                await Task.Delay(delay, time, stoppingToken);
             }
             catch (OperationCanceledException)
             {
                 break;
             }
+
+            if (countsAsIdle)
+            {
+                idleFor += time.GetUtcNow() - waiting;
+            }
         }
 
-        logger.LogInformation("Worker stopped");
+        return false;
     }
 
     /// <summary>Checks ffmpeg and clears work left by a worker that died mid-job.</summary>
