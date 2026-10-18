@@ -69,6 +69,7 @@ public sealed class JobRunner(
         List<string> files = await FramesAsync(job, source, trim, toneMap, reporter, workDirectory, cancellationToken);
 
         string video = Path.Combine(workDirectory, OutputFiles.Video);
+        reporter.EncodeStarting();
         await ffmpeg.RunFfmpegAsync(EncodeArguments.Transcode(source, video, settings, trim, toneMap), cancellationToken,
             trim.LengthSeconds, share => reporter.Report((int)(share * 100)));
 
@@ -124,6 +125,7 @@ public sealed class JobRunner(
         IReadOnlyList<string> arguments = input.FrameAccurate
             ? EncodeArguments.Transcode(source, video, settings, trim, toneMap: false)
             : EncodeArguments.TrimCopy(source, video, trim);
+        reporter.EncodeStarting();
         await ffmpeg.RunFfmpegAsync(arguments, cancellationToken, trim.LengthSeconds,
             share => reporter.Report((int)(share * 100)));
 

@@ -53,8 +53,9 @@ public sealed class WorkerSettings
     public long MaxSourceBytes { get; set; } = 8L * 1024 * 1024 * 1024;
 
     /// <summary>
-    /// On SIGTERM the running job gets this long to finish before it is stopped and handed back to the queue as a
-    /// retryable failure. The container's stop timeout must be longer.
+    /// On SIGTERM a job whose encode has started gets this long to finish before it is stopped and released back to
+    /// the queue (which refunds its attempt); one that hasn't started encoding is released at once. The container's
+    /// stop timeout must be longer.
     /// </summary>
     public TimeSpan ShutdownGrace { get; set; } = TimeSpan.FromSeconds(20);
 
