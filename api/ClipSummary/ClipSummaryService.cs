@@ -17,10 +17,10 @@ public class ClipSummaryService(
     ILogger<ClipSummaryService> logger)
 {
     /// <summary>Retry a failed attempt after this long, so a brief provider outage is not retried at once.</summary>
-    private static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
+    public static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
 
     /// <summary>A run still marked running after this long belonged to a worker that stopped; claim it again.</summary>
-    private static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(10);
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(10);
 
     /// <summary>
     /// The summary trigger for a succeeded transcription, or null when it queues none. An automatic

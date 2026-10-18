@@ -24,10 +24,10 @@ public class LegendDetectionService(
     private const double ConfidentAt = 0.8;
 
     /// <summary>Retry a failed attempt after this long, so a brief provider or CDN outage is not retried at once.</summary>
-    private static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
+    public static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
 
     /// <summary>A run still marked running after this long belonged to a worker that stopped; claim it again.</summary>
-    private static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(10);
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(10);
 
     /// <summary>
     /// Queues the automatic run for a clip whose video has finished encoding, when automatic detection is on and

@@ -23,6 +23,7 @@ using Reelshelf.Exceptions;
 using Reelshelf.FFmpeg;
 using Reelshelf.Games;
 using Reelshelf.Playlists;
+using Reelshelf.QueueMetrics;
 using Reelshelf.Storage;
 using Reelshelf.Twitch;
 using Reelshelf.Video;
@@ -313,6 +314,9 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddSingleton<IClipSummarizerFactory, ClipSummarizerFactory>();
         builder.Services.AddScoped<ClipSummaryStatements>();
         builder.Services.AddScoped<ClipSummaryService>();
+
+        // Gauges for every run table above; the sampler stays out of the OpenApi environment like the services below.
+        builder.AddQueueMetrics();
 
         // Background services should not run during explicit OpenAPI document generation.
         if (!builder.Environment.IsEnvironment("OpenApi"))

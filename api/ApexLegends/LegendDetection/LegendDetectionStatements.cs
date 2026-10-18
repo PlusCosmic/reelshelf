@@ -7,6 +7,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
 {
     public const string AutoTrigger = "auto";
     public const string ManualTrigger = "manual";
+    public const string EscalationTrigger = "escalation";
 
     /// <summary>A run that belongs to an eval: scored against the baseline and never used as a clip's legend.</summary>
     public const string EvalTrigger = "eval";

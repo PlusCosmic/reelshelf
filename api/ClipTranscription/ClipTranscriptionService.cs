@@ -24,10 +24,10 @@ public class ClipTranscriptionService(
     public const long MaxUploadBytes = 25L * 1024 * 1024;
 
     /// <summary>Retry a failed attempt after this long, so a brief provider or CDN outage is not retried at once.</summary>
-    private static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
+    public static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
 
     /// <summary>A run still marked running after this long belonged to a worker that stopped; claim it again.</summary>
-    private static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(15);
 
     /// <summary>
     /// Whether a clip that just finished encoding gets its automatic run: automatic queueing is on, transcription
