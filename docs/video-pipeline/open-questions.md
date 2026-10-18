@@ -48,14 +48,15 @@
     queue metrics the API publishes for every run table: pending count, oldest pending age, in progress, recent
     failures and exhausted attempts, as OpenTelemetry/Prometheus or CloudWatch custom metrics. Reconsider SQS only
     if external workers need it.
-  - **Queue metrics exist (#205):** the API samples `legend_detection_run`, `clip_transcription_run` and
-    `clip_summary_run` and publishes pending, retrying, oldest pending age, running, stale running, and succeeded,
-    failed and exhausted in the last hour as gauges on the `Reelshelf.Queues` meter, exported over OTLP when
-    `QueueMetrics:Exporter=otlp` (see `api/QueueMetrics/` and AGENTS.md). `transcode_run` is not sampled yet
-    (a follow-up): its columns differ from the other run tables (`type` rather than `trigger`, `available_at` for
-    the retry delay, `heartbeat_at` for staleness, `finished_at`), so it needs its own `IRunQueueMetricsSource`
-    registered in `QueueMetricsSetup` rather than the shared `RunTableMetricsSource`. Its oldest pending age is the
-    overflow scaling signal. Still open: where the OTLP goes (a collector forwarding to CloudWatch for Fargate
+  - **Queue metrics exist (#205, #222):** the API samples `legend_detection_run`, `clip_transcription_run`,
+    `clip_summary_run` and `transcode_run` and publishes pending, retrying, oldest pending age, running, stale
+    running, and succeeded, failed and exhausted in the last hour as gauges on the `Reelshelf.Queues` meter,
+    exported over OTLP when `QueueMetrics:Exporter=otlp` (see `api/QueueMetrics/` and AGENTS.md). `transcode_run`
+    has its own source (`TranscodeRunMetricsSource`, `queue=transcode`, the job type as `trigger`), since its
+    columns differ: `available_at` splits pending from retrying, `heartbeat_at` against `Transcoding:StaleAfter`
+    marks stale jobs, and `finished_at` (indexed by V43) dates finished ones. Jobs out of attempts count as
+    exhausted as soon as they are, not only once the next claim fails them, and don't count as pending, so the
+    oldest pending age, the overflow scaling signal, only covers jobs a worker can still take. Still open: where the OTLP goes (a collector forwarding to CloudWatch for Fargate
     scaling, or Prometheus/Grafana in `PlusCosmic/infrastructure`), and the alarms (oldest pending above N
     minutes, any exhausted runs).
 - **Fallback:** the storage discussion lists an H.264 720p fallback, pre-generated or made on first request.

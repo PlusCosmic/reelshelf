@@ -43,11 +43,12 @@ public static class QueueMetricsSetup
         builder.Services.AddMetrics();
         builder.Services.AddSingleton<RunQueueMetrics>();
 
-        // A run table with the usual columns is one more line here; one shaped differently (transcode_run, with
-        // type, available_at, heartbeat_at and finished_at) registers its own IRunQueueMetricsSource instead.
+        // A run table with the usual columns is one more line here; one shaped differently registers its own
+        // IRunQueueMetricsSource instead, as transcode_run does (type, available_at, heartbeat_at, finished_at).
         builder.Services.AddRunTableQueueMetrics<LegendDetectionOptions>(LegendDetectionQueue, o => o.MaxAttempts);
         builder.Services.AddRunTableQueueMetrics<ClipTranscriptionOptions>(ClipTranscriptionQueue, o => o.MaxAttempts);
         builder.Services.AddRunTableQueueMetrics<ClipSummaryOptions>(ClipSummaryQueue, o => o.MaxAttempts);
+        builder.Services.AddSingleton<IRunQueueMetricsSource, TranscodeRunMetricsSource>();
 
         if (builder.Environment.IsEnvironment("OpenApi"))
         {

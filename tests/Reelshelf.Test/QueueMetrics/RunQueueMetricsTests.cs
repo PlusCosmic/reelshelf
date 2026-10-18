@@ -118,7 +118,8 @@ public class RunQueueMetricsTests
             ["QueueMetrics:Otlp:Protocol"] = "http/protobuf"
         });
         Assert.NotNull(otlp.GetService<MeterProvider>());
-        Assert.Equal(3, otlp.GetServices<IRunQueueMetricsSource>().Count());
+        Assert.Equal(["clip_summary", "clip_transcription", "legend_detection", "transcode"],
+            otlp.GetServices<IRunQueueMetricsSource>().Select(source => source.Queue).Order());
         Assert.Contains(otlp.GetServices<IHostedService>(), service => service is QueueMetricsBackgroundService);
 
         Assert.Throws<InvalidOperationException>(() =>
