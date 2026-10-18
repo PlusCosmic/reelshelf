@@ -42,12 +42,14 @@ public sealed class FfmpegRunner(IOptions<WorkerSettings> options)
     /// <summary>
     /// Runs ffmpeg. With <paramref name="onProgress"/> and an expected output length, the arguments must include
     /// <c>-progress pipe:1</c>, and it is called with the encoded share (0 to 1) as ffmpeg reports it.
+    /// <paramref name="onStderrLine"/> sees every line ffmpeg logs, whether or not it fails.
     /// </summary>
     public async Task RunFfmpegAsync(
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
         double expectedSeconds = 0,
-        Action<double>? onProgress = null)
+        Action<double>? onProgress = null,
+        Action<string>? onStderrLine = null)
     {
         Action<string>? onLine = null;
         if (onProgress is not null && expectedSeconds > 0)
@@ -63,7 +65,7 @@ public sealed class FfmpegRunner(IOptions<WorkerSettings> options)
             };
         }
 
-        await RunAsync(settings.FfmpegPath, arguments, onLine, cancellationToken);
+        await RunAsync(settings.FfmpegPath, arguments, onLine, cancellationToken, onStderrLine: onStderrLine);
     }
 
     /// <summary>ffprobe's description of <paramref name="path"/>. Throws <see cref="FfmpegException"/> when it can't read it.</summary>
@@ -110,7 +112,8 @@ public sealed class FfmpegRunner(IOptions<WorkerSettings> options)
         IReadOnlyList<string> arguments,
         Action<string>? onStdoutLine,
         CancellationToken cancellationToken,
-        bool nice = true)
+        bool nice = true,
+        Action<string>? onStderrLine = null)
     {
         (string fileName, IReadOnlyList<string> args) = Command(tool, arguments, nice ? settings.Niceness : 0);
         ProcessStartInfo startInfo = new(fileName)
@@ -138,6 +141,7 @@ public sealed class FfmpegRunner(IOptions<WorkerSettings> options)
                 return;
             }
 
+            onStderrLine?.Invoke(e.Data);
             lock (stderr)
             {
                 stderr.Enqueue(e.Data);

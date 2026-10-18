@@ -32,12 +32,13 @@ The glue is a few hundred lines. Suggested shape:
 
 One queue (`transcode_run`) with a job type per row, claimed in priority order like the other run tables:
 
-| Type         | Input                                                  | Output                                                                                            |
-| ------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `transcode`  | The uploaded source in R2, plus any trim set at upload | A new video version: AV1 MP4, thumbnail, five detection frames, animated preview; length and size |
-| `thumbnails` | An existing AV1 output                                 | Regenerated thumbnail and detection frames, without re-encoding                                   |
-| `trim`       | The current AV1 output and the new trim                | A new, shorter video version (stream copy, or re-encode if frame-accurate)                        |
-| `fallback`   | An existing output (later)                             | The on-demand H.264 file (see [playback-and-codecs.md](playback-and-codecs.md))                   |
+| Type         | Input                                                  | Output                                                                                                        |
+| ------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `transcode`  | The uploaded source in R2, plus any trim set at upload | A new video version: AV1 MP4, thumbnail, five detection frames, animated preview; length and size             |
+| `thumbnails` | An existing AV1 output                                 | Regenerated thumbnail and detection frames, without re-encoding                                               |
+| `trim`       | The current AV1 output and the new trim                | A new, shorter video version (stream copy, or re-encode if frame-accurate)                                    |
+| `fallback`   | An existing output (later)                             | The on-demand H.264 file (see [playback-and-codecs.md](playback-and-codecs.md))                               |
+| `migrate`    | A Bunny clip's HLS master playlist (#239, #240)        | The same as `transcode`, after remuxing the HLS to a local MP4 (see [bunny-migration.md](bunny-migration.md)) |
 
 **Thumbnails are a step of `transcode`, not a separate job.** The worker already has the source on disk, and
 grabbing frames takes seconds; a separate job would fetch the source again. Two refinements:
@@ -110,7 +111,8 @@ upload completes and passes its checks (#213, see [r2-bucket.md](r2-bucket.md#br
 
 `workers/Reelshelf.Worker/` is a .NET console app (generic host) with its own image, `ghcr.io/pluscosmic/reelshelf-worker`
 (`workers/Reelshelf.Worker/Dockerfile`: `debian:trixie-slim` with the worker published self-contained and Debian's ffmpeg 7.1 and SVT-AV1 2.3, running as
-the image's unprivileged `app` user). It calls ffmpeg and ffprobe as processes with argument lists rather than
+the image's unprivileged `app` user; the build checks that this ffmpeg has the `https` protocol and the HLS demuxer, which
+`migrate` needs). It calls ffmpeg and ffprobe as processes with argument lists rather than
 through FFMpegCore, so it can run them under `nice` and read `-progress`. Its tests are in `tests/Reelshelf.Worker.Test/`.
 
 - **Configuration** (`Worker__*` environment variables, `WorkerSettings`): `ApiBaseUrl` and `Secret` (the API's
@@ -118,7 +120,7 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   have defaults: `Preset` (SVT-AV1, 8), `LogicalProcessors` (SVT-AV1 `lp`, 0 = all cores), `TargetBitrateKbps`
   (4000), `AudioBitrateKbps` (128), `Niceness` (10), `IdlePollInterval`/`MaxIdlePollInterval` (5 s doubling to 60 s),
   `ErrorBackoff`/`MaxErrorBackoff` (5 s to 5 min), `HeartbeatInterval` (30 s), `ShutdownGrace` (20 s),
-  `MaxSourceBytes` (8 GiB), `WorkDirectory` (`/work` in the image) and `FfmpegPath`/`FfprobePath`. It holds no
+  `MaxSourceBytes` (8 GiB, which also caps a remuxed HLS source), `RemuxTimeout` (20 min), `WorkDirectory` (`/work` in the image) and `FfmpegPath`/`FfprobePath`. It holds no
   storage keys: everything goes through the job's presigned URLs, and the secret is only ever sent to the API.
 - **Loop:** one job at a time. Claim; on 204 wait, doubling while the queue stays empty; on an API error, back off
   the same way. Each job gets its own directory, deleted when it ends (and leftovers from a crash are deleted at
@@ -151,6 +153,23 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   second) or, with `frame_accurate`, re-encoded with the same settings; the frames are then taken from the new
   version. **`thumbnails`:** only the frames, with the existing output's length, size and codecs. `fallback` fails
   as unsupported.
+- **`migrate`** (#240, [bunny-migration.md](bunny-migration.md)): `source_url` is the clip's public, unsigned Bunny
+  HLS master playlist, with variant playlists and segments relative to it, and `upload_urls` are a transcode's.
+  `HlsRemux` copies it into the job directory as an MP4 (`EncodeArguments.HlsRemux`: `-f hls -i <playlist> -c copy`,
+  no subtitles or data). ffmpeg's default selection takes the highest-resolution variant and downloads only that one,
+  and its MP4 muxer converts the ADTS AAC itself. Only network protocols are allowed (`-protocol_whitelist`), so a
+  playlist can't point ffmpeg at local files, a read that stalls for 30 s (`-rw_timeout`) errors, and a segment is
+  retried 3 times by ffmpeg (`-seg_max_retry`). The remux runs under `nice` like every ffmpeg run, and the whole of
+  it, retries included, under `Worker:RemuxTimeout` (20 min; running out fails as retryable). From there the job is a
+  `transcode`, the same code unchanged: the remuxed file is probed, framed, encoded, previewed, uploaded and
+  completed, and its `input` (no trim fields) is read the same way. The remux doesn't touch how a `transcode` fetches
+  its source.
+  - **Failures** are read from ffmpeg's log, at warning level: a 403, 404 or 410 on the playlist or a segment (the
+    video is gone), or input that isn't HLS, fails with `retryable: false`. Network errors and 5xx are retried like
+    storage reads (three more tries, 2, 4, 8 s), then fail as retryable. ffmpeg skips a segment it can't fetch and
+    still exits 0, so a log that shows a skipped segment or a failed playlist reload counts as a failed read, not a
+    clip with a hole in it.
+  - **Shutdown** during the remux is like one before the encode: the job is released at once.
 - **Uploads** send exactly the headers the presigned PUTs sign: `Content-Type` `video/mp4` or `image/jpeg`, and
   `Cache-Control: public, max-age=31536000, immutable`. Storage 5xx, 429 and network errors are retried three times
   (2, 4, 8 s); after that, or on a 403, the job fails as retryable so the next claim gets fresh URLs. A missing source
@@ -170,7 +189,9 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
 - **Tests:** unit tests for the argument lists, frame timing, trim input, codecs strings and ffprobe parsing, and
   `[SvtAv1Fact]` tests that run the whole loop against `FakeWorkerApi` (the worker endpoints and a bucket on a
   loopback `HttpListener`) on `lavfi` test clips: transcode with a trim, HDR at 1440p, stream-copy and frame-accurate
-  trims, thumbnails, a lost lease, unreadable input, shutdown (released mid-encode past the grace, and at once
+  trims, thumbnails, `migrate` from a `lavfi`-made two-variant HLS ladder served by the fake's storage (the 720p
+  variant is the one encoded), a 503 on the playlist (retried), a 404 playlist and one that isn't HLS (both not
+  retryable), a shutdown during the remux (released at once), a lost lease, unreadable input, shutdown (released mid-encode past the grace, and at once
   before the encode), an ffmpeg crash (failed, also during the grace) and an empty queue. They skip when the local ffmpeg has
   no libsvtav1. CI's runner has Ubuntu 24.04's ffmpeg (SVT-AV1 1.7), older than the image's. The image moved off
   1.7 because it segfaulted inside `libSvtAv1Enc` on the dedicated server's VM (one CPU socket per vCPU) for an
