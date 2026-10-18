@@ -11,6 +11,27 @@
 
 ## Undecided
 
+- **Queue: SQS or our Postgres run tables?** The storage discussion picked SQS. The app already queues work in
+  Postgres run tables (`legend_detection_run`, `clip_transcription_run`, `clip_summary_run`): a background service
+  claims the next row with `FOR UPDATE SKIP LOCKED`, counts attempts, retries after a delay, reclaims a run whose
+  worker went quiet (`ClaimNextRunAsync` in `api/ApexLegends/LegendDetection/LegendDetectionStatements.cs`), and
+  orders by priority (manual before automatic before eval).
+  - **For Postgres:**
+    - Enqueueing commits in the same transaction as the clip update, so no job is lost or orphaned. With SQS that
+      takes an outbox, or relying on the status refresh to re-enqueue.
+    - Priority is just `ORDER BY`, which the H.264 fallback job would need. Standard SQS has no priority, so it
+      would take a second queue.
+    - Job history is queryable for a review page, like `/legend-detection`.
+    - It's one pattern the code and agents already know, with no new credentials.
+  - **For SQS:**
+    - Workers outside the server, such as Fargate Spot, reach it without our database being exposed.
+    - `ApproximateAgeOfOldestMessage` is a CloudWatch metric that can scale Fargate directly.
+    - Visibility timeouts and a dead-letter queue are built in.
+  - **Middle option:** keep a `transcode_run` table as the queue, and have workers claim and report through
+    authenticated API endpoints over HTTPS rather than connecting to Postgres. The API runs the same
+    `SKIP LOCKED` claim and applies results through `ClipVideoUpdateHandler`. For overflow, the API publishes the
+    oldest pending job's age as a custom CloudWatch metric, or starts Fargate tasks itself with `RunTask`. That keeps
+    one queue pattern and leaves the database private, at the cost of building the scaling signal. Undecided.
 - **Fallback:** the storage discussion lists an H.264 720p fallback, pre-generated or made on first request.
   Current call (2026-10-18): none for now, since everyone using Reelshelf can decode AV1. Build the seams (a
   `sources` list, a "can't play on this device" message, room in the queue for a fallback job) and add an
