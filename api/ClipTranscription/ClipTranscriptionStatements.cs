@@ -108,7 +108,7 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
                   ORDER BY trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, run.trigger, run.model, run.attempts,
+            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, run.trigger, run.model, run.attempts,
                       game.name AS game_name, game.slug AS game_slug
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql,
@@ -212,7 +212,7 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
     public async Task<List<ReviewClipRow>> GetClipsForReviewAsync(List<Guid> ownerIds)
     {
         const string sql = """
-            SELECT clip.id, clip.video_id, clip.video_host, clip.title, clip.length, clip.created_at,
+            SELECT clip.id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, clip.title, clip.length, clip.created_at,
                    COALESCE(owner.global_name, owner.username) AS owner_name,
                    game.name AS game_name, game.slug AS game_slug
             FROM clip
@@ -288,11 +288,14 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         public string ProviderUserId { get; set; } = "";
     }
 
-    public class ReviewClipRow
+    public class ReviewClipRow : IClipVideoColumns
     {
         public Guid Id { get; set; }
         public Guid VideoId { get; set; }
         public string VideoHost { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
+        public string? VideoCodecs { get; set; }
+        public int? VideoHeight { get; set; }
         public string? Title { get; set; }
         public int? Length { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
@@ -325,12 +328,15 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         public int? AverageDurationMs { get; set; }
     }
 
-    public class ClaimedRunRow
+    public class ClaimedRunRow : IClipVideoColumns
     {
         public Guid Id { get; set; }
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
         public string VideoHost { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
+        public string? VideoCodecs { get; set; }
+        public int? VideoHeight { get; set; }
         public string Trigger { get; set; } = "";
         public string Model { get; set; } = "";
         public int Attempts { get; set; }

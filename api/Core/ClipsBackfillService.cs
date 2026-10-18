@@ -37,7 +37,15 @@ public class ClipsBackfillService(
         {
             try
             {
-                HostedVideoInfo? video = await videoHosts.For(clip.VideoHost).GetVideoAsync(clip.VideoId);
+                IClipVideoHost videoHost = videoHosts.For(clip.VideoHost);
+                if (!videoHost.NeedsStatusPolling)
+                {
+                    // The clip row is already what this host knows; there is nothing to copy back onto it.
+                    successCount++;
+                    continue;
+                }
+
+                HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
 
                 if (video is null)
                 {

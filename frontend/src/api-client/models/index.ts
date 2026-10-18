@@ -3,6 +3,7 @@
 export * from "./ActivityClip";
 export * from "./ActivityClipsResponse";
 export * from "./ActivityConfigResponse";
+export * from "./ActivityMedia";
 export * from "./ActivityParticipantResponse";
 export * from "./ActivitySessionResponse";
 export * from "./ActivityTokenRequest";

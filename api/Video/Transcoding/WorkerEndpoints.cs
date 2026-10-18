@@ -4,8 +4,11 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace Reelshelf.Video.Transcoding;
 
 /// <summary>
-/// A job for a worker. <paramref name="LeaseId"/> goes with every report on it. The URL fields are placeholders until
-/// the R2 host exists: it will presign a GET for the source and a PUT for each output.
+/// A job for a worker. <paramref name="LeaseId"/> goes with every report on it. <paramref name="SourceUrl"/> is a
+/// presigned GET for the job's input and <paramref name="UploadUrls"/> a presigned PUT for each output, by file name
+/// (<c>av1.mp4</c>, <c>thumbnail.jpg</c>, <c>thumbnail_1.jpg</c>..<c>thumbnail_5.jpg</c>, <c>preview.mp4</c>); each PUT
+/// signs <c>Content-Type</c> and <c>Cache-Control</c>, which the worker must send as given in
+/// docs/video-pipeline/workers-and-jobs.md. Both are null while R2 is not configured.
 /// </summary>
 public sealed record WorkerJobResponse(
     Guid RunId,
@@ -64,7 +67,7 @@ public static class WorkerEndpoints
         }
 
         return TypedResults.Ok(new WorkerJobResponse(run.RunId, run.LeaseId, run.ClipId, run.Type, run.VideoVersion,
-            run.Attempt, run.Input, SourceUrl: null, UploadUrls: null));
+            run.Attempt, run.Input, run.SourceUrl, run.UploadUrls));
     }
 
     private static async Task<Results<NoContent, BadRequest<string>, NotFound, Conflict<string>>> ReportProgress(

@@ -16,7 +16,10 @@ public enum TranscodeReportOutcome
     LeaseLost
 }
 
-/// <summary>A job handed to a worker.</summary>
+/// <summary>
+/// A job handed to a worker, with the presigned URLs it reads its input from and writes its outputs to (see
+/// <see cref="ITranscodeStorage.UrlsFor"/>).
+/// </summary>
 public sealed record ClaimedTranscodeRun(
     Guid RunId,
     Guid LeaseId,
@@ -24,22 +27,34 @@ public sealed record ClaimedTranscodeRun(
     string Type,
     int VideoVersion,
     int Attempt,
-    JsonElement Input);
+    JsonElement Input,
+    string? SourceUrl = null,
+    IReadOnlyDictionary<string, string>? UploadUrls = null);
 
 /// <summary>
 /// The transcode job queue (<c>transcode_run</c>). The video host enqueues jobs; workers claim them and report
 /// back through <see cref="WorkerEndpoints"/>, never touching Postgres themselves, and results reach the clip
-/// through <see cref="ClipVideoUpdateHandler"/>. Only <c>transcode</c> jobs change a clip's status today; the other
-/// types record their output on the run until the features that use them land.
+/// through <see cref="ClipVideoUpdateHandler"/>. A <c>transcode</c> drives the clip's status; a finished
+/// <c>transcode</c> or <c>trim</c> moves the clip to its new video version, after which the storage deletes the
+/// uploaded source and any version it replaced. The other types record their output on the run until the features
+/// that use them land.
 /// </summary>
 public class TranscodeQueue(
     TranscodeStatements statements,
     ClipVideoUpdateHandler updateHandler,
+    ITranscodeStorage storage,
     IOptionsMonitor<TranscodingOptions> options,
     ILogger<TranscodeQueue> logger)
 {
     /// <summary>The longest error a worker's failure keeps.</summary>
     public const int MaxErrorLength = 4000;
+
+    /// <summary>
+    /// How long a claimed job's presigned URLs live: past <see cref="TranscodingOptions.StaleAfter"/>, after which a
+    /// quiet job is reclaimed with fresh ones, with an hour to spare for a worker still uploading at that point.
+    /// </summary>
+    public static TimeSpan PresignLifetime(TranscodingOptions options) =>
+        (options.StaleAfter < TimeSpan.Zero ? TimeSpan.Zero : options.StaleAfter) + TimeSpan.FromHours(1);
 
     /// <summary>
     /// Queues a job for a clip, as the video host does when an upload completes. Returns its id, or null when the
@@ -103,9 +118,11 @@ public class TranscodeQueue(
 
         logger.LogInformation("Worker claimed {Type} job {RunId} for clip {ClipId} (attempt {Attempt})",
             claimed.Type, claimed.Id, claimed.ClipId, claimed.Attempts);
+        TranscodeJobUrls urls = storage.UrlsFor(claimed.ClipId, claimed.Type, claimed.VideoVersion,
+            claimed.CurrentVideoVersion, PresignLifetime(current));
         using JsonDocument input = JsonDocument.Parse(claimed.Input);
         return new ClaimedTranscodeRun(claimed.Id, claimed.LeaseId, claimed.ClipId, claimed.Type,
-            claimed.VideoVersion, claimed.Attempts, input.RootElement.Clone());
+            claimed.VideoVersion, claimed.Attempts, input.RootElement.Clone(), urls.SourceUrl, urls.UploadUrls);
     }
 
     /// <summary>
@@ -144,10 +161,12 @@ public class TranscodeQueue(
     }
 
     /// <summary>
-    /// Records a finished job. A transcode's clip becomes ready with the output's length and size, in the same
-    /// transaction, and then gets its legend detection and transcription queued. A repeat of the report (the
-    /// worker retrying after a lost response) is accepted and changes nothing, beyond re-queueing the follow-ups,
-    /// which are idempotent.
+    /// Records a finished job. A transcode's or trim's clip becomes ready on the job's video version, with the
+    /// output's length, size, codecs and height (<see cref="TranscodeOutputs"/>), in the same transaction. After it
+    /// commits, a transcode's uploaded source is deleted, as is any version the clip moved off, and a transcode's
+    /// clip gets its legend detection and transcription queued. A repeat of the report (the worker retrying after a
+    /// lost response) is accepted and changes nothing, beyond retrying the source delete and re-queueing the
+    /// follow-ups, which are idempotent.
     /// </summary>
     public async Task<TranscodeReportOutcome> CompleteAsync(
         Guid runId,
@@ -163,13 +182,17 @@ public class TranscodeQueue(
             ["size_bytes"] = sizeBytes
         });
         int clipLength = (int)Math.Round(lengthSeconds, MidpointRounding.AwayFromZero);
+        TranscodeOutputs reported = TranscodeOutputs.From(outputs);
 
+        int? replacedVersion = null;
         TranscodeStatements.FinishedRunRow? run = await statements.InTransactionAsync(async () =>
         {
             TranscodeStatements.FinishedRunRow? completed = await statements.CompleteRunAsync(runId, leaseId, outputJson);
-            if (completed is { Type: TranscodeRunTypes.Transcode })
+            if (completed is { Type: TranscodeRunTypes.Transcode or TranscodeRunTypes.Trim })
             {
-                await updateHandler.ApplyTranscodeCompletedAsync(completed.ClipId, clipLength, sizeBytes);
+                int? previousVersion = await updateHandler.ApplyTranscodeCompletedAsync(completed.ClipId,
+                    completed.VideoVersion, clipLength, sizeBytes, reported.Codecs, reported.Height);
+                replacedVersion = previousVersion is { } previous && previous != completed.VideoVersion ? previous : null;
             }
 
             return completed;
@@ -190,7 +213,8 @@ public class TranscodeQueue(
 
             run = new TranscodeStatements.FinishedRunRow
             {
-                Id = state.Id, ClipId = state.ClipId, Type = state.Type, Status = state.Status
+                Id = state.Id, ClipId = state.ClipId, Type = state.Type, Status = state.Status,
+                VideoVersion = state.VideoVersion
             };
         }
         else
@@ -199,12 +223,41 @@ public class TranscodeQueue(
                 run.Type, run.Id, run.ClipId, lengthSeconds, sizeBytes);
         }
 
+        await CleanUpAfterCompletionAsync(run, replacedVersion);
         if (run.Type == TranscodeRunTypes.Transcode)
         {
             await updateHandler.QueueEncodedFollowUpsAsync(run.ClipId);
         }
 
         return TranscodeReportOutcome.Applied;
+    }
+
+    /// <summary>
+    /// Deletes what a finished job leaves behind: a transcode's source upload, and the version a transcode or trim
+    /// replaced. The clip already plays from its new version, so a failure here is logged rather than failing the
+    /// worker's report; the objects then stay until the clip is deleted.
+    /// </summary>
+    private async Task CleanUpAfterCompletionAsync(TranscodeStatements.FinishedRunRow run, int? replacedVersion)
+    {
+        try
+        {
+            if (run.Type == TranscodeRunTypes.Transcode)
+            {
+                await storage.DeleteSourceAsync(run.ClipId);
+            }
+
+            if (replacedVersion is { } version)
+            {
+                await storage.DeleteVersionAsync(run.ClipId, version);
+                logger.LogInformation("Deleted version {Version} of clip {ClipId}, replaced by version {NewVersion}",
+                    version, run.ClipId, run.VideoVersion);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not clean up after {Type} job {RunId} for clip {ClipId}", run.Type, run.Id,
+                run.ClipId);
+        }
     }
 
     /// <summary>

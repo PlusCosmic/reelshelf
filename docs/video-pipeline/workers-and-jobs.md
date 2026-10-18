@@ -50,17 +50,20 @@ grabbing frames takes seconds; a separate job would fetch the source again. Two 
 
 ## The queue and the worker API (built in #211)
 
-The queue is `transcode_run` (migration V40) and the API side is in `api/Video/Transcoding/`. Nothing enqueues
-into it yet: the R2 host will call `TranscodeQueue.EnqueueAsync(clipId, type, input)` when an upload completes.
+The queue is `transcode_run` (migration V40) and the API side is in `api/Video/Transcoding/`. The R2 host
+(`api/Video/R2/R2VideoHost.cs`, #212) calls `TranscodeQueue.EnqueueAsync(clipId, "transcode", input)` in the same
+transaction that marks the clip `uploaded`, once a server-side upload (Twitch import) completes; browser uploads
+follow with #213.
 
 - **A row per job:** `type`, `status` (`pending` → `running` → `succeeded` | `failed`), `priority` (lower first;
   `transcode` 0, `trim` and `fallback` 1, `thumbnails` 2), `attempts`, `input` (jsonb: `source_key`, trim points),
   `output` (jsonb: `outputs`, `length_seconds`, `size_bytes`), `video_version`, `error` and timestamps. A partial
   unique index allows one pending or running `transcode` per clip; enqueueing another returns null.
 - **Claim:** `POST /api/worker/claim` returns 204 when there is nothing to do, or the job: `run_id`, `lease_id`,
-  `clip_id`, `type`, `video_version`, `attempt`, `input`, and `source_url` / `upload_urls`, which stay null until the
-  R2 host presigns a GET for the source and a PUT per output. The claim is the same `FOR UPDATE SKIP LOCKED` update
-  as the other run tables. It takes a pending job whose retry delay has passed (`Transcoding:RetryAfter`, 2 minutes),
+  `clip_id`, `type`, `video_version`, `attempt`, `input`, and `source_url` / `upload_urls`: a presigned GET for the
+  job's input and a presigned PUT per output, by file name, which sign `Content-Type` and `Cache-Control` (see
+  [r2-bucket.md](r2-bucket.md#presigned-urls-for-workers)); both are null while R2 isn't configured. The claim is
+  the same `FOR UPDATE SKIP LOCKED` update as the other run tables. It takes a pending job whose retry delay has passed (`Transcoding:RetryAfter`, 2 minutes),
   or reclaims a running one whose worker has sent neither a claim nor a progress report for `Transcoding:StaleAfter`
   (1 hour, longer than the worst-case encode). Before that, it fails the jobs that have used
   `Transcoding:MaxAttempts` (3), and a failed `transcode` sets its clip to `encode_failed`. Workers pull, so the API
@@ -71,12 +74,14 @@ into it yet: the R2 host will call `TranscodeQueue.EnqueueAsync(clipId, type, in
 - **Reports:** `POST /api/worker/{runId}/progress` (`percent`, `thumbnails_ready`; also the heartbeat),
   `/complete` (`outputs`, `length_seconds`, `size_bytes`) and `/fail` (`error`, `retryable`). A retryable failure
   with attempts left goes back to pending; anything else fails the job.
-- **Applying results:** only `transcode` jobs change the clip, through `ClipVideoUpdateHandler`, in the same
-  transaction as the run update. Progress sets `processing` and `encode_progress`; completion sets `ready`, `length`
-  and `storage_size` (which the quota counts), then queues legend detection and transcription as Bunny's webhook
-  does. A clip that is already `ready` (a re-encode of a migrated clip) stays ready and playable throughout. The
-  other job types record their output on the run until the trim, thumbnails and fallback work decides what they
-  change. The legacy `clip.video_status` column holds Bunny's status number for the previous image; it is never
+- **Applying results:** `transcode` and `trim` jobs change the clip, through `ClipVideoUpdateHandler`, in the same
+  transaction as the run update. A transcode's progress sets `processing` and `encode_progress`; completion of
+  either sets `ready` on the job's `video_version`, with `length`, `storage_size` (the AV1 size, which alone the
+  quota counts from then on: `file_size` is cleared), and the `codecs` and `height` from `outputs` for the clip's
+  playback source. After the commit the uploaded source is deleted (a transcode) and so is the version the clip moved
+  off (a trim), and a transcode queues legend detection and transcription as Bunny's webhook does. A clip that is
+  already `ready` (a re-encode of a migrated clip, or a trim) stays ready and playable throughout. `thumbnails` and
+  `fallback` record their output on the run until the work that uses them decides what they change. The legacy `clip.video_status` column holds Bunny's status number for the previous image; it is never
   written for these clips and stays NULL until the column is dropped.
 - **Early detection:** with `Transcoding:QueueDetectionOnThumbnails` (off by default), the first progress report
   with `thumbnails_ready` queues legend detection instead of waiting for the encode.

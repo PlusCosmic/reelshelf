@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Reelshelf.Core;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
+using Reelshelf.Video;
 
 namespace Reelshelf.ApexLegends.LegendDetection;
 
@@ -179,7 +180,7 @@ public class LegendDetectionService(
                 row.RunId,
                 row.ClipId,
                 row.Title ?? "Untitled",
-                mediaUrls.DetectionFrames(row.VideoHost, row.VideoId),
+                mediaUrls.DetectionFrames(row.ToVideoRef()),
                 row.Status,
                 row.PlayerLegend,
                 row.PlayerLegendConfidence,
@@ -270,8 +271,8 @@ public class LegendDetectionService(
                 clip.OwnerName,
                 clip.CreatedAt,
                 clip.Length,
-                mediaUrls.Sources(clip.VideoHost, clip.VideoId),
-                mediaUrls.DetectionFrames(clip.VideoHost, clip.VideoId),
+                mediaUrls.Sources(clip.ToVideoRef()),
+                mediaUrls.DetectionFrames(clip.ToVideoRef()),
                 latest is null ? null : LegendDetectionRun.From(latest),
                 (int)(latest?.RunCount ?? 0),
                 label is null
@@ -326,7 +327,7 @@ public class LegendDetectionService(
                 clip.Title ?? "Untitled",
                 clip.OwnerName,
                 clip.CreatedAt,
-                mediaUrls.DetectionFrames(clip.VideoHost, clip.VideoId),
+                mediaUrls.DetectionFrames(clip.ToVideoRef()),
                 label is null ? null : new LegendBaselineLabel(label.PlayerLegend, label.LabelledAt),
                 result is null
                     ? null
@@ -435,7 +436,7 @@ public class LegendDetectionService(
             return true;
         }
 
-        List<LegendFrame> frames = await DownloadFramesAsync(run.VideoHost, run.VideoId, cancellationToken);
+        List<LegendFrame> frames = await DownloadFramesAsync(run.ToVideoRef(), cancellationToken);
         if (frames.Count == 0)
         {
             await statements.FailRunAsync(run.Id, "No thumbnails could be downloaded", null, null, canRetry);
@@ -528,11 +529,11 @@ public class LegendDetectionService(
             run.ClipId, run.Provider, run.Model, provider, model);
     }
 
-    private async Task<List<LegendFrame>> DownloadFramesAsync(string videoHost, Guid videoId, CancellationToken cancellationToken)
+    private async Task<List<LegendFrame>> DownloadFramesAsync(ClipVideoRef video, CancellationToken cancellationToken)
     {
         HttpClient client = httpClientFactory.CreateClient(FramesHttpClientName);
 
-        LegendFrame?[] frames = await Task.WhenAll(mediaUrls.DetectionFrames(videoHost, videoId).Select(async url =>
+        LegendFrame?[] frames = await Task.WhenAll(mediaUrls.DetectionFrames(video).Select(async url =>
         {
             try
             {

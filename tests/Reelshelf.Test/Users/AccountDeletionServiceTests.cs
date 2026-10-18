@@ -274,7 +274,7 @@ public class AccountDeletionServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<HostedVideo> CreateVideoAsync(Guid ownerId, GameCategory gameCategory, string title)
+        public Task<HostedVideo> CreateVideoAsync(Guid clipId, Guid ownerId, GameCategory gameCategory, string title)
         {
             throw new NotSupportedException();
         }

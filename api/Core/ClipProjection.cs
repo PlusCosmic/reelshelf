@@ -1,5 +1,6 @@
 using Reelshelf.Core.Models;
 using Reelshelf.Games;
+using Reelshelf.Video;
 
 namespace Reelshelf.Core;
 
@@ -19,8 +20,8 @@ public class ClipProjection(ClipMediaUrls mediaUrls)
             row.EncodeProgress ?? 0,
             row.StorageSize ?? 0,
             row.DateUploaded ?? row.CreatedAt,
-            mediaUrls.Thumbnail(row.VideoHost, row.VideoId),
-            mediaUrls.Sources(row.VideoHost, row.VideoId));
+            mediaUrls.Thumbnail(row.ToVideoRef()),
+            mediaUrls.Sources(row.ToVideoRef()));
 
         return new Clip(
             row.Id,
