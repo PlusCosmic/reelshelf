@@ -272,6 +272,107 @@ public class TranscodeQueueTests
         Assert.Null(await test.Queue.ClaimAsync());
     }
 
+    [PostgresFact]
+    public async Task Release_RefundsTheAttempt_AndPutsTheJobAndItsClipBack()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync();
+        Guid clipId = await test.AddClipAsync("uploaded");
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Transcode, new TranscodeRunInput("a"));
+
+        ClaimedTranscodeRun first = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        await test.Queue.ReportProgressAsync(first.RunId, first.LeaseId, 40, true);
+        Assert.Equal(("processing", 40), await test.ClipStateAsync(clipId));
+
+        Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.ReleaseAsync(first.RunId, first.LeaseId));
+        RunAfter run = await test.RunAsync(first.RunId);
+        Assert.Equal(("pending", 0, (Guid?)null, false, (int?)null, true),
+            (run.Status, run.Attempts, run.LeaseId, run.HasHeartbeat, run.Progress, run.Available));
+        Assert.Equal(("uploaded", 0), await test.ClipStateAsync(clipId));
+
+        // Repeating the release is accepted and changes nothing; the released lease can report nothing else.
+        Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.ReleaseAsync(first.RunId, first.LeaseId));
+        Assert.Equal(0, (await test.RunAsync(first.RunId)).Attempts);
+        Assert.Equal(TranscodeReportOutcome.LeaseLost, await test.Queue.ReleaseAsync(first.RunId, Guid.NewGuid()));
+        Assert.Equal(TranscodeReportOutcome.LeaseLost, await test.Queue.ReportProgressAsync(first.RunId, first.LeaseId, 50, false));
+        Assert.Equal(TranscodeReportOutcome.LeaseLost, await test.Queue.CompleteAsync(first.RunId, first.LeaseId, null, 5, 50));
+        Assert.Equal(TranscodeReportOutcome.LeaseLost, await test.Queue.FailAsync(first.RunId, first.LeaseId, "late", true));
+        Assert.Equal(TranscodeReportOutcome.NotFound, await test.Queue.ReleaseAsync(Guid.NewGuid(), first.LeaseId));
+
+        // Claimable straight away, as a first attempt under a new lease.
+        ClaimedTranscodeRun second = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        Assert.Equal((first.RunId, 1), (second.RunId, second.Attempt));
+        Assert.NotEqual(first.LeaseId, second.LeaseId);
+        Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.CompleteAsync(second.RunId, second.LeaseId, null, 5, 50));
+        Assert.Equal("ready", (await test.ClipStateAsync(clipId)).State);
+        // The completion keeps the count of releases next to what the worker reported.
+        Assert.Equal(("1", "5"), await test.Connection.QuerySingleAsync<(string, string)>(
+            "SELECT output ->> 'release_count', output ->> 'length_seconds' FROM transcode_run WHERE id = @RunId",
+            new { first.RunId }));
+    }
+
+    [PostgresFact]
+    public async Task Release_UnderAStaleLease_IsRefused_AndLeavesTheNewWorkersJob()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync();
+        Guid clipId = await test.AddClipAsync("uploaded");
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Transcode, new TranscodeRunInput("a"));
+
+        ClaimedTranscodeRun first = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        await test.BackdateHeartbeatAsync(TimeSpan.FromHours(2));
+        ClaimedTranscodeRun second = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        await test.Queue.ReportProgressAsync(second.RunId, second.LeaseId, 30, true);
+
+        Assert.Equal(TranscodeReportOutcome.LeaseLost, await test.Queue.ReleaseAsync(first.RunId, first.LeaseId));
+        RunAfter run = await test.RunAsync(second.RunId);
+        Assert.Equal(("running", 2, second.LeaseId), (run.Status, run.Attempts, run.LeaseId));
+        Assert.Equal(("processing", 30), await test.ClipStateAsync(clipId));
+    }
+
+    [PostgresFact]
+    public async Task Release_OfAJobOtherThanATranscode_LeavesItsReadyClipReady()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync();
+        Guid clipId = await test.AddClipAsync("ready");
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Trim, new TranscodeRunInput(TrimEndSeconds: 5), videoVersion: 2);
+
+        ClaimedTranscodeRun job = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.ReleaseAsync(job.RunId, job.LeaseId));
+
+        RunAfter run = await test.RunAsync(job.RunId);
+        Assert.Equal(("pending", 0), (run.Status, run.Attempts));
+        Assert.Equal("ready", (await test.ClipStateAsync(clipId)).State);
+    }
+
+    [PostgresFact]
+    public async Task Releases_PastTheCap_UseAttempts_SoABouncingJobStillEndsEncodeFailed()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync(maxAttempts: 2, maxReleases: 2);
+        Guid clipId = await test.AddClipAsync("uploaded");
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Transcode, new TranscodeRunInput("a"));
+
+        // Two releases are free; every one after that keeps the attempt its claim counted.
+        int[] attemptsAfterRelease = [0, 0, 1, 2];
+        foreach (int expected in attemptsAfterRelease)
+        {
+            ClaimedTranscodeRun job = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+            Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.ReleaseAsync(job.RunId, job.LeaseId));
+            Assert.Equal(expected, (await test.RunAsync(job.RunId)).Attempts);
+        }
+
+        Assert.Null(await test.Queue.ClaimAsync());
+        Assert.Equal("encode_failed", (await test.ClipStateAsync(clipId)).State);
+    }
+
+    private sealed class RunAfter
+    {
+        public string Status { get; set; } = "";
+        public int Attempts { get; set; }
+        public Guid? LeaseId { get; set; }
+        public bool HasHeartbeat { get; set; }
+        public int? Progress { get; set; }
+        public bool Available { get; set; }
+    }
+
     private sealed class ClipAfter
     {
         public string VideoState { get; set; } = "";
@@ -330,7 +431,7 @@ public class TranscodeQueueTests
 
         public FakeStorage Storage { get; }
 
-        public static async Task<TestQueue> CreateAsync(int maxAttempts = 3)
+        public static async Task<TestQueue> CreateAsync(int maxAttempts = 3, int maxReleases = 10)
         {
             // The API sets this at startup; the statements' row classes rely on it.
             DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -364,7 +465,7 @@ public class TranscodeQueueTests
                 new TranscodeStatements(scoped),
                 handler,
                 storage,
-                new FixedOptions<TranscodingOptions>(new TranscodingOptions { MaxAttempts = maxAttempts }),
+                new FixedOptions<TranscodingOptions>(new TranscodingOptions { MaxAttempts = maxAttempts, MaxReleases = maxReleases }),
                 NullLogger<TranscodeQueue>.Instance);
             return new TestQueue(dataSource, connection, schema, queue, storage);
         }
@@ -393,6 +494,13 @@ public class TranscodeQueueTests
                        video_height, file_size
                 FROM clip WHERE id = @ClipId
                 """, new { ClipId = clipId });
+
+        public async Task<RunAfter> RunAsync(Guid runId) =>
+            await Connection.QuerySingleAsync<RunAfter>("""
+                SELECT status, attempts, lease_id, heartbeat_at IS NOT NULL AS has_heartbeat, progress,
+                       available_at <= now() AS available
+                FROM transcode_run WHERE id = @RunId
+                """, new { RunId = runId });
 
         public async Task<string> RunStatusAsync(Guid runId) =>
             await Connection.QuerySingleAsync<string>("SELECT status FROM transcode_run WHERE id = @RunId", new { RunId = runId });

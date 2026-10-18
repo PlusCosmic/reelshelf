@@ -31,7 +31,8 @@ public class WorkerAuthenticationTests
         "/api/worker/claim",
         $"/api/worker/{Guid.NewGuid()}/progress",
         $"/api/worker/{Guid.NewGuid()}/complete",
-        $"/api/worker/{Guid.NewGuid()}/fail"
+        $"/api/worker/{Guid.NewGuid()}/fail",
+        $"/api/worker/{Guid.NewGuid()}/release"
     ];
 
     [Fact]

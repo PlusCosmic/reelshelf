@@ -30,24 +30,58 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
     {
         Directory.CreateDirectory(root);
         api = new FakeWorkerApi(Path.Combine(root, "storage"));
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Worker:ApiBaseUrl"] = api.BaseUrl,
-                ["Worker:Secret"] = FakeWorkerApi.Secret,
-                ["Worker:Preset"] = "12",
-                ["Worker:LogicalProcessors"] = "2",
-                ["Worker:TargetBitrateKbps"] = "1000",
-                ["Worker:Niceness"] = "5",
-                ["Worker:WorkDirectory"] = WorkDirectory,
-                ["Worker:ShutdownGrace"] = "00:00:00.200"
-            })
-            .Build();
+        services = BuildServices();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>The worker's services against the fake API, with <paramref name="overrides"/> on top of the test settings.</summary>
+    private ServiceProvider BuildServices(Dictionary<string, string?>? overrides = null)
+    {
+        Dictionary<string, string?> settings = new()
+        {
+            ["Worker:ApiBaseUrl"] = api.BaseUrl,
+            ["Worker:Secret"] = FakeWorkerApi.Secret,
+            ["Worker:Preset"] = "12",
+            ["Worker:LogicalProcessors"] = "2",
+            ["Worker:TargetBitrateKbps"] = "1000",
+            ["Worker:Niceness"] = "5",
+            ["Worker:WorkDirectory"] = WorkDirectory,
+            ["Worker:ShutdownGrace"] = "00:00:00.200"
+        };
+        foreach ((string key, string? value) in overrides ?? [])
+        {
+            settings[key] = value;
+        }
+
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         ServiceCollection collection = new();
         collection.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug));
         collection.AddTranscodeWorker(configuration);
-        services = collection.BuildServiceProvider();
-        return Task.CompletedTask;
+        return collection.BuildServiceProvider();
+    }
+
+    /// <summary>
+    /// Runs the worker with ffmpeg replaced by a script that runs <paramref name="before"/> (sh) when its arguments
+    /// contain <paramref name="match"/>, then the real ffmpeg, and with the given shutdown grace.
+    /// </summary>
+    private async Task UseFfmpegWrapperAsync(string match, string before, TimeSpan shutdownGrace)
+    {
+        string script = Path.Combine(root, "ffmpeg-wrapper.sh");
+        await File.WriteAllTextAsync(script, $$"""
+            #!/bin/sh
+            case " $* " in
+              *" {{match}} "*) {{before}} ;;
+            esac
+            exec ffmpeg "$@"
+
+            """);
+        File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        await services.DisposeAsync();
+        services = BuildServices(new Dictionary<string, string?>
+        {
+            ["Worker:FfmpegPath"] = script,
+            ["Worker:ShutdownGrace"] = shutdownGrace.ToString("c")
+        });
     }
 
     public async Task DisposeAsync()
@@ -188,11 +222,11 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
     }
 
     [SvtAv1Fact]
-    public async Task Shutdown_StopsAJobPastTheGrace_AndHandsItBackAsRetryable()
+    public async Task Shutdown_StopsAnEncodePastTheGrace_AndReleasesTheJob()
     {
         string source = await GenerateAsync("long.mp4", "testsrc2=size=1280x720:rate=30:duration=60", audio: false,
             "-c:v", "libx264", "-preset", "ultrafast");
-        api.Enqueue(JobTypes.Transcode, source, TranscodeOutputs);
+        WorkerJob job = api.Enqueue(JobTypes.Transcode, source, TranscodeOutputs);
 
         WorkerLoop loop = services.GetRequiredService<WorkerLoop>();
         await loop.StartAsync();
@@ -207,11 +241,80 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
         await stopping.CancelAsync();
         Assert.True(await run.WaitAsync(TimeSpan.FromSeconds(30)));
 
+        // Handed back, not failed, so the job keeps its attempts.
         Assert.Null(api.Completion);
+        Assert.Null(api.Failure);
+        JsonElement release = Assert.IsType<JsonElement>(api.Release);
+        Assert.Equal(job.LeaseId, release.GetProperty("lease_id").GetGuid());
+        Assert.Equal("release", api.Events.Last());
+        Assert.Empty(Directory.EnumerateFileSystemEntries(WorkDirectory));
+    }
+
+    [SvtAv1Fact]
+    public async Task Shutdown_BeforeTheEncode_ReleasesTheJobAtOnce()
+    {
+        // Frames take 30 s and the grace is a minute: only an immediate release finishes quickly.
+        await UseFfmpegWrapperAsync("-frames:v", "sleep 30", TimeSpan.FromMinutes(1));
+        string source = await Av1SourceAsync();
+        api.Enqueue(JobTypes.Transcode, source, TranscodeOutputs);
+
+        WorkerLoop loop = services.GetRequiredService<WorkerLoop>();
+        await loop.StartAsync();
+        using CancellationTokenSource stopping = new();
+        Task<bool> run = loop.RunOnceAsync(stopping.Token);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        Stopwatch elapsed = Stopwatch.StartNew();
+        await stopping.CancelAsync();
+        Assert.True(await run.WaitAsync(TimeSpan.FromSeconds(20)));
+
+        Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(15), $"The release took {elapsed.Elapsed}");
+        Assert.Null(api.Failure);
+        Assert.NotNull(api.Release);
+        Assert.False(api.Uploads.ContainsKey(OutputFiles.Video));
+    }
+
+    [SvtAv1Fact]
+    public async Task ACrashingEncode_FailsAsRetryable_AndIsNotReleased()
+    {
+        string started = Path.Combine(root, "encode-started");
+        await UseFfmpegWrapperAsync("-progress", $"touch '{started}'; kill -SEGV $$", TimeSpan.FromMinutes(1));
+        string source = await Av1SourceAsync();
+        api.Enqueue(JobTypes.Transcode, source, TranscodeOutputs);
+
+        Assert.True(await RunOnceAsync());
+
+        Assert.True(File.Exists(started));
+        Assert.Null(api.Completion);
+        Assert.Null(api.Release);
         JsonElement failure = Assert.IsType<JsonElement>(api.Failure);
         Assert.True(failure.GetProperty("retryable").GetBoolean());
-        Assert.Contains("shut down", failure.GetProperty("error").GetString());
-        Assert.Empty(Directory.EnumerateFileSystemEntries(WorkDirectory));
+        Assert.Contains("SIGSEGV", failure.GetProperty("error").GetString());
+    }
+
+    [SvtAv1Fact]
+    public async Task ACrashDuringTheShutdownGrace_StillFailsTheJob()
+    {
+        // The encode crashes a second after it starts, while the shutdown's minute of grace is still running.
+        string started = Path.Combine(root, "encode-started");
+        await UseFfmpegWrapperAsync("-progress", $"touch '{started}'; sleep 1; kill -SEGV $$", TimeSpan.FromMinutes(1));
+        string source = await Av1SourceAsync();
+        api.Enqueue(JobTypes.Transcode, source, TranscodeOutputs);
+
+        WorkerLoop loop = services.GetRequiredService<WorkerLoop>();
+        await loop.StartAsync();
+        using CancellationTokenSource stopping = new();
+        Task<bool> run = loop.RunOnceAsync(stopping.Token);
+        while (!File.Exists(started) && !run.IsCompleted)
+        {
+            await Task.Delay(20);
+        }
+
+        await stopping.CancelAsync();
+        Assert.True(await run.WaitAsync(TimeSpan.FromSeconds(30)));
+
+        Assert.Null(api.Release);
+        JsonElement failure = Assert.IsType<JsonElement>(api.Failure);
+        Assert.Contains("SIGSEGV", failure.GetProperty("error").GetString());
     }
 
     [SvtAv1Fact]

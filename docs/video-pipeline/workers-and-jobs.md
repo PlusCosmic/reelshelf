@@ -72,8 +72,19 @@ upload completes and passes its checks (#213, see [r2-bucket.md](r2-bucket.md#br
   after it went quiet gets 409 and should drop the job, so it can never report over the worker that holds it now.
   Repeating a completion or failure under the same lease (after a lost response) is accepted and changes nothing.
 - **Reports:** `POST /api/worker/{runId}/progress` (`percent`, `thumbnails_ready`; also the heartbeat),
-  `/complete` (`outputs`, `length_seconds`, `size_bytes`) and `/fail` (`error`, `retryable`). A retryable failure
-  with attempts left goes back to pending; anything else fails the job.
+  `/complete` (`outputs`, `length_seconds`, `size_bytes`), `/fail` (`error`, `retryable`) and `/release` (the
+  lease alone). A retryable failure with attempts left goes back to pending; anything else fails the job.
+- **Release** is how a worker that is shutting down (a deploy, a restart) hands its job back without it counting as
+  a failure. The job is `pending` again and claimable at once; its lease, `heartbeat_at` and `progress` are cleared,
+  and the attempt the claim counted is refunded (never below 0). A `transcode`'s clip goes from `processing` back to
+  `uploaded` in the same transaction, through `ClipVideoUpdateHandler`. Repeating it under the same lease is accepted,
+  and any other lease gets 409. So that a worker restarted for ever (a crash loop that happens to stop it cleanly)
+  can't bounce a job without end, only the first `Transcoding:MaxReleases` (10) releases of a job refund; after that
+  a release still requeues the job but keeps the attempt, and `Transcoding:MaxAttempts` ends it as usual. The count
+  and the lease it was released under live in the run's `output` (`release_count`, `released_lease_id`), which a
+  pending job doesn't otherwise use; a completion keeps `release_count` next to what the worker reported. Workers
+  never release a job that failed: crashes and errors go through `/fail`, so a source that always crashes ffmpeg
+  still ends `encode_failed`.
 - **Applying results:** `transcode` and `trim` jobs change the clip, through `ClipVideoUpdateHandler`, in the same
   transaction as the run update. A transcode's progress sets `processing` and `encode_progress`; completion of
   either sets `ready` on the job's `video_version`, with `length`, `storage_size` (the AV1 size, which alone the
@@ -145,17 +156,19 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   ffmpeg failing after the probe passed fails as retryable (the API's attempt cap ends a bad file), anything
   unexpected likewise. Completions and failures are retried on network errors and 5xx, which the API accepts as
   repeats. If a failure can't be reported at all, the API reclaims the job after `Transcoding:StaleAfter`.
-- **Shutdown:** on SIGTERM the running job gets `ShutdownGrace` to finish and report; past that ffmpeg is killed and
-  the job is failed as retryable ("The worker shut down …"), which puts it back in the queue after
-  `Transcoding:RetryAfter` but uses an attempt. The host waits `ShutdownGrace` + 15 s, so the container's stop timeout
-  should be at least that (35 s by default). A "release" report that hands a job back without using an attempt would
-  make deploys free; the API doesn't have one.
+- **Shutdown:** on SIGTERM a job whose encode (or trim) has started gets `ShutdownGrace` to finish and report; past
+  that ffmpeg is killed and the job is released (`/release`), which puts it back in the queue at once without using
+  an attempt. A job still downloading, probing or taking its frames is released at once, since nothing worth waiting
+  for is under way. Only the shutdown's own stop counts: an ffmpeg crash, even during the grace, fails the job as
+  retryable through `/fail` and uses an attempt. The host waits `ShutdownGrace` + 15 s, so the container's stop
+  timeout should be at least that (35 s by default).
 - **Resource limits** are the deployment's (#215): `cpuset`, CPU weight and memory in the container, plus `lp` and
   `nice` here. The image puts the work directory at `/work` so the root filesystem can be read-only.
 - **Tests:** unit tests for the argument lists, frame timing, trim input, codecs strings and ffprobe parsing, and
   `[SvtAv1Fact]` tests that run the whole loop against `FakeWorkerApi` (the worker endpoints and a bucket on a
   loopback `HttpListener`) on `lavfi` test clips: transcode with a trim, HDR at 1440p, stream-copy and frame-accurate
-  trims, thumbnails, a lost lease, unreadable input, shutdown and an empty queue. They skip when the local ffmpeg has
+  trims, thumbnails, a lost lease, unreadable input, shutdown (released mid-encode past the grace, and at once
+  before the encode), an ffmpeg crash (failed, also during the grace) and an empty queue. They skip when the local ffmpeg has
   no libsvtav1. CI's runner has Ubuntu 24.04's ffmpeg (SVT-AV1 1.7), older than the image's. The image moved off
   1.7 because it segfaulted inside `libSvtAv1Enc` on the dedicated server's VM (one CPU socket per vCPU) for an
   ordinary 1080p60 H.264 clip that 2.3 encodes there; the same clip encoded with 1.7 on a one-socket desktop.

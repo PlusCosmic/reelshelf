@@ -99,6 +99,12 @@ public class ClipVideoUpdateHandler(
         int? height) =>
         clipsStatements.SetTranscodeReady(clipId, videoVersion, lengthSeconds, storageSize, codecs, height);
 
+    /// <summary>
+    /// A transcode was handed back by a worker that was shutting down: a processing clip is back to <c>uploaded</c>
+    /// until another worker claims it.
+    /// </summary>
+    public Task ApplyTranscodeReleasedAsync(Guid clipId) => clipsStatements.SetTranscodeReleased(clipId);
+
     /// <summary>A transcode failed for good: the clip is <c>encode_failed</c>, unless it already had a ready video.</summary>
     public Task ApplyTranscodeFailedAsync(Guid clipId) => clipsStatements.SetTranscodeFailed(clipId);
 
