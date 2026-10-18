@@ -770,6 +770,49 @@ public class ClipsStatements(NpgsqlConnection connection)
         });
     }
 
+    /// <summary>
+    /// A transcode worker's progress on a clip's first encode. A clip that is already ready (a re-encode of one
+    /// migrated from another host) stays ready and playable. The legacy <c>video_status</c> column is Bunny's
+    /// number and is left alone: clips our own worker encodes have none.
+    /// </summary>
+    public async Task SetTranscodeProgress(Guid clipId, int encodeProgress)
+    {
+        const string sql = """
+            UPDATE clip
+            SET video_state = 'processing', encode_progress = @encodeProgress
+            WHERE id = @clipId AND video_state <> 'ready'
+            """;
+        await connection.ExecuteAsync(sql, new { clipId, encodeProgress });
+    }
+
+    /// <summary>
+    /// A transcode worker finished the clip's encode: it is ready, with the output's length and size (which the
+    /// storage quota counts from now on). <c>video_status</c> is left alone, as in <see cref="SetTranscodeProgress"/>.
+    /// </summary>
+    public async Task SetTranscodeReady(Guid clipId, int lengthSeconds, long storageSize)
+    {
+        const string sql = """
+            UPDATE clip
+            SET video_state = 'ready',
+                encode_progress = 100,
+                length = @lengthSeconds,
+                storage_size = @storageSize
+            WHERE id = @clipId
+            """;
+        await connection.ExecuteAsync(sql, new { clipId, lengthSeconds, storageSize });
+    }
+
+    /// <summary>A clip's transcode failed for good. A clip that is already ready keeps the video it has.</summary>
+    public async Task SetTranscodeFailed(Guid clipId)
+    {
+        const string sql = """
+            UPDATE clip
+            SET video_state = 'encode_failed'
+            WHERE id = @clipId AND video_state <> 'ready'
+            """;
+        await connection.ExecuteAsync(sql, new { clipId });
+    }
+
     public class ClipRow
     {
         public Guid Id { get; set; }
