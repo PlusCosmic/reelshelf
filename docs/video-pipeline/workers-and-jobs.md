@@ -9,7 +9,8 @@ The transcode worker is a separate application and container, not part of the AP
 
 - It handles untrusted input, so it runs in the sandbox described in the storage notes.
 - It needs its own CPU limits so it stays off the game servers' cores.
-- It scales separately, and the same image runs on the dedicated server and on Fargate Spot.
+- It scales separately, and the same image runs on the dedicated server and on Fargate Spot (as built:
+  [The overflow pool](#the-overflow-pool-built-in-248)).
 
 **Build a thin custom worker.** Encoding is a solved problem (ffmpeg with SVT-AV1; FFMpegCore is already a
 dependency). The glue isn't covered by an off-the-shelf product: claim a job from our API, fetch the source from
@@ -216,6 +217,72 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   no libsvtav1. CI's runner has Ubuntu 24.04's ffmpeg (SVT-AV1 1.7), older than the image's. The image moved off
   1.7 because it segfaulted inside `libSvtAv1Enc` on the dedicated server's VM (one CPU socket per vCPU) for an
   ordinary 1080p60 H.264 clip that 2.3 encodes there; the same clip encoded with 1.7 on a one-socket desktop.
+
+## The overflow pool (built in #248)
+
+When `transcode_run` backs up (a burst of uploads, or the Bunny migration), the API starts extra one-shot workers on
+AWS Fargate Spot with ECS `RunTask`. They run the same image as the dedicated worker and stop themselves once the
+queue is empty, so the API only ever starts tasks and never stops one. The code is in
+`api/Video/Transcoding/Overflow/`. The AWS resources (cluster, task definition, networking, IAM) are
+PlusCosmic/infrastructure#214.
+
+- **Gate:** `OverflowBackgroundService` is registered only where `Overflow:Enabled` is true (default false), and
+  never in the `OpenApi` environment. Each tick also checks that R2 is configured (`ITranscodeStorage.IsConfigured`).
+  Without R2 it warns once and does nothing, since a worker would have nowhere to write.
+- **Each tick** (`Overflow:Interval`, 30 s; `OverflowScaler`):
+  1. It counts the claimable backlog (`OverflowBacklogStatements`). The rule is the claim's: `pending`, `available_at <= now()`
+     and `attempts < Transcoding:MaxAttempts`. A job waiting out its retry delay, or one out of attempts that the
+     next claim will fail, never starts a task. Stale running jobs aren't counted either: a running worker
+     reclaims them on its next poll. `Overflow:JobTypes` (comma-separated, default empty, meaning every type,
+     `migrate` included) narrows it. The query matches `transcode_run_pending_idx` (V40)'s predicate, so it needs
+     no new index.
+  2. It works out the oldest job's age from `available_at`, the moment the job became claimable. This differs from
+     the `oldest_pending_age` gauge, which counts from `created_at`. A job released by a restarting worker, or one
+     past its retry delay, has only just become available, so the dedicated worker gets the threshold to take it
+     first.
+  3. It counts the overflow tasks running or provisioning: ECS `ListTasks` with `startedBy` = `Overflow:StartedBy`
+     (`reelshelf-overflow`), for desired status `RUNNING` and `PENDING`.
+  4. Once the oldest job has waited `Overflow:ScaleUpAfter` (2 min), it starts
+     `min(pending - running, MaxTasks - running, MaxStartPerTick)` tasks. `Overflow:MaxTasks` (4) is the hard cap on
+     spend, and `Overflow:MaxStartPerTick` defaults to 4.
+  5. After starting any, it starts no more for `Overflow:Cooldown` (2 min), so tasks still provisioning aren't
+     counted twice.
+- **`RunTask`** (`EcsOverflowTaskLauncher`):
+  - It sends `Overflow:Cluster` and `Overflow:TaskDefinition`, with `count` up to 10 per call.
+  - Tasks go on the `FARGATE_SPOT` capacity provider (weight 1, no launch type).
+  - `awsvpcConfiguration` has `Overflow:Subnets` and `Overflow:SecurityGroups` (comma-separated ids) and
+    `assignPublicIp=ENABLED`, so a task in a public subnet reaches the API and R2 without a NAT gateway.
+  - `startedBy` is set, plus a fresh `clientToken` per call so the SDK's retries can't start tasks twice.
+  - It sets no tags and no overrides. The task definition's roles, secrets (`Worker__ApiBaseUrl`, `Worker__Secret`)
+    and environment are used as they are.
+  - When Fargate Spot has no capacity, ECS reports it in the response's `failures`. Those are logged, and only the
+    tasks ECS started count.
+- **Errors:** a failed backlog count, `ListTasks` or `RunTask` is logged and tried again on the next tick, with no
+  cooldown. Nothing here throws into the API.
+- **AWS client:** the client is `AWSSDK.ECS`, in `Overflow:Aws:Region` (the AWS project's selected Region).
+  - With `Overflow:Aws:AccessKeyId` and `SecretAccessKey`, it signs with that key.
+  - With neither, it uses the SDK's default credential chain.
+  - Startup fails when `Enabled` is on and any of the cluster, task definition, subnets, security groups or
+    region is missing. It also fails on half a key pair, an unknown job type, or `MaxTasks`/`MaxStartPerTick`
+    below 1.
+- **Settings from the infrastructure stack** (#214's outputs): `Overflow__Cluster`, `Overflow__TaskDefinition`,
+  `Overflow__Subnets`, `Overflow__SecurityGroups`, plus `Overflow__Aws__Region` and the API's access key.
+- **IAM** for the API's credentials:
+  - `ecs:RunTask` on the worker's task definition, which can be limited to the cluster with the `ecs:cluster`
+    condition key.
+  - `ecs:ListTasks`, scoped to the cluster with the `ecs:cluster` condition key.
+  - `iam:PassRole` for the task definition's execution role (and its task role, if it has one), with
+    `iam:PassedToService` = `ecs-tasks.amazonaws.com`.
+  - No `ecs:TagResource` is needed, since `RunTask` sets no tags.
+- **Metrics:** the `Reelshelf.Overflow` meter has two instruments, and both are exported with the queue gauges when
+  `QueueMetrics:Exporter=otlp`:
+  - `reelshelf.overflow.tasks_running`, a gauge of the tasks as last counted. It reports nothing before the first
+    count and after a failed one.
+  - `reelshelf.overflow.tasks_started`, a counter.
+- **One scaler per deployment:** each API instance with `Overflow:Enabled` runs its own scaler. Dev and prod
+  should use separate clusters, or at least separate `StartedBy` values, so each counts only its own tasks.
+- **The Bunny migration** is the pool's first big backlog: keep `Migration:BatchSize` above the total number of
+  workers ([bunny-migration.md](bunny-migration.md#api-queueing-migration)).
 
 ## Downloads
 

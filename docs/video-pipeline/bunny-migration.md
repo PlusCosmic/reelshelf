@@ -52,6 +52,10 @@ Prod's Bunny library on 2026-10-18: **820 clips, 25.2 hours, 87 GB** on Bunny (e
   (default false) and R2 is configured. It never queues a clip that already has a pending or running job of any type,
   nor one that has had a `migrate` before (failed, or succeeded and then switched back); deleting that run lets
   the backfill take the clip again.
+- `Migration:BatchSize` must be larger than the total number of workers: the dedicated worker plus
+  `Overflow:MaxTasks` overflow tasks ([the overflow pool](workers-and-jobs.md#the-overflow-pool-built-in-248)).
+  Otherwise some workers sit idle, and overflow tasks started for the backlog exit with nothing to claim. The
+  overflow pool counts `migrate` jobs by default (`Overflow:JobTypes` empty), so the migration can start tasks.
 - Without R2 the claim never hands out a `migrate` job, and it fails one whose clip is no longer on Bunny instead
   of handing it out.
 - Claiming a `migrate` job gives:
