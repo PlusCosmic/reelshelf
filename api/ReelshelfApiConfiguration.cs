@@ -340,6 +340,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<ClipSummaryBackgroundService>();
             builder.Services.AddHostedService<AccountDeletionBackgroundService>();
             builder.Services.AddHostedService<BunnyMigrationBackfillService>();
+            builder.Services.AddHostedService<BunnyCopySweepService>();
         }
     }
 }

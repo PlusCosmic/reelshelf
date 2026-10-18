@@ -55,9 +55,9 @@ public class AccountDeletionStatements(NpgsqlConnection connection) : IAccountDe
 
     public async Task<List<OwnedClipVideo>> GetClipVideos(Guid userId)
     {
-        const string sql = "SELECT id AS clip_id, video_id, video_host FROM clip WHERE owner_id = @userId";
+        const string sql = "SELECT id AS clip_id, video_id, video_host, bunny_video_id FROM clip WHERE owner_id = @userId";
         return (await connection.QueryAsync<ClipVideoRow>(sql, new { userId }))
-            .Select(row => new OwnedClipVideo(row.ClipId, row.VideoId, row.VideoHost))
+            .Select(row => new OwnedClipVideo(row.ClipId, row.VideoId, row.VideoHost, row.BunnyVideoId))
             .ToList();
     }
 
@@ -97,5 +97,6 @@ public class AccountDeletionStatements(NpgsqlConnection connection) : IAccountDe
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
         public string VideoHost { get; set; } = "";
+        public Guid? BunnyVideoId { get; set; }
     }
 }

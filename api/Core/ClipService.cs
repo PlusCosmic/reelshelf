@@ -419,13 +419,8 @@ public class ClipService(
             return false;
         }
 
-        await videoHosts.For(clip.VideoHost).DeleteVideoAsync(clip.VideoId);
-        if (clip.VideoHost == VideoHostNames.Bunny)
-        {
-            // A migrate job may have written the clip's R2 copy already; deleting the clip cascades to the job.
-            await transcodeStorage.DeleteVersionAsync(clipId, TranscodeQueue.MigratedVideoVersion);
-        }
-
+        await ClipVideoDeletion.DeleteAsync(videoHosts, transcodeStorage, clipId, clip.VideoHost, clip.VideoId,
+            clip.BunnyVideoId);
         await clipsStatements.DeleteClip(clipId);
 
         // Usage went down; clear the "nearly full" marker if the owner is back under the threshold.

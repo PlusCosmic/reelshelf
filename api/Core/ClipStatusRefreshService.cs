@@ -117,6 +117,8 @@ public class ClipStatusRefreshService(
                         await videoHost.DeleteVideoAsync(clip.VideoId);
                     }
 
+                    await ClipVideoDeletion.DeleteBunnyCopyAsync(videoHosts, clip.VideoHost, clip.VideoId, clip.BunnyVideoId);
+
                     await clipsStatements.DeleteClip(clip.Id);
                     logger.LogInformation("Removed abandoned upload {ClipId} (video {VideoId}) for owner {OwnerId}",
                         clip.Id, clip.VideoId, clip.OwnerId);
