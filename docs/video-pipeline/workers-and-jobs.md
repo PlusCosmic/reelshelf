@@ -160,10 +160,22 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
 
 ## Downloads
 
-The download endpoint (`api/FFmpeg/`) remuxes Bunny's HLS into an MP4 on the API server. With progressive MP4 in R2
-there is nothing to compute: a download becomes a redirect to a presigned R2 URL with
-`response-content-disposition=attachment`. The ffmpeg remux, temp files and download concurrency gates in
-`FFmpegService` go away, and so does the load on the main server.
+Built (#216). `GET /api/ffmpeg/download/{videoId}` (`api/FFmpeg/FFmpegEndpoints.cs`) checks access first, as
+before: the owner or a playlist creator or collaborator (`UserCanAccessClip`), and 404 for anyone else. Then:
+
+- **R2 clips:** there is nothing to compute. The endpoint answers with a 302 (`Cache-Control: no-store`) to a
+  presigned GET of the current `clips/{clipId}/v{n}/av1.mp4` that lives 10 minutes and signs
+  `response-content-disposition`, so R2 sends `attachment; filename="<title>.mp4"; filename*=UTF-8''<title>.mp4`.
+  The title is cleaned by `DownloadFileName`; the quoted name keeps ASCII only and the RFC 5987 one keeps the exact
+  title. Only a `ready` clip redirects; before that it's 404. The presigning lives in `api/Video/R2/R2Downloads.cs`,
+  registered as the `r2` host's keyed `IClipVideoDownloads`, so `api/FFmpeg/` never names R2. No ffmpeg, temp file
+  or download permit is used, and the file comes from the bucket, not the API server.
+- **Bunny clips:** still remuxed from HLS into an MP4 on the API server (`FFmpegService`, with its temp files and
+  concurrency gates) until they are migrated.
+
+The download button (`frontend/src/components/Reelshelf/primitives/Navigation.tsx`) is a plain link, so the browser
+follows the redirect itself; `fetch` would need CORS on the bucket. It shows "Preparing download…" only for HLS
+clips, which are the ones that take a moment.
 
 Downloads only need a worker if they should be converted to H.264 (some local players and editors can't open AV1).
 That would be an on-demand, cached job, the same type as the playback fallback.

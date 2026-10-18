@@ -16,9 +16,14 @@ public static class FFmpegEndpoints
         group.MapGet("download/{videoId}", DownloadVideo).WithName("DownloadVideo");
     }
 
-    private static async Task<Results<FileStreamHttpResult, NotFound<string>, ProblemHttpResult>> DownloadVideo(
+    /// <summary>
+    /// A clip whose host keeps it as a file (R2) is a redirect to a short-lived presigned URL that downloads it as an
+    /// attachment, with no work here. Anything else (Bunny) is remuxed from its stream into an MP4 on this server.
+    /// </summary>
+    private static async Task<Results<RedirectHttpResult, FileStreamHttpResult, NotFound<string>, ProblemHttpResult>> DownloadVideo(
         FFmpegService ffmpegService,
         ClipsStatements clipsStatements,
+        ClipVideoHosts videoHosts,
         AuthenticatedUser user,
         HttpContext httpContext,
         Guid videoId,
@@ -29,6 +34,19 @@ public static class FFmpegEndpoints
         if (clip is null || (clip.OwnerId != user.Id && !await clipsStatements.UserCanAccessClip(clip.Id, user.Id)))
         {
             return TypedResults.NotFound("Video not found");
+        }
+
+        string fileName = DownloadFileName.For(clip.Title, videoId);
+        if (videoHosts.DownloadsFor(clip.VideoHost) is { } downloads)
+        {
+            if (clip.VideoStatus != ClipVideoStatus.Ready)
+            {
+                return TypedResults.NotFound("Video is not ready to download");
+            }
+
+            // The URL expires within minutes; never let a cache hand out the redirect after that.
+            httpContext.Response.Headers.CacheControl = "no-store";
+            return TypedResults.Redirect(downloads.DownloadUrl(clip.ToVideoRef(), fileName));
         }
 
         try
@@ -52,7 +70,7 @@ public static class FFmpegEndpoints
             return TypedResults.File(
                 fileStream,
                 contentType: "video/mp4",
-                fileDownloadName: DownloadFileName.For(clip.Title, videoId),
+                fileDownloadName: fileName,
                 enableRangeProcessing: true);
         }
         catch (FileNotFoundException ex)

@@ -23,6 +23,7 @@ public static class R2Setup
         services.AddSingleton<R2Storage>();
         services.AddSingleton<ITranscodeStorage>(provider => provider.GetRequiredService<R2Storage>());
         services.AddClipVideoHost<R2VideoHost, R2MediaUrls>(VideoHostNames.R2);
+        services.AddKeyedSingleton<IClipVideoDownloads, R2Downloads>(VideoHostNames.R2);
         return services;
     }
 }

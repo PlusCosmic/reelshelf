@@ -12,4 +12,10 @@ public class ClipVideoHosts(IServiceProvider services)
         return services.GetKeyedService<IClipVideoHost>(videoHost)
                ?? throw new InvalidOperationException($"No video host is registered as '{videoHost}'");
     }
+
+    /// <summary>
+    /// How <paramref name="videoHost"/>'s videos are downloaded straight from storage, or null when its downloads go
+    /// through the API server.
+    /// </summary>
+    public IClipVideoDownloads? DownloadsFor(string videoHost) => services.GetKeyedService<IClipVideoDownloads>(videoHost);
 }

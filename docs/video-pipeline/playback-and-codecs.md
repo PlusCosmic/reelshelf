@@ -33,7 +33,7 @@ an MP4 URL.
 4. **Serving:** HTTP Range (206) support, which Safari requires for `<video>`. CORS is not needed for a plain
    `<video src>`.
 5. **Downloads:** the download endpoint (`api/FFmpeg/`) remuxes HLS to MP4 today. With progressive files it
-   becomes a presigned R2 redirect (see [workers-and-jobs.md](workers-and-jobs.md#downloads)). Still to decide:
+   is a presigned R2 redirect (built in #216, see [workers-and-jobs.md](workers-and-jobs.md#downloads)). Still to decide:
    serve the AV1 file as-is or convert to H.264 on demand (some local players and editors can't open AV1).
 6. **Activity:** a URL Mapping to the new host in place of `/bunny-cdn`. Its drift correction (playbackRate and
    seeks) works the same on progressive.
