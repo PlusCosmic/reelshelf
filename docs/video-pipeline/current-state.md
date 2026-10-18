@@ -2,7 +2,7 @@
 
 As of 2026-10-18, after the #188 refactor (PRs #195–#200), per-clip hosts (#209), the R2 host (#212) and R2
 downloads (#216) and browser uploads to R2 (#213). Bunny Stream holds every existing clip; the `r2` host is registered when `R2:*` is configured and
-takes new uploads only for the accounts in `VideoHost:Users`.
+takes every new upload when `VideoHost:NewUploads=r2`.
 
 ## The seam
 
@@ -20,9 +20,8 @@ takes new uploads only for the accounts in `VideoHost:Users`.
   services registered by name (`AddClipVideoHost<THost, TMediaUrls>` in `api/Video/VideoHostRegistration.cs`), so
   adding one is implementing `IClipVideoHost` and `IClipVideoMediaUrls` and registering them under its name.
 - **New uploads:** `ClipService.CreateClip` asks `NewUploadVideoHostPolicy` for the host and stores it on the row.
-  `VideoHost:NewUploads` (default `bunny`) applies only to the account ids in `VideoHost:Users`; everyone else, and
-  everyone when the list is empty, stays on Bunny. The API refuses to start when `NewUploads` names a host that isn't
-  registered, rather than failing those users' uploads or quietly sending them to Bunny.
+  `VideoHost:NewUploads` (default `bunny`) applies to every account. The API refuses to start when `NewUploads` names
+  a host that isn't registered, rather than failing every upload or quietly sending them to Bunny.
 - **Browser uploads:** `CreateUploadTargetAsync` gets the reserved file size and may start the upload. Bunny's is
   a presigned TUS endpoint. R2 starts a presigned S3 multipart upload (`s3-multipart`), and a host like it
   implements `IMultipartUploadHost` (`api/Video/MultipartUpload.cs`) behind `MultipartUploadEndpoints`: part URLs,

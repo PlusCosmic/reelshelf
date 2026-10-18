@@ -76,7 +76,7 @@ public class ClipService(
         }
 
         // Existing clips stay on the host they were created on; only new ones follow the policy.
-        string videoHostName = newUploadHostPolicy.HostFor(userId);
+        string videoHostName = newUploadHostPolicy.NewUploads;
         IClipVideoHost videoHost = videoHosts.For(videoHostName);
 
         // Cheap unlocked check first so a plainly over-limit request fails before taking the lock.
