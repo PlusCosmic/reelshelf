@@ -36,7 +36,13 @@ export interface ActivityMedia {
    * @type {string}
    * @memberof ActivityMedia
    */
-  type: string;
+  type: string | null;
+  /**
+   *
+   * @type {boolean}
+   * @memberof ActivityMedia
+   */
+  hasThumbnail: boolean;
 }
 
 /**
@@ -46,6 +52,8 @@ export function instanceOfActivityMedia(value: object): value is ActivityMedia {
   if (!("host" in value) || value["host"] === undefined) return false;
   if (!("path" in value) || value["path"] === undefined) return false;
   if (!("type" in value) || value["type"] === undefined) return false;
+  if (!("hasThumbnail" in value) || value["hasThumbnail"] === undefined)
+    return false;
   return true;
 }
 
@@ -64,6 +72,7 @@ export function ActivityMediaFromJSONTyped(
     host: json["host"],
     path: json["path"],
     type: json["type"],
+    hasThumbnail: json["has_thumbnail"],
   };
 }
 
@@ -83,5 +92,6 @@ export function ActivityMediaToJSONTyped(
     host: value["host"],
     path: value["path"],
     type: value["type"],
+    has_thumbnail: value["hasThumbnail"],
   };
 }

@@ -271,6 +271,7 @@ public class LegendDetectionService(
                 clip.OwnerName,
                 clip.CreatedAt,
                 clip.Length,
+                clip.VideoStatus,
                 mediaUrls.Sources(clip.ToVideoRef()),
                 mediaUrls.DetectionFrames(clip.ToVideoRef()),
                 latest is null ? null : LegendDetectionRun.From(latest),

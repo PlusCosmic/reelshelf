@@ -56,7 +56,7 @@ export interface SharedClipResponse {
    * @type {string}
    * @memberof SharedClipResponse
    */
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
   /**
    *
    * @type {Array<PlaybackSource>}

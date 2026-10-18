@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from "../runtime";
+import type { ClipVideoStatus } from "./ClipVideoStatus";
+import {
+  ClipVideoStatusFromJSON,
+  ClipVideoStatusFromJSONTyped,
+  ClipVideoStatusToJSON,
+  ClipVideoStatusToJSONTyped,
+} from "./ClipVideoStatus";
 import type { ClipTranscriptionRun } from "./ClipTranscriptionRun";
 import {
   ClipTranscriptionRunFromJSON,
@@ -78,6 +85,12 @@ export interface ClipTranscriptionReviewClip {
   lengthSeconds: number | null;
   /**
    *
+   * @type {ClipVideoStatus}
+   * @memberof ClipTranscriptionReviewClip
+   */
+  videoStatus: ClipVideoStatus;
+  /**
+   *
    * @type {Array<PlaybackSource>}
    * @memberof ClipTranscriptionReviewClip
    */
@@ -87,7 +100,7 @@ export interface ClipTranscriptionReviewClip {
    * @type {string}
    * @memberof ClipTranscriptionReviewClip
    */
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
   /**
    *
    * @type {ClipTranscriptionRun}
@@ -115,6 +128,8 @@ export function instanceOfClipTranscriptionReviewClip(
   if (!("gameSlug" in value) || value["gameSlug"] === undefined) return false;
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   if (!("lengthSeconds" in value) || value["lengthSeconds"] === undefined)
+    return false;
+  if (!("videoStatus" in value) || value["videoStatus"] === undefined)
     return false;
   if (!("sources" in value) || value["sources"] === undefined) return false;
   if (!("thumbnailUrl" in value) || value["thumbnailUrl"] === undefined)
@@ -145,6 +160,7 @@ export function ClipTranscriptionReviewClipFromJSONTyped(
     gameSlug: json["game_slug"],
     createdAt: new Date(json["created_at"]),
     lengthSeconds: json["length_seconds"],
+    videoStatus: ClipVideoStatusFromJSON(json["video_status"]),
     sources: (json["sources"] as Array<any>).map(PlaybackSourceFromJSON),
     thumbnailUrl: json["thumbnail_url"],
     latestRun: ClipTranscriptionRunFromJSON(json["latest_run"]),
@@ -174,6 +190,7 @@ export function ClipTranscriptionReviewClipToJSONTyped(
     game_slug: value["gameSlug"],
     created_at: value["createdAt"].toISOString(),
     length_seconds: value["lengthSeconds"],
+    video_status: ClipVideoStatusToJSON(value["videoStatus"]),
     sources: (value["sources"] as Array<any>).map(PlaybackSourceToJSON),
     thumbnail_url: value["thumbnailUrl"],
     latest_run: ClipTranscriptionRunToJSON(value["latestRun"]),

@@ -53,14 +53,19 @@ export function ClipThumb({
       }
       aria-label={onClick ? `Open ${clip.video.title}` : undefined}
     >
-      <img
-        src={thumbnailUrl(clip)}
-        alt=""
-        loading="lazy"
-        onError={(event) => {
-          event.currentTarget.style.display = "none";
-        }}
-      />
+      {thumbnailUrl(clip) ? (
+        <img
+          // Keyed by URL: a thumbnail that arrives after the clip was first listed gets a fresh element,
+          // not one an earlier failure hid.
+          key={thumbnailUrl(clip)}
+          src={thumbnailUrl(clip)!}
+          alt=""
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
       <div className="rs-play-reticle">
         <span>
           <IconPlayerPlayFilled size={14} />

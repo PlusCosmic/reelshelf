@@ -53,7 +53,7 @@ function SharedClipRoute() {
           <div className="rs-player rs-public-player">
             <ClipVideoPlayer
               sources={clip.sources}
-              poster={clip.thumbnailUrl}
+              poster={clip.thumbnailUrl ?? undefined}
               title={clip.title}
               className="rs-player-frame"
             />

@@ -40,9 +40,20 @@ function Mosaic({
       aria-hidden="true"
     >
       {shown.length === 0 ? <span>Empty</span> : null}
-      {shown.map((clip) => (
-        <img key={clip.clipId} src={clip.thumbnailUrl} alt="" loading="lazy" />
-      ))}
+      {/* A clip whose thumbnail doesn't exist yet keeps its tile, blank. */}
+      {shown.map((clip) =>
+        clip.thumbnailUrl ? (
+          <img
+            key={clip.clipId}
+            className="rs-ledger-mosaic-tile"
+            src={clip.thumbnailUrl}
+            alt=""
+            loading="lazy"
+          />
+        ) : (
+          <span key={clip.clipId} className="rs-ledger-mosaic-tile" />
+        ),
+      )}
       {games.length > 0 ? (
         <span className="rs-ledger-share">
           {games.map((game) => (

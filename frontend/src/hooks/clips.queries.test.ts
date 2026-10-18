@@ -1,7 +1,15 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
-import type { Clip, PagedClipsResponse } from "@/api-client";
-import { markClipViewedInCachedPages } from "./clips.queries";
+import {
+  ClipVideoStatus,
+  type Clip,
+  type PagedClipsResponse,
+} from "@/api-client";
+import {
+  arrivingClipRefetchInterval,
+  CLIP_ARRIVING_POLL_MS,
+  markClipViewedInCachedPages,
+} from "./clips.queries";
 
 function clip(clipId: string, isViewed: boolean): Clip {
   return { clipId, isViewed } as Clip;
@@ -58,5 +66,34 @@ describe("markClipViewedInCachedPages", () => {
   it("leaves an empty cache alone", () => {
     const queryClient = new QueryClient();
     expect(() => markClipViewedInCachedPages(queryClient, "a")).not.toThrow();
+  });
+});
+
+describe("arrivingClipRefetchInterval", () => {
+  const withStatus = (status: ClipVideoStatus) =>
+    ({ video: { status, encodeProgress: 0 } }) as Clip;
+
+  it("polls an open clip until it is ready, so its thumbnail and player appear", () => {
+    for (const status of [
+      ClipVideoStatus.AwaitingUpload,
+      ClipVideoStatus.Uploaded,
+      ClipVideoStatus.Processing,
+    ]) {
+      expect(arrivingClipRefetchInterval(withStatus(status))).toBe(
+        CLIP_ARRIVING_POLL_MS,
+      );
+    }
+  });
+
+  it("stops once the clip is ready or has failed, and before there is one", () => {
+    for (const status of [
+      ClipVideoStatus.Ready,
+      ClipVideoStatus.EncodeFailed,
+      ClipVideoStatus.UploadFailed,
+    ]) {
+      expect(arrivingClipRefetchInterval(withStatus(status))).toBe(false);
+    }
+    expect(arrivingClipRefetchInterval(undefined)).toBe(false);
+    expect(arrivingClipRefetchInterval(null)).toBe(false);
   });
 });

@@ -9,7 +9,10 @@ namespace Reelshelf.Video;
 /// </summary>
 public interface IClipVideoMediaUrls
 {
-    /// <summary>What players play, in the order they try them.</summary>
+    /// <summary>
+    /// What players play, in the order they try them. Only asked for a ready video; <see cref="Core.ClipMediaUrls"/>
+    /// hands out none before that.
+    /// </summary>
     List<PlaybackSource> Sources(ClipVideoRef video);
 
     /// <summary>
@@ -18,10 +21,16 @@ public interface IClipVideoMediaUrls
     /// </summary>
     Uri ServerStream(ClipVideoRef video);
 
-    /// <summary>The main thumbnail.</summary>
-    string Thumbnail(ClipVideoRef video);
+    /// <summary>
+    /// The main thumbnail, or null while it doesn't exist yet. A URL handed out before its file exists is requested
+    /// at once, and the 404 sticks: browsers don't retry an <c>&lt;img&gt;</c>, and the CDN may cache it.
+    /// </summary>
+    string? Thumbnail(ClipVideoRef video);
 
-    /// <summary>The six frames legend detection reads: the main thumbnail plus five more taken through the video.</summary>
+    /// <summary>
+    /// The six frames legend detection reads: the main thumbnail plus five more taken through the video. Empty while
+    /// they don't exist yet, as for <see cref="Thumbnail"/>.
+    /// </summary>
     List<string> DetectionFrames(ClipVideoRef video);
 
     /// <summary>

@@ -22,7 +22,11 @@ public class BunnyMediaUrls(IConfiguration configuration) : IClipVideoMediaUrls
         return Playlist(video.VideoId);
     }
 
-    public string Thumbnail(ClipVideoRef video)
+    /// <summary>
+    /// Handed out from the start, whatever the status: Bunny makes its thumbnails early in its own processing, and
+    /// nothing here says when.
+    /// </summary>
+    public string? Thumbnail(ClipVideoRef video)
     {
         return $"{VideoBaseUrl(video.VideoId)}/thumbnail.jpg";
     }

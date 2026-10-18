@@ -44,7 +44,10 @@ grabbing frames takes seconds; a separate job would fetch the source again. Two 
 
 - **Report thumbnails early,** before the encode finishes. Clip cards then show a real image while the clip is
   processing, and legend detection, which needs only the frames, can be queued on "thumbnails ready" instead of
-  waiting for `ready`.
+  waiting for `ready`. The API hands out an R2 clip's thumbnail and detection frames only from that report (or
+  once the clip is `ready`), read from `transcode_run.thumbnails_ready_at` for the clip's current version, so
+  nothing requests them before they exist and caches the 404 (#229, see
+  [r2-bucket.md](r2-bucket.md#caching-cloudflare-cache-rule)).
 - **Keep `thumbnails` as its own job type** for regenerating frames without re-encoding: clips migrated from Bunny,
   or a change to the detection-frame timing.
 

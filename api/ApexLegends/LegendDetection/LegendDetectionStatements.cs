@@ -162,7 +162,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     /// </summary>
     public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter)
     {
-        const string sql = """
+        string sql = $"""
             UPDATE legend_detection_run run
             SET status = 'running', attempts = run.attempts + 1, started_at = now()
             FROM clip
@@ -175,8 +175,9 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                   ORDER BY trigger = 'eval', trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, run.trigger, run.provider, run.model, run.reasoning_effort,
-                      run.attempts
+            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height,
+                      clip.video_state, {ClipVideoColumns.ThumbnailsReadySql("clip")},
+                      run.trigger, run.provider, run.model, run.reasoning_effort, run.attempts
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql, new { RetryAfter = retryAfter, StaleAfter = staleAfter });
     }
@@ -281,8 +282,10 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     /// <summary>Every owner's clips in the category, since a backfill runs against all of them.</summary>
     public async Task<List<ReviewClipRow>> GetClipsForReviewAsync(Guid gameCategoryId)
     {
-        const string sql = """
-            SELECT clip.id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, clip.title, clip.length, clip.created_at,
+        string sql = $"""
+            SELECT clip.id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height,
+                   clip.video_state, {ClipVideoColumns.ThumbnailsReadySql("clip")},
+                   clip.title, clip.length, clip.created_at,
                    COALESCE(owner.global_name, owner.username) AS owner_name
             FROM clip
             JOIN app_user owner ON owner.id = clip.owner_id
@@ -557,8 +560,10 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     /// <summary>An eval's wrong answers on clips that are labelled: failed runs and runs whose legend is not the label.</summary>
     public async Task<List<EvalMissRow>> GetEvalMissesAsync(Guid evalId)
     {
-        const string sql = """
-            SELECT run.id AS run_id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, clip.title, run.status, run.hud_detected,
+        string sql = $"""
+            SELECT run.id AS run_id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height,
+                   clip.video_state, {ClipVideoColumns.ThumbnailsReadySql("clip")},
+                   clip.title, run.status, run.hud_detected,
                    run.player_legend, run.player_legend_confidence, run.error, label.player_legend AS label_legend
             FROM legend_detection_run run
             JOIN legend_detection_label label ON label.clip_id = run.clip_id
@@ -692,6 +697,9 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public int VideoVersion { get; set; } = 1;
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
+        public string VideoState { get; set; } = ClipVideoStatus.AwaitingUpload.ToDatabase();
+        public ClipVideoStatus VideoStatus => ClipVideoStatuses.FromDatabase(VideoState);
+        public bool ThumbnailsReady { get; set; }
         public string? Title { get; set; }
         public string Status { get; set; } = "";
         public bool? HudDetected { get; set; }
@@ -719,6 +727,9 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public int VideoVersion { get; set; } = 1;
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
+        public string VideoState { get; set; } = ClipVideoStatus.AwaitingUpload.ToDatabase();
+        public ClipVideoStatus VideoStatus => ClipVideoStatuses.FromDatabase(VideoState);
+        public bool ThumbnailsReady { get; set; }
         public string? Title { get; set; }
         public int? Length { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
@@ -760,6 +771,9 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public int VideoVersion { get; set; } = 1;
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
+        public string VideoState { get; set; } = ClipVideoStatus.AwaitingUpload.ToDatabase();
+        public ClipVideoStatus VideoStatus => ClipVideoStatuses.FromDatabase(VideoState);
+        public bool ThumbnailsReady { get; set; }
         public string Trigger { get; set; } = "";
         public string Provider { get; set; } = "";
         public string Model { get; set; } = "";

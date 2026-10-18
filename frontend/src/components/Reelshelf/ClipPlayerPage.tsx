@@ -20,7 +20,7 @@ import {
   useClipsInfinite,
 } from "@/hooks/clips.queries";
 import { useClip, useMarkAsViewed } from "@/hooks/queries";
-import { ClipVideoPlayer } from "@/components/Video/ClipVideoPlayer";
+import { ClipVideoStage } from "@/components/Video/ClipVideoStage";
 import { fetchPlaylistById } from "@/shared/services/playlists";
 import { collectionClips } from "./collections-model";
 import type { ClipLinkSearch } from "./primitives/ClipViews";
@@ -205,7 +205,11 @@ function NeighbourLink({
       {direction === "older" ? (
         <IconChevronLeft size={20} aria-hidden="true" />
       ) : null}
-      <img src={thumbnailUrl(clip)} alt="" loading="lazy" />
+      {thumbnailUrl(clip) ? (
+        <img src={thumbnailUrl(clip)!} alt="" loading="lazy" />
+      ) : (
+        <span className="rs-watch-neighbour-thumb" aria-hidden="true" />
+      )}
       <span>
         <small>{label}</small>
         {formatDate(clip.createdAt).replace(/,? \d{4}$/, "")},{" "}
@@ -446,14 +450,22 @@ export function ClipPlayerPage({
             inCollection={collectionSearch?.collection}
           />
           {/* The thumbnail sits behind the video so loading looks like the video arriving; the
-              cloth gradient underneath covers a missing thumbnail. */}
+              cloth gradient underneath covers a missing thumbnail. Until the video is ready, its
+              processing state stands in for the player. */}
           <div
             className="rs-player"
             style={{
-              backgroundImage: `url("${thumbnailUrl(clip)}"), linear-gradient(135deg, var(--game-a), var(--game-b))`,
+              backgroundImage: [
+                thumbnailUrl(clip) ? `url("${thumbnailUrl(clip)}")` : null,
+                "linear-gradient(135deg, var(--game-a), var(--game-b))",
+              ]
+                .filter(Boolean)
+                .join(", "),
             }}
           >
-            <ClipVideoPlayer
+            <ClipVideoStage
+              status={clip.video.status}
+              encodeProgress={clip.video.encodeProgress}
               sources={clip.video.sources}
               poster={thumbnailUrl(clip)}
               title={clip.video.title}

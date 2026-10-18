@@ -5,7 +5,7 @@ import {
   formatDate,
   formatDuration,
 } from "@/components/Reelshelf/reelshelf-model";
-import { ClipVideoPlayer } from "@/components/Video/ClipVideoPlayer";
+import { ClipVideoStage } from "@/components/Video/ClipVideoStage";
 import { Badge, Button } from "@/components/ui";
 import { useLegendRuns, useQueueLegendRun } from "@/hooks/queries";
 import { LegendLabelEditor } from "./LegendLabelEditor";
@@ -59,7 +59,8 @@ export function LegendReviewDetail({
       </div>
 
       <div className="rs-player">
-        <ClipVideoPlayer
+        <ClipVideoStage
+          status={clip.videoStatus}
           sources={clip.sources}
           poster={clip.frameUrls[0]}
           title={clip.title}

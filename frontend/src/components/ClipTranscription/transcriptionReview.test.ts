@@ -47,6 +47,7 @@ function clip(
     gameSlug: "apex-legends",
     createdAt: new Date(),
     lengthSeconds: 30,
+    videoStatus: "ready",
     sources: [],
     thumbnailUrl: "",
     latestRun,

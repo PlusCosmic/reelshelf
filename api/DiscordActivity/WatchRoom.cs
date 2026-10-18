@@ -38,11 +38,16 @@ public sealed record NowPlaying(
 /// </summary>
 /// <param name="Host">The clip's <c>video_host</c>.</param>
 /// <param name="Path">The video's folder relative to its host's media origin (<see cref="ClipMediaUrls.MediaPath"/>).</param>
-/// <param name="Type">The stream's MIME type, with codecs where known, for the player to check before playing.</param>
-public sealed record ActivityMedia(string Host, string Path, string Type)
+/// <param name="Type">
+/// The stream's MIME type, with codecs where known, for the player to check before playing. Null until the clip is
+/// ready, when it has no stream yet.
+/// </param>
+/// <param name="HasThumbnail">Whether the clip's <c>thumbnail.jpg</c> exists yet (<see cref="ClipMediaUrls.Thumbnail"/>).</param>
+public sealed record ActivityMedia(string Host, string Path, string? Type, bool HasThumbnail)
 {
     public static ActivityMedia For(ClipMediaUrls mediaUrls, ClipVideoRef video) =>
-        new(video.VideoHost, mediaUrls.MediaPath(video), mediaUrls.Sources(video)[0].Type);
+        new(video.VideoHost, mediaUrls.MediaPath(video), mediaUrls.Sources(video).FirstOrDefault()?.Type,
+            mediaUrls.Thumbnail(video) is not null);
 }
 
 /// <summary>A clip waiting in the room's queue, with the Discord user who queued it (always its owner).</summary>

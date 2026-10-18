@@ -3031,7 +3031,8 @@
         "required": [
           "host",
           "path",
-          "type"
+          "type",
+          "has_thumbnail"
         ],
         "type": "object",
         "properties": {
@@ -3042,7 +3043,13 @@
             "type": "string"
           },
           "type": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "has_thumbnail": {
+            "type": "boolean"
           }
         }
       },
@@ -3711,6 +3718,7 @@
           "game_slug",
           "created_at",
           "length_seconds",
+          "video_status",
           "sources",
           "thumbnail_url",
           "latest_run",
@@ -3745,6 +3753,9 @@
             ],
             "format": "int32"
           },
+          "video_status": {
+            "$ref": "#/components/schemas/ClipVideoStatus"
+          },
           "sources": {
             "type": "array",
             "items": {
@@ -3752,7 +3763,10 @@
             }
           },
           "thumbnail_url": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "latest_run": {
             "oneOf": [
@@ -4038,7 +4052,10 @@
             "format": "date-time"
           },
           "thumbnail_url": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "sources": {
             "type": "array",
@@ -4786,6 +4803,7 @@
           "owner_name",
           "created_at",
           "length_seconds",
+          "video_status",
           "sources",
           "frame_urls",
           "latest_run",
@@ -4814,6 +4832,9 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "video_status": {
+            "$ref": "#/components/schemas/ClipVideoStatus"
           },
           "sources": {
             "type": "array",
@@ -5712,7 +5733,10 @@
             "format": "uuid"
           },
           "thumbnail_url": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -6090,7 +6114,10 @@
             "format": "date-time"
           },
           "thumbnail_url": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "sources": {
             "type": "array",

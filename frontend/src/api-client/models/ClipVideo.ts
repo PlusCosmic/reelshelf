@@ -81,7 +81,7 @@ export interface ClipVideo {
    * @type {string}
    * @memberof ClipVideo
    */
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
   /**
    *
    * @type {Array<PlaybackSource>}

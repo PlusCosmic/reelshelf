@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from "../runtime";
+import type { ClipVideoStatus } from "./ClipVideoStatus";
+import {
+  ClipVideoStatusFromJSON,
+  ClipVideoStatusFromJSONTyped,
+  ClipVideoStatusToJSON,
+  ClipVideoStatusToJSONTyped,
+} from "./ClipVideoStatus";
 import type { LegendDetectionRun } from "./LegendDetectionRun";
 import {
   LegendDetectionRunFromJSON,
@@ -73,6 +80,12 @@ export interface LegendDetectionReviewClip {
   lengthSeconds: number | null;
   /**
    *
+   * @type {ClipVideoStatus}
+   * @memberof LegendDetectionReviewClip
+   */
+  videoStatus: ClipVideoStatus;
+  /**
+   *
    * @type {Array<PlaybackSource>}
    * @memberof LegendDetectionReviewClip
    */
@@ -115,6 +128,8 @@ export function instanceOfLegendDetectionReviewClip(
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   if (!("lengthSeconds" in value) || value["lengthSeconds"] === undefined)
     return false;
+  if (!("videoStatus" in value) || value["videoStatus"] === undefined)
+    return false;
   if (!("sources" in value) || value["sources"] === undefined) return false;
   if (!("frameUrls" in value) || value["frameUrls"] === undefined) return false;
   if (!("latestRun" in value) || value["latestRun"] === undefined) return false;
@@ -142,6 +157,7 @@ export function LegendDetectionReviewClipFromJSONTyped(
     ownerName: json["owner_name"],
     createdAt: new Date(json["created_at"]),
     lengthSeconds: json["length_seconds"],
+    videoStatus: ClipVideoStatusFromJSON(json["video_status"]),
     sources: (json["sources"] as Array<any>).map(PlaybackSourceFromJSON),
     frameUrls: json["frame_urls"],
     latestRun: LegendDetectionRunFromJSON(json["latest_run"]),
@@ -170,6 +186,7 @@ export function LegendDetectionReviewClipToJSONTyped(
     owner_name: value["ownerName"],
     created_at: value["createdAt"].toISOString(),
     length_seconds: value["lengthSeconds"],
+    video_status: ClipVideoStatusToJSON(value["videoStatus"]),
     sources: (value["sources"] as Array<any>).map(PlaybackSourceToJSON),
     frame_urls: value["frameUrls"],
     latest_run: LegendDetectionRunToJSON(value["latestRun"]),
