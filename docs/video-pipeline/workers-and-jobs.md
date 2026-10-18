@@ -47,6 +47,45 @@ grabbing frames takes seconds; a separate job would fetch the source again. Two 
 - **Keep `thumbnails` as its own job type** for regenerating frames without re-encoding: clips migrated from Bunny,
   or a change to the detection-frame timing.
 
+## The queue and the worker API (built in #211)
+
+The queue is `transcode_run` (migration V40) and the API side is in `api/Video/Transcoding/`. Nothing enqueues
+into it yet: the R2 host will call `TranscodeQueue.EnqueueAsync(clipId, type, input)` when an upload completes.
+
+- **A row per job:** `type`, `status` (`pending` → `running` → `succeeded` | `failed`), `priority` (lower first;
+  `transcode` 0, `trim` and `fallback` 1, `thumbnails` 2), `attempts`, `input` (jsonb: `source_key`, trim points),
+  `output` (jsonb: `outputs`, `length_seconds`, `size_bytes`), `video_version`, `error` and timestamps. A partial
+  unique index allows one pending or running `transcode` per clip; enqueueing another returns null.
+- **Claim:** `POST /api/worker/claim` returns 204 when there is nothing to do, or the job: `run_id`, `lease_id`,
+  `clip_id`, `type`, `video_version`, `attempt`, `input`, and `source_url` / `upload_urls`, which stay null until the
+  R2 host presigns a GET for the source and a PUT per output. The claim is the same `FOR UPDATE SKIP LOCKED` update
+  as the other run tables. It takes a pending job whose retry delay has passed (`Transcoding:RetryAfter`, 2 minutes),
+  or reclaims a running one whose worker has sent neither a claim nor a progress report for `Transcoding:StaleAfter`
+  (1 hour, longer than the worst-case encode). Before that, it fails the jobs that have used
+  `Transcoding:MaxAttempts` (3), and a failed `transcode` sets its clip to `encode_failed`. Workers pull, so the API
+  runs no background service for this.
+- **Leases:** each claim issues a new `lease_id`, and every report must carry it. A worker whose job was reclaimed
+  after it went quiet gets 409 and should drop the job, so it can never report over the worker that holds it now.
+  Repeating a completion or failure under the same lease (after a lost response) is accepted and changes nothing.
+- **Reports:** `POST /api/worker/{runId}/progress` (`percent`, `thumbnails_ready`; also the heartbeat),
+  `/complete` (`outputs`, `length_seconds`, `size_bytes`) and `/fail` (`error`, `retryable`). A retryable failure
+  with attempts left goes back to pending; anything else fails the job.
+- **Applying results:** only `transcode` jobs change the clip, through `ClipVideoUpdateHandler`, in the same
+  transaction as the run update. Progress sets `processing` and `encode_progress`; completion sets `ready`, `length`
+  and `storage_size` (which the quota counts), then queues legend detection and transcription as Bunny's webhook
+  does. A clip that is already `ready` (a re-encode of a migrated clip) stays ready and playable throughout. The
+  other job types record their output on the run until the trim, thumbnails and fallback work decides what they
+  change. The legacy `clip.video_status` column holds Bunny's status number for the previous image; it is never
+  written for these clips and stays NULL until the column is dropped.
+- **Early detection:** with `Transcoding:QueueDetectionOnThumbnails` (off by default), the first progress report
+  with `thumbnails_ready` queues legend detection instead of waiting for the encode.
+- **Credential:** the endpoints require the `Worker` policy: `Authorization: Bearer <Worker:Secret>`, compared in
+  constant time. A secret that is unset or shorter than 32 characters refuses every request. The site cookie never
+  satisfies the policy, and the secret authorises nothing else. Requests are rate limited per address
+  (`Worker:RequestsPerMinute`, 600) against a worker stuck in a loop; the limiter runs after authorization, so it
+  doesn't slow guessing, which a 32-character random secret makes pointless anyway. The endpoints are left out of
+  the OpenAPI document, since the worker isn't a client of the generated frontend API.
+
 ## Downloads
 
 The download endpoint (`api/FFmpeg/`) remuxes Bunny's HLS into an MP4 on the API server. With progressive MP4 in R2

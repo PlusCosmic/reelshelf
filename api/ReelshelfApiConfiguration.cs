@@ -26,6 +26,7 @@ using Reelshelf.Playlists;
 using Reelshelf.Storage;
 using Reelshelf.Twitch;
 using Reelshelf.Video;
+using Reelshelf.Video.Transcoding;
 using StackExchange.Redis;
 
 namespace Reelshelf;
@@ -81,6 +82,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapUserEndpoints();
         apiGroup.MapTwitchClipsEndpoints();
         apiGroup.MapDiscordActivityEndpoints();
+        apiGroup.MapWorkerEndpoints();
 
         // OpenAPI is useful during development and explicit client-generation jobs, but should not be public by default.
         if (app.Environment.IsDevelopment() ||
@@ -212,6 +214,7 @@ internal static class ReelshelfApiConfiguration
 
         builder.AddReelshelfAuthentication();
         builder.AddDiscordActivity();
+        builder.AddTranscodeWorkers();
         builder.AddReelshelfRateLimiting();
     }
 

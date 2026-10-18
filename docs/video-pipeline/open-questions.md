@@ -61,7 +61,8 @@
   into AV1 through the same queue. The per-clip host column lets both hosts run side by side during the move.
 - **Access control:** stay with unguessable unsigned URLs as today, or add signed URLs or a Worker check. Either
   must keep share links and the Discord Activity working.
-- **Worker → API reporting:** an authenticated callback, or a results queue the API consumes.
+- **Worker → API reporting:** settled as authenticated calls to the API (#211): workers claim and report through
+  `/api/worker/` with a shared secret; see [workers-and-jobs.md](workers-and-jobs.md#the-queue-and-the-worker-api-built-in-211).
 
 ## Follow-ups from #188 (not done)
 
