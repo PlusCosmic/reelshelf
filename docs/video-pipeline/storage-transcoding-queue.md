@@ -14,16 +14,16 @@ Stream with H.264 and about $195 for Bunny with AV1. Storage and delivery are bu
 
 ## Decisions
 
-| Area            | Decision                                                                      | Notes                                                                                                                       |
-| --------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Storage         | Cloudflare R2, lifecycle rule moving clips to Infrequent Access after ~7 days | $0.015 → $0.01/GB-month; most views happen in the first few days                                                            |
-| Delivery        | Cloudflare CDN on a custom domain                                             | Free egress; Cloudflare's terms allow video stored in R2. Never serve from `r2.dev` (uncached, rate-limited)                |
-| Encode baseline | The existing dedicated server                                                 | Effectively free; capacity far exceeds current volume; traffic is well under the host's 3 TB/24h throttle threshold         |
-| Encode overflow | AWS Fargate Spot                                                              | Per-second billing, scale to zero; most egress covered by the 100 GB/month free allowance                                   |
-| Queue           | AWS SQS                                                                       | Free at this volume; reachable from both the server and AWS. Open: SQS vs our Postgres run tables, see open-questions.md    |
-| Output codec    | AV1 (SVT-AV1), 1080p30                                                        | Royalty-free, good quality per bit, fast on CPU                                                                             |
-| Fallback        | H.264 720p for clients without AV1 decode                                     | Not built yet; see [playback-and-codecs.md](playback-and-codecs.md#future-on-demand-h264-fallback) and the open items below |
-| Packaging       | Progressive MP4 with `faststart`                                              | Simplest for clips of a couple of minutes; HLS with fMP4 segments later if adaptive bitrate is needed (AV1 works in it)     |
+| Area            | Decision                                                                         | Notes                                                                                                                       |
+| --------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Storage         | Cloudflare R2, lifecycle rule moving clips to Infrequent Access after ~7 days    | $0.015 → $0.01/GB-month; most views happen in the first few days                                                            |
+| Delivery        | Cloudflare CDN on a custom domain                                                | Free egress; Cloudflare's terms allow video stored in R2. Never serve from `r2.dev` (uncached, rate-limited)                |
+| Encode baseline | The existing dedicated server                                                    | Effectively free; capacity far exceeds current volume; traffic is well under the host's 3 TB/24h throttle threshold         |
+| Encode overflow | AWS Fargate Spot                                                                 | Per-second billing, scale to zero; most egress covered by the 100 GB/month free allowance                                   |
+| Queue           | Postgres run table (`transcode_run`), workers via the API (leaning; was AWS SQS) | Matches the existing run tables; see open-questions.md for the SQS comparison                                               |
+| Output codec    | AV1 (SVT-AV1), 1080p30                                                           | Royalty-free, good quality per bit, fast on CPU                                                                             |
+| Fallback        | H.264 720p for clients without AV1 decode                                        | Not built yet; see [playback-and-codecs.md](playback-and-codecs.md#future-on-demand-h264-fallback) and the open items below |
+| Packaging       | Progressive MP4 with `faststart`                                                 | Simplest for clips of a couple of minutes; HLS with fMP4 segments later if adaptive bitrate is needed (AV1 works in it)     |
 
 ## Pipeline
 

@@ -31,7 +31,14 @@
     authenticated API endpoints over HTTPS rather than connecting to Postgres. The API runs the same
     `SKIP LOCKED` claim and applies results through `ClipVideoUpdateHandler`. For overflow, the API publishes the
     oldest pending job's age as a custom CloudWatch metric, or starts Fargate tasks itself with `RunTask`. That keeps
-    one queue pattern and leaves the database private, at the cost of building the scaling signal. Undecided.
+    one queue pattern and leaves the database private, at the cost of building the scaling signal.
+  - **Leaning (2026-10-18):** keep Postgres run tables as the queue for everything, the transcode jobs included,
+    with workers going through the API as in the middle option. Moving the existing queues to SQS for
+    observability was considered and set aside: SQS only shows queue-level metrics, so the run tables (and the
+    review pages built on them) would stay anyway, giving two sources of truth. Get the observability instead from
+    queue metrics the API publishes for every run table: pending count, oldest pending age, in progress, recent
+    failures and exhausted attempts, as OpenTelemetry/Prometheus or CloudWatch custom metrics. Reconsider SQS only
+    if external workers need it.
 - **Fallback:** the storage discussion lists an H.264 720p fallback, pre-generated or made on first request.
   Current call (2026-10-18): none for now, since everyone using Reelshelf can decode AV1. Build the seams (a
   `sources` list, a "can't play on this device" message, room in the queue for a fallback job) and add an
