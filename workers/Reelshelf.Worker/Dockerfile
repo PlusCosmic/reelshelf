@@ -5,21 +5,24 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 COPY ["workers/Reelshelf.Worker/Reelshelf.Worker.csproj", "workers/Reelshelf.Worker/"]
-RUN dotnet restore "workers/Reelshelf.Worker/Reelshelf.Worker.csproj"
+RUN dotnet restore "workers/Reelshelf.Worker/Reelshelf.Worker.csproj" -r linux-x64
 
 COPY ["workers/Reelshelf.Worker/", "workers/Reelshelf.Worker/"]
+# Self-contained, so the final stage can be plain Debian: Microsoft's .NET 10 runtime images are Ubuntu 24.04
+# (there is no stable Debian 13 tag), and Ubuntu's SVT-AV1 is the 1.7 that crashes on the dev server. The worker
+# formats everything with the invariant culture, so it needs no ICU.
 RUN dotnet publish "workers/Reelshelf.Worker/Reelshelf.Worker.csproj" -c $BUILD_CONFIGURATION -o /app/publish \
-    --no-restore /p:UseAppHost=false
+    -r linux-x64 --self-contained --no-restore /p:InvariantGlobalization=true
 
-# Debian 13 (trixie), the default for .NET 10: its ffmpeg 7.1 has SVT-AV1 2.3. Ubuntu 24.04's SVT-AV1 1.7
-# segfaulted inside libSvtAv1Enc on the dedicated server's VM (which reports one CPU socket per vCPU) for an
-# ordinary 1080p60 H.264 clip that 2.3 encodes there without trouble.
-FROM mcr.microsoft.com/dotnet/runtime:10.0 AS final
-USER root
+# Debian 13 (trixie): its ffmpeg 7.1 has SVT-AV1 2.3. Ubuntu 24.04's SVT-AV1 1.7.0 segfaulted inside
+# libSvtAv1Enc on the dedicated server's VM (which reports one CPU socket per vCPU) for an ordinary 1080p60 H.264
+# clip that trixie's 2.3 encodes there without trouble.
+FROM debian:trixie-slim AS final
 # Debian's ffmpeg is built with SVT-AV1, Opus and zimg (zscale, for tone-mapping HDR). The build fails if any of
-# them is missing, rather than shipping a worker that refuses to start or refuses HDR.
+# them is missing, or if SVT-AV1 is older than 2.x, rather than shipping a worker that refuses to start, refuses
+# HDR or crashes on its first real clip.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg ca-certificates tzdata \
     && rm -rf /var/lib/apt/lists/* \
     && ffmpeg -hide_banner -encoders > /tmp/encoders \
     && ffmpeg -hide_banner -filters > /tmp/filters \
@@ -27,16 +30,19 @@ RUN apt-get update \
     && grep -E '^ A\S* libopus ' /tmp/encoders \
     && grep -E '^ \S+ zscale ' /tmp/filters \
     && grep -E '^ \S+ tonemap ' /tmp/filters \
+    && ldconfig -p | grep -E 'libSvtAv1Enc\.so\.[2-9]' \
     && rm /tmp/encoders /tmp/filters \
+    && groupadd --gid 1654 app \
+    && useradd --uid 1654 --gid app --no-create-home --shell /usr/sbin/nologin app \
     && mkdir -p /work \
-    && chown "$APP_UID" /work
+    && chown app:app /work
 
-# The runtime image's unprivileged user. Jobs work under /work, which can be a tmpfs or volume when the root
-# filesystem is read-only.
-USER $APP_UID
+# An unprivileged user with the same uid as the .NET images' app user, so an existing /work volume stays
+# writable. Jobs work under /work, which can be a tmpfs or volume when the root filesystem is read-only.
+USER app
 ENV Worker__WorkDirectory=/work \
     DOTNET_EnableDiagnostics=0
 WORKDIR /app
 COPY --from=build /app/publish .
 
-ENTRYPOINT ["dotnet", "Reelshelf.Worker.dll"]
+ENTRYPOINT ["./Reelshelf.Worker"]
