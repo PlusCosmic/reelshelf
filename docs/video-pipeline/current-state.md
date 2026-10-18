@@ -1,12 +1,12 @@
 # Current state: what the app relies on from the video host
 
 As of 2026-10-18, after the #188 refactor (PRs #195–#200), per-clip hosts (#209), the R2 host (#212) and R2
-downloads (#216). Bunny Stream holds every existing clip; the `r2` host is registered when `R2:*` is configured and
+downloads (#216) and browser uploads to R2 (#213). Bunny Stream holds every existing clip; the `r2` host is registered when `R2:*` is configured and
 takes new uploads only for the accounts in `VideoHost:Users`.
 
 ## The seam
 
-- `api/Video/IClipVideoHost.cs` is everything the app asks of a host: `CreateVideoAsync`, `CreateUploadTarget`,
+- `api/Video/IClipVideoHost.cs` is everything the app asks of a host: `CreateVideoAsync`, `CreateUploadTargetAsync`,
   `UploadAsync` (server-side, Twitch import), `GetVideoAsync`, `DeleteVideoAsync`, `DeleteContainerAsync`.
   `api/Bunny/BunnyService.cs` (Bunny) and `api/Video/R2/R2VideoHost.cs` (R2, see [r2-bucket.md](r2-bucket.md))
   implement it. `CreateVideoAsync` gets the reserved clip's id, and an R2 clip's video id is its clip id.
@@ -23,6 +23,12 @@ takes new uploads only for the accounts in `VideoHost:Users`.
   `VideoHost:NewUploads` (default `bunny`) applies only to the account ids in `VideoHost:Users`; everyone else, and
   everyone when the list is empty, stays on Bunny. The API refuses to start when `NewUploads` names a host that isn't
   registered, rather than failing those users' uploads or quietly sending them to Bunny.
+- **Browser uploads:** `CreateUploadTargetAsync` gets the reserved file size and may start the upload. Bunny's is
+  a presigned TUS endpoint. R2 starts a presigned S3 multipart upload (`s3-multipart`), and a host like it
+  implements `IMultipartUploadHost` (`api/Video/MultipartUpload.cs`) behind `MultipartUploadEndpoints`: part URLs,
+  the part list for resuming, and completion, which checks the file and queues its transcode. The browser picks
+  tus-js-client or `frontend/src/utils/s3MultipartUpload.ts` by protocol (`clipUpload.ts`). Quota and duplicate
+  checks happen at preparation for both. See [r2-bucket.md](r2-bucket.md#browser-uploads-213).
 - **Downloads (#216):** a host whose video is a file registers a keyed `IClipVideoDownloads`
   (`api/Video/IClipVideoDownloads.cs`; R2's is `R2Downloads`), and `GET /api/ffmpeg/download/{videoId}` redirects a
   `ready` clip of that host to its short-lived presigned URL. A host without one (Bunny) is remuxed by
@@ -43,7 +49,7 @@ takes new uploads only for the accounts in `VideoHost:Users`.
 
 | Need                                                                                          | Used by                                                                              | Today (Bunny)                                                      |
 | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| Resumable browser upload, described by `UploadTarget` (protocol, endpoint, headers, metadata) | `frontend/src/utils/clipUpload.ts` (tus-js-client)                                   | Bunny's presigned TUS endpoint                                     |
+| Resumable browser upload, described by `UploadTarget` (protocol, endpoint, headers, metadata) | `frontend/src/utils/clipUpload.ts` (tus-js-client; R2's S3 multipart uploader)       | Bunny's presigned TUS endpoint                                     |
 | Server-side upload of a stream                                                                | Twitch import (`api/Twitch/`)                                                        | `PUT /videos/{id}`                                                 |
 | A playable stream URL                                                                         | `ClipVideoPlayer`, `ActivityPlayer` (via `frontend/src/shared/utils/hlsStream.ts`)   | `{id}/playlist.m3u8`                                               |
 | A stream ffmpeg can read                                                                      | Transcription audio (`ClipAudioExtractor`), Bunny downloads (`FFmpegService`)        | the same HLS playlist                                              |

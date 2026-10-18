@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CreateClipResponse } from "@/api-client";
-import { createPreparedClipUpload, createTusClipUpload } from "./clipUpload";
+import {
+  createPreparedClipUpload,
+  createS3ClipUpload,
+  createTusClipUpload,
+} from "./clipUpload";
+import { S3MultipartUpload } from "./s3MultipartUpload";
 
 vi.mock("tus-js-client", () => ({
   Upload: class {
@@ -99,11 +104,46 @@ describe("createTusClipUpload", () => {
   it("refuses an upload protocol it does not speak", () => {
     const response = {
       ...prepared,
-      upload: { ...prepared.upload, protocol: "s3-multipart" },
+      upload: { ...prepared.upload, protocol: "carrier-pigeon" },
     };
 
     expect(() =>
       startUpload(response, new File(["bytes"], "clip.mp4")),
-    ).toThrow('unsupported upload protocol "s3-multipart"');
+    ).toThrow('unsupported upload protocol "carrier-pigeon"');
+  });
+});
+
+describe("createS3ClipUpload", () => {
+  it("starts nothing for a target that isn't a multipart upload", () => {
+    expect(() =>
+      createS3ClipUpload({
+        file: new File(["bytes"], "clip.mp4"),
+        response: prepared,
+        resumeKey: "key",
+        onProgress: noop,
+        onSuccess: noop,
+        onError: noop,
+      }),
+    ).toThrow('unsupported upload protocol "tus"');
+  });
+
+  it("uploads an R2 target in parts", () => {
+    const upload = createS3ClipUpload({
+      file: new File(["bytes"], "clip.mp4"),
+      response: {
+        ...prepared,
+        upload: {
+          ...prepared.upload,
+          protocol: "s3-multipart",
+          multipart: { uploadId: "upload-1", partSize: 8, partCount: 1 },
+        },
+      },
+      resumeKey: "key",
+      onProgress: noop,
+      onSuccess: noop,
+      onError: noop,
+    });
+
+    expect(upload).toBeInstanceOf(S3MultipartUpload);
   });
 });

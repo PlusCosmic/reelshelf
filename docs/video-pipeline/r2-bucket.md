@@ -45,8 +45,9 @@ containers, so the account deletion's container step does nothing for R2.
 
 ## Lifecycle rules (set in the dashboard)
 
-- **Abort incomplete multipart uploads after 1 day.** Server-side uploads abort their own on failure; this catches
-  a process that died mid-upload, and browser uploads once #213 lands.
+- **Abort incomplete multipart uploads after 1 day.** Server-side uploads abort their own on failure, and deleting
+  a clip aborts its open browser upload; this catches a process that died mid-upload and a browser upload whose
+  clip was never deleted. The browser forgets a saved upload after 23 hours for the same reason.
 - **`clips/` to Infrequent Access after about 7 days.** Most views happen in a clip's first few days.
 
 Nothing expires `uploads/` on its own: a source whose transcode never succeeds stays until the clip is deleted or
@@ -54,8 +55,46 @@ purged. A rule expiring `uploads/` after a week or two would also be safe, since
 
 ## CORS (set on the bucket)
 
-`PUT`, `GET` and `HEAD` from the site's origins, exposing `ETag` (which a multipart upload's parts report). Players
-load the MP4 as a plain `<video src>`, which needs no CORS; hls.js-style fetch players would.
+`PUT`, `GET` and `HEAD` from the site's origins, allowing the `content-type` header and exposing `ETag`, which the
+browser's part PUTs must read to complete the upload (without it the uploader fails with "Storage sent no ETag").
+Players load the MP4 as a plain `<video src>`, which needs no CORS; hls.js-style fetch players would.
+
+## Browser uploads (#213)
+
+The browser uploads straight to the bucket with a presigned S3 multipart upload; the API never sees the bytes.
+
+1. **Prepare:** `POST /api/clips/categories/{id}/videos` reserves the clip as for Bunny (storage quota, 403; MD5
+   duplicate, 409), and for an R2 clip starts a multipart upload on `uploads/{clipId}`. Its `UploadTarget` is
+   protocol `s3-multipart`, endpoint `/api/clips/videos/{clipId}/upload`, and `multipart`: `upload_id`, `part_size`
+   (8 MiB, or the smallest whole MiB that fits the file in 10,000 parts) and `part_count`. No upload id is stored
+   server-side.
+2. **Parts:** `POST {endpoint}/parts` with `upload_id` and up to 100 `part_numbers` (1 to `part_count`) returns a
+   presigned PUT per part, good for an hour and signing only the host. The browser
+   (`frontend/src/utils/s3MultipartUpload.ts`) sends 4 parts at once, asks for URLs 10 at a time just before it
+   needs them, retries each part with backoff (1, 3, 5, 10, 20 s), and asks for a fresh URL after a 403.
+3. **Resume:** the clip id, upload id and finished parts' ETags are kept in localStorage under the book, the file's
+   MD5 and size. Dropping the same file on the same book after a reload resumes into that clip rather than
+   preparing a new one (which the MD5 check would refuse): `GET {endpoint}/parts?uploadId=` lists what R2 holds,
+   and only the rest is sent. A 404 (the upload is gone) deletes the waiting clip and prepares afresh; a 409 (the
+   clip moved on) forgets it.
+4. **Complete:** `POST {endpoint}/complete` with every part and its ETag joins them, then checks the object before
+   anything is queued:
+   - its size must be exactly the reserved `file_size`, so the quota holds;
+   - a cheap ffprobe (30 s timeout) over a 10-minute presigned GET reads only the headers, and refuses a file it
+     can't read, with no video stream, no picture size or no duration.
+
+   A refused file is deleted, the clip marked `upload_failed`, and the reason comes back as a 422, which the
+   uploader shows before deleting the clip. A probe that times out or can't read from storage answers 503 and the
+   browser completes again, which finds the joined object. A passing file is marked `uploaded` with its `transcode`
+   queued in one transaction, as the Twitch import's server-side upload is. HDR and variable frame rate aren't
+   checked here: the worker probes the whole source again, tone-maps HDR and forces 30 fps CFR.
+
+5. **Cancel:** deleting the clip, as for Bunny. Deleting an R2 clip aborts any multipart upload still open on its
+   key (listed by prefix), so the clip delete, the abandoned-upload purge and account deletion all free the stored
+   parts at once.
+
+All three endpoints are owner-only (`clips.create`, 404 for anyone else's clip or a host without multipart
+uploads), and completion shares clip preparation's rate limit.
 
 ## Caching (Cloudflare cache rule)
 

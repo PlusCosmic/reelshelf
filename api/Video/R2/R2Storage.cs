@@ -26,20 +26,29 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
     private readonly ILogger<R2Storage> _logger;
 
     public R2Storage(R2Options options, ILogger<R2Storage> logger)
+        : this(options, new AmazonS3Client(Credentials(options), ClientConfig(options)), logger)
+    {
+    }
+
+    /// <summary>With a client of the caller's, which tests use to stand in for R2.</summary>
+    internal R2Storage(R2Options options, AmazonS3Client client, ILogger<R2Storage> logger)
     {
         _options = options;
         _logger = logger;
-        _client = new AmazonS3Client(
-            new BasicAWSCredentials(options.AccessKeyId, options.SecretAccessKey),
-            new AmazonS3Config
-            {
-                ServiceURL = options.ServiceUrl,
-                AuthenticationRegion = R2Options.Region,
-                ForcePathStyle = true,
-                RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
-                ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
-            });
+        _client = client;
     }
+
+    internal static AWSCredentials Credentials(R2Options options) =>
+        new BasicAWSCredentials(options.AccessKeyId, options.SecretAccessKey);
+
+    internal static AmazonS3Config ClientConfig(R2Options options) => new()
+    {
+        ServiceURL = options.ServiceUrl,
+        AuthenticationRegion = R2Options.Region,
+        ForcePathStyle = true,
+        RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+        ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
+    };
 
     /// <summary>
     /// A GET for <paramref name="key"/>. With <paramref name="contentDisposition"/>, R2 answers with that
@@ -178,6 +187,125 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
         }
     }
 
+    /// <summary>Starts a multipart upload into <paramref name="key"/> for the browser to fill, and returns its id.</summary>
+    public async Task<string> StartMultipartUploadAsync(string key, string contentType, CancellationToken cancellationToken)
+    {
+        InitiateMultipartUploadResponse upload = await _client.InitiateMultipartUploadAsync(
+            new InitiateMultipartUploadRequest { BucketName = _options.Bucket, Key = key, ContentType = contentType },
+            cancellationToken);
+        return upload.UploadId;
+    }
+
+    /// <summary>
+    /// A PUT of part <paramref name="partNumber"/> of upload <paramref name="uploadId"/>. It signs no headers beyond
+    /// the host, so the browser sends the bytes alone; R2 refuses it for any other key or upload.
+    /// </summary>
+    public string PresignUploadPart(string key, string uploadId, int partNumber, TimeSpan lifetime)
+    {
+        return _client.GetPreSignedURL(new GetPreSignedUrlRequest
+        {
+            BucketName = _options.Bucket,
+            Key = key,
+            Verb = HttpVerb.PUT,
+            Protocol = Protocol.HTTPS,
+            UploadId = uploadId,
+            PartNumber = partNumber,
+            Expires = ExpiresAt(lifetime)
+        });
+    }
+
+    /// <summary>The parts uploaded so far, in order, or null when there is no such upload (completed or aborted).</summary>
+    public async Task<List<UploadedPart>?> ListPartsAsync(string key, string uploadId, CancellationToken cancellationToken)
+    {
+        List<UploadedPart> parts = [];
+        int? marker = null;
+        try
+        {
+            do
+            {
+                ListPartsResponse page = await _client.ListPartsAsync(new ListPartsRequest
+                {
+                    BucketName = _options.Bucket,
+                    Key = key,
+                    UploadId = uploadId,
+                    PartNumberMarker = marker?.ToString()
+                }, cancellationToken);
+                parts.AddRange((page.Parts ?? []).Select(part =>
+                    new UploadedPart(part.PartNumber ?? 0, part.ETag, part.Size ?? 0)));
+                marker = page.IsTruncated == true ? page.NextPartNumberMarker : null;
+            } while (marker is not null);
+        }
+        catch (AmazonS3Exception error) when (IsNoSuchUpload(error))
+        {
+            return null;
+        }
+
+        return parts.OrderBy(part => part.PartNumber).ToList();
+    }
+
+    /// <summary>
+    /// Joins <paramref name="parts"/> into the object. False when there is no such upload, which is also what a
+    /// repeated completion sees once the first one has gone through.
+    /// </summary>
+    public async Task<bool> CompleteMultipartUploadAsync(string key, string uploadId,
+        IReadOnlyList<CompletedUploadPart> parts, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _client.CompleteMultipartUploadAsync(new CompleteMultipartUploadRequest
+            {
+                BucketName = _options.Bucket,
+                Key = key,
+                UploadId = uploadId,
+                PartETags = parts.Select(part => new PartETag(part.PartNumber, part.Etag)).ToList()
+            }, cancellationToken);
+            return true;
+        }
+        catch (AmazonS3Exception error) when (IsNoSuchUpload(error))
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The object's size in bytes, or null when there is no such object.</summary>
+    public async Task<long?> GetObjectSizeAsync(string key, CancellationToken cancellationToken)
+    {
+        try
+        {
+            GetObjectMetadataResponse metadata = await _client.GetObjectMetadataAsync(
+                new GetObjectMetadataRequest { BucketName = _options.Bucket, Key = key }, cancellationToken);
+            return metadata.ContentLength;
+        }
+        catch (AmazonS3Exception error) when (error.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Aborts every unfinished multipart upload into exactly <paramref name="key"/>, which frees the parts already
+    /// stored. Idempotent: an upload that is already gone counts as aborted.
+    /// </summary>
+    public async Task AbortMultipartUploadsAsync(string key)
+    {
+        ListMultipartUploadsResponse open = await _client.ListMultipartUploadsAsync(
+            new ListMultipartUploadsRequest { BucketName = _options.Bucket, Prefix = key });
+        // A clip has one upload at a time, so a single page always holds them all.
+        foreach (MultipartUpload upload in (open.MultipartUploads ?? []).Where(upload => upload.Key == key))
+        {
+            try
+            {
+                await _client.AbortMultipartUploadAsync(new AbortMultipartUploadRequest
+                {
+                    BucketName = _options.Bucket, Key = key, UploadId = upload.UploadId
+                });
+            }
+            catch (AmazonS3Exception error) when (IsNoSuchUpload(error))
+            {
+            }
+        }
+    }
+
     /// <summary>Deletes each key. Idempotent: S3 reports success for a key that doesn't exist.</summary>
     public async Task DeleteObjectsAsync(IEnumerable<string> keys)
     {
@@ -210,6 +338,9 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
         DeletePrefixAsync(R2ObjectKeys.VersionFolder(clipId, videoVersion) + "/");
 
     public void Dispose() => _client.Dispose();
+
+    private static bool IsNoSuchUpload(AmazonS3Exception error) =>
+        error.ErrorCode == "NoSuchUpload" || error.StatusCode == System.Net.HttpStatusCode.NotFound;
 
     private static DateTime ExpiresAt(TimeSpan lifetime)
     {

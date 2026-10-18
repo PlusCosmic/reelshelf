@@ -60,19 +60,38 @@ public class R2ClipStatusRefreshTests
         Assert.Null(await host.GetVideoAsync(Guid.NewGuid()));
     }
 
+    [PostgresFact]
+    public async Task Purge_AbortsAnAbandonedBrowserUpload_AndRemovesTheClip()
+    {
+        await using TestDatabase test = await TestDatabase.CreateAsync();
+        Guid abandoned = await test.AddClipAsync(VideoHostNames.R2, "awaiting_upload", reservedAgo: TimeSpan.FromDays(2));
+        Guid fresh = await test.AddClipAsync(VideoHostNames.R2, "awaiting_upload", reservedAgo: TimeSpan.FromHours(1));
+        string abandonedUpload = test.R2.Open(R2ObjectKeys.Upload(abandoned));
+        test.R2.PutPart(abandonedUpload, 1, 8 * 1024 * 1024);
+        string freshUpload = test.R2.Open(R2ObjectKeys.Upload(fresh));
+
+        await test.Service.RefreshClipStatusesAsync();
+
+        // The day-old upload's parts are freed and its clip is gone; the one still in progress is untouched.
+        Assert.Equal([abandonedUpload], test.R2.Aborted);
+        Assert.Equal([freshUpload], test.R2.Uploads.Keys);
+        Assert.Equal([fresh], (await test.ClipsAsync()).Select(clip => clip.Id));
+    }
+
     private sealed class TestDatabase : IAsyncDisposable
     {
         private readonly NpgsqlDataSource _dataSource;
         private readonly string _schema;
 
         private TestDatabase(NpgsqlDataSource dataSource, NpgsqlConnection connection, string schema,
-            ServiceProvider provider, FakeBunny bunny)
+            ServiceProvider provider, FakeBunny bunny, FakeR2Client r2)
         {
             _dataSource = dataSource;
             Connection = connection;
             _schema = schema;
             Provider = provider;
             Bunny = bunny;
+            R2 = r2;
             Service = new ClipStatusRefreshService(NullLogger<ClipStatusRefreshService>.Instance,
                 provider.GetRequiredService<IServiceScopeFactory>());
         }
@@ -80,6 +99,7 @@ public class R2ClipStatusRefreshTests
         public NpgsqlConnection Connection { get; }
         public ServiceProvider Provider { get; }
         public FakeBunny Bunny { get; }
+        public FakeR2Client R2 { get; }
         public ClipStatusRefreshService Service { get; }
 
         public static async Task<TestDatabase> CreateAsync()
@@ -98,21 +118,18 @@ public class R2ClipStatusRefreshTests
             await TestClipSchema.CreateAsync(connection);
 
             FakeBunny bunny = new();
-            R2Storage storage = new(new R2Options
-            {
-                AccountId = "test", AccessKeyId = "id", SecretAccessKey = "secret", Bucket = "bucket",
-                MediaBaseUrl = "https://media.example"
-            }, NullLogger<R2Storage>.Instance);
+            FakeR2Client r2 = new();
+            R2Storage storage = r2.Storage();
             ServiceCollection services = new();
             services.AddScoped(_ => dataSource.CreateConnection());
             services.AddScoped<ClipsStatements>();
             services.AddScoped<ClipVideoHosts>();
             services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.Bunny, bunny);
-            // Uploads (and so the queue) aren't used by the refresh.
+            // Uploads (and so the queue and the probe) aren't used by the refresh.
             services.AddKeyedScoped<IClipVideoHost>(VideoHostNames.R2, (provider, _) => new R2VideoHost(storage,
-                provider.GetRequiredService<ClipsStatements>(), null!, null!, TimeProvider.System,
+                provider.GetRequiredService<ClipsStatements>(), null!, null!, null!, TimeProvider.System,
                 NullLogger<R2VideoHost>.Instance));
-            return new TestDatabase(dataSource, connection, schema, services.BuildServiceProvider(), bunny);
+            return new TestDatabase(dataSource, connection, schema, services.BuildServiceProvider(), bunny, r2);
         }
 
         public async Task<Guid> AddClipAsync(string videoHost, string videoState, TimeSpan reservedAgo,
@@ -160,7 +177,8 @@ public class R2ClipStatusRefreshTests
         public Task<HostedVideo> CreateVideoAsync(Guid clipId, Guid ownerId, GameCategory gameCategory, string title) =>
             throw new NotSupportedException();
 
-        public UploadTarget CreateUploadTarget(HostedVideo video, string title) => throw new NotSupportedException();
+        public Task<UploadTarget> CreateUploadTargetAsync(HostedVideo video, string title, long fileSize) =>
+            throw new NotSupportedException();
 
         public Task UploadAsync(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken) =>
             throw new NotSupportedException();

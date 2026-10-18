@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type * as tus from "tus-js-client";
 import {
   buildBulkUploadQueue,
   type BulkUploadFileInput,
@@ -23,9 +22,16 @@ import { ensureGamingSessionPlaylist } from "@/shared/services/playlists";
 import {
   calculateClipUploadMd5,
   createPreparedClipUpload,
+  createS3ClipUpload,
   createTusClipUpload,
+  isS3MultipartUpload,
   uploadErrorMessage,
 } from "@/utils/clipUpload";
+import {
+  localResumeStore,
+  multipartResumeKey,
+  resumeSavedMultipartUpload,
+} from "@/utils/s3MultipartUpload";
 import {
   isActiveUpload,
   isUnfinishedUpload,
@@ -65,14 +71,17 @@ export function useUploads() {
 /**
  * Uploads that keep going while the owner moves around the app. Files are given a book when they
  * are dropped, start at once, and are filed into their gaming session's collection once the last
- * clip of that session has reached Bunny. Processing then happens on Bunny, so only the uploads
+ * clip of that session has reached its video host. Processing then happens there, so only the uploads
  * need the tab open.
  */
 export function UploadsProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [items, setItems] = useState<UploadItem[]>([]);
   const [paused, setPaused] = useState(false);
-  const uploads = useRef(new Map<string, tus.Upload>());
+  // tus for Bunny, S3 multipart for R2: both pause with abort and carry on with start.
+  const uploads = useRef(
+    new Map<string, { start: () => void; abort: () => unknown }>(),
+  );
   const preparedClipIds = useRef(new Map<string, string>());
   const duplicateKeys = useRef(new Map<string, string>());
   const freshIds = useRef(new Set<string>());
@@ -124,13 +133,21 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
           duplicateKeys.current.set(duplicateKey, item.id);
           patch(item.id, { status: "creating" });
 
-          const response = await createPreparedClipUpload({
-            categoryId: item.categoryId,
-            createdAt: item.createdAt,
-            fileSize: item.file.size,
+          // A multipart upload this browser started before a reload carries on into the clip it prepared then.
+          const resumeKey = multipartResumeKey(
+            item.categoryId,
             md5Hash,
-            title: item.title,
-          });
+            item.file.size,
+          );
+          const response =
+            (await resumeSavedMultipartUpload({ resumeKey, deleteClip })) ??
+            (await createPreparedClipUpload({
+              categoryId: item.categoryId,
+              createdAt: item.createdAt,
+              fileSize: item.file.size,
+              md5Hash,
+              title: item.title,
+            }));
           preparedClipIds.current.set(item.id, response.clipId);
           // The clip is in the book from here on, so it shows in the list while it uploads.
           patch(item.id, { clipId: response.clipId });
@@ -139,10 +156,8 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
           });
           invalidateClipCollections(queryClient);
 
-          const upload = createTusClipUpload({
-            file: item.file,
-            response,
-            onProgress: (uploaded, total) =>
+          const callbacks = {
+            onProgress: (uploaded: number, total: number) =>
               patch(item.id, {
                 progress: total > 0 ? Math.round((uploaded / total) * 100) : 0,
               }),
@@ -152,14 +167,34 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
               patch(item.id, { status: "uploaded", progress: 100 });
               invalidateClipCollections(queryClient);
             },
-            onError: (error) => {
+            onError: (error: Error) => {
               uploads.current.delete(item.id);
+              localResumeStore.remove(resumeKey);
               void releasePreparedClip(item.id);
               patch(item.id, {
                 status: "error",
                 error: uploadErrorMessage(error),
               });
             },
+          };
+
+          if (isS3MultipartUpload(response)) {
+            const upload = createS3ClipUpload({
+              file: item.file,
+              response,
+              resumeKey,
+              ...callbacks,
+            });
+            uploads.current.set(item.id, upload);
+            patch(item.id, { status: "uploading" });
+            upload.start();
+            return;
+          }
+
+          const upload = createTusClipUpload({
+            file: item.file,
+            response,
+            ...callbacks,
           });
           uploads.current.set(item.id, upload);
 
@@ -236,7 +271,8 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
     }
   }, [items, queryClient]);
 
-  // Leaving the site drops uploads still in this tab; processing on Bunny carries on regardless.
+  // Leaving the site stops uploads still in this tab (an R2 one resumes when the file is added again);
+  // processing at the video host carries on regardless.
   const uploading = items.some(isUnfinishedUpload);
   useEffect(() => {
     if (!uploading) return;

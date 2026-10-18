@@ -7,6 +7,7 @@ import {
   UserEndpointsApi,
   GameCategoryEndpointsApi,
   LegendDetectionEndpointsApi,
+  MultipartUploadEndpointsApi,
   PlaylistEndpointsApi,
   SharedClipsEndpointsApi,
   TwitchClipsEndpointsApi,
@@ -52,6 +53,10 @@ export function createClipTranscriptionApi() {
 
 export function createClipSummaryApi() {
   return new ClipSummaryEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createMultipartUploadApi() {
+  return new MultipartUploadEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
 export function createTwitchClipsApi() {

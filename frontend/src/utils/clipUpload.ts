@@ -3,6 +3,7 @@ import type { CreateClipResponse } from "@/api-client";
 import { ApiError } from "@/shared/services/api-error";
 import { createVideoRequest } from "@/shared/services/clips";
 import { calculateFileMD5 } from "@/utils/fileHash";
+import { S3MultipartUpload } from "@/utils/s3MultipartUpload";
 
 export type CreateVideoForUpload = (request: {
   categoryId: string;
@@ -86,6 +87,42 @@ export function createTusClipUpload({
     onSuccess,
     onError,
   });
+}
+
+export type S3ClipUploadOptions = TusClipUploadOptions & {
+  /** Where its progress is kept for a reload; see `multipartResumeKey`. */
+  resumeKey: string;
+};
+
+/** Uploads the file as the presigned S3 multipart upload the API started for the clip (R2). */
+export function createS3ClipUpload({
+  file,
+  onError,
+  onProgress,
+  onSuccess,
+  response,
+  resumeKey,
+}: S3ClipUploadOptions) {
+  const { upload } = response;
+  if (upload.protocol !== "s3-multipart" || !upload.multipart) {
+    throw new Error(
+      `The upload could not start: unsupported upload protocol "${upload.protocol}".`,
+    );
+  }
+
+  return new S3MultipartUpload({
+    file,
+    clipId: response.clipId,
+    multipart: upload.multipart,
+    resumeKey,
+    onProgress,
+    onSuccess,
+    onError,
+  });
+}
+
+export function isS3MultipartUpload(response: CreateClipResponse) {
+  return response.upload.protocol === "s3-multipart";
 }
 
 export function uploadErrorMessage(uploadError: unknown) {
