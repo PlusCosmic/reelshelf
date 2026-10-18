@@ -187,6 +187,45 @@ public class AccountDeletionServiceTests
         Assert.Equal(bunnyClips.Select(clipId => (clipId, 1)).Order(), storage.DeletedVersions.Order());
     }
 
+    [Fact]
+    public async Task Process_DeletesAMigratedClipsPendingBunnyCopy_BeforeTheCollections()
+    {
+        var (service, store, bunny, r2, _, _, _) = BuildWithTwoHosts();
+        Guid clipId = Guid.NewGuid();
+        Guid bunnyCopy = Guid.NewGuid();
+        // Moved to R2 within the grace period: its old Bunny video still waits for the sweep.
+        store.Clips.Add(new OwnedClipVideo(clipId, clipId, VideoHostNames.R2, bunnyCopy));
+        Guid collection = Guid.NewGuid();
+        store.Collections.Add(collection);
+        await service.Request(UserId);
+
+        Assert.True(await service.Process(UserId, CancellationToken.None));
+
+        Assert.Equal([clipId], r2.DeletedVideos);
+        Assert.Equal([bunnyCopy], bunny.DeletedVideos);
+        Assert.Equal([collection], bunny.DeletedCollections);
+        Assert.True(store.AccountDeleted);
+    }
+
+    [Fact]
+    public async Task Process_WhenThePendingBunnyCopyFailsToDelete_KeepsTheClipForTheNextPass()
+    {
+        var (service, store, bunny, _, _, _, _) = BuildWithTwoHosts();
+        Guid clipId = Guid.NewGuid();
+        Guid bunnyCopy = Guid.NewGuid();
+        OwnedClipVideo clip = new(clipId, clipId, VideoHostNames.R2, bunnyCopy);
+        store.Clips.Add(clip);
+        bunny.FailingVideos.Add(bunnyCopy);
+        await service.Request(UserId);
+
+        Assert.False(await service.Process(UserId, CancellationToken.None));
+        Assert.Equal(clip, Assert.Single(store.Clips));
+
+        bunny.FailingVideos.Clear();
+        Assert.True(await service.Process(UserId, CancellationToken.None));
+        Assert.Equal([bunnyCopy], bunny.DeletedVideos);
+    }
+
     private sealed class FakeTranscodeStorage : ITranscodeStorage
     {
         private readonly Lock _lock = new();

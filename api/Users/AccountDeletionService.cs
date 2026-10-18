@@ -61,13 +61,10 @@ public class AccountDeletionService(
             {
                 try
                 {
-                    await videoHosts.For(clip.VideoHost).DeleteVideoAsync(clip.VideoId);
-                    if (clip.VideoHost == VideoHostNames.Bunny)
-                    {
-                        // A migrate job may have written the clip's R2 copy already; the job goes with the clip.
-                        await transcodeStorage.DeleteVersionAsync(clip.ClipId, TranscodeQueue.MigratedVideoVersion);
-                    }
-
+                    // Includes a migrated clip's Bunny copy still waiting out its grace period, before the
+                    // collections it may be filed in are deleted below.
+                    await ClipVideoDeletion.DeleteAsync(videoHosts, transcodeStorage, clip.ClipId, clip.VideoHost,
+                        clip.VideoId, clip.BunnyVideoId);
                     deletedClipIds.Add(clip.ClipId);
                 }
                 catch (Exception ex)
@@ -118,7 +115,8 @@ public class AccountDeletionService(
 
 public sealed record AccountDeletionRequest(string? Email);
 
-public sealed record OwnedClipVideo(Guid ClipId, Guid VideoId, string VideoHost);
+/// <summary>A clip's video, and its Bunny copy (<c>bunny_video_id</c>) when it moved to R2 within the grace period.</summary>
+public sealed record OwnedClipVideo(Guid ClipId, Guid VideoId, string VideoHost, Guid? BunnyVideoId = null);
 
 /// <summary>A container one of the account's videos was filed in, at the host that keeps it.</summary>
 public sealed record OwnedVideoContainer(string VideoHost, Guid ContainerId);

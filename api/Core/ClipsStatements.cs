@@ -383,7 +383,7 @@ public class ClipsStatements(NpgsqlConnection connection)
     public async Task<List<ClipRow>> GetAbandonedClips(DateTimeOffset reservedBefore)
     {
         const string sql = """
-            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress, file_size
+            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress, file_size, bunny_video_id
             FROM clip
             WHERE reserved_at < @reservedBefore
               AND COALESCE(storage_size, 0) = 0
@@ -644,13 +644,14 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.video_codecs,
                 c.video_height,
                 c.encode_progress,
+                c.bunny_video_id,
                 {ClipVideoColumns.ThumbnailsReadySql("c")},
                 STRING_AGG(t.name, ',') as tag_names
             FROM clip c
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
             LEFT JOIN tag t ON ct.tag_id = t.id
             WHERE c.id = @clipId AND c.owner_id = @ownerId
-            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress
+            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress, c.bunny_video_id
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ClipWithTagsRow>(sql, new { clipId, ownerId });
@@ -962,6 +963,9 @@ public class ClipsStatements(NpgsqlConnection connection)
         public bool ThumbnailsReady { get; set; }
         public int? EncodeProgress { get; set; }
         public long? FileSize { get; set; }
+
+        /// <summary>A migrated clip's Bunny copy waiting out its grace period. Only the queries that delete clips select it.</summary>
+        public Guid? BunnyVideoId { get; set; }
     }
 
     public class CategoryTotalsRow
@@ -1064,6 +1068,12 @@ public class ClipsStatements(NpgsqlConnection connection)
         public int? VideoHeight { get; set; }
         public bool ThumbnailsReady { get; set; }
         public int? EncodeProgress { get; set; }
+
+        /// <summary>
+        /// A migrated clip's Bunny copy waiting out its grace period, so deleting the clip deletes it too. Only
+        /// <see cref="GetClipWithTagsByIdAndOwner"/> selects it.
+        /// </summary>
+        public Guid? BunnyVideoId { get; set; }
     }
 
     public record PagedClipWithTagsRows(List<ClipWithTagsRow> Rows, int TotalCount);

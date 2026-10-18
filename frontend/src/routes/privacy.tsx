@@ -83,9 +83,9 @@ function PrivacyRoute() {
       <ul>
         <li>
           <strong>Bunny.net</strong> stores and streams your clips. We are
-          moving clips to our own pipeline, so some new clips are instead stored
-          and delivered by <strong>Cloudflare</strong> (R2 storage and its CDN)
-          and encoded on servers we run.
+          moving clips to our own pipeline, existing ones included, so some
+          clips are instead stored and delivered by <strong>Cloudflare</strong>{" "}
+          (R2 storage and its CDN) and encoded on servers we run.
         </li>
         <li>
           <strong>Discord and Twitch</strong> handle sign-in, Twitch clip import
@@ -130,7 +130,10 @@ function PrivacyRoute() {
       <p>
         We keep your data while your account exists. For clips in our own
         pipeline, the file you uploaded is deleted once it has been encoded, and
-        only the encoded video is kept. Deleting a clip removes the video from
+        only the encoded video is kept. When an existing clip moves from
+        Bunny.net to our own pipeline, its copy at Bunny.net is kept for up to 7
+        days, so we can switch back if the move went wrong, and is then deleted.
+        Deleting a clip removes the video, and any copy still at Bunny.net, from
         storage and deletes its tags, detections and transcripts. Unlinking a
         sign-in method deletes its stored tokens. You can delete your whole
         account in Settings: it stops working straight away, and its clips are

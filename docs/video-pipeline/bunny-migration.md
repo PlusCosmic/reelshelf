@@ -92,23 +92,41 @@ pick it up again automatically: clips with a failed `migrate` are left for a per
 
 ### API: the sweep
 
-Where `Migration:DeleteBunny` is true (default false), a background pass:
+Where `Migration:DeleteBunny` is true (default false), a background pass (`BunnyCopySweepService`, hourly, never in
+the `OpenApi` environment; the option is read on every pass):
 
 - deletes the Bunny video of every clip whose `migrated_at` is older than `Migration:DeleteBunnyAfter`
-  (default 7 days), then clears `bunny_video_id`;
-- deletes each Bunny collection that no clip still on Bunny, and no undeleted `bunny_video_id`, refers to.
+  (default 7 days), through the Bunny host, 20 at a time with 500 ms between Bunny calls, oldest move first. Each
+  delete happens in a transaction that locks the clip row and re-checks that the copy is still due and that **no
+  clip plays from it** (`video_host = 'bunny'` with that `video_id`, whichever clip that is). Only then is Bunny
+  called, and `bunny_video_id` cleared in the same transaction (`migrated_at` stays as a record of the move);
+- then deletes each Bunny collection that no clip still on Bunny, and no undeleted `bunny_video_id`, refers to.
+  `clip_collection` holds one collection per owner and game category, so a collection is in use while any of that
+  owner's clips in that category is on Bunny (a reserved upload included) or still has a `bunny_video_id`. The row
+  and the Bunny collection are deleted under the owner's upload lock (`clip-storage:{owner}`, the one an upload
+  reserves its clip under before it looks the collection up), so an upload either keeps the collection in use or
+  makes a new one; no video is filed into a collection that is being deleted.
 
-A 404 from Bunny counts as already deleted. Account deletion also deletes a clip's pending `bunny_video_id`.
+A 404 from Bunny counts as already deleted. Any other error is logged, that copy or collection is skipped for the
+rest of the pass, and the next pass retries it. While `Migration:Enabled` is on and `Migration:DeleteBunny` is off,
+the sweep logs a warning, since the privacy policy says Bunny copies are deleted after 7 days: turn both on together.
+
+A clip deleted during its grace period would leave its copy behind, since the sweep finds copies through the clip
+row. So deleting a clip (`ClipService.DeleteClip`, which the uploader's cancel uses, and the abandoned-upload purge)
+and account deletion delete a pending `bunny_video_id` at Bunny too (`ClipVideoDeletion`), and account deletion does
+so before it deletes the account's collections.
 
 ### Switching a clip back (within the grace period)
 
 ```sql
-update clip set video_host = 'bunny', video_id = bunny_video_id, video_version = 1,
+update clip set video_host = 'bunny', video_id = bunny_video_id, bunny_video_id = null, video_version = 1,
   video_codecs = null, video_height = null, migrated_at = null
 where id = '<clip id>' and bunny_video_id is not null;
 ```
 
-(`video_version` is `NOT NULL`, and Bunny clips keep 1.) Then delete `clips/{clipId}/` from the bucket. The
+(`video_version` is `NOT NULL`, and Bunny clips keep 1. SET reads the row as it was, so `video_id` takes the old
+`bunny_video_id`.) It waits for a sweep deleting that copy right then, and then changes nothing, since
+`bunny_video_id` is gone; the sweep never deletes a copy the clip plays from, even if `bunny_video_id` were left set. Then delete `clips/{clipId}/` from the bucket. The
 clip's succeeded `migrate` run keeps the backfill from queueing it again; delete the run to try once more. The
 clip shows Bunny's copy again. Status polling picks it up, and no URL is cached against the R2 copy that wasn't
 there before (#229).
