@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Reelshelf.Email;
 using Reelshelf.Games;
@@ -14,12 +15,25 @@ public class AccountDeletionServiceTests
     private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Host, FakeSender Sender, AccountDeletionSignal Signal) Build(
         string? email = "harry@example.com")
     {
+        var (service, store, host, _, sender, signal) = BuildWithTwoHosts(email);
+        return (service, store, host, sender, signal);
+    }
+
+    /// <summary>Bunny (the default for clips and collections the tests add) and a second host without containers.</summary>
+    private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Bunny, FakeVideoHost Other, FakeSender Sender, AccountDeletionSignal Signal) BuildWithTwoHosts(
+        string? email = "harry@example.com")
+    {
         FakeStore store = new() { Email = email };
-        FakeVideoHost host = new();
+        FakeVideoHost bunny = new();
+        FakeVideoHost other = new();
+        ServiceCollection services = new();
+        services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.Bunny, bunny);
+        services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.R2, other);
+        ClipVideoHosts hosts = new(services.BuildServiceProvider());
         FakeSender sender = new();
         AccountDeletionSignal signal = new();
-        AccountDeletionService service = new(store, host, sender, signal, NullLogger<AccountDeletionService>.Instance);
-        return (service, store, host, sender, signal);
+        AccountDeletionService service = new(store, hosts, sender, signal, NullLogger<AccountDeletionService>.Instance);
+        return (service, store, bunny, other, sender, signal);
     }
 
     [Theory]
@@ -133,7 +147,7 @@ public class AccountDeletionServiceTests
         await service.Request(UserId);
 
         // An upload already in flight reserves a clip after the clip list was read.
-        OwnedClipVideo late = new(Guid.NewGuid(), Guid.NewGuid());
+        OwnedClipVideo late = new(Guid.NewGuid(), Guid.NewGuid(), VideoHostNames.Bunny);
         store.OnClipsDeleted = () => store.Clips.Add(late);
 
         Assert.False(await service.Process(UserId, CancellationToken.None));
@@ -145,6 +159,29 @@ public class AccountDeletionServiceTests
         Assert.True(store.AccountDeleted);
     }
 
+    [Fact]
+    public async Task Process_DeletesEachVideoAndContainerAtItsOwnHost()
+    {
+        var (service, store, bunny, other, _, _) = BuildWithTwoHosts();
+        store.AddClips(2);
+        store.AddClips(3, VideoHostNames.R2);
+        Guid bunnyCollection = Guid.NewGuid();
+        store.Collections.Add(bunnyCollection);
+        Guid otherContainer = Guid.NewGuid();
+        store.OtherContainers.Add(new OwnedVideoContainer(VideoHostNames.R2, otherContainer));
+        List<Guid> bunnyVideos = store.Clips.Where(clip => clip.VideoHost == VideoHostNames.Bunny).Select(clip => clip.VideoId).ToList();
+        List<Guid> otherVideos = store.Clips.Where(clip => clip.VideoHost == VideoHostNames.R2).Select(clip => clip.VideoId).ToList();
+        await service.Request(UserId);
+
+        Assert.True(await service.Process(UserId, CancellationToken.None));
+
+        Assert.Equal(bunnyVideos.Order(), bunny.DeletedVideos.Order());
+        Assert.Equal(otherVideos.Order(), other.DeletedVideos.Order());
+        Assert.Equal([bunnyCollection], bunny.DeletedCollections);
+        Assert.Equal([otherContainer], other.DeletedCollections);
+        Assert.True(store.AccountDeleted);
+    }
+
     private sealed class FakeStore : IAccountDeletionStore
     {
         public string? Email { get; init; }
@@ -152,13 +189,14 @@ public class AccountDeletionServiceTests
         public bool AccountDeleted { get; private set; }
         public List<OwnedClipVideo> Clips { get; } = [];
         public List<Guid> Collections { get; } = [];
+        public List<OwnedVideoContainer> OtherContainers { get; } = [];
         public Action? OnClipsDeleted { get; set; }
 
-        public void AddClips(int count)
+        public void AddClips(int count, string videoHost = VideoHostNames.Bunny)
         {
             for (int i = 0; i < count; i++)
             {
-                Clips.Add(new OwnedClipVideo(Guid.NewGuid(), Guid.NewGuid()));
+                Clips.Add(new OwnedClipVideo(Guid.NewGuid(), Guid.NewGuid(), videoHost));
             }
         }
 
@@ -187,7 +225,8 @@ public class AccountDeletionServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<List<Guid>> GetBunnyCollections(Guid userId) => Task.FromResult(Collections.ToList());
+        public Task<List<OwnedVideoContainer>> GetVideoContainers(Guid userId) => Task.FromResult(
+            Collections.Select(id => new OwnedVideoContainer(VideoHostNames.Bunny, id)).Concat(OtherContainers).ToList());
 
         public Task<bool> DeleteAccountIfEmpty(Guid userId)
         {

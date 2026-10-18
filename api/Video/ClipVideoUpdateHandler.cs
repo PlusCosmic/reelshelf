@@ -10,7 +10,7 @@ namespace Reelshelf.Video;
 /// authenticates the notification; this trusts only what the host itself reports.
 /// </summary>
 public class ClipVideoUpdateHandler(
-    IClipVideoHost videoHost,
+    ClipVideoHosts videoHosts,
     ClipsStatements clipsStatements,
     LegendDetectionService legendDetectionService,
     ClipTranscriptionService clipTranscriptionService,
@@ -30,7 +30,7 @@ public class ClipVideoUpdateHandler(
             clip.Id, clip.Title);
 
         logger.LogInformation("[VIDEO UPDATE] Fetching video metadata from the video host for VideoId: {VideoId}", videoId);
-        HostedVideoInfo? video = await videoHost.GetVideoAsync(videoId);
+        HostedVideoInfo? video = await videoHosts.For(clip.VideoHost).GetVideoAsync(videoId);
         if (video == null)
         {
             logger.LogWarning("[VIDEO UPDATE] Failed to fetch video from the video host for VideoId: {VideoId}", videoId);

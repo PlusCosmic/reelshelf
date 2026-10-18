@@ -12,7 +12,8 @@ using Reelshelf.Video;
 namespace Reelshelf.Core;
 
 public class ClipService(
-    IClipVideoHost videoHost,
+    ClipVideoHosts videoHosts,
+    NewUploadVideoHostPolicy newUploadHostPolicy,
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection,
@@ -74,6 +75,10 @@ public class ClipService(
             }
         }
 
+        // Existing clips stay on the host they were created on; only new ones follow the policy.
+        string videoHostName = newUploadHostPolicy.HostFor(userId);
+        IClipVideoHost videoHost = videoHosts.For(videoHostName);
+
         // Cheap unlocked check first so a plainly over-limit request fails before taking the lock.
         await storageQuotaService.EnsureCanStore(userId, fileSize);
 
@@ -92,6 +97,7 @@ public class ClipService(
             {
                 reserved = await clipsStatements.InsertClip(
                     userId,
+                    videoHostName,
                     placeholderVideoId,
                     gameCategoryId,
                     md5Hash,
@@ -128,7 +134,7 @@ public class ClipService(
         }
         catch
         {
-            await DiscardUnattachedVideoAsync(reserved.Id, video.VideoId);
+            await DiscardUnattachedVideoAsync(reserved.Id, videoHost, video.VideoId);
             throw;
         }
 
@@ -138,10 +144,15 @@ public class ClipService(
         return new CreateClipResponse(clip.Id, video.VideoId, videoHost.CreateUploadTarget(video, videoTitle));
     }
 
-    /// <summary>Server-side upload of a clip's bytes into the video <see cref="CreateClip"/> prepared for it.</summary>
-    public Task UploadVideo(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken)
+    /// <summary>
+    /// Server-side upload of a clip's bytes into the video <see cref="CreateClip"/> prepared for it, at the host
+    /// the clip was created on.
+    /// </summary>
+    public async Task UploadVideo(Guid clipId, Stream content, long? contentLength, CancellationToken cancellationToken)
     {
-        return videoHost.UploadAsync(videoId, content, contentLength, cancellationToken);
+        ClipsStatements.ClipRow clip = await clipsStatements.GetClipById(clipId)
+                                       ?? throw new NotFoundException("Clip", clipId);
+        await videoHosts.For(clip.VideoHost).UploadAsync(clip.VideoId, content, contentLength, cancellationToken);
     }
 
     /// <summary>
@@ -149,7 +160,7 @@ public class ClipService(
     /// reservation; if the host's delete fails, keep the row and record the real video id on it so the
     /// abandoned-upload purge can finish the job rather than leaving a billable orphan.
     /// </summary>
-    private async Task DiscardUnattachedVideoAsync(Guid clipId, Guid videoId)
+    private async Task DiscardUnattachedVideoAsync(Guid clipId, IClipVideoHost videoHost, Guid videoId)
     {
         try
         {
@@ -393,7 +404,7 @@ public class ClipService(
             return false;
         }
 
-        await videoHost.DeleteVideoAsync(clip.VideoId);
+        await videoHosts.For(clip.VideoHost).DeleteVideoAsync(clip.VideoId);
         await clipsStatements.DeleteClip(clipId);
 
         // Usage went down; clear the "nearly full" marker if the owner is back under the threshold.
@@ -461,7 +472,7 @@ public class ClipService(
             sharedClip.GameName,
             sharedClip.Length ?? 0,
             sharedClip.DateUploaded ?? sharedClip.CreatedAt,
-            mediaUrls.Thumbnail(sharedClip.VideoId),
-            mediaUrls.Sources(sharedClip.VideoId));
+            mediaUrls.Thumbnail(sharedClip.VideoHost, sharedClip.VideoId),
+            mediaUrls.Sources(sharedClip.VideoHost, sharedClip.VideoId));
     }
 }

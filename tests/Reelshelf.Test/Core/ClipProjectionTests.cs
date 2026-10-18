@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Reelshelf.Core;
 using Reelshelf.Core.Models;
 using Reelshelf.Games;
@@ -21,19 +20,14 @@ public class ClipProjectionTests
 
     private static ClipProjection Create()
     {
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["BunnyCdnBaseUrl"] = "https://cdn.example/"
-            })
-            .Build();
-        return new ClipProjection(new ClipMediaUrls(configuration));
+        return new ClipProjection(ClipMediaUrlsTests.Create("https://cdn.example/"));
     }
 
     private static ClipsStatements.ClipWithTagsRow Row() => new()
     {
         Id = Guid.NewGuid(),
         OwnerId = Guid.NewGuid(),
+        VideoHost = VideoHostNames.Bunny,
         VideoId = VideoId,
         GameCategoryId = Category.Id,
         CreatedAt = CreatedAt,

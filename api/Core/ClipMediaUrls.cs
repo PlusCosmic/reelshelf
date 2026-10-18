@@ -1,51 +1,43 @@
 using Reelshelf.Core.Models;
+using Reelshelf.Video;
 
 namespace Reelshelf.Core;
 
 /// <summary>
-/// Every media URL for a clip's video: its playback sources, HLS playlist and thumbnails. Nothing else builds these,
-/// so the video host is only named here and in configuration (<c>BunnyCdnBaseUrl</c>).
+/// Every media URL for a clip's video: its playback sources, HLS playlist and thumbnails. Nothing else builds these.
+/// Each takes the clip's <c>video_host</c> and asks that host's <see cref="IClipVideoMediaUrls"/>, so the hosts are
+/// only named in their own folders and in configuration.
 /// </summary>
-public class ClipMediaUrls(IConfiguration configuration)
+public class ClipMediaUrls(IServiceProvider services)
 {
     public const string HlsType = "application/vnd.apple.mpegurl";
 
-    /// <summary>
-    /// What players play, in the order they try them. A Bunny video is its HLS playlist alone.
-    /// </summary>
-    public List<PlaybackSource> Sources(Guid videoId)
+    /// <summary>What players play, in the order they try them.</summary>
+    public List<PlaybackSource> Sources(string videoHost, Guid videoId)
     {
-        return [new PlaybackSource(Playlist(videoId).ToString(), HlsType)];
+        return For(videoHost).Sources(videoId);
     }
 
     /// <summary>The HLS playlist, for server-side readers (ffmpeg); players use <see cref="Sources"/>.</summary>
-    public Uri Playlist(Guid videoId)
+    public Uri Playlist(string videoHost, Guid videoId)
     {
-        return new Uri($"{VideoBaseUrl(videoId)}/playlist.m3u8");
+        return For(videoHost).Playlist(videoId);
     }
 
-    public string Thumbnail(Guid videoId)
+    public string Thumbnail(string videoHost, Guid videoId)
     {
-        return $"{VideoBaseUrl(videoId)}/thumbnail.jpg";
+        return For(videoHost).Thumbnail(videoId);
     }
 
-    /// <summary>
-    /// The thumbnails Bunny generates while encoding: the main thumbnail plus five more taken through the video.
-    /// </summary>
-    public List<string> DetectionFrames(Guid videoId)
+    /// <summary>The six frames legend detection reads: the main thumbnail plus five more taken through the video.</summary>
+    public List<string> DetectionFrames(string videoHost, Guid videoId)
     {
-        string baseUrl = VideoBaseUrl(videoId);
-        return
-        [
-            $"{baseUrl}/thumbnail.jpg",
-            .. Enumerable.Range(1, 5).Select(index => $"{baseUrl}/thumbnail_{index}.jpg")
-        ];
+        return For(videoHost).DetectionFrames(videoId);
     }
 
-    private string VideoBaseUrl(Guid videoId)
+    private IClipVideoMediaUrls For(string videoHost)
     {
-        string cdnBaseUrl = configuration["BunnyCdnBaseUrl"]
-                            ?? throw new InvalidOperationException("BunnyCdnBaseUrl is not configured");
-        return $"{cdnBaseUrl.TrimEnd('/')}/{videoId}";
+        return services.GetKeyedService<IClipVideoMediaUrls>(videoHost)
+               ?? throw new InvalidOperationException($"No video host is registered as '{videoHost}'");
     }
 }

@@ -19,7 +19,7 @@ An internal Bunny Stream storage grouping used for uploaded videos, one per owne
 _Avoid_: Exposing this as a user-facing collection.
 
 **Video Host**:
-The service that stores, encodes and serves clip videos (`IClipVideoHost`); Bunny Stream today.
+The service that stores, encodes and serves clip videos (`IClipVideoHost`); Bunny Stream today, with our own R2 pipeline to come. Each clip records the host that holds its video (`clip.video_host`), and everything about that video goes to that host.
 _Avoid_: Calling Bunny directly from outside `api/Bunny/`, or building a video's URLs anywhere but `ClipMediaUrls`; clients take the URLs the API hands out.
 
 **Clip Video Status**:
