@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from "../runtime";
+import type { PlaybackSource } from "./PlaybackSource";
+import {
+  PlaybackSourceFromJSON,
+  PlaybackSourceFromJSONTyped,
+  PlaybackSourceToJSON,
+  PlaybackSourceToJSONTyped,
+} from "./PlaybackSource";
+
 /**
  *
  * @export
@@ -51,10 +59,10 @@ export interface SharedClipResponse {
   thumbnailUrl: string;
   /**
    *
-   * @type {string}
+   * @type {Array<PlaybackSource>}
    * @memberof SharedClipResponse
    */
-  playbackUrl: string;
+  sources: Array<PlaybackSource>;
 }
 
 /**
@@ -71,8 +79,7 @@ export function instanceOfSharedClipResponse(
     return false;
   if (!("thumbnailUrl" in value) || value["thumbnailUrl"] === undefined)
     return false;
-  if (!("playbackUrl" in value) || value["playbackUrl"] === undefined)
-    return false;
+  if (!("sources" in value) || value["sources"] === undefined) return false;
   return true;
 }
 
@@ -93,7 +100,7 @@ export function SharedClipResponseFromJSONTyped(
     durationSeconds: json["duration_seconds"],
     uploadedAt: new Date(json["uploaded_at"]),
     thumbnailUrl: json["thumbnail_url"],
-    playbackUrl: json["playback_url"],
+    sources: (json["sources"] as Array<any>).map(PlaybackSourceFromJSON),
   };
 }
 
@@ -115,6 +122,6 @@ export function SharedClipResponseToJSONTyped(
     duration_seconds: value["durationSeconds"],
     uploaded_at: value["uploadedAt"].toISOString(),
     thumbnail_url: value["thumbnailUrl"],
-    playback_url: value["playbackUrl"],
+    sources: (value["sources"] as Array<any>).map(PlaybackSourceToJSON),
   };
 }

@@ -43,7 +43,8 @@ public static class QueueMetricsSetup
         builder.Services.AddMetrics();
         builder.Services.AddSingleton<RunQueueMetrics>();
 
-        // A new run table is one more line here (e.g. transcode_run once it lands).
+        // A run table with the usual columns is one more line here; one shaped differently (transcode_run, with
+        // type, available_at, heartbeat_at and finished_at) registers its own IRunQueueMetricsSource instead.
         builder.Services.AddRunTableQueueMetrics<LegendDetectionOptions>(LegendDetectionQueue, o => o.MaxAttempts);
         builder.Services.AddRunTableQueueMetrics<ClipTranscriptionOptions>(ClipTranscriptionQueue, o => o.MaxAttempts);
         builder.Services.AddRunTableQueueMetrics<ClipSummaryOptions>(ClipSummaryQueue, o => o.MaxAttempts);

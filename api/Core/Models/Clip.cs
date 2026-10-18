@@ -24,7 +24,7 @@ public record Clip(
 /// </summary>
 /// <param name="Status">Where the video is on its way to playable.</param>
 /// <param name="EncodeProgress">The host's encoding progress, 0 to 100, while <paramref name="Status"/> is processing.</param>
-/// <param name="PlaybackUrl">The HLS playlist, which every player plays.</param>
+/// <param name="Sources">What players play, in the order they try them (<see cref="PlaybackSource"/>).</param>
 public record ClipVideo(
     Guid Id,
     string Title,
@@ -34,7 +34,7 @@ public record ClipVideo(
     long StorageBytes,
     DateTimeOffset UploadedAt,
     string ThumbnailUrl,
-    string PlaybackUrl);
+    List<PlaybackSource> Sources);
 
 public record PagedClipsResponse(List<Clip> Clips, long TotalClips, long TotalPages);
 
@@ -66,4 +66,4 @@ public record SharedClipResponse(
     int DurationSeconds,
     DateTimeOffset UploadedAt,
     string ThumbnailUrl,
-    string PlaybackUrl);
+    List<PlaybackSource> Sources);

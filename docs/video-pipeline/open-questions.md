@@ -51,8 +51,10 @@
   - **Queue metrics exist (#205):** the API samples `legend_detection_run`, `clip_transcription_run` and
     `clip_summary_run` and publishes pending, retrying, oldest pending age, running, stale running, and succeeded,
     failed and exhausted in the last hour as gauges on the `Reelshelf.Queues` meter, exported over OTLP when
-    `QueueMetrics:Exporter=otlp` (see `api/QueueMetrics/` and AGENTS.md). `transcode_run` gets the same gauges
-    with one `AddRunTableQueueMetrics` line in `QueueMetricsSetup` when it lands, and its oldest pending age is the
+    `QueueMetrics:Exporter=otlp` (see `api/QueueMetrics/` and AGENTS.md). `transcode_run` is not sampled yet
+    (a follow-up): its columns differ from the other run tables (`type` rather than `trigger`, `available_at` for
+    the retry delay, `heartbeat_at` for staleness, `finished_at`), so it needs its own `IRunQueueMetricsSource`
+    registered in `QueueMetricsSetup` rather than the shared `RunTableMetricsSource`. Its oldest pending age is the
     overflow scaling signal. Still open: where the OTLP goes (a collector forwarding to CloudWatch for Fargate
     scaling, or Prometheus/Grafana in `PlusCosmic/infrastructure`), and the alarms (oldest pending above N
     minutes, any exhausted runs).
@@ -69,7 +71,8 @@
   into AV1 through the same queue. The per-clip host column lets both hosts run side by side during the move.
 - **Access control:** stay with unguessable unsigned URLs as today, or add signed URLs or a Worker check. Either
   must keep share links and the Discord Activity working.
-- **Worker → API reporting:** an authenticated callback, or a results queue the API consumes.
+- **Worker → API reporting:** settled as authenticated calls to the API (#211): workers claim and report through
+  `/api/worker/` with a shared secret; see [workers-and-jobs.md](workers-and-jobs.md#the-queue-and-the-worker-api-built-in-211).
 
 ## Follow-ups from #188 (not done)
 

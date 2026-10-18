@@ -75,9 +75,9 @@ public class PlaylistStatements(NpgsqlConnection connection)
     public async Task<PlaylistListExtras> GetListExtras(Guid[] playlistIds)
     {
         const string previewSql = @"
-            SELECT playlist_id, clip_id, video_id
+            SELECT playlist_id, clip_id, video_id, video_host
             FROM (
-                SELECT pc.playlist_id, c.id AS clip_id, c.video_id,
+                SELECT pc.playlist_id, c.id AS clip_id, c.video_id, c.video_host,
                        ROW_NUMBER() OVER (PARTITION BY pc.playlist_id ORDER BY pc.position, pc.added_at) AS n
                 FROM playlist_clips pc
                 INNER JOIN clip c ON c.id = pc.clip_id
@@ -114,6 +114,7 @@ public class PlaylistStatements(NpgsqlConnection connection)
         public Guid PlaylistId { get; set; }
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
+        public string VideoHost { get; set; } = "";
     }
 
     public class GameCountRow

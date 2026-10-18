@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Reelshelf.Core;
 using Reelshelf.Core.Models;
 using Reelshelf.Games;
@@ -21,19 +20,14 @@ public class ClipProjectionTests
 
     private static ClipProjection Create()
     {
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["BunnyCdnBaseUrl"] = "https://cdn.example/"
-            })
-            .Build();
-        return new ClipProjection(new ClipMediaUrls(configuration));
+        return new ClipProjection(ClipMediaUrlsTests.Create("https://cdn.example/"));
     }
 
     private static ClipsStatements.ClipWithTagsRow Row() => new()
     {
         Id = Guid.NewGuid(),
         OwnerId = Guid.NewGuid(),
+        VideoHost = VideoHostNames.Bunny,
         VideoId = VideoId,
         GameCategoryId = Category.Id,
         CreatedAt = CreatedAt,
@@ -60,6 +54,11 @@ public class ClipProjectionTests
         Assert.True(clip.IsViewed);
         Assert.False(clip.Share.Shared);
         Assert.Equal(
+            [new PlaybackSource($"https://cdn.example/{VideoId}/playlist.m3u8", "application/vnd.apple.mpegurl")],
+            clip.Video.Sources);
+        // Records compare lists by reference, so the sources are checked above and shared here.
+        List<PlaybackSource> sources = clip.Video.Sources;
+        Assert.Equal(
             new ClipVideo(
                 VideoId,
                 "Third party",
@@ -69,7 +68,7 @@ public class ClipProjectionTests
                 1_234_567,
                 CreatedAt.AddMinutes(1),
                 $"https://cdn.example/{VideoId}/thumbnail.jpg",
-                $"https://cdn.example/{VideoId}/playlist.m3u8"),
+                sources),
             clip.Video);
     }
 

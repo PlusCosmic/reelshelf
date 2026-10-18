@@ -33,7 +33,7 @@ public class ClipStatusRefreshService(
         {
             using IServiceScope scope = scopeFactory.CreateScope();
             ClipsStatements clipsStatements = scope.ServiceProvider.GetRequiredService<ClipsStatements>();
-            IClipVideoHost videoHost = scope.ServiceProvider.GetRequiredService<IClipVideoHost>();
+            ClipVideoHosts videoHosts = scope.ServiceProvider.GetRequiredService<ClipVideoHosts>();
 
             List<ClipsStatements.ClipRow> clipsNeedingUpdate = await clipsStatements.GetClipsNeedingStatusUpdate();
 
@@ -52,7 +52,7 @@ public class ClipStatusRefreshService(
             {
                 try
                 {
-                    HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
+                    HostedVideoInfo? video = await videoHosts.For(clip.VideoHost).GetVideoAsync(clip.VideoId);
                     if (video == null)
                     {
                         logger.LogWarning("Video {VideoId} not found at the video host for clip {ClipId}", clip.VideoId, clip.Id);
@@ -85,7 +85,7 @@ public class ClipStatusRefreshService(
         {
             using IServiceScope scope = scopeFactory.CreateScope();
             ClipsStatements clipsStatements = scope.ServiceProvider.GetRequiredService<ClipsStatements>();
-            IClipVideoHost videoHost = scope.ServiceProvider.GetRequiredService<IClipVideoHost>();
+            ClipVideoHosts videoHosts = scope.ServiceProvider.GetRequiredService<ClipVideoHosts>();
 
             List<ClipsStatements.ClipRow> candidates =
                 await clipsStatements.GetAbandonedClips(DateTimeOffset.UtcNow - AbandonedUploadAge);
@@ -95,6 +95,7 @@ public class ClipStatusRefreshService(
                 try
                 {
                     // Re-check with the host so a clip whose update notification was missed is refreshed rather than deleted.
+                    IClipVideoHost videoHost = videoHosts.For(clip.VideoHost);
                     HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
                     if (!IsAbandoned(video))
                     {

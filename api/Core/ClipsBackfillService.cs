@@ -6,7 +6,7 @@ namespace Reelshelf.Core;
 public class ClipsBackfillService(
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements,
-    IClipVideoHost videoHost,
+    ClipVideoHosts videoHosts,
     ILogger<ClipsBackfillService> logger)
 {
     private const string ApexLegendsSlug = "apex-legends";
@@ -37,7 +37,7 @@ public class ClipsBackfillService(
         {
             try
             {
-                HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
+                HostedVideoInfo? video = await videoHosts.For(clip.VideoHost).GetVideoAsync(clip.VideoId);
 
                 if (video is null)
                 {

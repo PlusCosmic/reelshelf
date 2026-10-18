@@ -23,6 +23,13 @@ public static class RateLimitPolicies
     /// </summary>
     public const string ActivityToken = "activity-token";
 
+    /// <summary>
+    /// The transcode workers' API. Workers share one credential and have no account, so they partition by address.
+    /// It runs after authorization, so it bounds a worker stuck in a loop rather than guessing at the secret, which
+    /// is at least 32 characters (<see cref="Video.Transcoding.WorkerOptions"/>).
+    /// </summary>
+    public const string Worker = "worker";
+
     private const int DefaultIgdbRequestsPerMinute = 30;
 
     // The uploader runs at most three uploads at once, so a legitimate client prepares clips no faster than
@@ -60,6 +67,8 @@ public static class RateLimitPolicies
             options.AddPerUserSlidingWindow(ClipPrepare, preparationsPerMinute);
             options.AddPerUserSlidingWindow(ActivityToken,
                 builder.Configuration.GetValue<int?>("DiscordActivity:TokensPerMinute") ?? DefaultActivityTokensPerMinute);
+            options.AddPerUserSlidingWindow(Worker,
+                builder.Configuration.GetValue<int?>("Worker:RequestsPerMinute") ?? new Video.Transcoding.WorkerOptions().RequestsPerMinute);
         });
     }
 

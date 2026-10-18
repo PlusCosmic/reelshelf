@@ -174,7 +174,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                   ORDER BY trigger = 'eval', trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, clip.video_id, run.trigger, run.provider, run.model, run.reasoning_effort,
+            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, run.trigger, run.provider, run.model, run.reasoning_effort,
                       run.attempts
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql, new { RetryAfter = retryAfter, StaleAfter = staleAfter });
@@ -281,7 +281,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     public async Task<List<ReviewClipRow>> GetClipsForReviewAsync(Guid gameCategoryId)
     {
         const string sql = """
-            SELECT clip.id, clip.video_id, clip.title, clip.length, clip.created_at,
+            SELECT clip.id, clip.video_id, clip.video_host, clip.title, clip.length, clip.created_at,
                    COALESCE(owner.global_name, owner.username) AS owner_name
             FROM clip
             JOIN app_user owner ON owner.id = clip.owner_id
@@ -557,7 +557,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     public async Task<List<EvalMissRow>> GetEvalMissesAsync(Guid evalId)
     {
         const string sql = """
-            SELECT run.id AS run_id, run.clip_id, clip.video_id, clip.title, run.status, run.hud_detected,
+            SELECT run.id AS run_id, run.clip_id, clip.video_id, clip.video_host, clip.title, run.status, run.hud_detected,
                    run.player_legend, run.player_legend_confidence, run.error, label.player_legend AS label_legend
             FROM legend_detection_run run
             JOIN legend_detection_label label ON label.clip_id = run.clip_id
@@ -687,6 +687,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public Guid RunId { get; set; }
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
+        public string VideoHost { get; set; } = "";
         public string? Title { get; set; }
         public string Status { get; set; } = "";
         public bool? HudDetected { get; set; }
@@ -710,6 +711,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     {
         public Guid Id { get; set; }
         public Guid VideoId { get; set; }
+        public string VideoHost { get; set; } = "";
         public string? Title { get; set; }
         public int? Length { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
@@ -747,6 +749,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public Guid Id { get; set; }
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
+        public string VideoHost { get; set; } = "";
         public string Trigger { get; set; } = "";
         public string Provider { get; set; } = "";
         public string Model { get; set; } = "";

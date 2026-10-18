@@ -20,6 +20,13 @@ import {
   ClipVideoStatusToJSON,
   ClipVideoStatusToJSONTyped,
 } from "./ClipVideoStatus";
+import type { PlaybackSource } from "./PlaybackSource";
+import {
+  PlaybackSourceFromJSON,
+  PlaybackSourceFromJSONTyped,
+  PlaybackSourceToJSON,
+  PlaybackSourceToJSONTyped,
+} from "./PlaybackSource";
 
 /**
  *
@@ -77,10 +84,10 @@ export interface ClipVideo {
   thumbnailUrl: string;
   /**
    *
-   * @type {string}
+   * @type {Array<PlaybackSource>}
    * @memberof ClipVideo
    */
-  playbackUrl: string;
+  sources: Array<PlaybackSource>;
 }
 
 /**
@@ -100,8 +107,7 @@ export function instanceOfClipVideo(value: object): value is ClipVideo {
     return false;
   if (!("thumbnailUrl" in value) || value["thumbnailUrl"] === undefined)
     return false;
-  if (!("playbackUrl" in value) || value["playbackUrl"] === undefined)
-    return false;
+  if (!("sources" in value) || value["sources"] === undefined) return false;
   return true;
 }
 
@@ -125,7 +131,7 @@ export function ClipVideoFromJSONTyped(
     storageBytes: json["storage_bytes"],
     uploadedAt: new Date(json["uploaded_at"]),
     thumbnailUrl: json["thumbnail_url"],
-    playbackUrl: json["playback_url"],
+    sources: (json["sources"] as Array<any>).map(PlaybackSourceFromJSON),
   };
 }
 
@@ -150,6 +156,6 @@ export function ClipVideoToJSONTyped(
     storage_bytes: value["storageBytes"],
     uploaded_at: value["uploadedAt"].toISOString(),
     thumbnail_url: value["thumbnailUrl"],
-    playback_url: value["playbackUrl"],
+    sources: (value["sources"] as Array<any>).map(PlaybackSourceToJSON),
   };
 }

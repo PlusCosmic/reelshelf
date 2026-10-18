@@ -65,6 +65,7 @@ export * from "./LegendPlayerLabel";
 export * from "./LinkedIdentity";
 export * from "./MapInfo";
 export * from "./PagedClipsResponse";
+export * from "./PlaybackSource";
 export * from "./Playlist";
 export * from "./PlaylistClip";
 export * from "./PlaylistCollaborator";
