@@ -23,7 +23,8 @@ public class ClipStatusRefreshService(
     /// </summary>
     private static readonly TimeSpan AbandonedUploadAge = TimeSpan.FromHours(24);
 
-    private async Task RefreshClipStatusesAsync()
+    /// <summary>One pass: purge abandoned uploads, then refresh the clips whose host needs polling.</summary>
+    internal async Task RefreshClipStatusesAsync()
     {
         await PurgeAbandonedUploadsAsync();
 
@@ -52,7 +53,14 @@ public class ClipStatusRefreshService(
             {
                 try
                 {
-                    HostedVideoInfo? video = await videoHosts.For(clip.VideoHost).GetVideoAsync(clip.VideoId);
+                    IClipVideoHost videoHost = videoHosts.For(clip.VideoHost);
+                    if (!videoHost.NeedsStatusPolling)
+                    {
+                        // Its status reaches the row from our own worker's reports; polling would read the row back.
+                        continue;
+                    }
+
+                    HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
                     if (video == null)
                     {
                         logger.LogWarning("Video {VideoId} not found at the video host for clip {ClipId}", clip.VideoId, clip.Id);
@@ -95,6 +103,8 @@ public class ClipStatusRefreshService(
                 try
                 {
                     // Re-check with the host so a clip whose update notification was missed is refreshed rather than deleted.
+                    // A host whose clips report through the app (R2) answers from the clip row itself, so its clip is
+                    // abandoned only when the row still says nothing was uploaded.
                     IClipVideoHost videoHost = videoHosts.For(clip.VideoHost);
                     HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
                     if (!IsAbandoned(video))

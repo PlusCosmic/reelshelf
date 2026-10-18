@@ -3,6 +3,7 @@ using Reelshelf.Playlists.Models;
 using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
+using Reelshelf.Video;
 
 namespace Reelshelf.Playlists;
 
@@ -74,7 +75,7 @@ public class PlaylistService(
             p.CollaboratorCount,
             p.IsGamingSession,
             games[p.Id].Sum(row => row.Seconds),
-            previews[p.Id].Select(row => new PlaylistPreviewClip(row.ClipId, row.VideoId, mediaUrls.Thumbnail(row.VideoHost, row.VideoId))).ToList(),
+            previews[p.Id].Select(row => new PlaylistPreviewClip(row.ClipId, row.VideoId, mediaUrls.Thumbnail(row.ToVideoRef()))).ToList(),
             games[p.Id]
                 .OrderByDescending(row => row.ClipCount)
                 .Select(row => new PlaylistGameCount(row.GameCategoryId, row.ClipCount))

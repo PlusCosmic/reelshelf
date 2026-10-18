@@ -358,7 +358,8 @@ public class WatchRoomTests
     private static Guid ItemId(WatchRoom room, string title) =>
         room.Snapshot().Queue.Single(item => item.Title == title).ItemId;
 
-    private static NowPlaying NewClip(string title) => new(Guid.NewGuid(), Guid.NewGuid(), title, "Apex Legends", "Alice", 30);
+    private static NowPlaying NewClip(string title) => new(Guid.NewGuid(), Guid.NewGuid(), title, "Apex Legends", "Alice", 30,
+        new ActivityMedia("bunny", "video", "application/vnd.apple.mpegurl"));
 
     private RoomConnection Member(string connectionId, string discordUserId)
     {

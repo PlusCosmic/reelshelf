@@ -142,7 +142,8 @@ public class EvalStorageTests
     private static async Task CreateTablesAsync(NpgsqlConnection connection)
     {
         await connection.ExecuteAsync("""
-            CREATE TABLE clip (id uuid PRIMARY KEY, video_id uuid NOT NULL, video_host text NOT NULL DEFAULT 'bunny', title text);
+            CREATE TABLE clip (id uuid PRIMARY KEY, video_id uuid NOT NULL, video_host text NOT NULL DEFAULT 'bunny',
+                               video_version integer NOT NULL DEFAULT 1, video_codecs text, video_height integer, title text);
             CREATE TABLE legend_detection_label (
                 clip_id uuid PRIMARY KEY REFERENCES clip(id) ON DELETE CASCADE,
                 player_legend text,

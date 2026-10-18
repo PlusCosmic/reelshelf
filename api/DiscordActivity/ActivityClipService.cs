@@ -5,8 +5,8 @@ using Reelshelf.Video;
 namespace Reelshelf.DiscordActivity;
 
 /// <summary>
-/// One of a room member's own clips, as the Activity's picker shows it. The video id is the Bunny video guid;
-/// the Activity streams it through its <c>/bunny-cdn</c> URL Mapping.
+/// One of a room member's own clips, as the Activity's picker shows it. The Activity builds the thumbnail URL from
+/// <paramref name="Media"/> through its URL Mapping for the clip's host.
 /// </summary>
 public sealed record ActivityClip(
     Guid ClipId,
@@ -15,12 +15,16 @@ public sealed record ActivityClip(
     string Game,
     int DurationSeconds,
     DateTimeOffset CreatedAt,
-    bool Ready);
+    bool Ready,
+    ActivityMedia Media);
 
 public sealed record ActivityClipsResponse(List<ActivityClip> Clips, bool HasMore);
 
 /// <summary>Lists a room member's own clips for the Activity, newest first.</summary>
-public sealed class ActivityClipService(ClipsStatements clips, GameCategoryStatements gameCategories)
+public sealed class ActivityClipService(
+    ClipsStatements clips,
+    GameCategoryStatements gameCategories,
+    ClipMediaUrls mediaUrls)
 {
     public const int PageSize = 24;
 
@@ -45,7 +49,8 @@ public sealed class ActivityClipService(ClipsStatements clips, GameCategoryState
                 gameNames.GetValueOrDefault(row.GameCategoryId, ""),
                 row.Length ?? 0,
                 row.CreatedAt,
-                row.VideoStatus.IsPlayable()))
+                row.VideoStatus.IsPlayable(),
+                ActivityMedia.For(mediaUrls, row.ToVideoRef())))
             .ToList();
 
         return new ActivityClipsResponse(items, page * PageSize < rows.TotalCount);

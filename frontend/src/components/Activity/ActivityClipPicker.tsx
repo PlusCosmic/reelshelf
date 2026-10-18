@@ -121,7 +121,7 @@ export function ActivityClipPicker({
                 onClick={() => onPick(clip)}
               >
                 <img
-                  src={activityThumbnailUrl(clip.videoId)}
+                  src={activityThumbnailUrl(clip.media) ?? undefined}
                   alt=""
                   loading="lazy"
                 />

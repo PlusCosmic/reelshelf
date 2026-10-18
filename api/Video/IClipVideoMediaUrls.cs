@@ -10,14 +10,24 @@ namespace Reelshelf.Video;
 public interface IClipVideoMediaUrls
 {
     /// <summary>What players play, in the order they try them.</summary>
-    List<PlaybackSource> Sources(Guid videoId);
+    List<PlaybackSource> Sources(ClipVideoRef video);
 
-    /// <summary>The HLS playlist, for server-side readers (ffmpeg).</summary>
-    Uri Playlist(Guid videoId);
+    /// <summary>
+    /// The stream server-side readers (ffmpeg) open: Bunny's HLS playlist, or our own pipeline's MP4. Players use
+    /// <see cref="Sources"/>.
+    /// </summary>
+    Uri ServerStream(ClipVideoRef video);
 
     /// <summary>The main thumbnail.</summary>
-    string Thumbnail(Guid videoId);
+    string Thumbnail(ClipVideoRef video);
 
     /// <summary>The six frames legend detection reads: the main thumbnail plus five more taken through the video.</summary>
-    List<string> DetectionFrames(Guid videoId);
+    List<string> DetectionFrames(ClipVideoRef video);
+
+    /// <summary>
+    /// The folder holding the video's files, relative to the host's media origin and without slashes at either end.
+    /// The Discord Activity reaches each origin through its own URL Mapping, so it builds its paths from this
+    /// (<c>frontend/src/shared/utils/clipMediaUrls.ts</c>) rather than taking the URLs above.
+    /// </summary>
+    string MediaPath(ClipVideoRef video);
 }

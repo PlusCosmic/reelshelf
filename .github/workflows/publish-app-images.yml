@@ -8,6 +8,7 @@ on:
       - 'api/**'
       - 'frontend/**'
       - 'migrations/**'
+      - 'workers/**'
       - 'Dockerfile'
       - 'package.json'
       - 'bun.lock'
@@ -23,6 +24,7 @@ on:
           - both
           - clips
           - migrations
+          - worker
 
 permissions:
   contents: read
@@ -65,6 +67,11 @@ jobs:
               migrations)
                 echo "clips=false" >> "$GITHUB_OUTPUT"
                 echo "migrations=true" >> "$GITHUB_OUTPUT"
+                ;;
+              worker)
+                # Built by the worker job alone.
+                echo "clips=false" >> "$GITHUB_OUTPUT"
+                echo "migrations=false" >> "$GITHUB_OUTPUT"
                 ;;
             esac
             exit 0
@@ -164,6 +171,63 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # The transcode worker's image (workers/Reelshelf.Worker). The infrastructure bump below doesn't deploy it yet
+  # (#215), so it is built when this push changed workers/ rather than diffed against a deployed commit.
+  worker:
+    name: Worker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout app repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether to build
+        id: should_build
+        shell: bash
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            enabled="${{ inputs.service == 'worker' }}"
+          elif [[ -z "$BEFORE" || "$BEFORE" =~ ^0+$ ]] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            echo "::notice::worker: previous commit '${BEFORE}' not found; building" >&2
+            enabled=true
+          elif git diff --name-only "$BEFORE" "${{ github.sha }}" | grep -qE '^(workers/|\.github/workflows/publish-app-images\.yml)'; then
+            enabled=true
+          else
+            enabled=false
+          fi
+          echo "enabled=${enabled}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        if: steps.should_build.outputs.enabled == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: steps.should_build.outputs.enabled == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The Dockerfile fails the build when the image's ffmpeg lacks libsvtav1, libopus or zscale/tonemap.
+      - name: Build and push image
+        if: steps.should_build.outputs.enabled == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: workers/Reelshelf.Worker/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/pluscosmic/reelshelf-worker:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker
 
   bump-infrastructure:
     needs:

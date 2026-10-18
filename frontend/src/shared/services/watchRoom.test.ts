@@ -11,6 +11,11 @@ const playback = (overrides: Partial<RoomPlayback> = {}): RoomPlayback => ({
     game: "Apex Legends",
     ownerName: "Alice",
     durationSeconds: 30,
+    media: {
+      host: "bunny",
+      path: "v",
+      type: "application/vnd.apple.mpegurl",
+    },
   },
   playing: true,
   positionSeconds: 10,

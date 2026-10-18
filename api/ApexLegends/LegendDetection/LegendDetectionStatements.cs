@@ -1,5 +1,6 @@
 using Dapper;
 using Npgsql;
+using Reelshelf.Video;
 
 namespace Reelshelf.ApexLegends.LegendDetection;
 
@@ -174,7 +175,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                   ORDER BY trigger = 'eval', trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, run.trigger, run.provider, run.model, run.reasoning_effort,
+            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, run.trigger, run.provider, run.model, run.reasoning_effort,
                       run.attempts
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql, new { RetryAfter = retryAfter, StaleAfter = staleAfter });
@@ -281,7 +282,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     public async Task<List<ReviewClipRow>> GetClipsForReviewAsync(Guid gameCategoryId)
     {
         const string sql = """
-            SELECT clip.id, clip.video_id, clip.video_host, clip.title, clip.length, clip.created_at,
+            SELECT clip.id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, clip.title, clip.length, clip.created_at,
                    COALESCE(owner.global_name, owner.username) AS owner_name
             FROM clip
             JOIN app_user owner ON owner.id = clip.owner_id
@@ -557,7 +558,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     public async Task<List<EvalMissRow>> GetEvalMissesAsync(Guid evalId)
     {
         const string sql = """
-            SELECT run.id AS run_id, run.clip_id, clip.video_id, clip.video_host, clip.title, run.status, run.hud_detected,
+            SELECT run.id AS run_id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height, clip.title, run.status, run.hud_detected,
                    run.player_legend, run.player_legend_confidence, run.error, label.player_legend AS label_legend
             FROM legend_detection_run run
             JOIN legend_detection_label label ON label.clip_id = run.clip_id
@@ -682,12 +683,15 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public decimal? EscalationCostUsd { get; set; }
     }
 
-    public class EvalMissRow
+    public class EvalMissRow : IClipVideoColumns
     {
         public Guid RunId { get; set; }
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
         public string VideoHost { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
+        public string? VideoCodecs { get; set; }
+        public int? VideoHeight { get; set; }
         public string? Title { get; set; }
         public string Status { get; set; } = "";
         public bool? HudDetected { get; set; }
@@ -707,11 +711,14 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public decimal? OutputPerMtok { get; set; }
     }
 
-    public class ReviewClipRow
+    public class ReviewClipRow : IClipVideoColumns
     {
         public Guid Id { get; set; }
         public Guid VideoId { get; set; }
         public string VideoHost { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
+        public string? VideoCodecs { get; set; }
+        public int? VideoHeight { get; set; }
         public string? Title { get; set; }
         public int? Length { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
@@ -744,12 +751,15 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         public DateTimeOffset? ArchivedAt { get; set; }
     }
 
-    public class ClaimedRunRow
+    public class ClaimedRunRow : IClipVideoColumns
     {
         public Guid Id { get; set; }
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
         public string VideoHost { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
+        public string? VideoCodecs { get; set; }
+        public int? VideoHeight { get; set; }
         public string Trigger { get; set; } = "";
         public string Provider { get; set; } = "";
         public string Model { get; set; } = "";

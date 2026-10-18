@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
 using Reelshelf.Core;
 using Reelshelf.Exceptions;
+using Reelshelf.Video;
 
 namespace Reelshelf.FFmpeg;
 
@@ -32,7 +33,7 @@ public static class FFmpegEndpoints
 
         try
         {
-            FFmpegService.DownloadedVideo download = await ffmpegService.DownloadHlsVideoAsync(clip.VideoHost, videoId, cancellationToken);
+            FFmpegService.DownloadedVideo download = await ffmpegService.DownloadHlsVideoAsync(clip.ToVideoRef(), cancellationToken);
             FileStream fileStream;
             try
             {

@@ -1,0 +1,46 @@
+namespace Reelshelf.Video.Transcoding;
+
+/// <summary>
+/// The storage transcode jobs read from and write to: R2 (<see cref="R2.R2Storage"/>) when it is configured, else
+/// <see cref="UnconfiguredTranscodeStorage"/>. The queue asks it for a claimed job's presigned URLs and for the
+/// clean-up a finished job leaves (the uploaded source, a replaced version).
+/// </summary>
+public interface ITranscodeStorage
+{
+    /// <summary>
+    /// The presigned URLs a worker needs for a job, valid for <paramref name="lifetime"/>: a GET for its input and a
+    /// PUT for each file it writes under <c>clips/{clipId}/v{videoVersion}/</c>.
+    /// </summary>
+    /// <param name="videoVersion">The version the job writes (or, for a thumbnails job, reads and rewrites).</param>
+    /// <param name="currentVersion">The clip's current version, which a trim reads from.</param>
+    TranscodeJobUrls UrlsFor(Guid clipId, string jobType, int videoVersion, int currentVersion, TimeSpan lifetime);
+
+    /// <summary>Deletes the clip's uploaded source. Idempotent.</summary>
+    Task DeleteSourceAsync(Guid clipId);
+
+    /// <summary>Deletes one version's outputs. Idempotent.</summary>
+    Task DeleteVersionAsync(Guid clipId, int videoVersion);
+}
+
+/// <summary>A claimed job's URLs, as the claim response carries them (both null when there is no storage).</summary>
+public sealed record TranscodeJobUrls(string? SourceUrl, IReadOnlyDictionary<string, string>? UploadUrls)
+{
+    public static readonly TranscodeJobUrls None = new(null, null);
+}
+
+/// <summary>
+/// Stands in while R2 is not configured: nothing can be uploaded to R2 then, so no job should exist, and any that
+/// does is handed out without URLs (the worker fails it) and leaves nothing to clean up.
+/// </summary>
+public sealed class UnconfiguredTranscodeStorage(ILogger<UnconfiguredTranscodeStorage> logger) : ITranscodeStorage
+{
+    public TranscodeJobUrls UrlsFor(Guid clipId, string jobType, int videoVersion, int currentVersion, TimeSpan lifetime)
+    {
+        logger.LogWarning("Handing out {Type} job for clip {ClipId} without URLs: R2 is not configured", jobType, clipId);
+        return TranscodeJobUrls.None;
+    }
+
+    public Task DeleteSourceAsync(Guid clipId) => Task.CompletedTask;
+
+    public Task DeleteVersionAsync(Guid clipId, int videoVersion) => Task.CompletedTask;
+}

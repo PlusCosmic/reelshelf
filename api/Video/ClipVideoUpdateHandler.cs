@@ -85,9 +85,19 @@ public class ClipVideoUpdateHandler(
     public Task ApplyTranscodeProgressAsync(Guid clipId, int encodeProgress) =>
         clipsStatements.SetTranscodeProgress(clipId, encodeProgress);
 
-    /// <summary>A transcode finished: the clip is ready with the output's length and size.</summary>
-    public Task ApplyTranscodeCompletedAsync(Guid clipId, int lengthSeconds, long storageSize) =>
-        clipsStatements.SetTranscodeReady(clipId, lengthSeconds, storageSize);
+    /// <summary>
+    /// A transcode or trim finished: the clip is ready on <paramref name="videoVersion"/>, with the output's length,
+    /// size, codecs and height. Returns the version it was on before (null when there is no such clip), whose files
+    /// the caller deletes when it differs.
+    /// </summary>
+    public Task<int?> ApplyTranscodeCompletedAsync(
+        Guid clipId,
+        int videoVersion,
+        int lengthSeconds,
+        long storageSize,
+        string? codecs,
+        int? height) =>
+        clipsStatements.SetTranscodeReady(clipId, videoVersion, lengthSeconds, storageSize, codecs, height);
 
     /// <summary>A transcode failed for good: the clip is <c>encode_failed</c>, unless it already had a ready video.</summary>
     public Task ApplyTranscodeFailedAsync(Guid clipId) => clipsStatements.SetTranscodeFailed(clipId);

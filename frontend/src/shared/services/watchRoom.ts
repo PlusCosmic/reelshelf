@@ -5,6 +5,7 @@ import {
   type HubConnection,
 } from "@microsoft/signalr";
 import type { RoomTokenResponse } from "@/api-client";
+import type { ActivityMediaRef } from "@/shared/utils/clipMediaUrls";
 import { createDiscordActivityApi } from "./apiClients";
 
 // The hub speaks SignalR's camelCase JSON (see WatchRoomHub), so these mirror the C# records by hand.
@@ -15,6 +16,8 @@ export type NowPlaying = {
   game: string;
   ownerName: string;
   durationSeconds: number;
+  /** Where the video is, for the Activity's URL Mappings (`ActivityMedia`). */
+  media: ActivityMediaRef;
 };
 
 export type RoomPlayback = {

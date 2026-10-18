@@ -46,7 +46,7 @@ public class TranscodeStatements(NpgsqlConnection connection)
                 WHERE attempts >= @MaxAttempts
                   AND (status = 'pending' OR (status = 'running' AND heartbeat_at < now() - @StaleAfter))
                 FOR UPDATE SKIP LOCKED)
-            RETURNING id, clip_id, type, status
+            RETURNING id, clip_id, type, status, video_version
             """;
         return (await connection.QueryAsync<FinishedRunRow>(sql, new { MaxAttempts = maxAttempts, StaleAfter = staleAfter }))
             .ToList();
@@ -55,7 +55,8 @@ public class TranscodeStatements(NpgsqlConnection connection)
     /// <summary>
     /// Claims the next job for a worker and counts the attempt: a pending one whose retry delay has passed, or a
     /// running one whose worker has not reported for <paramref name="staleAfter"/>, lowest priority first and then
-    /// the oldest. Each claim issues a new lease. SKIP LOCKED keeps two workers (or API instances) from claiming
+    /// the oldest. Each claim issues a new lease, and the run comes back with its clip's current video version, which
+    /// a trim reads from. SKIP LOCKED keeps two workers (or API instances) from claiming
     /// the same job; a row another claim changed meanwhile is re-checked against the conditions and skipped.
     /// </summary>
     public async Task<ClaimedRunRow?> ClaimNextRunAsync(int maxAttempts, TimeSpan staleAfter)
@@ -77,7 +78,8 @@ public class TranscodeStatements(NpgsqlConnection connection)
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED)
             RETURNING run.id, run.clip_id, run.type, run.video_version, run.input::text AS input, run.attempts,
-                      run.lease_id
+                      run.lease_id,
+                      (SELECT clip.video_version FROM clip WHERE clip.id = run.clip_id) AS current_video_version
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql,
             new { MaxAttempts = maxAttempts, StaleAfter = staleAfter });
@@ -119,7 +121,7 @@ public class TranscodeStatements(NpgsqlConnection connection)
                 heartbeat_at = now(),
                 finished_at = now()
             WHERE id = @RunId AND lease_id = @LeaseId AND status = 'running'
-            RETURNING id, clip_id, type, status
+            RETURNING id, clip_id, type, status, video_version
             """;
         return await connection.QuerySingleOrDefaultAsync<FinishedRunRow>(sql,
             new { RunId = runId, LeaseId = leaseId, Output = outputJson });
@@ -145,7 +147,7 @@ public class TranscodeStatements(NpgsqlConnection connection)
                 finished_at = CASE WHEN @Retryable AND attempts < @MaxAttempts THEN NULL ELSE now() END,
                 error = @Error
             WHERE id = @RunId AND lease_id = @LeaseId AND status = 'running'
-            RETURNING id, clip_id, type, status
+            RETURNING id, clip_id, type, status, video_version
             """;
         return await connection.QuerySingleOrDefaultAsync<FinishedRunRow>(sql, new
         {
@@ -156,7 +158,7 @@ public class TranscodeStatements(NpgsqlConnection connection)
 
     public async Task<RunStateRow?> GetRunAsync(Guid runId)
     {
-        const string sql = "SELECT id, clip_id, type, status, lease_id FROM transcode_run WHERE id = @RunId";
+        const string sql = "SELECT id, clip_id, type, status, lease_id, video_version FROM transcode_run WHERE id = @RunId";
         return await connection.QuerySingleOrDefaultAsync<RunStateRow>(sql, new { RunId = runId });
     }
 
@@ -200,6 +202,7 @@ public class TranscodeStatements(NpgsqlConnection connection)
         public string Input { get; set; } = "{}";
         public int Attempts { get; set; }
         public Guid LeaseId { get; set; }
+        public int CurrentVideoVersion { get; set; } = 1;
     }
 
     public sealed class ProgressRunRow
@@ -216,6 +219,7 @@ public class TranscodeStatements(NpgsqlConnection connection)
         public Guid ClipId { get; set; }
         public string Type { get; set; } = "";
         public string Status { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
     }
 
     public sealed class RunStateRow
@@ -225,5 +229,6 @@ public class TranscodeStatements(NpgsqlConnection connection)
         public string Type { get; set; } = "";
         public string Status { get; set; } = "";
         public Guid? LeaseId { get; set; }
+        public int VideoVersion { get; set; } = 1;
     }
 }

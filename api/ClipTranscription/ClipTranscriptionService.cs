@@ -123,8 +123,8 @@ public class ClipTranscriptionService(
                 clip.GameSlug,
                 clip.CreatedAt,
                 clip.Length,
-                mediaUrls.Sources(clip.VideoHost, clip.VideoId),
-                mediaUrls.Thumbnail(clip.VideoHost, clip.VideoId),
+                mediaUrls.Sources(clip.ToVideoRef()),
+                mediaUrls.Thumbnail(clip.ToVideoRef()),
                 latest is null ? null : ClipTranscriptionRun.From(latest),
                 (int)(latest?.RunCount ?? 0));
         }).ToList();
@@ -211,7 +211,7 @@ public class ClipTranscriptionService(
         try
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
-            ClipAudio audio = await ClipAudioExtractor.ExtractAsync(mediaUrls.Playlist(run.VideoHost, run.VideoId), audioPath, cancellationToken);
+            ClipAudio audio = await ClipAudioExtractor.ExtractAsync(mediaUrls.ServerStream(run.ToVideoRef()), audioPath, cancellationToken);
             if (!audio.HasAudio)
             {
                 await statements.CompleteRunAsync(run.Id, prompt, audio, null, null,

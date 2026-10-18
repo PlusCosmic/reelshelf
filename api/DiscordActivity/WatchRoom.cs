@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using Reelshelf.Core;
+using Reelshelf.Video;
 
 namespace Reelshelf.DiscordActivity;
 
@@ -17,7 +19,7 @@ public sealed record RoomConnection(
 
 /// <summary>
 /// The clip on screen. Guests see only this much of it: title, game and whose shelf it came from, plus the
-/// video id the player streams.
+/// video id and media the player streams.
 /// </summary>
 public sealed record NowPlaying(
     Guid ClipId,
@@ -25,7 +27,23 @@ public sealed record NowPlaying(
     string Title,
     string Game,
     string OwnerName,
-    int DurationSeconds);
+    int DurationSeconds,
+    ActivityMedia Media);
+
+/// <summary>
+/// Where the Activity finds a clip's video. Discord's CSP lets the Activity load only through the URL Mappings on the
+/// Discord application, one per media origin, so it builds the URLs itself from these
+/// (<c>frontend/src/shared/utils/clipMediaUrls.ts</c>): the <paramref name="Host"/> picks the mapping and the file
+/// names, and <paramref name="Path"/> is the video's folder under it.
+/// </summary>
+/// <param name="Host">The clip's <c>video_host</c>.</param>
+/// <param name="Path">The video's folder relative to its host's media origin (<see cref="ClipMediaUrls.MediaPath"/>).</param>
+/// <param name="Type">The stream's MIME type, with codecs where known, for the player to check before playing.</param>
+public sealed record ActivityMedia(string Host, string Path, string Type)
+{
+    public static ActivityMedia For(ClipMediaUrls mediaUrls, ClipVideoRef video) =>
+        new(video.VideoHost, mediaUrls.MediaPath(video), mediaUrls.Sources(video)[0].Type);
+}
 
 /// <summary>A clip waiting in the room's queue, with the Discord user who queued it (always its owner).</summary>
 public sealed record QueuedClip(Guid ItemId, NowPlaying Clip, string OwnerDiscordUserId);
