@@ -1,3 +1,5 @@
+using Reelshelf.Core.Models;
+
 namespace Reelshelf.Video;
 
 /// <summary>
@@ -7,7 +9,10 @@ namespace Reelshelf.Video;
 /// </summary>
 public interface IClipVideoMediaUrls
 {
-    /// <summary>The HLS playlist.</summary>
+    /// <summary>What players play, in the order they try them.</summary>
+    List<PlaybackSource> Sources(Guid videoId);
+
+    /// <summary>The HLS playlist, for server-side readers (ffmpeg).</summary>
     Uri Playlist(Guid videoId);
 
     /// <summary>The main thumbnail.</summary>

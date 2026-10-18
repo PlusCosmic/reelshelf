@@ -270,7 +270,7 @@ public class LegendDetectionService(
                 clip.OwnerName,
                 clip.CreatedAt,
                 clip.Length,
-                mediaUrls.Playlist(clip.VideoHost, clip.VideoId).ToString(),
+                mediaUrls.Sources(clip.VideoHost, clip.VideoId),
                 mediaUrls.DetectionFrames(clip.VideoHost, clip.VideoId),
                 latest is null ? null : LegendDetectionRun.From(latest),
                 (int)(latest?.RunCount ?? 0),

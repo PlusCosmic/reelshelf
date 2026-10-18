@@ -60,7 +60,7 @@ export function LegendReviewDetail({
 
       <div className="rs-player">
         <ClipVideoPlayer
-          src={clip.playbackUrl}
+          sources={clip.sources}
           poster={clip.frameUrls[0]}
           title={clip.title}
           className="rs-player-frame"

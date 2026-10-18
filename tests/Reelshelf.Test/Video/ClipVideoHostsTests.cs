@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Reelshelf.Core;
+using Reelshelf.Core.Models;
 using Reelshelf.Games;
 using Reelshelf.Video;
 using Xunit;
@@ -171,6 +172,8 @@ public class ClipVideoHostsTests
 
     private sealed class FakeMediaUrls : IClipVideoMediaUrls
     {
+        public List<PlaybackSource> Sources(Guid videoId) => [];
+
         public Uri Playlist(Guid videoId) => new("https://fake.example/playlist.m3u8");
 
         public string Thumbnail(Guid videoId) => "fake";

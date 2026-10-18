@@ -123,7 +123,7 @@ public class ClipTranscriptionService(
                 clip.GameSlug,
                 clip.CreatedAt,
                 clip.Length,
-                mediaUrls.Playlist(clip.VideoHost, clip.VideoId).ToString(),
+                mediaUrls.Sources(clip.VideoHost, clip.VideoId),
                 mediaUrls.Thumbnail(clip.VideoHost, clip.VideoId),
                 latest is null ? null : ClipTranscriptionRun.From(latest),
                 (int)(latest?.RunCount ?? 0));

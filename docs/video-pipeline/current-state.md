@@ -18,7 +18,7 @@ registered.
   `VideoHost:NewUploads` (default `bunny`) applies only to the account ids in `VideoHost:Users`; everyone else, and
   everyone when the list is empty, stays on Bunny. The API refuses to start when `NewUploads` names a host that isn't
   registered, rather than failing those users' uploads or quietly sending them to Bunny.
-- `api/Core/ClipMediaUrls.cs` builds every media URL: `Playlist` (HLS), `Thumbnail`, `DetectionFrames`, each from the
+- `api/Core/ClipMediaUrls.cs` builds every media URL: `Sources`, `Playlist` (HLS), `Thumbnail`, `DetectionFrames`, each from the
   clip's `video_host` and that host's `IClipVideoMediaUrls`. Bunny's (`api/Bunny/BunnyMediaUrls.cs`) reads
   `BunnyCdnBaseUrl`.
 - `api/Video/ClipVideoUpdateHandler.cs` is what runs when a video changes. It re-reads the video from the host,

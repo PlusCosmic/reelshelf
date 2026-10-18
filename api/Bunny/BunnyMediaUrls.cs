@@ -1,3 +1,5 @@
+using Reelshelf.Core;
+using Reelshelf.Core.Models;
 using Reelshelf.Video;
 
 namespace Reelshelf.Bunny;
@@ -5,6 +7,12 @@ namespace Reelshelf.Bunny;
 /// <summary>Media URLs for a video on Bunny Stream, served from its pull zone (<c>BunnyCdnBaseUrl</c>).</summary>
 public class BunnyMediaUrls(IConfiguration configuration) : IClipVideoMediaUrls
 {
+    /// <summary>A Bunny video is its HLS playlist alone.</summary>
+    public List<PlaybackSource> Sources(Guid videoId)
+    {
+        return [new PlaybackSource(Playlist(videoId).ToString(), ClipMediaUrls.HlsType)];
+    }
+
     public Uri Playlist(Guid videoId)
     {
         return new Uri($"{VideoBaseUrl(videoId)}/playlist.m3u8");

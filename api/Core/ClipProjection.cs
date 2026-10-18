@@ -20,7 +20,7 @@ public class ClipProjection(ClipMediaUrls mediaUrls)
             row.StorageSize ?? 0,
             row.DateUploaded ?? row.CreatedAt,
             mediaUrls.Thumbnail(row.VideoHost, row.VideoId),
-            mediaUrls.Playlist(row.VideoHost, row.VideoId).ToString());
+            mediaUrls.Sources(row.VideoHost, row.VideoId));
 
         return new Clip(
             row.Id,

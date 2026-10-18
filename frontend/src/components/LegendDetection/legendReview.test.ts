@@ -63,7 +63,12 @@ function clip(
     ownerName: "Owner",
     createdAt: new Date(),
     lengthSeconds: 30,
-    playbackUrl: "https://cdn.example/playlist.m3u8",
+    sources: [
+      {
+        url: "https://cdn.example/playlist.m3u8",
+        type: "application/vnd.apple.mpegurl",
+      },
+    ],
     frameUrls: [],
     latestRun,
     runCount: latestRun ? 1 : 0,
