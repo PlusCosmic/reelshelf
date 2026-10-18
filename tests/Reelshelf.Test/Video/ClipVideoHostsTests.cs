@@ -188,7 +188,8 @@ public class ClipVideoHostsTests
         public Task<HostedVideo> CreateVideoAsync(Guid clipId, Guid ownerId, GameCategory gameCategory, string title) =>
             throw new NotSupportedException();
 
-        public UploadTarget CreateUploadTarget(HostedVideo video, string title) => throw new NotSupportedException();
+        public Task<UploadTarget> CreateUploadTargetAsync(HostedVideo video, string title, long fileSize) =>
+            throw new NotSupportedException();
 
         public Task UploadAsync(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken) =>
             throw new NotSupportedException();

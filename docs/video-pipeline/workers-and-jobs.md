@@ -52,8 +52,8 @@ grabbing frames takes seconds; a separate job would fetch the source again. Two 
 
 The queue is `transcode_run` (migration V40) and the API side is in `api/Video/Transcoding/`. The R2 host
 (`api/Video/R2/R2VideoHost.cs`, #212) calls `TranscodeQueue.EnqueueAsync(clipId, "transcode", input)` in the same
-transaction that marks the clip `uploaded`, once a server-side upload (Twitch import) completes; browser uploads
-follow with #213.
+transaction that marks the clip `uploaded`, once a server-side upload (Twitch import) completes, or a browser
+upload completes and passes its checks (#213, see [r2-bucket.md](r2-bucket.md#browser-uploads-213)).
 
 - **A row per job:** `type`, `status` (`pending` → `running` → `succeeded` | `failed`), `priority` (lower first;
   `transcode` 0, `trim` and `fallback` 1, `thumbnails` 2), `attempts`, `input` (jsonb: `source_key`, trim points),

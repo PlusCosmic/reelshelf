@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from "../runtime";
+import type { MultipartUploadInfo } from "./MultipartUploadInfo";
+import {
+  MultipartUploadInfoFromJSON,
+  MultipartUploadInfoFromJSONTyped,
+  MultipartUploadInfoToJSON,
+  MultipartUploadInfoToJSONTyped,
+} from "./MultipartUploadInfo";
+
 /**
  *
  * @export
@@ -49,6 +57,12 @@ export interface UploadTarget {
    * @memberof UploadTarget
    */
   expiresAt: Date;
+  /**
+   *
+   * @type {MultipartUploadInfo}
+   * @memberof UploadTarget
+   */
+  multipart?: MultipartUploadInfo | null;
 }
 
 /**
@@ -80,6 +94,10 @@ export function UploadTargetFromJSONTyped(
     headers: json["headers"],
     metadata: json["metadata"],
     expiresAt: new Date(json["expires_at"]),
+    multipart:
+      json["multipart"] == null
+        ? undefined
+        : MultipartUploadInfoFromJSON(json["multipart"]),
   };
 }
 
@@ -101,5 +119,6 @@ export function UploadTargetToJSONTyped(
     headers: value["headers"],
     metadata: value["metadata"],
     expires_at: value["expiresAt"].toISOString(),
+    multipart: MultipartUploadInfoToJSON(value["multipart"]),
   };
 }

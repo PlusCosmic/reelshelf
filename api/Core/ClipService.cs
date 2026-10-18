@@ -138,10 +138,23 @@ public class ClipService(
             throw;
         }
 
+        UploadTarget upload;
+        try
+        {
+            upload = await videoHost.CreateUploadTargetAsync(video, videoTitle, fileSize);
+        }
+        catch
+        {
+            // Nothing can reach a video with no upload target (R2 starts its multipart upload here): discard it the
+            // same way.
+            await DiscardUnattachedVideoAsync(reserved.Id, videoHost, video.VideoId);
+            throw;
+        }
+
         // The clip now counts toward usage; warn the owner once if this pushed them near their limit.
         await storageWarningService.Evaluate(userId, await storageQuotaService.GetQuota(userId));
 
-        return new CreateClipResponse(clip.Id, video.VideoId, videoHost.CreateUploadTarget(video, videoTitle));
+        return new CreateClipResponse(clip.Id, video.VideoId, upload);
     }
 
     /// <summary>

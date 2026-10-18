@@ -54,13 +54,14 @@ public class BunnyService : IClipVideoHost
         return new HostedVideo(video.Guid, video.CollectionId, ToHostedVideoInfo(video));
     }
 
-    public UploadTarget CreateUploadTarget(HostedVideo video, string title)
+    /// <summary>A presigned TUS upload, which needs nothing from the file's size.</summary>
+    public Task<UploadTarget> CreateUploadTargetAsync(HostedVideo video, string title, long fileSize)
     {
         string libraryId = _configuration["BunnyLibraryId"]
                            ?? throw new InvalidOperationException("Bunny API library ID not configured");
         string accessKey = _configuration["BunnyAccessKey"]
                            ?? throw new InvalidOperationException("Bunny access key not configured");
-        return BunnyUploadTarget.Create(libraryId, accessKey, video, title, DateTimeOffset.UtcNow);
+        return Task.FromResult(BunnyUploadTarget.Create(libraryId, accessKey, video, title, DateTimeOffset.UtcNow));
     }
 
     private async Task<ClipsStatements.ClipCollectionRow> GetOrCreateCollectionAsync(Guid ownerId, GameCategory gameCategory)

@@ -77,3 +77,12 @@ public class ServiceUnavailableException : DomainException
     {
     }
 }
+
+/// <summary>The request was understood but what it refers to can't be used, such as an upload that isn't a video.</summary>
+public class UnprocessableContentException : DomainException
+{
+    public UnprocessableContentException(string message)
+        : base(message, StatusCodes.Status422UnprocessableEntity)
+    {
+    }
+}

@@ -279,7 +279,7 @@ public class AccountDeletionServiceTests
             throw new NotSupportedException();
         }
 
-        public UploadTarget CreateUploadTarget(HostedVideo video, string title)
+        public Task<UploadTarget> CreateUploadTargetAsync(HostedVideo video, string title, long fileSize)
         {
             throw new NotSupportedException();
         }

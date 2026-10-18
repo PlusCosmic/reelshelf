@@ -20,9 +20,11 @@ public interface IClipVideoHost
 
     /// <summary>
     /// Where the browser uploads the bytes of a video <see cref="CreateVideoAsync"/> made, authorised for that video
-    /// only and for a limited time. <paramref name="title"/> is the title the video was created with.
+    /// only and for a limited time. <paramref name="title"/> is the title the video was created with, and
+    /// <paramref name="fileSize"/> the size the clip reserved. A host may start the upload here, as R2 starts its
+    /// multipart upload (<see cref="IMultipartUploadHost"/>).
     /// </summary>
-    UploadTarget CreateUploadTarget(HostedVideo video, string title);
+    Task<UploadTarget> CreateUploadTargetAsync(HostedVideo video, string title, long fileSize);
 
     /// <summary>
     /// Streams a video file into a video <see cref="CreateVideoAsync"/> made. This is the server-side counterpart of

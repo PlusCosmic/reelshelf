@@ -10,6 +10,7 @@ export * from "./DiscordActivityEndpointsApi";
 export * from "./FFmpegEndpointsApi";
 export * from "./GameCategoryEndpointsApi";
 export * from "./LegendDetectionEndpointsApi";
+export * from "./MultipartUploadEndpointsApi";
 export * from "./PlaylistEndpointsApi";
 export * from "./ReelshelfApi";
 export * from "./SharedClipsEndpointsApi";

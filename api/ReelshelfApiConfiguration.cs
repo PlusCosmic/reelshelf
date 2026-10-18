@@ -72,6 +72,7 @@ internal static class ReelshelfApiConfiguration
 
         RouteGroupBuilder apiGroup = app.MapGroup("/api");
         apiGroup.MapClipsEndpoints();
+        apiGroup.MapMultipartUploadEndpoints();
         apiGroup.MapSharedClipsEndpoints();
         apiGroup.MapPlaylistEndpoints();
         apiGroup.MapFFmpegEndpoints();

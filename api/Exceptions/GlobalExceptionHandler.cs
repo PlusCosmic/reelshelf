@@ -68,6 +68,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             ForbiddenException => "Forbidden",
             StorageQuotaExceededException => "Storage Limit Reached",
             ServiceUnavailableException => "Service Unavailable",
+            UnprocessableContentException => "Unprocessable Content",
             _ => "An error occurred"
         };
     }
