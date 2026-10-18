@@ -1,5 +1,6 @@
 using Dapper;
 using Npgsql;
+using Reelshelf.Video;
 
 namespace Reelshelf.Users;
 
@@ -54,9 +55,9 @@ public class AccountDeletionStatements(NpgsqlConnection connection) : IAccountDe
 
     public async Task<List<OwnedClipVideo>> GetClipVideos(Guid userId)
     {
-        const string sql = "SELECT id AS clip_id, video_id FROM clip WHERE owner_id = @userId";
+        const string sql = "SELECT id AS clip_id, video_id, video_host FROM clip WHERE owner_id = @userId";
         return (await connection.QueryAsync<ClipVideoRow>(sql, new { userId }))
-            .Select(row => new OwnedClipVideo(row.ClipId, row.VideoId))
+            .Select(row => new OwnedClipVideo(row.ClipId, row.VideoId, row.VideoHost))
             .ToList();
     }
 
@@ -66,15 +67,18 @@ public class AccountDeletionStatements(NpgsqlConnection connection) : IAccountDe
         await connection.ExecuteAsync(sql, new { userId, clipIds = clipIds.ToArray() });
     }
 
-    public async Task<List<Guid>> GetBunnyCollections(Guid userId)
+    public async Task<List<OwnedVideoContainer>> GetVideoContainers(Guid userId)
     {
-        // Includes any duplicate collections V36 set aside in clip_collection_merge, which go with the account too.
+        // Only Bunny files videos in containers: its collections, kept in clip_collection. Includes any duplicate
+        // collections V36 set aside in clip_collection_merge, which go with the account too.
         const string sql = """
             SELECT collection_id FROM clip_collection WHERE owner_id = @userId
             UNION
             SELECT collection_id FROM clip_collection_merge WHERE owner_id = @userId
             """;
-        return (await connection.QueryAsync<Guid>(sql, new { userId })).ToList();
+        return (await connection.QueryAsync<Guid>(sql, new { userId }))
+            .Select(collectionId => new OwnedVideoContainer(VideoHostNames.Bunny, collectionId))
+            .ToList();
     }
 
     public async Task<bool> DeleteAccountIfEmpty(Guid userId)
@@ -92,5 +96,6 @@ public class AccountDeletionStatements(NpgsqlConnection connection) : IAccountDe
     {
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
+        public string VideoHost { get; set; } = "";
     }
 }

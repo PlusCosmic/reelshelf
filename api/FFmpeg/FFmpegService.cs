@@ -51,10 +51,12 @@ public class FFmpegService
     /// <summary>
     /// Downloads a video from an HLS playlist URL and returns the file path
     /// </summary>
-    /// <param name="videoId">The Bunny video ID</param>
+    /// <param name="videoHost">The host that holds the video (the clip's <c>video_host</c>)</param>
+    /// <param name="videoId">The video's id at that host</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Path to the downloaded video file</returns>
-    public async Task<DownloadedVideo> DownloadHlsVideoAsync(Guid videoId, CancellationToken cancellationToken = default)
+    public async Task<DownloadedVideo> DownloadHlsVideoAsync(string videoHost, Guid videoId,
+        CancellationToken cancellationToken = default)
     {
         // Take the per-video gate first: duplicate requests for one video queue here without holding
         // any process-wide capacity, so they cannot starve downloads of other videos.
@@ -76,7 +78,7 @@ public class FFmpegService
 
                 try
                 {
-                    string path = await DownloadHlsVideoCoreAsync(videoId, cancellationToken);
+                    string path = await DownloadHlsVideoCoreAsync(videoHost, videoId, cancellationToken);
                     // The global permit is handed to the result and released when the caller disposes it,
                     // i.e. once the response has been streamed. Otherwise a slow client could keep many
                     // finished MP4s open on disk while new conversions start, defeating the cap.
@@ -153,9 +155,9 @@ public class FFmpegService
         }
     }
 
-    private async Task<string> DownloadHlsVideoCoreAsync(Guid videoId, CancellationToken cancellationToken)
+    private async Task<string> DownloadHlsVideoCoreAsync(string videoHost, Guid videoId, CancellationToken cancellationToken)
     {
-        Uri hlsUrl = _mediaUrls.Playlist(videoId);
+        Uri hlsUrl = _mediaUrls.Playlist(videoHost, videoId);
         // Unique per request: the endpoint streams the file with DeleteOnClose, so two requests for the
         // same video must never share a path.
         string outputFileName = $"{videoId}-{Guid.NewGuid():N}.mp4";

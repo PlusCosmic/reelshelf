@@ -179,7 +179,7 @@ public class LegendDetectionService(
                 row.RunId,
                 row.ClipId,
                 row.Title ?? "Untitled",
-                mediaUrls.DetectionFrames(row.VideoId),
+                mediaUrls.DetectionFrames(row.VideoHost, row.VideoId),
                 row.Status,
                 row.PlayerLegend,
                 row.PlayerLegendConfidence,
@@ -270,8 +270,8 @@ public class LegendDetectionService(
                 clip.OwnerName,
                 clip.CreatedAt,
                 clip.Length,
-                mediaUrls.Playlist(clip.VideoId).ToString(),
-                mediaUrls.DetectionFrames(clip.VideoId),
+                mediaUrls.Playlist(clip.VideoHost, clip.VideoId).ToString(),
+                mediaUrls.DetectionFrames(clip.VideoHost, clip.VideoId),
                 latest is null ? null : LegendDetectionRun.From(latest),
                 (int)(latest?.RunCount ?? 0),
                 label is null
@@ -326,7 +326,7 @@ public class LegendDetectionService(
                 clip.Title ?? "Untitled",
                 clip.OwnerName,
                 clip.CreatedAt,
-                mediaUrls.DetectionFrames(clip.VideoId),
+                mediaUrls.DetectionFrames(clip.VideoHost, clip.VideoId),
                 label is null ? null : new LegendBaselineLabel(label.PlayerLegend, label.LabelledAt),
                 result is null
                     ? null
@@ -435,7 +435,7 @@ public class LegendDetectionService(
             return true;
         }
 
-        List<LegendFrame> frames = await DownloadFramesAsync(run.VideoId, cancellationToken);
+        List<LegendFrame> frames = await DownloadFramesAsync(run.VideoHost, run.VideoId, cancellationToken);
         if (frames.Count == 0)
         {
             await statements.FailRunAsync(run.Id, "No thumbnails could be downloaded", null, null, canRetry);
@@ -528,11 +528,11 @@ public class LegendDetectionService(
             run.ClipId, run.Provider, run.Model, provider, model);
     }
 
-    private async Task<List<LegendFrame>> DownloadFramesAsync(Guid videoId, CancellationToken cancellationToken)
+    private async Task<List<LegendFrame>> DownloadFramesAsync(string videoHost, Guid videoId, CancellationToken cancellationToken)
     {
         HttpClient client = httpClientFactory.CreateClient(FramesHttpClientName);
 
-        LegendFrame?[] frames = await Task.WhenAll(mediaUrls.DetectionFrames(videoId).Select(async url =>
+        LegendFrame?[] frames = await Task.WhenAll(mediaUrls.DetectionFrames(videoHost, videoId).Select(async url =>
         {
             try
             {
