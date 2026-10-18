@@ -9,7 +9,7 @@ namespace Reelshelf.QueueMetrics;
 /// Samples <c>transcode_run</c>, the video pipeline's job queue, as the <c>transcode</c> queue with its job
 /// <c>type</c> as the trigger. It is shaped differently from the other run tables: the retry delay is
 /// <c>available_at</c>, staleness is <c>heartbeat_at</c> against <see cref="TranscodingOptions.StaleAfter"/>, and
-/// jobs end at <c>finished_at</c>. Its oldest pending age is the signal for scaling overflow workers.
+/// jobs end at <c>finished_at</c>. The overflow scaler counts its own backlog (<c>OverflowBacklogStatements</c>).
 /// </summary>
 /// <remarks>
 /// A job that has used up <see cref="TranscodingOptions.MaxAttempts"/> is only failed by the next claim

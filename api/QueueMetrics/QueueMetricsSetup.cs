@@ -6,6 +6,7 @@ using OpenTelemetry.Resources;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
+using Reelshelf.Video.Transcoding.Overflow;
 
 namespace Reelshelf.QueueMetrics;
 
@@ -116,7 +117,7 @@ public static class QueueMetricsSetup
                 .AddService("reelshelf")
                 .AddAttributes([new("deployment.environment.name", builder.Environment.EnvironmentName)]))
             .WithMetrics(metrics => metrics
-                .AddMeter(RunQueueMetrics.MeterName)
+                .AddMeter(RunQueueMetrics.MeterName, OverflowMetrics.MeterName)
                 .AddOtlpExporter((exporterOptions, readerOptions) =>
                 {
                     if (endpoint is not null)
