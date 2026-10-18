@@ -29,6 +29,7 @@ public static class WorkerSetup
         services.AddSingleton<WorkerApiClient>();
         services.AddSingleton<MediaTransfer>();
         services.AddSingleton<FfmpegRunner>();
+        services.AddSingleton<HlsRemux>();
         services.AddSingleton<JobRunner>();
         services.AddSingleton<WorkerLoop>();
         services.AddHostedService(provider => provider.GetRequiredService<WorkerLoop>());

@@ -11,6 +11,7 @@ namespace Reelshelf.Worker;
 public sealed class JobRunner(
     FfmpegRunner ffmpeg,
     MediaTransfer transfer,
+    HlsRemux hlsRemux,
     IOptions<WorkerSettings> options,
     ILogger<JobRunner> logger)
 {
@@ -23,7 +24,7 @@ public sealed class JobRunner(
         JobReporter reporter,
         CancellationToken cancellationToken)
     {
-        if (job.Type is not (JobTypes.Transcode or JobTypes.Thumbnails or JobTypes.Trim))
+        if (job.Type is not (JobTypes.Transcode or JobTypes.Migrate or JobTypes.Thumbnails or JobTypes.Trim))
         {
             throw new JobFailedException($"This worker doesn't run {job.Type} jobs", retryable: false);
         }
@@ -35,14 +36,17 @@ public sealed class JobRunner(
 
         JobInput input = JobInput.Parse(job.Input);
         string source = Path.Combine(workDirectory, "source");
-        long sourceBytes = await transfer.DownloadAsync(job.SourceUrl, source, settings.MaxSourceBytes, cancellationToken);
+        // A migrate's source is an HLS playlist, copied into a local MP4; from there it is a transcode.
+        long sourceBytes = job.Type == JobTypes.Migrate
+            ? await hlsRemux.RemuxAsync(job.SourceUrl, source, cancellationToken)
+            : await transfer.DownloadAsync(job.SourceUrl, source, settings.MaxSourceBytes, cancellationToken);
         MediaInfo media = await ProbeInputAsync(source, cancellationToken);
         logger.LogInformation("Job {RunId}: {Type} of a {Duration:0.##}s {Width}x{Height} {Codec} source ({Bytes} bytes)",
             job.RunId, job.Type, media.DurationSeconds, media.Video!.Width, media.Video.Height, media.Video.Codec, sourceBytes);
 
         return job.Type switch
         {
-            JobTypes.Transcode => await TranscodeAsync(job, input, source, media, capabilities, reporter, workDirectory, cancellationToken),
+            JobTypes.Transcode or JobTypes.Migrate => await TranscodeAsync(job, input, source, media, capabilities, reporter, workDirectory, cancellationToken),
             JobTypes.Thumbnails => await ThumbnailsAsync(job, source, media, sourceBytes, reporter, workDirectory, cancellationToken),
             _ => await TrimAsync(job, input, source, media, reporter, workDirectory, cancellationToken)
         };

@@ -333,6 +333,105 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
     }
 
     [SvtAv1Fact]
+    public async Task Migrate_RemuxesTheHlsSource_ThenTranscodesTheHighestResolutionVariant()
+    {
+        string hls = await HlsSourceAsync("hls", 1280, 720, 640, 360);
+        api.EnqueueHls(hls, TranscodeOutputs);
+
+        Assert.True(await RunOnceAsync());
+
+        Assert.Null(api.Failure);
+        JsonElement completion = Assert.IsType<JsonElement>(api.Completion);
+        Assert.InRange(completion.GetProperty("length_seconds").GetDouble(), 3.8, 4.2);
+        Assert.Equal(api.Uploads[OutputFiles.Video].Length, completion.GetProperty("size_bytes").GetInt64());
+        JsonElement outputs = completion.GetProperty("outputs");
+        Assert.Matches(Av1WithOpus(), outputs.GetProperty("codecs").GetString());
+        Assert.Equal(1280, outputs.GetProperty("width").GetInt32());
+        Assert.Equal(720, outputs.GetProperty("height").GetInt32());
+        Assert.Equal(TranscodeOutputs.Order(), outputs.GetProperty("files").EnumerateArray().Select(file => file.GetString()).Order());
+
+        AssertUploadHeaders(TranscodeOutputs);
+        AssertFramesReportedAfterUpload();
+
+        MediaInfo video = await ProbeAsync(api.Uploads[OutputFiles.Video].Path);
+        Assert.Equal("av1", video.Video!.Codec);
+        Assert.Equal("opus", video.Audio!.Codec);
+        Assert.Equal("30/1", await FrameRateAsync(api.Uploads[OutputFiles.Video].Path));
+        Assert.Equal(1280, (await ProbeAsync(api.Uploads[OutputFiles.Thumbnail].Path)).Video!.Width);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(WorkDirectory));
+    }
+
+    [SvtAv1Fact]
+    public async Task Migrate_AServerErrorOnThePlaylist_IsRetried()
+    {
+        string hls = await HlsSourceAsync("hls", 640, 360);
+        api.HlsServerErrors = 1;
+        api.EnqueueHls(hls, TranscodeOutputs);
+
+        Assert.True(await RunOnceAsync());
+
+        Assert.Null(api.Failure);
+        Assert.NotNull(api.Completion);
+        Assert.Equal(0, api.HlsServerErrors);
+    }
+
+    [SvtAv1Fact]
+    public async Task Migrate_APlaylistThatIsGone_FailsAsNotRetryable()
+    {
+        string empty = Path.Combine(root, "no-hls");
+        Directory.CreateDirectory(empty);
+        api.EnqueueHls(empty, TranscodeOutputs);
+
+        Assert.True(await RunOnceAsync());
+
+        Assert.Null(api.Completion);
+        JsonElement failure = Assert.IsType<JsonElement>(api.Failure);
+        Assert.False(failure.GetProperty("retryable").GetBoolean());
+        Assert.Contains("404", failure.GetProperty("error").GetString());
+        Assert.Empty(api.Uploads);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(WorkDirectory));
+    }
+
+    [SvtAv1Fact]
+    public async Task Migrate_ASourceThatIsntHls_FailsAsNotRetryable()
+    {
+        string directory = Path.Combine(root, "not-hls");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(Path.Combine(directory, "playlist.m3u8"), "<html>not a playlist</html>");
+        api.EnqueueHls(directory, TranscodeOutputs);
+
+        Assert.True(await RunOnceAsync());
+
+        Assert.Null(api.Completion);
+        JsonElement failure = Assert.IsType<JsonElement>(api.Failure);
+        Assert.False(failure.GetProperty("retryable").GetBoolean());
+        Assert.Contains("HLS", failure.GetProperty("error").GetString());
+    }
+
+    [SvtAv1Fact]
+    public async Task Shutdown_DuringTheRemux_ReleasesTheJobAtOnce()
+    {
+        // The remux takes 30 s and the grace is a minute: only an immediate release finishes quickly.
+        await UseFfmpegWrapperAsync("hls", "sleep 30", TimeSpan.FromMinutes(1));
+        string hls = await HlsSourceAsync("hls", 640, 360);
+        api.EnqueueHls(hls, TranscodeOutputs);
+
+        WorkerLoop loop = services.GetRequiredService<WorkerLoop>();
+        await loop.StartAsync();
+        using CancellationTokenSource stopping = new();
+        Task<bool> run = loop.RunOnceAsync(stopping.Token);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        Stopwatch elapsed = Stopwatch.StartNew();
+        await stopping.CancelAsync();
+        Assert.True(await run.WaitAsync(TimeSpan.FromSeconds(20)));
+
+        Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(15), $"The release took {elapsed.Elapsed}");
+        Assert.Null(api.Failure);
+        Assert.NotNull(api.Release);
+        Assert.Empty(api.Uploads);
+    }
+
+    [SvtAv1Fact]
     public async Task AnEmptyQueue_ClaimsNothing()
     {
         Assert.False(await RunOnceAsync());
@@ -380,6 +479,44 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
         await GenerateAsync("av1.mp4", "testsrc2=size=640x360:rate=30:duration=4", audio: true,
             "-c:v", "libsvtav1", "-preset", "12", "-g", "30", "-pix_fmt", "yuv420p", "-c:a", "libopus",
             "-movflags", "+faststart");
+
+    /// <summary>
+    /// A 4 s HLS ladder like Bunny's: a master <c>playlist.m3u8</c> with one variant per size (H.264 and ADTS AAC in
+    /// 1 s TS segments), each in its own folder and referenced relatively.
+    /// </summary>
+    private async Task<string> HlsSourceAsync(string name, params int[] sizes)
+    {
+        string directory = Path.Combine(root, name);
+        int variants = sizes.Length / 2;
+        for (int index = 0; index < variants; index++)
+        {
+            Directory.CreateDirectory(Path.Combine(directory, $"v{index}"));
+        }
+
+        string split = string.Concat(Enumerable.Range(0, variants).Select(index => $"[s{index}]"));
+        string scales = string.Join(';', Enumerable.Range(0, variants)
+            .Select(index => $"[s{index}]scale={sizes[index * 2]}:{sizes[index * 2 + 1]}[v{index}]"));
+        List<string> args =
+        [
+            "-hide_banner", "-loglevel", "error", "-y",
+            "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30:duration=4",
+            "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-shortest",
+            "-filter_complex", $"[0:v]split={variants}{split};{scales}"
+        ];
+        for (int index = 0; index < variants; index++)
+        {
+            args.AddRange(["-map", $"[v{index}]", "-map", "1:a"]);
+        }
+
+        args.AddRange(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-g", "30", "-c:a", "aac",
+            "-f", "hls", "-hls_time", "1", "-hls_playlist_type", "vod", "-master_pl_name", "playlist.m3u8",
+            "-var_stream_map", string.Join(' ', Enumerable.Range(0, variants).Select(index => $"v:{index},a:{index}")),
+            "-hls_segment_filename", Path.Combine(directory, "v%v", "segment%d.ts"),
+            Path.Combine(directory, "v%v", "video.m3u8")]);
+        await RunAsync("ffmpeg", args);
+        Assert.True(File.Exists(Path.Combine(directory, "playlist.m3u8")), "ffmpeg wrote no master playlist");
+        return directory;
+    }
 
     private async Task<string> GenerateAsync(string name, string video, bool audio, params string[] encode)
     {
