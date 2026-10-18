@@ -3569,7 +3569,7 @@
           "game_slug",
           "created_at",
           "length_seconds",
-          "playback_url",
+          "sources",
           "thumbnail_url",
           "latest_run",
           "run_count"
@@ -3603,8 +3603,11 @@
             ],
             "format": "int32"
           },
-          "playback_url": {
-            "type": "string"
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaybackSource"
+            }
           },
           "thumbnail_url": {
             "type": "string"
@@ -3862,7 +3865,7 @@
           "storage_bytes",
           "uploaded_at",
           "thumbnail_url",
-          "playback_url"
+          "sources"
         ],
         "type": "object",
         "properties": {
@@ -3895,8 +3898,11 @@
           "thumbnail_url": {
             "type": "string"
           },
-          "playback_url": {
-            "type": "string"
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaybackSource"
+            }
           }
         }
       },
@@ -4588,7 +4594,7 @@
           "owner_name",
           "created_at",
           "length_seconds",
-          "playback_url",
+          "sources",
           "frame_urls",
           "latest_run",
           "run_count",
@@ -4617,8 +4623,11 @@
             ],
             "format": "int32"
           },
-          "playback_url": {
-            "type": "string"
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaybackSource"
+            }
           },
           "frame_urls": {
             "type": "array",
@@ -5298,6 +5307,28 @@
           }
         }
       },
+      "PlaybackSource": {
+        "required": [
+          "url",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "height": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "Playlist": {
         "required": [
           "id",
@@ -5773,7 +5804,7 @@
           "duration_seconds",
           "uploaded_at",
           "thumbnail_url",
-          "playback_url"
+          "sources"
         ],
         "type": "object",
         "properties": {
@@ -5794,8 +5825,11 @@
           "thumbnail_url": {
             "type": "string"
           },
-          "playback_url": {
-            "type": "string"
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaybackSource"
+            }
           }
         }
       },

@@ -1,11 +1,24 @@
+using Reelshelf.Core.Models;
+
 namespace Reelshelf.Core;
 
 /// <summary>
-/// Every media URL for a clip's video: its HLS playlist and thumbnails. Nothing else builds these, so the video
-/// host is only named here and in configuration (<c>BunnyCdnBaseUrl</c>).
+/// Every media URL for a clip's video: its playback sources, HLS playlist and thumbnails. Nothing else builds these,
+/// so the video host is only named here and in configuration (<c>BunnyCdnBaseUrl</c>).
 /// </summary>
 public class ClipMediaUrls(IConfiguration configuration)
 {
+    public const string HlsType = "application/vnd.apple.mpegurl";
+
+    /// <summary>
+    /// What players play, in the order they try them. A Bunny video is its HLS playlist alone.
+    /// </summary>
+    public List<PlaybackSource> Sources(Guid videoId)
+    {
+        return [new PlaybackSource(Playlist(videoId).ToString(), HlsType)];
+    }
+
+    /// <summary>The HLS playlist, for server-side readers (ffmpeg); players use <see cref="Sources"/>.</summary>
     public Uri Playlist(Guid videoId)
     {
         return new Uri($"{VideoBaseUrl(videoId)}/playlist.m3u8");

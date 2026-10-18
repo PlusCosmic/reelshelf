@@ -1,16 +1,27 @@
 import { useEffect, useRef, useState } from "react";
-import { attachHlsStream } from "@/shared/utils/hlsStream";
+import type { PlaybackSource } from "@/api-client";
+import { attachStream } from "@/shared/utils/videoStream";
+
+/** Identifies a list of sources by value, so a re-fetched clip with the same sources keeps playing. */
+function sourcesKey(sources: readonly PlaybackSource[]) {
+  return JSON.stringify(
+    sources.map(({ url, type, height }) => [url, type, height ?? null]),
+  );
+}
+
+type Problem = { key: string; kind: "fatal" | "unsupported" };
 
 /**
- * Plays a clip's HLS stream in a `<video>` with the browser's own controls and fullscreen; hls.js picks the
+ * Plays a clip in a `<video>` with the browser's own controls and fullscreen, from the first of its sources the
+ * device can play (`attachStream`): a progressive MP4 as the video's own `src`, or HLS with hls.js picking the
  * quality. It fills its container, which must be positioned, and stays transparent until the first frame
  * arrives so whatever is behind it (the poster, a thumbnail) shows while it loads.
  *
- * A new `src` swaps the stream on the same element, so moving to the next clip keeps the browser's permission
+ * New `sources` swap the stream on the same element, so moving to the next clip keeps the browser's permission
  * to play with sound.
  */
 export function ClipVideoPlayer({
-  src,
+  sources,
   poster,
   title,
   autoPlay = false,
@@ -18,8 +29,8 @@ export function ClipVideoPlayer({
   onLoaded,
   onEnded,
 }: {
-  /** The HLS playlist the API handed out. */
-  src: string;
+  /** The clip's sources as the API handed them out, in the order to try them. */
+  sources: readonly PlaybackSource[];
   poster?: string;
   title: string;
   /**
@@ -28,18 +39,21 @@ export function ClipVideoPlayer({
    */
   autoPlay?: boolean;
   className?: string;
-  /** Called once per `src`, when the browser knows the clip's length and size. */
+  /** Called once per set of sources, when the browser knows the clip's length and size. */
   onLoaded?: () => void;
   onEnded?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const key = sourcesKey(sources);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [problem, setProblem] = useState<Problem | null>(null);
 
-  // The latest callbacks, for media event handlers.
+  // The latest props, for media event handlers and for the stream effect, which is keyed by value.
+  const sourcesRef = useRef(sources);
   const onLoadedRef = useRef(onLoaded);
   const onEndedRef = useRef(onEnded);
   useEffect(() => {
+    sourcesRef.current = sources;
     onLoadedRef.current = onLoaded;
     onEndedRef.current = onEnded;
   });
@@ -48,16 +62,19 @@ export function ClipVideoPlayer({
     const video = videoRef.current;
     if (!video) return;
     const onMetadata = () => onLoadedRef.current?.();
-    const onFirstFrame = () => setLoadedSrc(src);
+    const onFirstFrame = () => setLoadedKey(key);
     video.addEventListener("loadedmetadata", onMetadata, { once: true });
     video.addEventListener("loadeddata", onFirstFrame, { once: true });
-    const detach = attachHlsStream(video, src, () => setFailedSrc(src));
+    const detach = attachStream(video, sourcesRef.current, {
+      onFatal: () => setProblem({ key, kind: "fatal" }),
+      onUnsupported: () => setProblem({ key, kind: "unsupported" }),
+    });
     return () => {
       video.removeEventListener("loadedmetadata", onMetadata);
       video.removeEventListener("loadeddata", onFirstFrame);
       detach();
     };
-  }, [src]);
+  }, [key]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -66,6 +83,8 @@ export function ClipVideoPlayer({
     video.addEventListener("ended", ended);
     return () => video.removeEventListener("ended", ended);
   }, []);
+
+  const currentProblem = problem?.key === key ? problem.kind : null;
 
   return (
     <>
@@ -77,9 +96,14 @@ export function ClipVideoPlayer({
         controls
         playsInline
         aria-label={title}
-        data-loaded={loadedSrc === src ? "" : undefined}
+        data-loaded={loadedKey === key ? "" : undefined}
       />
-      {failedSrc === src ? (
+      {currentProblem === "unsupported" ? (
+        // Where a fallback (an H.264 copy made on demand) would plug in.
+        <p className="rs-video-error" role="alert">
+          This clip can't play on this device.
+        </p>
+      ) : currentProblem === "fatal" ? (
         <p className="rs-video-error" role="alert">
           This clip couldn't be played.
         </p>

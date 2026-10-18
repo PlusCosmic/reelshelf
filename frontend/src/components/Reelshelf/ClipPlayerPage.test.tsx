@@ -57,8 +57,8 @@ vi.mock("./ReelshelfPrimitives", () => ({
 }));
 
 // The stream itself is the loader's business; here the page only needs the <video> and its events.
-vi.mock("@/shared/utils/hlsStream", () => ({
-  attachHlsStream: () => () => undefined,
+vi.mock("@/shared/utils/videoStream", () => ({
+  attachStream: () => () => undefined,
 }));
 
 function clip(clipId: string, isViewed = false): Clip {
@@ -75,7 +75,12 @@ function clip(clipId: string, isViewed = false): Clip {
       durationSeconds: 30,
       storageBytes: 1_000,
       thumbnailUrl: `https://cdn.example/${clipId}/thumbnail.jpg`,
-      playbackUrl: `https://cdn.example/${clipId}/playlist.m3u8`,
+      sources: [
+        {
+          url: `https://cdn.example/${clipId}/playlist.m3u8`,
+          type: "application/vnd.apple.mpegurl",
+        },
+      ],
     },
   } as unknown as Clip;
 }

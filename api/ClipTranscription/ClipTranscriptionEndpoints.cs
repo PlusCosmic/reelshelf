@@ -1,4 +1,5 @@
 using Reelshelf.Auth;
+using Reelshelf.Core.Models;
 
 namespace Reelshelf.ClipTranscription;
 
@@ -67,7 +68,7 @@ public sealed record ClipTranscriptionReviewClip(
     string GameSlug,
     DateTimeOffset CreatedAt,
     int? LengthSeconds,
-    string PlaybackUrl,
+    List<PlaybackSource> Sources,
     string ThumbnailUrl,
     ClipTranscriptionRun? LatestRun,
     int RunCount);

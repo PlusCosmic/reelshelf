@@ -60,6 +60,11 @@ public class ClipProjectionTests
         Assert.True(clip.IsViewed);
         Assert.False(clip.Share.Shared);
         Assert.Equal(
+            [new PlaybackSource($"https://cdn.example/{VideoId}/playlist.m3u8", "application/vnd.apple.mpegurl")],
+            clip.Video.Sources);
+        // Records compare lists by reference, so the sources are checked above and shared here.
+        List<PlaybackSource> sources = clip.Video.Sources;
+        Assert.Equal(
             new ClipVideo(
                 VideoId,
                 "Third party",
@@ -69,7 +74,7 @@ public class ClipProjectionTests
                 1_234_567,
                 CreatedAt.AddMinutes(1),
                 $"https://cdn.example/{VideoId}/thumbnail.jpg",
-                $"https://cdn.example/{VideoId}/playlist.m3u8"),
+                sources),
             clip.Video);
     }
 
