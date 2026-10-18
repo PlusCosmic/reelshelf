@@ -119,6 +119,14 @@ function renderPage(clipId: string, collectionId?: string) {
 }
 
 beforeEach(() => {
+  // jsdom has no ResizeObserver; the page measures its details with one to size the player.
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
   mocks.autoplay = false;
   mocks.clips = new Map(
     [clip("a"), clip("b"), clip("c", true)].map((item) => [item.clipId, item]),
@@ -132,6 +140,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("ClipPlayerPage", () => {

@@ -65,6 +65,21 @@ function formatTime(date: Date) {
   return timeFormatter.format(new Date(date));
 }
 
+// The player is sized so it and the details under it (title, meta, tags, actions) fit the window together. The
+// details' height varies with a wrapped title or a row of tags, so it is measured and handed to the stylesheet.
+function trackDetailsHeight(details: HTMLElement | null) {
+  const watch = details?.closest<HTMLElement>(".rs-watch");
+  if (!details || !watch) return;
+  const observer = new ResizeObserver(() => {
+    watch.style.setProperty(
+      "--rs-watch-details-height",
+      `${details.offsetHeight}px`,
+    );
+  });
+  observer.observe(details);
+  return () => observer.disconnect();
+}
+
 function plural(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`;
 }
@@ -486,7 +501,7 @@ export function ClipPlayerPage({
           />
         </section>
 
-        <section className="rs-watch-details">
+        <section className="rs-watch-details" ref={trackDetailsHeight}>
           <h1 className="rs-display rs-watch-title">{clip.video.title}</h1>
           <div className="rs-watch-meta">
             <span>
