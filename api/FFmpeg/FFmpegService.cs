@@ -55,7 +55,7 @@ public class FFmpegService
     /// <param name="video">The clip's video, at its own host</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Path to the downloaded video file</returns>
-    public async Task<DownloadedVideo> DownloadHlsVideoAsync(ClipVideoRef video,
+    public virtual async Task<DownloadedVideo> DownloadHlsVideoAsync(ClipVideoRef video,
         CancellationToken cancellationToken = default)
     {
         Guid videoId = video.VideoId;

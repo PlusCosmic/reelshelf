@@ -1,8 +1,8 @@
 # Current state: what the app relies on from the video host
 
-As of 2026-10-18, after the #188 refactor (PRs #195–#200), per-clip hosts (#209) and the R2 host (#212). Bunny
-Stream holds every existing clip; the `r2` host is registered when `R2:*` is configured and takes new uploads only
-for the accounts in `VideoHost:Users`.
+As of 2026-10-18, after the #188 refactor (PRs #195–#200), per-clip hosts (#209), the R2 host (#212) and R2
+downloads (#216). Bunny Stream holds every existing clip; the `r2` host is registered when `R2:*` is configured and
+takes new uploads only for the accounts in `VideoHost:Users`.
 
 ## The seam
 
@@ -23,6 +23,10 @@ for the accounts in `VideoHost:Users`.
   `VideoHost:NewUploads` (default `bunny`) applies only to the account ids in `VideoHost:Users`; everyone else, and
   everyone when the list is empty, stays on Bunny. The API refuses to start when `NewUploads` names a host that isn't
   registered, rather than failing those users' uploads or quietly sending them to Bunny.
+- **Downloads (#216):** a host whose video is a file registers a keyed `IClipVideoDownloads`
+  (`api/Video/IClipVideoDownloads.cs`; R2's is `R2Downloads`), and `GET /api/ffmpeg/download/{videoId}` redirects a
+  `ready` clip of that host to its short-lived presigned URL. A host without one (Bunny) is remuxed by
+  `FFmpegService`. See [workers-and-jobs.md](workers-and-jobs.md#downloads).
 - `api/Core/ClipMediaUrls.cs` builds every media URL: `Sources`, `ServerStream` (what ffmpeg reads: Bunny's HLS, R2's
   MP4), `Thumbnail`, `DetectionFrames` and `MediaPath` (the Activity's folder), each from the clip's `ClipVideoRef`
   (`video_host`, `video_id`, and V42's `video_version`, `video_codecs`, `video_height`) and that host's
@@ -42,7 +46,7 @@ for the accounts in `VideoHost:Users`.
 | Resumable browser upload, described by `UploadTarget` (protocol, endpoint, headers, metadata) | `frontend/src/utils/clipUpload.ts` (tus-js-client)                                   | Bunny's presigned TUS endpoint                                     |
 | Server-side upload of a stream                                                                | Twitch import (`api/Twitch/`)                                                        | `PUT /videos/{id}`                                                 |
 | A playable stream URL                                                                         | `ClipVideoPlayer`, `ActivityPlayer` (via `frontend/src/shared/utils/hlsStream.ts`)   | `{id}/playlist.m3u8`                                               |
-| A stream ffmpeg can read                                                                      | Transcription audio (`ClipAudioExtractor`), downloads (`FFmpegService`)              | the same HLS playlist                                              |
+| A stream ffmpeg can read                                                                      | Transcription audio (`ClipAudioExtractor`), Bunny downloads (`FFmpegService`)        | the same HLS playlist                                              |
 | `thumbnail.jpg`                                                                               | Clip cards, player poster, share page                                                | Bunny-generated                                                    |
 | Six detection frames: `thumbnail.jpg` + `thumbnail_1..5.jpg`, spread through the clip         | Legend detection (`api/ApexLegends/LegendDetection/`), the baseline page's HUD crops | Bunny-generated; detection is tuned on Bunny's timing              |
 | Status and encode progress                                                                    | Upload tray, playability, abandoned-upload purge, status refresh                     | Webhook + polling `GET /videos/{id}`                               |

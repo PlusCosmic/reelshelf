@@ -13,6 +13,7 @@ import type { Clip } from "@/api-client";
 import { useCurrentUser, useDeleteClip, useShareClip } from "@/hooks/queries";
 import { apiConfig } from "@/shared/config/apiConfig";
 import { ApiError } from "@/shared/services/apiError";
+import { isHlsSource } from "@/shared/utils/videoStream";
 import { AddToCollectionDialog } from "../collections/AddToCollectionDialog";
 
 export function PlayerActions({ clip }: { clip: Clip }) {
@@ -27,6 +28,7 @@ export function PlayerActions({ clip }: { clip: Clip }) {
   const isOwner = currentUser?.id === clip.ownerId;
   const canShare = isOwner;
   const canDelete = isOwner;
+  const remuxesDownload = clip.video.sources.some(isHlsSource);
 
   function handleDelete() {
     if (deleteClip.isPending) return;
@@ -66,14 +68,17 @@ export function PlayerActions({ clip }: { clip: Clip }) {
           <IconFolderPlus size={13} />
           Add to collection
         </button>
-        {/* The server remuxes the stream before the file starts, which can take a moment; the
-            label says so rather than the button seeming to do nothing. */}
+        {/* A plain link, never fetch: an R2 clip is a redirect to a presigned URL in the bucket, which
+            the browser saves as it is. An HLS (Bunny) clip is remuxed on the server before the file
+            starts, which can take a moment; the label says so rather than the button seeming to do
+            nothing. */}
         <a
           className="rs-small-button"
           href={`${apiConfig.baseUrl}/api/ffmpeg/download/${clip.videoId}`}
           download
           aria-disabled={preparing}
           onClick={() => {
+            if (!remuxesDownload) return;
             setPreparing(true);
             window.setTimeout(() => setPreparing(false), 8000);
           }}

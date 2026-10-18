@@ -63,7 +63,7 @@
   Current call (2026-10-18): none for now, since everyone using Reelshelf can decode AV1. Build the seams (a
   `sources` list, a "can't play on this device" message, room in the queue for a fallback job) and add an
   on-demand fallback when needed. See [playback-and-codecs.md](playback-and-codecs.md).
-- **Downloads:** a presigned R2 redirect, with no work on the API server (see
+- **Downloads:** a presigned R2 redirect, with no work on the API server (built in #216, see
   [workers-and-jobs.md](workers-and-jobs.md#downloads)). Still open: serve the AV1 file as-is, or convert to H.264
   on demand as a worker job (some local players and editors can't open AV1).
 - **Clip versions:** a trim after the first encode produces a new video version, so the run tables need to record

@@ -41,17 +41,27 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
             });
     }
 
-    /// <summary>A GET for <paramref name="key"/>.</summary>
-    public string PresignGet(string key, TimeSpan lifetime)
+    /// <summary>
+    /// A GET for <paramref name="key"/>. With <paramref name="contentDisposition"/>, R2 answers with that
+    /// <c>Content-Disposition</c> (the signed <c>response-content-disposition</c> parameter), which is how a download
+    /// gets its file name.
+    /// </summary>
+    public string PresignGet(string key, TimeSpan lifetime, string? contentDisposition = null)
     {
-        return _client.GetPreSignedURL(new GetPreSignedUrlRequest
+        GetPreSignedUrlRequest request = new()
         {
             BucketName = _options.Bucket,
             Key = key,
             Verb = HttpVerb.GET,
             Protocol = Protocol.HTTPS,
             Expires = ExpiresAt(lifetime)
-        });
+        };
+        if (contentDisposition is not null)
+        {
+            request.ResponseHeaderOverrides.ContentDisposition = contentDisposition;
+        }
+
+        return _client.GetPreSignedURL(request);
     }
 
     /// <summary>
