@@ -3475,12 +3475,19 @@ html:has(.rs-library-route) {
 }
 
 /* The player is 16:9 at its column's width, which on a wide screen is taller than the window. Cap the width
-   so its height fits under the top bar and the game strip (60px and its 3px stitch) with the layout's 36px
-   above and some room below, but never shrink it past a usable size on a very short window. */
+   so it and the details under it (their measured height and 26px top margin) fit under the top bar and the
+   game strip (60px and its 3px stitch) with the layout's 36px above and some room below, but never shrink it
+   past a usable size on a very short window. Theatre mode sets its own cap. */
 .rs-watch-stage .rs-player {
   max-width: max(
     480px,
-    calc((100dvh - var(--rs-topbar-height, 64px) - 63px - 36px - 28px) * 16 / 9)
+    calc(
+      (
+          100dvh - var(--rs-topbar-height, 64px) - 63px - 36px -
+            var(--rs-watch-details-height, 0px) - 26px - 24px
+        ) *
+        16 / 9
+    )
   );
   margin-inline: auto;
 }
