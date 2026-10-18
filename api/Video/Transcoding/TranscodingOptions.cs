@@ -13,6 +13,13 @@ public sealed class TranscodingOptions
     /// </summary>
     public int MaxAttempts { get; set; } = 3;
 
+    /// <summary>
+    /// How many times a job can be handed back by a shutting-down worker (<c>POST /api/worker/{runId}/release</c>)
+    /// with its attempt refunded. Past this, a release still requeues the job but keeps the attempt, so a worker
+    /// that is restarted for ever runs the job out of <see cref="MaxAttempts"/> instead of bouncing it without end.
+    /// </summary>
+    public int MaxReleases { get; set; } = 10;
+
     /// <summary>How long a job that failed a retryable attempt waits before it is claimed again.</summary>
     public TimeSpan RetryAfter { get; set; } = TimeSpan.FromMinutes(2);
 
@@ -30,6 +37,8 @@ public sealed class TranscodingOptions
     public bool QueueDetectionOnThumbnails { get; set; }
 
     public int EffectiveMaxAttempts => Math.Max(1, MaxAttempts);
+
+    public int EffectiveMaxReleases => Math.Max(0, MaxReleases);
 }
 
 /// <summary>The job types in <c>transcode_run.type</c>; see docs/video-pipeline/workers-and-jobs.md.</summary>

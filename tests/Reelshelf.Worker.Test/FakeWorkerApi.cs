@@ -36,7 +36,7 @@ public sealed class FakeWorkerApi : IAsyncDisposable
     /// <summary>Progress reports answer 409, as when the job was reclaimed by another worker.</summary>
     public bool LoseLeaseOnProgress { get; set; }
 
-    /// <summary>"progress", "complete", "fail" or "upload:{name}", in order.</summary>
+    /// <summary>"progress", "complete", "fail", "release" or "upload:{name}", in order.</summary>
     public ConcurrentQueue<string> Events { get; } = new();
 
     public ConcurrentQueue<JsonElement> Progress { get; } = new();
@@ -44,6 +44,8 @@ public sealed class FakeWorkerApi : IAsyncDisposable
     public JsonElement? Completion { get; private set; }
 
     public JsonElement? Failure { get; private set; }
+
+    public JsonElement? Release { get; private set; }
 
     public ConcurrentDictionary<string, Upload> Uploads { get; } = new();
 
@@ -178,6 +180,9 @@ public sealed class FakeWorkerApi : IAsyncDisposable
                 break;
             case "fail":
                 Failure = json;
+                break;
+            case "release":
+                Release = json;
                 break;
         }
 

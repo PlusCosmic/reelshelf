@@ -109,13 +109,17 @@ public class TranscodeStatements(NpgsqlConnection connection)
         });
     }
 
-    /// <summary>Marks the job succeeded with what the worker reported. Null when it is not running under this lease.</summary>
+    /// <summary>
+    /// Marks the job succeeded with what the worker reported, keeping the count of earlier releases
+    /// (<see cref="ReleaseRunAsync"/>). Null when it is not running under this lease.
+    /// </summary>
     public async Task<FinishedRunRow?> CompleteRunAsync(Guid runId, Guid leaseId, string outputJson)
     {
         const string sql = """
             UPDATE transcode_run
             SET status = 'succeeded',
-                output = @Output::jsonb,
+                output = jsonb_strip_nulls(jsonb_build_object('release_count', output -> 'release_count'))
+                         || @Output::jsonb,
                 progress = 100,
                 error = NULL,
                 heartbeat_at = now(),
@@ -156,9 +160,44 @@ public class TranscodeStatements(NpgsqlConnection connection)
         });
     }
 
+    /// <summary>
+    /// Hands a job back from a worker that is shutting down: pending again and claimable at once, with no lease,
+    /// heartbeat or progress. The attempt the claim counted is refunded (never below 0) while the job has been
+    /// released at most <paramref name="maxReleases"/> times; past that it is kept, so a worker restarted for ever
+    /// runs the job out of attempts. The count and the lease it was released under are kept in <c>output</c>
+    /// (<c>release_count</c>, <c>released_lease_id</c>), which a pending job doesn't otherwise use, so a repeat of
+    /// the report can be told from a stale lease. Null when the job is not running under this lease.
+    /// </summary>
+    public async Task<ReleasedRunRow?> ReleaseRunAsync(Guid runId, Guid leaseId, int maxReleases)
+    {
+        // SET reads the row as it was; RETURNING reads it as updated, so release_count there includes this release.
+        const string sql = """
+            UPDATE transcode_run
+            SET status = 'pending',
+                available_at = now(),
+                attempts = CASE WHEN COALESCE((output ->> 'release_count')::int, 0) < @MaxReleases
+                                THEN GREATEST(attempts - 1, 0) ELSE attempts END,
+                lease_id = NULL,
+                heartbeat_at = NULL,
+                progress = NULL,
+                output = COALESCE(output, '{}'::jsonb) || jsonb_build_object(
+                    'release_count', COALESCE((output ->> 'release_count')::int, 0) + 1,
+                    'released_lease_id', @LeaseId::text)
+            WHERE id = @RunId AND lease_id = @LeaseId AND status = 'running'
+            RETURNING id, clip_id, type, attempts, (output ->> 'release_count')::int AS release_count,
+                      (output ->> 'release_count')::int <= @MaxReleases AS refunded
+            """;
+        return await connection.QuerySingleOrDefaultAsync<ReleasedRunRow>(sql,
+            new { RunId = runId, LeaseId = leaseId, MaxReleases = maxReleases });
+    }
+
     public async Task<RunStateRow?> GetRunAsync(Guid runId)
     {
-        const string sql = "SELECT id, clip_id, type, status, lease_id, video_version FROM transcode_run WHERE id = @RunId";
+        const string sql = """
+            SELECT id, clip_id, type, status, lease_id, video_version,
+                   (output ->> 'released_lease_id')::uuid AS released_lease_id
+            FROM transcode_run WHERE id = @RunId
+            """;
         return await connection.QuerySingleOrDefaultAsync<RunStateRow>(sql, new { RunId = runId });
     }
 
@@ -230,5 +269,18 @@ public class TranscodeStatements(NpgsqlConnection connection)
         public string Status { get; set; } = "";
         public Guid? LeaseId { get; set; }
         public int VideoVersion { get; set; } = 1;
+
+        /// <summary>The lease the job was last handed back under by a shutting-down worker.</summary>
+        public Guid? ReleasedLeaseId { get; set; }
+    }
+
+    public sealed class ReleasedRunRow
+    {
+        public Guid Id { get; set; }
+        public Guid ClipId { get; set; }
+        public string Type { get; set; } = "";
+        public int Attempts { get; set; }
+        public int ReleaseCount { get; set; }
+        public bool Refunded { get; set; }
     }
 }

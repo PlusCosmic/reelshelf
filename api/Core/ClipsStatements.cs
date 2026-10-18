@@ -866,6 +866,20 @@ public class ClipsStatements(NpgsqlConnection connection)
         await connection.ExecuteAsync(sql, new { clipId });
     }
 
+    /// <summary>
+    /// A clip's transcode was handed back by a worker that was shutting down: a clip it had started processing is
+    /// waiting for its transcode again. Any other state (ready, or already failed) is left alone.
+    /// </summary>
+    public async Task SetTranscodeReleased(Guid clipId)
+    {
+        const string sql = """
+            UPDATE clip
+            SET video_state = 'uploaded', encode_progress = 0
+            WHERE id = @clipId AND video_state = 'processing'
+            """;
+        await connection.ExecuteAsync(sql, new { clipId });
+    }
+
     /// <summary>A clip's transcode failed for good. A clip that is already ready keeps the video it has.</summary>
     public async Task SetTranscodeFailed(Guid clipId)
     {

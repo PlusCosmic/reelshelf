@@ -42,6 +42,7 @@ jobs:
     outputs:
       clips: ${{ steps.filter.outputs.clips }}
       migrations: ${{ steps.filter.outputs.migrations }}
+      worker: ${{ steps.filter.outputs.worker }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,19 +60,22 @@ jobs:
               both)
                 echo "clips=true" >> "$GITHUB_OUTPUT"
                 echo "migrations=true" >> "$GITHUB_OUTPUT"
+                echo "worker=false" >> "$GITHUB_OUTPUT"
                 ;;
               clips)
                 echo "clips=true" >> "$GITHUB_OUTPUT"
                 echo "migrations=true" >> "$GITHUB_OUTPUT"
+                echo "worker=false" >> "$GITHUB_OUTPUT"
                 ;;
               migrations)
                 echo "clips=false" >> "$GITHUB_OUTPUT"
                 echo "migrations=true" >> "$GITHUB_OUTPUT"
+                echo "worker=false" >> "$GITHUB_OUTPUT"
                 ;;
               worker)
-                # Built by the worker job alone.
                 echo "clips=false" >> "$GITHUB_OUTPUT"
                 echo "migrations=false" >> "$GITHUB_OUTPUT"
+                echo "worker=true" >> "$GITHUB_OUTPUT"
                 ;;
             esac
             exit 0
@@ -84,10 +88,11 @@ jobs:
             -H 'Accept: application/vnd.github.raw')"
 
           # Prints "true" when files matching the pattern changed between the deployed image's commit and this
-          # one, or when the deployed commit can't be found here (no tag, or history rewritten).
+          # one, or when the deployed commit can't be found here (no tag, or history rewritten). The deployed
+          # image is read from the compose text in $3, clips.yml when it is left out.
           needs_build() {
-            local image="$1" pattern="$2" deployed
-            deployed="$(grep -oE "ghcr\.io/pluscosmic/${image}:sha-[0-9a-f]{40}" <<< "$compose" | head -n 1 | sed 's/.*:sha-//')"
+            local image="$1" pattern="$2" text="${3-$compose}" deployed
+            deployed="$(grep -oE "ghcr\.io/pluscosmic/${image}:sha-[0-9a-f]{40}" <<< "$text" | head -n 1 | sed 's/.*:sha-//')"
             if [[ -z "$deployed" ]] || ! git cat-file -e "${deployed}^{commit}" 2>/dev/null; then
               echo "::notice::${image}: deployed commit '${deployed}' not found; building" >&2
               echo true
@@ -106,8 +111,38 @@ jobs:
           clips="$(needs_build reelshelf '^(api/|frontend/|migrations/|Dockerfile|package.json|bun.lock|\.github/workflows/publish-app-images\.yml)')"
           migrations="$(needs_build reelshelf-migrations '^(migrations/|package.json|\.github/workflows/publish-app-images\.yml)')"
 
-          echo "clips=${clips}" >> "$GITHUB_OUTPUT"
-          echo "migrations=${migrations}" >> "$GITHUB_OUTPUT"
+          # The worker is deployed by its own compose files (services/reelshelf-worker-dev.yml, and one per
+          # environment as they are added): every services/*.yml whose image is the worker's. It needs building
+          # when workers/ changed since any of the commits they deploy, or when one can't be found. The bump job
+          # rewrites the same set of files.
+          worker_needs_build() {
+            local files path text found=false result=false
+            files="$(gh api repos/PlusCosmic/infrastructure/contents/services \
+              --jq '.[] | select(.type == "file" and (.name | endswith(".yml"))) | .path')" || return 1
+            while read -r path; do
+              [[ -n "$path" ]] || continue
+              text="$(gh api "repos/PlusCosmic/infrastructure/contents/${path}" -H 'Accept: application/vnd.github.raw')" || return 1
+              grep -qE "image:[[:space:]]*['\"]?ghcr\.io/pluscosmic/reelshelf-worker:" <<< "$text" || continue
+              found=true
+              echo "::notice::reelshelf-worker: deployed by ${path}" >&2
+              if [[ "$(needs_build reelshelf-worker '^(workers/|\.github/workflows/publish-app-images\.yml)' "$text")" == "true" ]]; then
+                result=true
+              fi
+            done <<< "$files"
+            if [[ "$found" != "true" ]]; then
+              echo "::notice::reelshelf-worker: no services/*.yml deploys it; building" >&2
+              result=true
+            fi
+            echo "$result"
+          }
+
+          worker="$(worker_needs_build)"
+
+          {
+            echo "clips=${clips}"
+            echo "migrations=${migrations}"
+            echo "worker=${worker}"
+          } >> "$GITHUB_OUTPUT"
 
   build:
     needs: detect
@@ -172,41 +207,21 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # The transcode worker's image (workers/Reelshelf.Worker). The infrastructure bump below doesn't deploy it yet
-  # (#215), so it is built when this push changed workers/ rather than diffed against a deployed commit.
+  # The transcode worker's image (workers/Reelshelf.Worker), when detect found workers/ changed since the commit
+  # the infrastructure repo's worker compose files deploy.
   worker:
     name: Worker image
+    needs: detect
+    if: needs.detect.outputs.worker == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout app repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Decide whether to build
-        id: should_build
-        shell: bash
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            enabled="${{ inputs.service == 'worker' }}"
-          elif [[ -z "$BEFORE" || "$BEFORE" =~ ^0+$ ]] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
-            echo "::notice::worker: previous commit '${BEFORE}' not found; building" >&2
-            enabled=true
-          elif git diff --name-only "$BEFORE" "${{ github.sha }}" | grep -qE '^(workers/|\.github/workflows/publish-app-images\.yml)'; then
-            enabled=true
-          else
-            enabled=false
-          fi
-          echo "enabled=${enabled}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
-        if: steps.should_build.outputs.enabled == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
-        if: steps.should_build.outputs.enabled == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -215,7 +230,6 @@ jobs:
 
       # The Dockerfile fails the build when the image's ffmpeg lacks libsvtav1, libopus or zscale/tonemap.
       - name: Build and push image
-        if: steps.should_build.outputs.enabled == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -229,11 +243,19 @@ jobs:
           cache-from: type=gha,scope=worker
           cache-to: type=gha,mode=max,scope=worker
 
+  # One bump PR for every image this run built. As before, the app images are bumped only when build succeeded,
+  # and a failed build opens no PR at all. The worker job is skipped when it has nothing to do; it joins the PR
+  # when it succeeded, and a failed worker build leaves the worker out without holding back the app images.
   bump-infrastructure:
     needs:
       - detect
       - build
-    if: needs.detect.outputs.clips == 'true' || needs.detect.outputs.migrations == 'true'
+      - worker
+    if: >-
+      !cancelled()
+      && needs.detect.result == 'success'
+      && contains(fromJSON('["success", "skipped"]'), needs.build.result)
+      && (needs.detect.outputs.clips == 'true' || needs.detect.outputs.migrations == 'true' || needs.worker.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout infrastructure repo
@@ -244,12 +266,14 @@ jobs:
           path: infrastructure
 
       - name: Bump compose image tags
+        id: bump
         working-directory: infrastructure
         shell: bash
         env:
           SHA: ${{ github.sha }}
           BUMP_CLIPS: ${{ needs.detect.outputs.clips }}
           BUMP_MIGRATIONS: ${{ needs.detect.outputs.migrations }}
+          BUMP_WORKER: ${{ needs.detect.outputs.worker == 'true' && needs.worker.result == 'success' }}
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -258,6 +282,7 @@ jobs:
 
           sha = os.environ["SHA"]
           bumps = []
+          bumped = False
 
           if os.environ["BUMP_CLIPS"] == "true":
               bumps.append(("services/clips.yml", ("clips", "reelshelf"), f"ghcr.io/pluscosmic/reelshelf:sha-{sha}"))
@@ -278,9 +303,35 @@ jobs:
                   raise SystemExit(f"Expected to update one of {image_names} in {compose_file}, updated {count}")
 
               compose_file.write_text(updated)
+              bumped = True
+
+          # The worker: every services/*.yml that deploys it (dev, prod), all of them, skipping the rest.
+          if os.environ["BUMP_WORKER"] == "true":
+              image = f"ghcr.io/pluscosmic/reelshelf-worker:sha-{sha}"
+              pattern = re.compile(r"(image:\s*['\"]?)ghcr\.io/pluscosmic/reelshelf-worker:[^'\"\s]+(['\"]?)")
+              worker_files = 0
+              for compose_file in sorted(Path("services").glob("*.yml")):
+                  if not compose_file.is_file():
+                      continue
+                  text = compose_file.read_text()
+                  updated, count = pattern.subn(rf"\1{image}\2", text)
+                  if count == 0:
+                      continue
+                  print(f"Bumping reelshelf-worker in {compose_file} ({count} image line(s))")
+                  compose_file.write_text(updated)
+                  worker_files += 1
+                  bumped = True
+              if worker_files == 0:
+                  print("::notice::No services/*.yml deploys reelshelf-worker; nothing to bump for it")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"bumped={'true' if bumped else 'false'}\n")
           PY
 
+      # Only when this run has a bump PR to open, so a worker build with no compose file to bump never closes an
+      # older PR without replacing it.
       - name: Close previous infrastructure image bump PRs
+        if: steps.bump.outputs.bumped == 'true'
         working-directory: infrastructure
         shell: bash
         env:
@@ -300,6 +351,7 @@ jobs:
             done
 
       - name: Create infrastructure PR
+        if: steps.bump.outputs.bumped == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
           path: infrastructure

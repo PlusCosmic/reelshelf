@@ -25,6 +25,7 @@ public sealed class JobReporter : IAsyncDisposable
     private readonly Task pump;
 
     private int disposed;
+    private int encoding;
     private int percent;
     private bool thumbnailsReady;
     private int sentPercent = -1;
@@ -43,6 +44,18 @@ public sealed class JobReporter : IAsyncDisposable
 
     /// <summary>Cancelled when the API says the job is no longer this worker's.</summary>
     public CancellationToken LeaseLost => leaseLost.Token;
+
+    /// <summary>
+    /// Whether the job's encode (or trim) has started. Until then a shutdown hands the job back at once, since
+    /// nothing worth waiting for is under way; after, it gets the grace period to finish.
+    /// </summary>
+    public bool Encoding => Volatile.Read(ref encoding) == 1;
+
+    /// <summary>Marks the start of the job's encode; see <see cref="Encoding"/>.</summary>
+    public void EncodeStarting()
+    {
+        Volatile.Write(ref encoding, 1);
+    }
 
     /// <summary>Records the encode's progress; the pump sends it when due.</summary>
     public void Report(int value)

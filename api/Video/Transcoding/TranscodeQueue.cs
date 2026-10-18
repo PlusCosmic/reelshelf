@@ -300,4 +300,53 @@ public class TranscodeQueue(
             run.Type, run.Id, run.ClipId, run.Status == "pending" ? "will retry" : "giving up", trimmed);
         return TranscodeReportOutcome.Applied;
     }
+
+    /// <summary>
+    /// Takes a job back from a worker that is shutting down (a deploy or restart), not one that failed: it is
+    /// pending again and claimable at once, and the attempt its claim counted is refunded, up to
+    /// <see cref="TranscodingOptions.MaxReleases"/> releases per job. A transcode's processing clip goes back to
+    /// <c>uploaded</c> in the same transaction. A repeat of the report under the same lease is accepted and changes
+    /// nothing.
+    /// </summary>
+    public async Task<TranscodeReportOutcome> ReleaseAsync(Guid runId, Guid leaseId)
+    {
+        int maxReleases = options.CurrentValue.EffectiveMaxReleases;
+        TranscodeStatements.ReleasedRunRow? run = await statements.InTransactionAsync(async () =>
+        {
+            TranscodeStatements.ReleasedRunRow? released = await statements.ReleaseRunAsync(runId, leaseId, maxReleases);
+            if (released is { Type: TranscodeRunTypes.Transcode })
+            {
+                await updateHandler.ApplyTranscodeReleasedAsync(released.ClipId);
+            }
+
+            return released;
+        });
+
+        if (run is null)
+        {
+            TranscodeStatements.RunStateRow? state = await statements.GetRunAsync(runId);
+            if (state is null)
+            {
+                return TranscodeReportOutcome.NotFound;
+            }
+
+            // The same worker repeating its release finds it recorded under its lease.
+            return state.ReleasedLeaseId == leaseId ? TranscodeReportOutcome.Applied : TranscodeReportOutcome.LeaseLost;
+        }
+
+        if (run.Refunded)
+        {
+            logger.LogInformation(
+                "{Type} job {RunId} for clip {ClipId} was handed back by a worker shutting down (release {Releases}); attempt refunded",
+                run.Type, run.Id, run.ClipId, run.ReleaseCount);
+        }
+        else
+        {
+            logger.LogWarning(
+                "{Type} job {RunId} for clip {ClipId} was handed back by a worker shutting down {Releases} times, more than {MaxReleases}; the attempt counts ({Attempts} used)",
+                run.Type, run.Id, run.ClipId, run.ReleaseCount, maxReleases, run.Attempts);
+        }
+
+        return TranscodeReportOutcome.Applied;
+    }
 }

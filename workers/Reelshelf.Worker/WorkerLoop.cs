@@ -6,9 +6,10 @@ namespace Reelshelf.Worker;
 
 /// <summary>
 /// Claims jobs one at a time and runs each to a report: complete, fail, or nothing when the lease was lost (another
-/// worker has the job now). Waits longer while the queue is empty or the API is failing. On SIGTERM the running job
-/// gets <see cref="WorkerSettings.ShutdownGrace"/> to finish; past that it is stopped and failed as retryable, which
-/// puts it back in the queue.
+/// worker has the job now). Waits longer while the queue is empty or the API is failing. On SIGTERM a job whose encode
+/// is under way gets <see cref="WorkerSettings.ShutdownGrace"/> to finish; past that it is stopped and released, which
+/// puts it back in the queue without using an attempt. A job that hasn't started encoding is stopped and released at
+/// once. Releasing is only for shutdown: a job that fails, ffmpeg crashing included, is reported as failed.
 /// </summary>
 public sealed class WorkerLoop(
     WorkerApiClient api,
@@ -121,14 +122,23 @@ public sealed class WorkerLoop(
         string workDirectory = Path.Combine(settings.WorkDirectory, job.RunId.ToString("N"));
         using CancellationTokenSource shutdown = new();
         using CancellationTokenSource reportBudget = new();
+        JobReporter reporter = new(api, job, logger, settings.HeartbeatInterval);
         await using CancellationTokenRegistration onStop = stoppingToken.Register(() =>
         {
-            logger.LogInformation("Shutting down: job {RunId} has {Grace} to finish", job.RunId, settings.ShutdownGrace);
-            shutdown.CancelAfter(settings.ShutdownGrace);
-            reportBudget.CancelAfter(settings.ShutdownGrace + ShutdownReportBudget);
+            if (reporter.Encoding)
+            {
+                logger.LogInformation("Shutting down: job {RunId} has {Grace} to finish", job.RunId, settings.ShutdownGrace);
+                shutdown.CancelAfter(settings.ShutdownGrace);
+                reportBudget.CancelAfter(settings.ShutdownGrace + ShutdownReportBudget);
+            }
+            else
+            {
+                logger.LogInformation("Shutting down: job {RunId} hasn't started encoding, so it goes back now", job.RunId);
+                reportBudget.CancelAfter(ShutdownReportBudget);
+                shutdown.Cancel();
+            }
         });
 
-        JobReporter reporter = new(api, job, logger, settings.HeartbeatInterval);
         try
         {
             using CancellationTokenSource jobToken =
@@ -148,7 +158,8 @@ public sealed class WorkerLoop(
         }
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
         {
-            await FailAsync(job, "The worker shut down before the job finished", retryable: true, reportBudget.Token);
+            // Stopped by the shutdown itself, so the job didn't fail: hand it back without using an attempt.
+            await ReleaseAsync(job, reportBudget.Token);
         }
         catch (JobFailedException exception)
         {
@@ -181,6 +192,24 @@ public sealed class WorkerLoop(
         {
             // The job stays running until the API's stale-after reclaims it.
             logger.LogError("Could not report job {RunId}'s failure: {Error}", job.RunId, exception.Message);
+        }
+    }
+
+    private async Task ReleaseAsync(WorkerJob job, CancellationToken cancellationToken)
+    {
+        logger.LogWarning("Job {RunId} stopped by the shutdown; handing it back", job.RunId);
+        try
+        {
+            await api.ReleaseAsync(job, cancellationToken);
+        }
+        catch (LeaseLostException)
+        {
+            logger.LogWarning("Job {RunId} was already taken away from this worker", job.RunId);
+        }
+        catch (Exception exception)
+        {
+            // The job stays running until the API's stale-after reclaims it, which uses an attempt.
+            logger.LogError("Could not hand job {RunId} back: {Error}", job.RunId, exception.Message);
         }
     }
 

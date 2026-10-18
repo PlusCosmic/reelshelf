@@ -28,6 +28,9 @@ public sealed record WorkerCompleteRequest(Guid LeaseId, JsonElement? Outputs, d
 
 public sealed record WorkerFailRequest(Guid LeaseId, string Error, bool Retryable);
 
+/// <summary>A job handed back by a worker that is shutting down, without using an attempt.</summary>
+public sealed record WorkerReleaseRequest(Guid LeaseId);
+
 /// <summary>
 /// The transcode workers' API (docs/video-pipeline/workers-and-jobs.md). Workers authenticate with the shared
 /// secret through <see cref="WorkerAuthentication.Policy"/>, never the site cookie, and every endpoint requires it.
@@ -53,6 +56,9 @@ public static class WorkerEndpoints
             .RequireAuthorization(WorkerAuthentication.Policy)
             .RequireRateLimiting(RateLimitPolicies.Worker);
         group.MapPost("/{runId:guid}/fail", Fail)
+            .RequireAuthorization(WorkerAuthentication.Policy)
+            .RequireRateLimiting(RateLimitPolicies.Worker);
+        group.MapPost("/{runId:guid}/release", Release)
             .RequireAuthorization(WorkerAuthentication.Policy)
             .RequireRateLimiting(RateLimitPolicies.Worker);
     }
@@ -134,6 +140,24 @@ public static class WorkerEndpoints
         }
 
         return ToResult(await queue.FailAsync(runId, request.LeaseId, request.Error.Trim(), request.Retryable));
+    }
+
+    /// <summary>
+    /// Hands a job back because the worker is shutting down, not because the job failed: it is claimable again at
+    /// once and the attempt is refunded (see <see cref="TranscodeQueue.ReleaseAsync"/>). Workers report real
+    /// failures, crashes included, through <c>/fail</c>.
+    /// </summary>
+    private static async Task<Results<NoContent, BadRequest<string>, NotFound, Conflict<string>>> Release(
+        Guid runId,
+        WorkerReleaseRequest request,
+        TranscodeQueue queue)
+    {
+        if (request.LeaseId == Guid.Empty)
+        {
+            return TypedResults.BadRequest("lease_id is required");
+        }
+
+        return ToResult(await queue.ReleaseAsync(runId, request.LeaseId));
     }
 
     /// <summary>

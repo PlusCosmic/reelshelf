@@ -8,7 +8,7 @@ namespace Reelshelf.Worker;
 /// <summary>
 /// The API's worker endpoints (<c>api/Video/Transcoding/WorkerEndpoints.cs</c>), in snake_case JSON with the worker
 /// secret as a bearer token. A 409 (or 404) on a report means the job is no longer this worker's and throws
-/// <see cref="LeaseLostException"/>. Completions and failures are retried on transient errors, which the API makes
+/// <see cref="LeaseLostException"/>. Completions, failures and releases are retried on transient errors, which the API makes
 /// safe: repeating one under the same lease changes nothing.
 /// </summary>
 public sealed class WorkerApiClient(IHttpClientFactory httpClientFactory, ILogger<WorkerApiClient> logger)
@@ -61,6 +61,13 @@ public sealed class WorkerApiClient(IHttpClientFactory httpClientFactory, ILogge
 
     public Task FailAsync(WorkerJob job, string error, bool retryable, CancellationToken cancellationToken) =>
         FinalReportAsync(job, "fail", new { lease_id = job.LeaseId, error, retryable }, cancellationToken);
+
+    /// <summary>
+    /// Hands the job back because this worker is shutting down: the API requeues it at once and refunds its attempt.
+    /// Only for shutdown; a job that failed, however it failed, goes through <see cref="FailAsync"/>.
+    /// </summary>
+    public Task ReleaseAsync(WorkerJob job, CancellationToken cancellationToken) =>
+        FinalReportAsync(job, "release", new { lease_id = job.LeaseId }, cancellationToken);
 
     private async Task FinalReportAsync(WorkerJob job, string report, object body, CancellationToken cancellationToken)
     {
