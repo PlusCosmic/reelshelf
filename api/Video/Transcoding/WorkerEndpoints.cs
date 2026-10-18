@@ -177,7 +177,8 @@ public static class WorkerSetup
     /// <summary>
     /// The transcode queue and the worker API's authentication. The worker endpoints stay mapped in the
     /// <c>OpenApi</c> environment but out of the document, and with no secret there they refuse everything; nothing
-    /// here runs in the background, since workers pull jobs and each claim reclaims stale ones.
+    /// here runs in the background, since workers pull jobs and each claim reclaims stale ones. The Bunny migration's
+    /// options and statements are here too; its backfill is registered with the other background services.
     /// </summary>
     public static void AddTranscodeWorkers(this WebApplicationBuilder builder)
     {
@@ -185,6 +186,9 @@ public static class WorkerSetup
         builder.Services.Configure<WorkerOptions>(builder.Configuration.GetSection(WorkerOptions.SectionName));
         builder.Services.AddScoped<TranscodeStatements>();
         builder.Services.AddScoped<TranscodeQueue>();
+        builder.Services.Configure<Migration.MigrationOptions>(
+            builder.Configuration.GetSection(Migration.MigrationOptions.SectionName));
+        builder.Services.AddScoped<Migration.BunnyMigrationStatements>();
 
         builder.Services.AddAuthentication()
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, WorkerAuthentication>(

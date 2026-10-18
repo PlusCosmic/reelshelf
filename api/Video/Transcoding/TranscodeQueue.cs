@@ -36,16 +36,27 @@ public sealed record ClaimedTranscodeRun(
 /// back through <see cref="WorkerEndpoints"/>, never touching Postgres themselves, and results reach the clip
 /// through <see cref="ClipVideoUpdateHandler"/>. A <c>transcode</c> drives the clip's status; a finished
 /// <c>transcode</c> or <c>trim</c> moves the clip to its new video version, after which the storage deletes the
-/// uploaded source and any version it replaced. The other types record their output on the run until the features
-/// that use them land.
+/// uploaded source and any version it replaced. A finished <c>migrate</c> moves its Bunny clip to R2; until then it
+/// never touches the clip, which keeps playing from Bunny (docs/video-pipeline/bunny-migration.md). The other types
+/// record their output on the run until the features that use them land.
 /// </summary>
 public class TranscodeQueue(
     TranscodeStatements statements,
     ClipVideoUpdateHandler updateHandler,
     ITranscodeStorage storage,
+    [FromKeyedServices(VideoHostNames.Bunny)] IClipVideoMediaUrls bunnyMediaUrls,
     IOptionsMonitor<TranscodingOptions> options,
     ILogger<TranscodeQueue> logger)
 {
+    /// <summary>The version a <c>migrate</c> job writes, and the one its clip plays from on R2 once it moves.</summary>
+    public const int MigratedVideoVersion = 1;
+
+    /// <summary>
+    /// How many migrate jobs one claim fails for clips no longer on Bunny before it gives up for this call, so a
+    /// backlog of them can't hold a worker's request for long.
+    /// </summary>
+    private const int MaxSkippedMigrations = 10;
+
     /// <summary>The longest error a worker's failure keeps.</summary>
     public const int MaxErrorLength = 4000;
 
@@ -86,7 +97,9 @@ public class TranscodeQueue(
 
     /// <summary>
     /// Hands the next job to a worker, or null when there is none. Jobs that ran out of attempts are failed
-    /// first, so a clip whose transcode keeps dying ends <c>encode_failed</c> rather than waiting for ever.
+    /// first, so a clip whose transcode keeps dying ends <c>encode_failed</c> rather than waiting for ever. A
+    /// <c>migrate</c> job is handed out only when there is storage to write it to, and only while its clip is still on
+    /// Bunny: its <c>source_url</c> is the clip's Bunny HLS playlist, and one whose clip has moved is failed instead.
     /// </summary>
     public async Task<ClaimedTranscodeRun?> ClaimAsync()
     {
@@ -110,19 +123,37 @@ public class TranscodeQueue(
                 run.Type, run.Id, run.ClipId, maxAttempts);
         }
 
-        TranscodeStatements.ClaimedRunRow? claimed = await statements.ClaimNextRunAsync(maxAttempts, current.StaleAfter);
-        if (claimed is null)
+        for (int skipped = 0; skipped <= MaxSkippedMigrations; skipped++)
         {
-            return null;
+            TranscodeStatements.ClaimedRunRow? claimed = await statements.ClaimNextRunAsync(maxAttempts,
+                current.StaleAfter, includeMigrate: storage.IsConfigured);
+            if (claimed is null)
+            {
+                return null;
+            }
+
+            if (claimed.Type == TranscodeRunTypes.Migrate && claimed.CurrentVideoHost != VideoHostNames.Bunny)
+            {
+                await statements.FailRunAsync(claimed.Id, claimed.LeaseId, "The clip is no longer on Bunny",
+                    retryable: false, maxAttempts, current.RetryAfter);
+                logger.LogWarning("Failed migrate job {RunId}: clip {ClipId} is on {VideoHost}, not Bunny",
+                    claimed.Id, claimed.ClipId, claimed.CurrentVideoHost);
+                continue;
+            }
+
+            logger.LogInformation("Worker claimed {Type} job {RunId} for clip {ClipId} (attempt {Attempt})",
+                claimed.Type, claimed.Id, claimed.ClipId, claimed.Attempts);
+            TranscodeJobUrls urls = storage.UrlsFor(claimed.ClipId, claimed.Type, claimed.VideoVersion,
+                claimed.CurrentVideoVersion, PresignLifetime(current));
+            string? sourceUrl = claimed.Type == TranscodeRunTypes.Migrate
+                ? bunnyMediaUrls.ServerStream(new ClipVideoRef(VideoHostNames.Bunny, claimed.CurrentVideoId)).ToString()
+                : urls.SourceUrl;
+            using JsonDocument input = JsonDocument.Parse(claimed.Input);
+            return new ClaimedTranscodeRun(claimed.Id, claimed.LeaseId, claimed.ClipId, claimed.Type,
+                claimed.VideoVersion, claimed.Attempts, input.RootElement.Clone(), sourceUrl, urls.UploadUrls);
         }
 
-        logger.LogInformation("Worker claimed {Type} job {RunId} for clip {ClipId} (attempt {Attempt})",
-            claimed.Type, claimed.Id, claimed.ClipId, claimed.Attempts);
-        TranscodeJobUrls urls = storage.UrlsFor(claimed.ClipId, claimed.Type, claimed.VideoVersion,
-            claimed.CurrentVideoVersion, PresignLifetime(current));
-        using JsonDocument input = JsonDocument.Parse(claimed.Input);
-        return new ClaimedTranscodeRun(claimed.Id, claimed.LeaseId, claimed.ClipId, claimed.Type,
-            claimed.VideoVersion, claimed.Attempts, input.RootElement.Clone(), urls.SourceUrl, urls.UploadUrls);
+        return null;
     }
 
     /// <summary>
@@ -166,7 +197,9 @@ public class TranscodeQueue(
     /// commits, a transcode's uploaded source is deleted, as is any version the clip moved off, and a transcode's
     /// clip gets its legend detection and transcription queued. A repeat of the report (the worker retrying after a
     /// lost response) is accepted and changes nothing, beyond retrying the source delete and re-queueing the
-    /// follow-ups, which are idempotent.
+    /// follow-ups, which are idempotent. A migrate's clip moves from Bunny to R2 on version 1 in the same transaction,
+    /// with nothing queued after; if the clip is no longer on Bunny by then, the run still succeeds, the clip is left
+    /// alone and the job's uploads are deleted (unless the clip plays from R2 version 1 itself).
     /// </summary>
     public async Task<TranscodeReportOutcome> CompleteAsync(
         Guid runId,
@@ -185,6 +218,7 @@ public class TranscodeQueue(
         TranscodeOutputs reported = TranscodeOutputs.From(outputs);
 
         int? replacedVersion = null;
+        bool? migrated = null;
         TranscodeStatements.FinishedRunRow? run = await statements.InTransactionAsync(async () =>
         {
             TranscodeStatements.FinishedRunRow? completed = await statements.CompleteRunAsync(runId, leaseId, outputJson);
@@ -193,6 +227,11 @@ public class TranscodeQueue(
                 int? previousVersion = await updateHandler.ApplyTranscodeCompletedAsync(completed.ClipId,
                     completed.VideoVersion, clipLength, sizeBytes, reported.Codecs, reported.Height);
                 replacedVersion = previousVersion is { } previous && previous != completed.VideoVersion ? previous : null;
+            }
+            else if (completed is { Type: TranscodeRunTypes.Migrate })
+            {
+                migrated = await updateHandler.ApplyMigrationCompletedAsync(completed.ClipId, clipLength, sizeBytes,
+                    reported.Codecs, reported.Height);
             }
 
             return completed;
@@ -221,6 +260,22 @@ public class TranscodeQueue(
         {
             logger.LogInformation("{Type} job {RunId} for clip {ClipId} succeeded ({Length}s, {Size} bytes)",
                 run.Type, run.Id, run.ClipId, lengthSeconds, sizeBytes);
+        }
+
+        if (run.Type == TranscodeRunTypes.Migrate)
+        {
+            // A repeated report (migrated is null) can't tell whether the first one moved the clip, so it deletes
+            // nothing.
+            if (migrated == true)
+            {
+                logger.LogInformation("Moved clip {ClipId} from Bunny to R2", run.ClipId);
+            }
+            else if (migrated == false)
+            {
+                await DeleteAbandonedMigrationAsync(run);
+            }
+
+            return TranscodeReportOutcome.Applied;
         }
 
         await CleanUpAfterCompletionAsync(run, replacedVersion);
@@ -256,6 +311,36 @@ public class TranscodeQueue(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Could not clean up after {Type} job {RunId} for clip {ClipId}", run.Type, run.Id,
+                run.ClipId);
+        }
+    }
+
+    /// <summary>
+    /// Deletes the outputs of a migrate job whose clip left Bunny before it completed, so nothing plays from them. A
+    /// clip that is on R2 version 1 by then plays from those very keys, so they stay. Failures are logged, as in
+    /// <see cref="CleanUpAfterCompletionAsync"/>.
+    /// </summary>
+    private async Task DeleteAbandonedMigrationAsync(TranscodeStatements.FinishedRunRow run)
+    {
+        try
+        {
+            TranscodeStatements.ClipVersionRow? clip = await statements.GetClipVersionAsync(run.ClipId);
+            if (clip is { VideoHost: VideoHostNames.R2, VideoVersion: MigratedVideoVersion })
+            {
+                logger.LogWarning(
+                    "Migrate job {RunId} finished after clip {ClipId} was already on R2 version {Version}; kept its files",
+                    run.Id, run.ClipId, MigratedVideoVersion);
+                return;
+            }
+
+            await storage.DeleteVersionAsync(run.ClipId, MigratedVideoVersion);
+            logger.LogInformation(
+                "Migrate job {RunId} finished after clip {ClipId} left Bunny; deleted its version {Version} outputs",
+                run.Id, run.ClipId, MigratedVideoVersion);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not delete the outputs of migrate job {RunId} for clip {ClipId}", run.Id,
                 run.ClipId);
         }
     }

@@ -766,9 +766,11 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     /// <summary>
     /// Copies what the video host reports onto the clip row. <paramref name="title"/> is passed separately because
-    /// some callers keep the clip's own title over the host's.
+    /// some callers keep the clip's own title over the host's. Only while the clip is still on
+    /// <paramref name="videoHost"/> with <paramref name="videoId"/>, the video the info was read from: a clip that
+    /// moved to R2 meanwhile (a <c>migrate</c> job completing) keeps what its move wrote.
     /// </summary>
-    public async Task UpdateClipMetadata(Guid clipId, string? title, HostedVideoInfo video)
+    public async Task UpdateClipMetadata(Guid clipId, string videoHost, Guid videoId, string? title, HostedVideoInfo video)
     {
         const string sql = """
             UPDATE clip
@@ -780,11 +782,13 @@ public class ClipsStatements(NpgsqlConnection connection)
                 video_status = @videoStatus,
                 video_state = @videoState,
                 encode_progress = @encodeProgress
-            WHERE id = @clipId
+            WHERE id = @clipId AND video_host = @videoHost AND video_id = @videoId
             """;
         await connection.ExecuteAsync(sql, new
         {
             clipId,
+            videoHost,
+            videoId,
             title,
             length = video.LengthSeconds,
             thumbnailFileName = video.ThumbnailFileName,
@@ -843,6 +847,36 @@ public class ClipsStatements(NpgsqlConnection connection)
             """;
         return await connection.QuerySingleOrDefaultAsync<int?>(sql,
             new { clipId, videoVersion, lengthSeconds, storageSize, codecs, height });
+    }
+
+    /// <summary>
+    /// A <c>migrate</c> job finished: the Bunny clip moves to R2 on version 1, with the output's length, size, codecs
+    /// and height, and is ready there. Its Bunny video id is kept in <c>bunny_video_id</c> for the delete sweep, and
+    /// <c>migrated_at</c> starts the grace period. As for a transcode, the AV1 size alone counts toward the quota and
+    /// the legacy <c>video_status</c> is cleared, like every R2 clip's. The Bunny collection (<c>clip_collection</c>) is
+    /// left for the sweep. Only a clip still on Bunny moves; returns whether this one did.
+    /// </summary>
+    public async Task<bool> SetMigratedToR2(Guid clipId, int lengthSeconds, long storageSize, string? codecs, int? height)
+    {
+        // SET reads the row as it was, so bunny_video_id takes the Bunny id before video_id becomes the clip id.
+        const string sql = """
+            UPDATE clip
+            SET bunny_video_id = video_id,
+                migrated_at = now(),
+                video_host = 'r2',
+                video_id = id,
+                video_version = 1,
+                video_codecs = @codecs,
+                video_height = @height,
+                length = @lengthSeconds,
+                storage_size = @storageSize,
+                file_size = NULL,
+                video_status = NULL,
+                video_state = 'ready',
+                encode_progress = 100
+            WHERE id = @clipId AND video_host = 'bunny'
+            """;
+        return await connection.ExecuteAsync(sql, new { clipId, lengthSeconds, storageSize, codecs, height }) > 0;
     }
 
     /// <summary>

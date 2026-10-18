@@ -55,7 +55,7 @@ public class ClipsBackfillService(
                     continue;
                 }
 
-                await clipsStatements.UpdateClipMetadata(clip.Id, video.Title, video);
+                await clipsStatements.UpdateClipMetadata(clip.Id, clip.VideoHost, clip.VideoId, video.Title, video);
 
                 successCount++;
                 logger.LogInformation("Backfilled clip {ClipId} with video {VideoId}",

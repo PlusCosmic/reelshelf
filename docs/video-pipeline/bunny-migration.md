@@ -49,7 +49,11 @@ Prod's Bunny library on 2026-10-18: **820 clips, 25.2 hours, 87 GB** on Bunny (e
 
 - A backfill service keeps up to `Migration:BatchSize` (default 20) `migrate` jobs pending or running, taking
   `ready` clips with `video_host = 'bunny'` oldest first. It only runs where `Migration:Enabled` is true
-  (default false). It never queues a clip that already has a pending or running job of any type.
+  (default false) and R2 is configured. It never queues a clip that already has a pending or running job of any type,
+  nor one that has had a `migrate` before (failed, or succeeded and then switched back); deleting that run lets
+  the backfill take the clip again.
+- Without R2 the claim never hands out a `migrate` job, and it fails one whose clip is no longer on Bunny instead
+  of handing it out.
 - Claiming a `migrate` job gives:
   - `source_url`: the clip's Bunny HLS playlist (`BunnyMediaUrls`, the same stream ffmpeg reads for downloads
     today). It's a public CDN URL, not a storage key, so the job's input carries no `SourceKey`, and the claim
@@ -77,9 +81,13 @@ In one transaction with the run:
   transcode), and `video_state = 'ready'`;
 - the clip's container membership (`clip_collection`) is left alone for the sweep.
 
-Detection and transcription aren't queued. If the clip was deleted, or isn't on Bunny any more, by the time
-the job completes, the run succeeds, the clip isn't touched, and the uploaded `clips/{clipId}/v1/` objects are
-deleted. A final failure leaves the clip on Bunny, and the run's error shows why. A later backfill pass doesn't
+Detection and transcription aren't queued. If the clip isn't on Bunny any more by the time the job completes, the
+run succeeds, the clip isn't touched, and the uploaded `clips/{clipId}/v1/` objects are deleted (unless the clip
+itself plays from R2 version 1). A deleted clip takes its run with it (`transcode_run` cascades from `clip`), so
+the worker's completion gets 404; deleting a Bunny clip therefore deletes `clips/{clipId}/v1/` itself, and only a
+PUT the worker makes after that is left behind. Status polling, the webhook and the metadata backfill write what
+Bunny reports only while the clip is still on Bunny with that video, so none of them can overwrite a clip that has
+just moved. A final failure leaves the clip on Bunny, and the run's error shows why. A later backfill pass doesn't
 pick it up again automatically: clips with a failed `migrate` are left for a person to look at.
 
 ### API: the sweep
@@ -95,13 +103,15 @@ A 404 from Bunny counts as already deleted. Account deletion also deletes a clip
 ### Switching a clip back (within the grace period)
 
 ```sql
-update clip set video_host = 'bunny', video_id = bunny_video_id, video_version = null,
+update clip set video_host = 'bunny', video_id = bunny_video_id, video_version = 1,
   video_codecs = null, video_height = null, migrated_at = null
 where id = '<clip id>' and bunny_video_id is not null;
 ```
 
-Then delete `clips/{clipId}/` from the bucket. The clip shows Bunny's copy again. Status polling picks it up,
-and no URL is cached against the R2 copy that wasn't there before (#229).
+(`video_version` is `NOT NULL`, and Bunny clips keep 1.) Then delete `clips/{clipId}/` from the bucket. The
+clip's succeeded `migrate` run keeps the backfill from queueing it again; delete the run to try once more. The
+clip shows Bunny's copy again. Status polling picks it up, and no URL is cached against the R2 copy that wasn't
+there before (#229).
 
 ## After the last clip
 

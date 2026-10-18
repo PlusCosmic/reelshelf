@@ -8,8 +8,15 @@ namespace Reelshelf.Video.Transcoding;
 public interface ITranscodeStorage
 {
     /// <summary>
+    /// Whether this is real storage. Without it the claim hands out no <c>migrate</c> job, since its worker would
+    /// encode a Bunny clip with nowhere to put the result, and the migration backfill queues none.
+    /// </summary>
+    bool IsConfigured => true;
+
+    /// <summary>
     /// The presigned URLs a worker needs for a job, valid for <paramref name="lifetime"/>: a GET for its input and a
-    /// PUT for each file it writes under <c>clips/{clipId}/v{videoVersion}/</c>.
+    /// PUT for each file it writes under <c>clips/{clipId}/v{videoVersion}/</c>. A <c>migrate</c> job reads from Bunny,
+    /// so it gets no GET here.
     /// </summary>
     /// <param name="videoVersion">The version the job writes (or, for a thumbnails job, reads and rewrites).</param>
     /// <param name="currentVersion">The clip's current version, which a trim reads from.</param>
@@ -30,10 +37,13 @@ public sealed record TranscodeJobUrls(string? SourceUrl, IReadOnlyDictionary<str
 
 /// <summary>
 /// Stands in while R2 is not configured: nothing can be uploaded to R2 then, so no job should exist, and any that
-/// does is handed out without URLs (the worker fails it) and leaves nothing to clean up.
+/// does is handed out without URLs (the worker fails it) and leaves nothing to clean up. A <c>migrate</c> job is never
+/// handed out at all (<see cref="IsConfigured"/>): it would otherwise fail and be left for a person to look at.
 /// </summary>
 public sealed class UnconfiguredTranscodeStorage(ILogger<UnconfiguredTranscodeStorage> logger) : ITranscodeStorage
 {
+    public bool IsConfigured => false;
+
     public TranscodeJobUrls UrlsFor(Guid clipId, string jobType, int videoVersion, int currentVersion, TimeSpan lifetime)
     {
         logger.LogWarning("Handing out {Type} job for clip {ClipId} without URLs: R2 is not configured", jobType, clipId);

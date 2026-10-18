@@ -94,6 +94,8 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
 
     public TranscodeJobUrls UrlsFor(Guid clipId, string jobType, int videoVersion, int currentVersion, TimeSpan lifetime)
     {
+        // A migrate job reads the clip's Bunny stream, not the bucket, so it gets uploads alone; the queue adds its
+        // source.
         string? sourceKey = jobType switch
         {
             TranscodeRunTypes.Transcode => R2ObjectKeys.Upload(clipId),
@@ -101,7 +103,7 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
             TranscodeRunTypes.Trim => R2ObjectKeys.Output(clipId, currentVersion, R2ObjectKeys.Av1),
             _ => null
         };
-        if (sourceKey is null)
+        if (sourceKey is null && jobType != TranscodeRunTypes.Migrate)
         {
             return TranscodeJobUrls.None;
         }
@@ -110,7 +112,7 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
             fileName => fileName,
             fileName => PresignPut(R2ObjectKeys.Output(clipId, videoVersion, fileName),
                 R2ObjectKeys.ContentType(fileName), R2ObjectKeys.ImmutableCacheControl, lifetime));
-        return new TranscodeJobUrls(PresignGet(sourceKey, lifetime), uploads);
+        return new TranscodeJobUrls(sourceKey is null ? null : PresignGet(sourceKey, lifetime), uploads);
     }
 
     /// <summary>
