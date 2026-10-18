@@ -31,11 +31,12 @@ The glue is a few hundred lines. Suggested shape:
 
 One queue (`transcode_run`) with a job type per row, claimed in priority order like the other run tables:
 
-| Type         | Input                                  | Output                                                                                            |
-| ------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `transcode`  | The source in R2, plus the clip's trim | A new video version: AV1 MP4, thumbnail, five detection frames, animated preview; length and size |
-| `thumbnails` | An existing AV1 output                 | Regenerated thumbnail and detection frames, without re-encoding                                   |
-| `fallback`   | An existing output (later)             | The on-demand H.264 file (see [playback-and-codecs.md](playback-and-codecs.md))                   |
+| Type         | Input                                                  | Output                                                                                            |
+| ------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `transcode`  | The uploaded source in R2, plus any trim set at upload | A new video version: AV1 MP4, thumbnail, five detection frames, animated preview; length and size |
+| `thumbnails` | An existing AV1 output                                 | Regenerated thumbnail and detection frames, without re-encoding                                   |
+| `trim`       | The current AV1 output and the new trim                | A new, shorter video version (stream copy, or re-encode if frame-accurate)                        |
+| `fallback`   | An existing output (later)                             | The on-demand H.264 file (see [playback-and-codecs.md](playback-and-codecs.md))                   |
 
 **Thumbnails are a step of `transcode`, not a separate job.** The worker already has the source on disk, and
 grabbing frames takes seconds; a separate job would fetch the source again. Two refinements:
@@ -60,22 +61,29 @@ That would be an on-demand, cached job, the same type as the playback fallback.
 
 The idea: upload a 2-minute clip but keep only 30 seconds from the middle. It fits on top of the transcode job.
 
-- **Trim at encode time.** We re-encode anyway, so seeking with `-ss`/`-t` during the encode is frame-accurate and
-  costs nothing extra.
-- **A trim is data, not a new file.** The clip row stores `trim_start` and `trim_end`. A `transcode` job takes the
-  source plus the trim and produces a new **video version** (e.g. `clips/{id}/v{n}/av1.mp4`). Immutable,
-  versioned keys keep CDN caching simple, and the current version keeps playing while a re-trim encodes. The clip
-  points at its current version.
-- **Re-trimming needs the original.** Re-encoding a trimmed AV1 output loses quality, and cutting without
-  re-encoding is limited to keyframes. This settles most of the originals question (see
-  [open-questions.md](open-questions.md)). One option is to keep the original for a grace period (say 30 days),
-  then delete it, after which the clip can no longer be re-trimmed.
+Originals aren't kept (see [open-questions.md](open-questions.md#decided-2026-10-18)), so there are two kinds of
+trim:
+
+- **Trim at upload, applied in the first encode.** The uploaded source is still in R2 until its transcode
+  succeeds, so a trim set in the upload flow is applied to the original: frame-accurate (`-ss`/`-t` while
+  re-encoding), no extra cost, and the full clip is never encoded or stored. This should be the main way to trim.
+- **Trim later, from the AV1 output.** After the source is deleted, a trim can only shorten the current output, and
+  can never be undone or extended. Two ways to cut it:
+  - **Stream copy** (`-c copy`): no quality loss, but cut points snap to keyframes. Encoding with a keyframe every
+    second (`-g 30` at 30 fps) keeps trims accurate to about a second, for a small size cost.
+  - **Re-encode** the trimmed range: frame-accurate, but a second generation of compression. One trim is barely
+    visible; repeated re-trims compound.
+
+  Default to stream copy; offer frame-accurate as an option if it's missed.
+
+- **A trim is data plus a new version.** The clip row stores `trim_start` and `trim_end`. Each trim after the first
+  encode produces a new **video version** (e.g. `clips/{id}/v{n}/av1.mp4`). Immutable, versioned keys keep CDN
+  caching simple, the current version keeps playing while a trim runs, and the old version is deleted once the
+  new one is ready. The clip points at its current version.
 - **Derived data follows the version.** Thumbnails, detection frames, legend detection, transcripts and summaries
   all come from the trimmed output, so a new version re-queues them. The run tables need to record which video
   version a run used, and treat runs on older versions as superseded, as "Start fresh" already does for legend
   detection.
-- **Trim before the first encode.** A trim step in the upload UI means the full clip is never encoded. The full file
-  is still uploaded; cutting in the browser before upload isn't worth the complexity yet.
-- **Quota.** Decide whether a retained original counts toward the owner's storage, and whether trimming down frees
-  space.
+- **Upload still sends the full file.** Cutting in the browser before upload isn't worth the complexity yet.
+- **Quota.** Only the current output counts, so trimming a clip down frees space once the old version is deleted.
 - **Unchanged:** the MD5 duplicate check is on the uploaded file, so it still works with trimming.

@@ -9,6 +9,15 @@
 3. **Real usage:** replace the calculator's assumptions with measured views per clip, retention and cache hit
    ratio, and watch for the 3 TB cold-storage trigger.
 
+## Decided (2026-10-18)
+
+- **No originals.** The uploaded source is deleted once its transcode succeeds, as with Bunny today: 4K60 sources
+  are too large to keep. Anything made later (a fallback, new bitrates, a trim) works from the AV1 output, and that
+  generation loss is accepted. Incomplete multipart uploads are aborted by an R2 lifecycle rule.
+- **30 fps output**, the usual rate for web viewing. 60 fps would cost more storage (as a rule of thumb about 1.3–1.6×
+  the bitrate at the same quality, rather than 2×; the benchmark will show the real figure).
+- **Quota** counts the AV1 output only (`clip.storage_size`), plus `file_size` until the encode reports its size.
+
 ## Undecided
 
 - **Queue: SQS or our Postgres run tables?** The storage discussion picked SQS. The app already queues work in
@@ -43,18 +52,11 @@
   Current call (2026-10-18): none for now, since everyone using Reelshelf can decode AV1. Build the seams (a
   `sources` list, a "can't play on this device" message, room in the queue for a fallback job) and add an
   on-demand fallback when needed. See [playback-and-codecs.md](playback-and-codecs.md).
-- **Frame rate:** the encoding notes cap output at 30 fps. Many game clips are recorded at 60; confirm 30 is
-  wanted, or allow 60 for sources that have it.
-- **Originals:** keep the uploaded file or only the AV1 output? It decides re-encode quality later (a better
-  encoder, a fallback, new bitrates), what counts toward the storage quota, and the storage bill. Planned trimming
-  needs the original to re-trim without quality loss, so the question is really how long to keep it (for
-  example a 30-day grace period). See [workers-and-jobs.md](workers-and-jobs.md#trimming-planned-feature).
 - **Downloads:** a presigned R2 redirect, with no work on the API server (see
   [workers-and-jobs.md](workers-and-jobs.md#downloads)). Still open: serve the AV1 file as-is, or convert to H.264
   on demand as a worker job (some local players and editors can't open AV1).
-- **Clip versions:** a re-trim produces a new video version, so the run tables need to record which version a run
-  used and supersede older ones.
-- **Quota:** what `storage_size` means once we own storage (AV1 output only, or plus the original or previews).
+- **Clip versions:** a trim after the first encode produces a new video version, so the run tables need to record
+  which version a run used and supersede older ones.
 - **Migration from Bunny:** Bunny may hold only transcodes, so migration probably re-encodes Bunny's best rendition
   into AV1 through the same queue. The per-clip host column lets both hosts run side by side during the move.
 - **Access control:** stay with unguessable unsigned URLs as today, or add signed URLs or a Worker check. Either
