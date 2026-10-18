@@ -1,5 +1,4 @@
 using FFMpegCore;
-using FFMpegCore.Pipes;
 
 namespace Reelshelf.ApexLegends.LegendDetection;
 
@@ -78,24 +77,39 @@ public static class LegendHudCropper
             FilterAsync(frame, filter, cancellationToken, png: true)));
     }
 
+    /// <remarks>
+    /// The frame goes to ffmpeg as a file in a temp directory of its own, and the image comes back the same way,
+    /// rather than through FFMpegCore's pipes: when ffmpeg exits, FFMpegCore cancels the read from its output pipe
+    /// and disposes it, so under load an image came back cut short or empty with no error, and the next ffmpeg run
+    /// failed to open it. image2pipe still tells the frame's format from its bytes and writes the image as it is.
+    /// </remarks>
     private static async Task<LegendFrame> FilterAsync(
         LegendFrame frame,
         string filter,
         CancellationToken cancellationToken,
         bool png = false)
     {
-        using MemoryStream input = new(frame.Data);
-        using MemoryStream output = new();
-        await FFMpegArguments
-            .FromPipeInput(new StreamPipeSource(input), options => options.ForceFormat("image2pipe"))
-            .OutputToPipe(new StreamPipeSink(output), options => options
-                .WithCustomArgument($"-vf {filter}")
-                .WithCustomArgument(png ? "-frames:v 1" : "-frames:v 1 -q:v 2")
-                .WithVideoCodec(png ? "png" : "mjpeg")
-                .ForceFormat("image2pipe"))
-            .CancellableThrough(cancellationToken)
-            .ProcessAsynchronously();
+        DirectoryInfo directory = Directory.CreateTempSubdirectory("legend-hud-");
+        try
+        {
+            string input = Path.Combine(directory.FullName, "input.img");
+            string output = Path.Combine(directory.FullName, png ? "output.png" : "output.jpg");
+            await File.WriteAllBytesAsync(input, frame.Data, cancellationToken);
+            await FFMpegArguments
+                .FromFileInput(input, verifyExists: true, options => options.ForceFormat("image2pipe"))
+                .OutputToFile(output, overwrite: true, options => options
+                    .WithCustomArgument($"-vf {filter}")
+                    .WithCustomArgument(png ? "-frames:v 1" : "-frames:v 1 -q:v 2")
+                    .WithVideoCodec(png ? "png" : "mjpeg")
+                    .ForceFormat("image2pipe"))
+                .CancellableThrough(cancellationToken)
+                .ProcessAsynchronously();
 
-        return new LegendFrame(output.ToArray(), png ? "image/png" : "image/jpeg");
+            return new LegendFrame(await File.ReadAllBytesAsync(output, cancellationToken), png ? "image/png" : "image/jpeg");
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
     }
 }

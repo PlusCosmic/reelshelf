@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using FFMpegCore;
-using FFMpegCore.Pipes;
 using Reelshelf.ApexLegends.LegendDetection;
 using Xunit;
 
@@ -45,9 +44,9 @@ public class OpenRouterDecisionsRequestTests
         // A 1080p frame's close-up fits as it is; a 1440p frame's is too wide and a 480p frame's too short.
         LegendRecognition recognition = await Recognizer(handler, resources).RecognizeAsync(
             [
-                new LegendScreenshot(await JpegAsync(960, 540), await JpegAsync(1348, 552)),
-                new LegendScreenshot(await JpegAsync(1280, 720), await JpegAsync(1798, 734)),
-                new LegendScreenshot(await JpegAsync(854, 480), await JpegAsync(600, 246))
+                new LegendScreenshot(await TestFrames.JpegAsync(960, 540), await TestFrames.JpegAsync(1348, 552)),
+                new LegendScreenshot(await TestFrames.JpegAsync(1280, 720), await TestFrames.JpegAsync(1798, 734)),
+                new LegendScreenshot(await TestFrames.JpegAsync(854, 480), await TestFrames.JpegAsync(600, 246))
             ],
             CancellationToken.None);
 
@@ -169,20 +168,7 @@ public class OpenRouterDecisionsRequestTests
 
     private static async Task<List<LegendScreenshot>> ImagesAsync()
     {
-        return [new LegendScreenshot(await JpegAsync(960, 540), await JpegAsync(1348, 552))];
-    }
-
-    private static async Task<LegendFrame> JpegAsync(int width, int height)
-    {
-        using MemoryStream output = new();
-        await FFMpegArguments
-            .FromFileInput($"testsrc2=size={width}x{height}", verifyExists: false, options => options.ForceFormat("lavfi"))
-            .OutputToPipe(new StreamPipeSink(output), options => options
-                .WithCustomArgument("-frames:v 1")
-                .WithVideoCodec("mjpeg")
-                .ForceFormat("image2pipe"))
-            .ProcessAsynchronously();
-        return new LegendFrame(output.ToArray(), "image/jpeg");
+        return [new LegendScreenshot(await TestFrames.JpegAsync(960, 540), await TestFrames.JpegAsync(1348, 552))];
     }
 
     private sealed class RecordingHandler(string responseJson, HttpStatusCode status = HttpStatusCode.OK)

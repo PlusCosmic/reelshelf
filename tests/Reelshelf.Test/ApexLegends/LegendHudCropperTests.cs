@@ -1,5 +1,4 @@
 using FFMpegCore;
-using FFMpegCore.Pipes;
 using Reelshelf.ApexLegends.LegendDetection;
 using Xunit;
 
@@ -11,7 +10,7 @@ public class LegendHudCropperTests
     [Fact]
     public async Task CropOwnerPanel_CutsTheBottomLeftPanel_AndEnlargesIt()
     {
-        LegendFrame frame = await GenerateFrameAsync(1920, 1080);
+        LegendFrame frame = await TestFrames.JpegAsync(1920, 1080);
 
         LegendFrame panel = await LegendHudCropper.CropOwnerPanelAsync(frame, CancellationToken.None);
 
@@ -26,12 +25,12 @@ public class LegendHudCropperTests
     [Fact]
     public async Task Overview_HalvesA1080pFrame_AndLeavesSmallerFramesAlone()
     {
-        LegendFrame overview = await LegendHudCropper.OverviewAsync(await GenerateFrameAsync(1920, 1080), CancellationToken.None);
+        LegendFrame overview = await LegendHudCropper.OverviewAsync(await TestFrames.JpegAsync(1920, 1080), CancellationToken.None);
         IMediaAnalysis analysis = await FFProbe.AnalyseAsync(new MemoryStream(overview.Data));
         Assert.Equal(960, analysis.PrimaryVideoStream!.Width);
         Assert.Equal(540, analysis.PrimaryVideoStream.Height);
 
-        LegendFrame small = await LegendHudCropper.OverviewAsync(await GenerateFrameAsync(640, 360), CancellationToken.None);
+        LegendFrame small = await LegendHudCropper.OverviewAsync(await TestFrames.JpegAsync(640, 360), CancellationToken.None);
         Assert.Equal(640, (await FFProbe.AnalyseAsync(new MemoryStream(small.Data))).PrimaryVideoStream!.Width);
     }
 
@@ -57,18 +56,5 @@ public class LegendHudCropperTests
     {
         await Assert.ThrowsAnyAsync<Exception>(() =>
             LegendHudCropper.CropOwnerPanelAsync(new LegendFrame([1, 2, 3], "image/jpeg"), CancellationToken.None));
-    }
-
-    private static async Task<LegendFrame> GenerateFrameAsync(int width, int height)
-    {
-        using MemoryStream output = new();
-        await FFMpegArguments
-            .FromFileInput($"testsrc2=size={width}x{height}", verifyExists: false, options => options.ForceFormat("lavfi"))
-            .OutputToPipe(new StreamPipeSink(output), options => options
-                .WithCustomArgument("-frames:v 1")
-                .WithVideoCodec("mjpeg")
-                .ForceFormat("image2pipe"))
-            .ProcessAsynchronously();
-        return new LegendFrame(output.ToArray(), "image/jpeg");
     }
 }
