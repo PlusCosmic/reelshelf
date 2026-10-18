@@ -30,9 +30,11 @@ Stream with H.264 and about $195 for Bunny with AV1. Storage and delivery are bu
 1. **Upload:** the client uploads straight to R2 with presigned multipart URLs.
 2. **Validate:** ffprobe checks duration, resolution, HDR and variable frame rate, and rejects bad or abusive
    inputs before anything is queued.
-3. **Enqueue:** a transcode job goes to SQS.
-4. **Encode:** workers pull jobs. The dedicated server always runs one; Fargate Spot tasks start only when the
-   oldest message is more than ~2–3 minutes old (`ApproximateAgeOfOldestMessage`), not on queue depth.
+3. **Enqueue:** the API inserts a `transcode_run` row (originally SQS; see the Queue row above).
+4. **Encode:** workers claim jobs through the API. The dedicated server always runs one; Fargate Spot tasks start
+   only when the oldest pending job is more than ~2–3 minutes old, not on queue depth. With SQS that was
+   `ApproximateAgeOfOldestMessage`; with run tables the API publishes the same figure as a metric or starts tasks
+   itself.
 5. **Write back:** the AV1 1080p MP4, a thumbnail and a short animated preview go to R2 (plus the detection frames
    and, if pre-generated, the H.264 fallback; see below).
 6. **Serve:** Cloudflare CDN on a custom domain, with a small Worker (or signed URLs) for access control and for
@@ -43,15 +45,16 @@ Stream with H.264 and about $195 for Bunny with AV1. Storage and delivery are bu
 - Force constant frame rate with `fps=30` and `-fps_mode cfr`; game recorders often produce variable frame rate.
 - Tone-map HDR sources (zscale or libplacebo), or reject them.
 - Scale with `force_original_aspect_ratio=decrease`, keep dimensions even, and never upscale sources below 1080p.
-- Jobs must be idempotent. Set the SQS visibility timeout above the worst-case encode time, and add a dead-letter
-  queue.
+- Jobs must be idempotent. Reclaim a running job only after longer than the worst-case encode time (the run
+  tables' stale-after, SQS's visibility timeout), and cap attempts so a bad input ends as `encode_failed` (the
+  dead-letter queue's job).
 
 ### Running on the dedicated server
 
 - **Protect the game servers:** pin the worker to specific cores (`--cpuset-cpus`), give it a low CPU weight or run
   ffmpeg with `chrt --idle 0`, cap SVT-AV1 threads with `--lp`, and coordinate with FileFlows.
 - **Sandbox untrusted input:** no host network, read-only root filesystem, an unprivileged user, ideally gVisor. A
-  scoped R2 token for one bucket and an IAM user limited to receiving and deleting SQS messages.
+  scoped R2 token for one bucket, and a worker credential for the API's claim and report endpoints only.
 
 ## How it fits the app
 
