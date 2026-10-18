@@ -48,6 +48,16 @@
     queue metrics the API publishes for every run table: pending count, oldest pending age, in progress, recent
     failures and exhausted attempts, as OpenTelemetry/Prometheus or CloudWatch custom metrics. Reconsider SQS only
     if external workers need it.
+  - **Queue metrics exist (#205):** the API samples `legend_detection_run`, `clip_transcription_run` and
+    `clip_summary_run` and publishes pending, retrying, oldest pending age, running, stale running, and succeeded,
+    failed and exhausted in the last hour as gauges on the `Reelshelf.Queues` meter, exported over OTLP when
+    `QueueMetrics:Exporter=otlp` (see `api/QueueMetrics/` and AGENTS.md). `transcode_run` is not sampled yet
+    (a follow-up): its columns differ from the other run tables (`type` rather than `trigger`, `available_at` for
+    the retry delay, `heartbeat_at` for staleness, `finished_at`), so it needs its own `IRunQueueMetricsSource`
+    registered in `QueueMetricsSetup` rather than the shared `RunTableMetricsSource`. Its oldest pending age is the
+    overflow scaling signal. Still open: where the OTLP goes (a collector forwarding to CloudWatch for Fargate
+    scaling, or Prometheus/Grafana in `PlusCosmic/infrastructure`), and the alarms (oldest pending above N
+    minutes, any exhausted runs).
 - **Fallback:** the storage discussion lists an H.264 720p fallback, pre-generated or made on first request.
   Current call (2026-10-18): none for now, since everyone using Reelshelf can decode AV1. Build the seams (a
   `sources` list, a "can't play on this device" message, room in the queue for a fallback job) and add an
