@@ -6,7 +6,7 @@ namespace Reelshelf.Worker;
 
 /// <summary>
 /// A claimed job, as <c>POST /api/worker/claim</c> returns it (the API's <c>WorkerJobResponse</c>).
-/// <see cref="SourceUrl"/> is a presigned GET for the input and <see cref="UploadUrls"/> a presigned PUT per output
+/// <see cref="SourceUrl"/> is a presigned GET for the input (for <c>migrate</c>, a public HLS playlist URL) and <see cref="UploadUrls"/> a presigned PUT per output
 /// file name; see docs/video-pipeline/workers-and-jobs.md.
 /// </summary>
 public sealed record WorkerJob(
@@ -27,6 +27,9 @@ public static class JobTypes
     public const string Thumbnails = "thumbnails";
     public const string Trim = "trim";
     public const string Fallback = "fallback";
+
+    /// <summary>A clip moving off Bunny: its source is Bunny's HLS master playlist, then it is a <see cref="Transcode"/>.</summary>
+    public const string Migrate = "migrate";
 }
 
 /// <summary>The output file names, which are the keys of <see cref="WorkerJob.UploadUrls"/>.</summary>

@@ -124,6 +124,25 @@ public static class EncodeArguments
         ];
     }
 
+    /// <summary>How long ffmpeg waits on a stalled read of the playlist or a segment before giving up on it.</summary>
+    public static readonly TimeSpan HlsReadTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// A <c>migrate</c> job's HLS input copied into a local MP4 without re-encoding. ffmpeg's default stream selection
+    /// takes the highest-resolution variant (and only downloads that one), and the MP4 muxer converts ADTS AAC itself.
+    /// Logged at warning level, so a segment ffmpeg skipped shows in its output (<see cref="HlsRemux"/>). Only network
+    /// protocols are allowed, so a playlist can't point ffmpeg at local files.
+    /// </summary>
+    public static IReadOnlyList<string> HlsRemux(string playlistUrl, string output) =>
+    [
+        "-hide_banner", "-nostdin", "-y", "-loglevel", "warning",
+        "-protocol_whitelist", "https,http,tls,tcp,crypto",
+        "-rw_timeout", ((long)HlsReadTimeout.TotalMicroseconds).ToString(CultureInfo.InvariantCulture),
+        "-seg_max_retry", "3",
+        "-f", "hls", "-i", playlistUrl,
+        "-c", "copy", "-sn", "-dn", "-f", "mp4", output
+    ];
+
     /// <summary>ffprobe's description of a file as JSON, which <see cref="MediaInfo.Parse"/> reads.</summary>
     public static IReadOnlyList<string> Probe(string input) =>
         ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", input];

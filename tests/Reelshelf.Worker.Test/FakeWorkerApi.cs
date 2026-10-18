@@ -49,6 +49,9 @@ public sealed class FakeWorkerApi : IAsyncDisposable
 
     public ConcurrentDictionary<string, Upload> Uploads { get; } = new();
 
+    /// <summary>How many more requests for HLS files answer 500 before they are served.</summary>
+    public int HlsServerErrors { get; set; }
+
     /// <summary>Requests to the worker API without the secret.</summary>
     public int Unauthorized { get; private set; }
 
@@ -61,6 +64,29 @@ public sealed class FakeWorkerApi : IAsyncDisposable
         using JsonDocument input = JsonDocument.Parse(inputJson);
         WorkerJob job = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), type, 1, 1, input.RootElement.Clone(),
             $"{BaseUrl}storage/source?X-Amz-Signature=abc",
+            outputs.ToDictionary(name => name, name => $"{BaseUrl}storage/out/{name}?X-Amz-Signature=def"));
+        jobs.Enqueue(job);
+        return job;
+    }
+
+    /// <summary>
+    /// Queues a <c>migrate</c> job whose source is the HLS playlist <paramref name="playlist"/> in
+    /// <paramref name="hlsDirectory"/>, served (with its variant playlists and segments) as Bunny's CDN would: public,
+    /// unsigned, with relative paths resolved against the playlist's URL. A playlist that isn't there answers 404.
+    /// </summary>
+    public WorkerJob EnqueueHls(string hlsDirectory, IEnumerable<string> outputs, string playlist = "playlist.m3u8")
+    {
+        string target = Path.Combine(storageDirectory, "hls");
+        foreach (string file in Directory.EnumerateFiles(hlsDirectory, "*", SearchOption.AllDirectories))
+        {
+            string copy = Path.Combine(target, Path.GetRelativePath(hlsDirectory, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
+            File.Copy(file, copy, overwrite: true);
+        }
+
+        using JsonDocument input = JsonDocument.Parse("{}");
+        WorkerJob job = new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), JobTypes.Migrate, 1, 1, input.RootElement.Clone(),
+            $"{BaseUrl}storage/hls/{playlist}",
             outputs.ToDictionary(name => name, name => $"{BaseUrl}storage/out/{name}?X-Amz-Signature=def"));
         jobs.Enqueue(job);
         return job;
@@ -115,6 +141,32 @@ public sealed class FakeWorkerApi : IAsyncDisposable
                 await using FileStream source = File.OpenRead(Path.Combine(storageDirectory, "source"));
                 response.ContentLength64 = source.Length;
                 await source.CopyToAsync(response.OutputStream);
+                return;
+            }
+
+            if (request.HttpMethod == "GET" && path.StartsWith("/storage/hls/", StringComparison.Ordinal))
+            {
+                if (HlsServerErrors > 0)
+                {
+                    HlsServerErrors--;
+                    response.StatusCode = 503;
+                    return;
+                }
+
+                string root = Path.GetFullPath(Path.Combine(storageDirectory, "hls"));
+                string file = Path.GetFullPath(Path.Combine(root, path["/storage/hls/".Length..]));
+                if (file.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal) && File.Exists(file))
+                {
+                    await using FileStream hls = File.OpenRead(file);
+                    response.ContentType = file.EndsWith(".m3u8", StringComparison.Ordinal)
+                        ? "application/vnd.apple.mpegurl"
+                        : "video/mp2t";
+                    response.ContentLength64 = hls.Length;
+                    await hls.CopyToAsync(response.OutputStream);
+                    return;
+                }
+
+                response.StatusCode = 404;
                 return;
             }
 
