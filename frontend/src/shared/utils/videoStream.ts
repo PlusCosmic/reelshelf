@@ -44,15 +44,17 @@ export async function canPlayProgressive(
   if (typeof capabilities?.decodingInfo === "function") {
     const height = source.height ?? assumedHeight;
     try {
+      const { video: videoType, audio: audioType } = splitCodecs(source.type);
       const info = await capabilities.decodingInfo({
         type: "file",
         video: {
-          contentType: source.type,
+          contentType: videoType,
           width: Math.round((height * 16) / 9),
           height,
           bitrate: assumedBitrate,
           framerate: assumedFramerate,
         },
+        ...(audioType ? { audio: { contentType: audioType } } : {}),
       });
       return info.supported;
     } catch {
@@ -60,6 +62,37 @@ export async function canPlayProgressive(
     }
   }
   return video.canPlayType(source.type) !== "";
+}
+
+const audioCodecPrefixes = ["opus", "mp4a", "flac", "vorbis", "ac-3", "ec-3"];
+
+/**
+ * MediaCapabilities takes one codec per stream: a video type listing the audio codec too (the pipeline's
+ * `video/mp4; codecs="av01.0.08M.08,opus"`) is answered "unsupported" by Chrome rather than rejected. So the
+ * video codec goes in the video type and the audio codec in its own audio type. A type it can't split this way
+ * is passed on whole, as before.
+ */
+export function splitCodecs(type: string): { video: string; audio?: string } {
+  const [container] = type.split(";");
+  const codecs = /codecs\s*=\s*"?([^";]*)"?/i
+    .exec(type)?.[1]
+    ?.split(",")
+    .map((codec) => codec.trim())
+    .filter(Boolean);
+  if (!codecs || codecs.length < 2) return { video: type };
+
+  const isAudio = (codec: string) =>
+    audioCodecPrefixes.some((prefix) => codec.toLowerCase().startsWith(prefix));
+  const videoCodecs = codecs.filter((codec) => !isAudio(codec));
+  const audioCodecs = codecs.filter(isAudio);
+  if (videoCodecs.length !== 1 || audioCodecs.length !== 1)
+    return { video: type };
+
+  const base = container.trim();
+  return {
+    video: `${base}; codecs="${videoCodecs[0]}"`,
+    audio: `${base.replace(/^video\//i, "audio/")}; codecs="${audioCodecs[0]}"`,
+  };
 }
 
 export type StreamCallbacks = {
