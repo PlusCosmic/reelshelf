@@ -27,9 +27,9 @@ audio and downloads work unchanged against an MP4 URL.
    audio (see the downloads point below).
 4. **Serving:** HTTP Range (206) support, which Safari requires for `<video>`. CORS is not needed for a plain
    `<video src>`.
-5. **Downloads:** the download endpoint (`api/FFmpeg/`) remuxes HLS to MP4 today. Decide whether it serves the
-   AV1 file as-is or converts to H.264 on demand (some local players and editors can't open AV1). If it remuxes
-   at all, drop the forced `-bsf:a aac_adtstoasc`, which fails on non-AAC audio.
+5. **Downloads:** the download endpoint (`api/FFmpeg/`) remuxes HLS to MP4 today. With progressive files it
+   becomes a presigned R2 redirect (see [workers-and-jobs.md](workers-and-jobs.md#downloads)). Still to decide:
+   serve the AV1 file as-is or convert to H.264 on demand (some local players and editors can't open AV1).
 6. **Activity:** a URL Mapping to the new host in place of `/bunny-cdn`. Its drift correction (playbackRate and
    seeks) works the same on progressive.
 

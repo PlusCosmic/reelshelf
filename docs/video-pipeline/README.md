@@ -10,6 +10,7 @@ is deleted.
 | [current-state.md](current-state.md)                         | What the app relies on from the video host today, after the #188 refactor  |
 | [playback-and-codecs.md](playback-and-codecs.md)             | HLS vs progressive MP4, AV1, the H.264 fallback and downloads              |
 | [storage-transcoding-queue.md](storage-transcoding-queue.md) | R2, the encode workers and SQS: decisions, costs, and how they fit the app |
+| [workers-and-jobs.md](workers-and-jobs.md)                   | The worker service, job types, thumbnails, downloads and trimming          |
 | [open-questions.md](open-questions.md)                       | Undecided points and known follow-ups                                      |
 
 Conventions:
