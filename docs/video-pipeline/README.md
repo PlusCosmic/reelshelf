@@ -12,6 +12,7 @@ is deleted.
 | [storage-transcoding-queue.md](storage-transcoding-queue.md) | R2, encoding and the queue: decisions, costs, and how they fit the app    |
 | [workers-and-jobs.md](workers-and-jobs.md)                   | The worker service, job types, thumbnails, downloads and trimming         |
 | [r2-bucket.md](r2-bucket.md)                                 | The R2 bucket: config, object layout, lifecycle, CORS, caching, Activity  |
+| [bunny-migration.md](bunny-migration.md)                     | Moving the Bunny clips to R2, then leaving Bunny                          |
 | [open-questions.md](open-questions.md)                       | Undecided points and known follow-ups                                     |
 
 Conventions:

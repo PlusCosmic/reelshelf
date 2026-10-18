@@ -68,7 +68,7 @@
   on demand as a worker job (some local players and editors can't open AV1).
 - **Clip versions:** a trim after the first encode produces a new video version, so the run tables need to record
   which version a run used and supersede older ones.
-- **Migration from Bunny:** Bunny may hold only transcodes, so migration probably re-encodes Bunny's best rendition
+- **Migration from Bunny:** decided 2026-10-18, see [bunny-migration.md](bunny-migration.md). Bunny may hold only transcodes, so migration re-encodes Bunny's best rendition
   into AV1 through the same queue. The per-clip host column lets both hosts run side by side during the move.
 - **Access control:** stay with unguessable unsigned URLs as today, or add signed URLs or a Worker check. Either
   must keep share links and the Discord Activity working.
