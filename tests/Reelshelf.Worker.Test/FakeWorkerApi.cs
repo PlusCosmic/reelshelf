@@ -55,6 +55,9 @@ public sealed class FakeWorkerApi : IAsyncDisposable
     /// <summary>Requests to the worker API without the secret.</summary>
     public int Unauthorized { get; private set; }
 
+    /// <summary>How many claims were made, empty ones included (they aren't in <see cref="Events"/>).</summary>
+    public int Claims { get; private set; }
+
     public sealed record Upload(string Path, string? ContentType, string? CacheControl, long Length);
 
     /// <summary>Queues a job whose source is <paramref name="sourcePath"/> and with an upload URL per file name.</summary>
@@ -199,6 +202,7 @@ public sealed class FakeWorkerApi : IAsyncDisposable
 
         if (path == "/api/worker/claim")
         {
+            Claims++;
             if (jobs.TryDequeue(out WorkerJob? job))
             {
                 byte[] body = JsonSerializer.SerializeToUtf8Bytes(job, WorkerApiClient.JsonOptions);
