@@ -101,7 +101,7 @@ public class TranscodeQueue(
     /// <c>migrate</c> job is handed out only when there is storage to write it to, and only while its clip is still on
     /// Bunny: its <c>source_url</c> is the clip's Bunny HLS playlist, and one whose clip has moved is failed instead.
     /// </summary>
-    public async Task<ClaimedTranscodeRun?> ClaimAsync()
+    public async Task<ClaimedTranscodeRun?> ClaimAsync(string? worker = null)
     {
         TranscodingOptions current = options.CurrentValue;
         int maxAttempts = current.EffectiveMaxAttempts;
@@ -141,8 +141,8 @@ public class TranscodeQueue(
                 continue;
             }
 
-            logger.LogInformation("Worker claimed {Type} job {RunId} for clip {ClipId} (attempt {Attempt})",
-                claimed.Type, claimed.Id, claimed.ClipId, claimed.Attempts);
+            logger.LogInformation("Worker {Worker} claimed {Type} job {RunId} for clip {ClipId} (attempt {Attempt})",
+                worker, claimed.Type, claimed.Id, claimed.ClipId, claimed.Attempts);
             TranscodeJobUrls urls = storage.UrlsFor(claimed.ClipId, claimed.Type, claimed.VideoVersion,
                 claimed.CurrentVideoVersion, PresignLifetime(current));
             string? sourceUrl = claimed.Type == TranscodeRunTypes.Migrate
@@ -206,7 +206,8 @@ public class TranscodeQueue(
         Guid leaseId,
         JsonElement? outputs,
         double lengthSeconds,
-        long sizeBytes)
+        long sizeBytes,
+        string? worker = null)
     {
         string outputJson = JsonSerializer.Serialize(new Dictionary<string, object?>
         {
@@ -258,8 +259,8 @@ public class TranscodeQueue(
         }
         else
         {
-            logger.LogInformation("{Type} job {RunId} for clip {ClipId} succeeded ({Length}s, {Size} bytes)",
-                run.Type, run.Id, run.ClipId, lengthSeconds, sizeBytes);
+            logger.LogInformation("{Type} job {RunId} for clip {ClipId} succeeded on worker {Worker} ({Length}s, {Size} bytes)",
+                run.Type, run.Id, run.ClipId, worker, lengthSeconds, sizeBytes);
         }
 
         if (run.Type == TranscodeRunTypes.Migrate)
@@ -350,7 +351,8 @@ public class TranscodeQueue(
     /// delay; otherwise the job fails, and a failed transcode sets its clip to <c>encode_failed</c>. A repeat of
     /// the report is accepted and changes nothing.
     /// </summary>
-    public async Task<TranscodeReportOutcome> FailAsync(Guid runId, Guid leaseId, string error, bool retryable)
+    public async Task<TranscodeReportOutcome> FailAsync(Guid runId, Guid leaseId, string error, bool retryable,
+        string? worker = null)
     {
         TranscodingOptions current = options.CurrentValue;
         string trimmed = error.Length > MaxErrorLength ? error[..MaxErrorLength] : error;
@@ -381,8 +383,8 @@ public class TranscodeQueue(
                 : TranscodeReportOutcome.LeaseLost;
         }
 
-        logger.LogWarning("{Type} job {RunId} for clip {ClipId} failed ({Outcome}): {Error}",
-            run.Type, run.Id, run.ClipId, run.Status == "pending" ? "will retry" : "giving up", trimmed);
+        logger.LogWarning("{Type} job {RunId} for clip {ClipId} failed on worker {Worker} ({Outcome}): {Error}",
+            run.Type, run.Id, run.ClipId, worker, run.Status == "pending" ? "will retry" : "giving up", trimmed);
         return TranscodeReportOutcome.Applied;
     }
 
@@ -393,7 +395,7 @@ public class TranscodeQueue(
     /// <c>uploaded</c> in the same transaction. A repeat of the report under the same lease is accepted and changes
     /// nothing.
     /// </summary>
-    public async Task<TranscodeReportOutcome> ReleaseAsync(Guid runId, Guid leaseId)
+    public async Task<TranscodeReportOutcome> ReleaseAsync(Guid runId, Guid leaseId, string? worker = null)
     {
         int maxReleases = options.CurrentValue.EffectiveMaxReleases;
         TranscodeStatements.ReleasedRunRow? run = await statements.InTransactionAsync(async () =>
@@ -422,14 +424,14 @@ public class TranscodeQueue(
         if (run.Refunded)
         {
             logger.LogInformation(
-                "{Type} job {RunId} for clip {ClipId} was handed back by a worker shutting down (release {Releases}); attempt refunded",
-                run.Type, run.Id, run.ClipId, run.ReleaseCount);
+                "{Type} job {RunId} for clip {ClipId} was handed back by worker {Worker} shutting down (release {Releases}); attempt refunded",
+                run.Type, run.Id, run.ClipId, worker, run.ReleaseCount);
         }
         else
         {
             logger.LogWarning(
-                "{Type} job {RunId} for clip {ClipId} was handed back by a worker shutting down {Releases} times, more than {MaxReleases}; the attempt counts ({Attempts} used)",
-                run.Type, run.Id, run.ClipId, run.ReleaseCount, maxReleases, run.Attempts);
+                "{Type} job {RunId} for clip {ClipId} was handed back by worker {Worker} shutting down {Releases} times, more than {MaxReleases}; the attempt counts ({Attempts} used)",
+                run.Type, run.Id, run.ClipId, worker, run.ReleaseCount, maxReleases, run.Attempts);
         }
 
         return TranscodeReportOutcome.Applied;

@@ -120,9 +120,15 @@ upload completes and passes its checks (#213, see [r2-bucket.md](r2-bucket.md#br
   `clips/{clipId}/v1/` is deleted, unless the clip itself plays from R2 version 1. A clip deleted meanwhile takes its
   job with it (`transcode_run` cascades from `clip`, so the worker's completion gets 404), so deleting a Bunny clip
   also deletes `clips/{clipId}/v1/`; a PUT the worker makes after that is left in the bucket.
-- **Credential:** the endpoints require the `Worker` policy: `Authorization: Bearer <Worker:Secret>`, compared in
-  constant time. A secret that is unset or shorter than 32 characters refuses every request. The site cookie never
-  satisfies the policy, and the secret authorises nothing else. Requests are rate limited per address
+- **Credential:** the endpoints require the `Worker` policy: `Authorization: Bearer <secret>`, where the secret is
+  `Worker:Secret` (the secret named `default`) or one of the named secrets `Worker:Secrets:<name>` (#247), e.g.
+  `Worker:Secrets:aws` for the overflow workers, so each pool's credential can be rotated or revoked on its own. The
+  bearer is compared in constant time against every configured secret, without stopping at a match, so the time
+  doesn't reveal which one matched. A secret shorter than 32 characters is ignored, with a warning at startup (so is
+  a `Worker:Secrets:default` while `Worker:Secret` is set), and with no usable secret every request is refused. The
+  matched secret's name goes on the principal (`urn:reelshelf:worker:name`, `WorkerAuthentication.WorkerName`) and
+  into the log lines for claim, complete, fail and release ("Worker aws claimed …"); nothing about it is stored. The
+  site cookie never satisfies the policy, and the secrets authorise nothing else. Requests are rate limited per address
   (`Worker:RequestsPerMinute`, 600) against a worker stuck in a loop; the limiter runs after authorization, so it
   doesn't slow guessing, which a 32-character random secret makes pointless anyway. The endpoints are left out of
   the OpenAPI document, since the worker isn't a client of the generated frontend API.
@@ -135,8 +141,8 @@ the image's unprivileged `app` user; the build checks that this ffmpeg has the `
 `migrate` needs). It calls ffmpeg and ffprobe as processes with argument lists rather than
 through FFMpegCore, so it can run them under `nice` and read `-progress`. Its tests are in `tests/Reelshelf.Worker.Test/`.
 
-- **Configuration** (`Worker__*` environment variables, `WorkerSettings`): `ApiBaseUrl` and `Secret` (the API's
-  `Worker:Secret`) are required, and startup fails without them or without libsvtav1 and libopus in ffmpeg. The rest
+- **Configuration** (`Worker__*` environment variables, `WorkerSettings`): `ApiBaseUrl` and `Secret` (one of the API's
+  secrets, `Worker:Secret` or a `Worker:Secrets:<name>`) are required, and startup fails without them or without libsvtav1 and libopus in ffmpeg. The rest
   have defaults: `Preset` (SVT-AV1, 8), `LogicalProcessors` (SVT-AV1 `lp`, 0 = all cores), `TargetBitrateKbps`
   (4000), `AudioBitrateKbps` (128), `Niceness` (10), `IdlePollInterval`/`MaxIdlePollInterval` (5 s doubling to 60 s),
   `ErrorBackoff`/`MaxErrorBackoff` (5 s to 5 min), `ExitWhenIdleAfter` (unset), `HeartbeatInterval` (30 s), `ShutdownGrace` (20 s),

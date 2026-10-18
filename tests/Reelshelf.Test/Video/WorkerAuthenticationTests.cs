@@ -25,6 +25,8 @@ namespace Reelshelf.Test.Video;
 public class WorkerAuthenticationTests
 {
     private const string Secret = "worker-secret-0123456789abcdef-0123456789";
+    private const string AwsSecret = "aws-overflow-secret-0123456789abcdef-01234";
+    private const string HomeSecret = "home-server-secret-0123456789abcdef-012345";
 
     private static readonly string[] Endpoints =
     [
@@ -43,6 +45,74 @@ public class WorkerAuthenticationTests
         Assert.True(result.Succeeded);
         Assert.True(result.Principal!.HasClaim(WorkerAuthentication.WorkerClaim, "true"));
         Assert.Null(result.Principal.FindFirst(ClaimTypes.NameIdentifier));
+        Assert.Equal(WorkerOptions.DefaultSecretName, WorkerAuthentication.WorkerName(result.Principal));
+    }
+
+    [Theory]
+    [InlineData(Secret, "default")]
+    [InlineData(AwsSecret, "aws")]
+    [InlineData(HomeSecret, "home")]
+    public async Task EachSecret_Authenticates_WithItsNameOnThePrincipal(string sent, string name)
+    {
+        AuthenticateResult result = await Authenticate(Named(Secret), $"Bearer {sent}");
+
+        Assert.True(result.Succeeded);
+        Assert.True(result.Principal!.HasClaim(WorkerAuthentication.WorkerClaim, "true"));
+        Assert.Equal(name, WorkerAuthentication.WorkerName(result.Principal));
+        Assert.Null(result.Principal.FindFirst(ClaimTypes.NameIdentifier));
+    }
+
+    [Fact]
+    public async Task NamedSecrets_WorkWithoutTheDefault()
+    {
+        AuthenticateResult result = await Authenticate(Named(secret: ""), $"Bearer {AwsSecret}");
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("aws", WorkerAuthentication.WorkerName(result.Principal!));
+        Assert.False((await Authenticate(Named(secret: ""), $"Bearer {Secret}")).Succeeded);
+    }
+
+    [Fact]
+    public async Task AShortNamedSecret_IsIgnored_AndTheOthersStillWork()
+    {
+        WorkerOptions options = Named(Secret);
+        options.Secrets["short"] = "short-secret";
+
+        Assert.False((await Authenticate(options, "Bearer short-secret")).Succeeded);
+        Assert.True((await Authenticate(options, $"Bearer {AwsSecret}")).Succeeded);
+        Assert.DoesNotContain(options.EffectiveSecrets, secret => secret.Name == "short");
+        Assert.Contains(options.IgnoredSecrets, ignored => ignored.Name == "short");
+    }
+
+    [Fact]
+    public void TheSecretSetting_WinsOverANamedDefault()
+    {
+        WorkerOptions options = Named(Secret);
+        options.Secrets["default"] = AwsSecret + "-other";
+
+        Assert.Equal([Secret], options.EffectiveSecrets.Where(s => s.Name == "default").Select(s => s.Value));
+        Assert.Contains(options.IgnoredSecrets, ignored => ignored.Name == "default");
+    }
+
+    [Fact]
+    public void UnsetSecrets_AreNotWarnedAbout()
+    {
+        WorkerOptions options = new() { Secret = "", Secrets = { ["aws"] = "", ["home"] = null } };
+
+        Assert.Empty(options.EffectiveSecrets);
+        Assert.Empty(options.IgnoredSecrets);
+    }
+
+    [Fact]
+    public void MatchSecret_ComparesAgainstEverySecret()
+    {
+        WorkerSecret[] secrets = [new("a", AwsSecret), new("b", HomeSecret), new("c", Secret)];
+
+        Assert.Equal("c", WorkerAuthentication.MatchSecret(secrets, Secret));
+        Assert.Equal("a", WorkerAuthentication.MatchSecret(secrets, AwsSecret));
+        Assert.Null(WorkerAuthentication.MatchSecret(secrets, "nope"));
+        Assert.Null(WorkerAuthentication.MatchSecret(secrets, ""));
+        Assert.Null(WorkerAuthentication.MatchSecret([], Secret));
     }
 
     [Theory]
@@ -75,6 +145,19 @@ public class WorkerAuthenticationTests
         AuthenticateResult result = await Authenticate(configured, $"Bearer {configured}");
 
         Assert.False(result.Succeeded);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("short-secret")]
+    public async Task WithOnlyUnusableNamedSecrets_EverythingFails(string configured)
+    {
+        WorkerOptions options = new() { Secret = configured, Secrets = { ["aws"] = configured, ["home"] = "  " } };
+
+        foreach (string header in new[] { $"Bearer {configured}", $"Bearer {Secret}", "Bearer " })
+        {
+            Assert.False((await Authenticate(options, header)).Succeeded);
+        }
     }
 
     [Fact]
@@ -115,7 +198,39 @@ public class WorkerAuthenticationTests
         }
     }
 
-    private static async Task<AuthenticateResult> Authenticate(string configured, string? header)
+    [Fact]
+    public async Task Endpoints_LetEveryNamedSecretThrough()
+    {
+        await using WorkerApi api = await WorkerApi.StartAsync(Secret, new Dictionary<string, string?>
+        {
+            ["Worker:Secrets:aws"] = AwsSecret,
+            ["Worker:Secrets:short"] = "short-secret"
+        });
+
+        foreach (string endpoint in Endpoints)
+        {
+            foreach (string bearer in new[] { Secret, AwsSecret })
+            {
+                HttpStatusCode status = await api.PostAsync(endpoint, bearer);
+                Assert.NotEqual(HttpStatusCode.Unauthorized, status);
+                Assert.NotEqual(HttpStatusCode.Forbidden, status);
+            }
+
+            Assert.Equal(HttpStatusCode.Unauthorized, await api.PostAsync(endpoint, bearer: "short-secret"));
+            Assert.Equal(HttpStatusCode.Unauthorized, await api.PostAsync(endpoint, bearer: HomeSecret));
+        }
+    }
+
+    private static WorkerOptions Named(string secret) => new()
+    {
+        Secret = secret,
+        Secrets = { ["aws"] = AwsSecret, ["home"] = HomeSecret }
+    };
+
+    private static Task<AuthenticateResult> Authenticate(string configured, string? header) =>
+        Authenticate(new WorkerOptions { Secret = configured }, header);
+
+    private static async Task<AuthenticateResult> Authenticate(WorkerOptions workerOptions, string? header)
     {
         DefaultHttpContext context = new();
         context.Request.Path = "/api/worker/claim";
@@ -128,7 +243,7 @@ public class WorkerAuthenticationTests
             new FixedOptions<AuthenticationSchemeOptions>(new AuthenticationSchemeOptions()),
             NullLoggerFactory.Instance,
             UrlEncoder.Default,
-            new FixedOptions<WorkerOptions>(new WorkerOptions { Secret = configured }));
+            new FixedOptions<WorkerOptions>(workerOptions));
         await handler.InitializeAsync(
             new AuthenticationScheme(WorkerAuthentication.SchemeName, null, typeof(WorkerAuthentication)),
             context);
@@ -146,7 +261,7 @@ public class WorkerAuthenticationTests
             _client = client;
         }
 
-        public static async Task<WorkerApi> StartAsync(string secret)
+        public static async Task<WorkerApi> StartAsync(string secret, Dictionary<string, string?>? settings = null)
         {
             WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
@@ -154,7 +269,10 @@ public class WorkerAuthenticationTests
             });
             builder.WebHost.UseUrls("http://127.0.0.1:0");
             builder.Logging.ClearProviders();
-            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Worker:Secret"] = secret });
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>(settings ?? [])
+            {
+                ["Worker:Secret"] = secret
+            });
 
             // The site's default scheme stands in for a signed-in cookie: every request carries an account.
             builder.Services.AddAuthentication(SignedInSite.SchemeName)
