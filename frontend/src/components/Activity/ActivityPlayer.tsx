@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IconVolume, IconVolume2, IconVolumeOff } from "@tabler/icons-react";
-import { activityStreamUrl } from "@/shared/services/discordActivity";
-import { attachStream, hlsType } from "@/shared/utils/videoStream";
+import { activityStreamSource } from "@/shared/services/discordActivity";
+import { attachStream } from "@/shared/utils/videoStream";
 import {
   correctDrift,
   expectedPosition,
@@ -71,7 +71,11 @@ export function ActivityPlayer({
   const [mutedForAutoplay, setMutedForAutoplay] = useState(false);
   const [{ volume, muted }, setVolume] = useState(loadVolume);
   const itemId = playback.itemId;
-  const videoId = playback.clip.videoId;
+  const {
+    host: mediaHost,
+    path: mediaPath,
+    type: mediaType,
+  } = playback.clip.media;
   const isHost = host !== null;
 
   // The latest props, for media event handlers and the sync loop.
@@ -135,7 +139,11 @@ export function ActivityPlayer({
     if (!video) return;
     setFailed(false);
     loadedItemIdRef.current = null;
-    const source = activityStreamUrl(videoId);
+    const source = activityStreamSource({
+      host: mediaHost,
+      path: mediaPath,
+      type: mediaType,
+    });
 
     // Once the clip is loaded, start where the room is: the beginning for a new clip, or mid-clip for
     // someone joining (or the host reloading) while it plays.
@@ -148,7 +156,8 @@ export function ActivityPlayer({
     video.addEventListener("loadedmetadata", onLoaded, { once: true });
 
     const fail = () => setFailed(true);
-    const detach = attachStream(video, [{ url: source, type: hlsType }], {
+    // A host the Activity has no URL Mapping for can't play here.
+    const detach = attachStream(video, source ? [source] : [], {
       onFatal: fail,
       onUnsupported: fail,
     });
@@ -156,7 +165,7 @@ export function ActivityPlayer({
       video.removeEventListener("loadedmetadata", onLoaded);
       detach();
     };
-  }, [itemId, videoId]);
+  }, [itemId, mediaHost, mediaPath, mediaType]);
 
   // The host reports what they do with their own controls.
   useEffect(() => {

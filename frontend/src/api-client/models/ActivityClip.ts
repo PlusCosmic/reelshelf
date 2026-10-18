@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from "../runtime";
+import type { ActivityMedia } from "./ActivityMedia";
+import {
+  ActivityMediaFromJSON,
+  ActivityMediaFromJSONTyped,
+  ActivityMediaToJSON,
+  ActivityMediaToJSONTyped,
+} from "./ActivityMedia";
+
 /**
  *
  * @export
@@ -61,6 +69,12 @@ export interface ActivityClip {
    * @memberof ActivityClip
    */
   ready: boolean;
+  /**
+   *
+   * @type {ActivityMedia}
+   * @memberof ActivityClip
+   */
+  media: ActivityMedia;
 }
 
 /**
@@ -75,6 +89,7 @@ export function instanceOfActivityClip(value: object): value is ActivityClip {
     return false;
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   if (!("ready" in value) || value["ready"] === undefined) return false;
+  if (!("media" in value) || value["media"] === undefined) return false;
   return true;
 }
 
@@ -97,6 +112,7 @@ export function ActivityClipFromJSONTyped(
     durationSeconds: json["duration_seconds"],
     createdAt: new Date(json["created_at"]),
     ready: json["ready"],
+    media: ActivityMediaFromJSON(json["media"]),
   };
 }
 
@@ -120,5 +136,6 @@ export function ActivityClipToJSONTyped(
     duration_seconds: value["durationSeconds"],
     created_at: value["createdAt"].toISOString(),
     ready: value["ready"],
+    media: ActivityMediaToJSON(value["media"]),
   };
 }

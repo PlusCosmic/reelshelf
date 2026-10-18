@@ -5,7 +5,7 @@ namespace Reelshelf.Video;
 /// without naming the host: the client sends the file to <paramref name="Endpoint"/> with these headers and metadata
 /// and adds only what describes the file itself (<c>filename</c>, <c>filetype</c>).
 /// </summary>
-/// <param name="Protocol">The upload protocol; always <see cref="Tus"/> today.</param>
+/// <param name="Protocol">The upload protocol: <see cref="Tus"/> (Bunny) or <see cref="S3Multipart"/> (R2).</param>
 /// <param name="Endpoint">The URL uploads are created at.</param>
 /// <param name="Headers">Request headers to send with every upload request, typically the host's authorisation.</param>
 /// <param name="Metadata">Upload metadata the host needs to file the video.</param>
@@ -19,4 +19,10 @@ public sealed record UploadTarget(
 {
     /// <summary>A resumable upload (<see href="https://tus.io/protocols/resumable-upload"/>).</summary>
     public const string Tus = "tus";
+
+    /// <summary>
+    /// A presigned S3 multipart upload (R2). The browser side and its API endpoints come with #213; until then an
+    /// R2 target carries the protocol alone and the uploader refuses it.
+    /// </summary>
+    public const string S3Multipart = "s3-multipart";
 }

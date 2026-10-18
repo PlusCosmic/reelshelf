@@ -2837,7 +2837,8 @@
           "game",
           "duration_seconds",
           "created_at",
-          "ready"
+          "ready",
+          "media"
         ],
         "type": "object",
         "properties": {
@@ -2865,6 +2866,9 @@
           },
           "ready": {
             "type": "boolean"
+          },
+          "media": {
+            "$ref": "#/components/schemas/ActivityMedia"
           }
         }
       },
@@ -2901,6 +2905,25 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ActivityMedia": {
+        "required": [
+          "host",
+          "path",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
           }
         }
       },

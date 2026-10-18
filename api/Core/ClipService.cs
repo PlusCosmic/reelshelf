@@ -118,7 +118,7 @@ public class ClipService(
         HostedVideo video;
         try
         {
-            video = await videoHost.CreateVideoAsync(userId, gameCategory, videoTitle);
+            video = await videoHost.CreateVideoAsync(reserved.Id, userId, gameCategory, videoTitle);
         }
         catch
         {
@@ -472,7 +472,7 @@ public class ClipService(
             sharedClip.GameName,
             sharedClip.Length ?? 0,
             sharedClip.DateUploaded ?? sharedClip.CreatedAt,
-            mediaUrls.Thumbnail(sharedClip.VideoHost, sharedClip.VideoId),
-            mediaUrls.Sources(sharedClip.VideoHost, sharedClip.VideoId));
+            mediaUrls.Thumbnail(sharedClip.ToVideoRef()),
+            mediaUrls.Sources(sharedClip.ToVideoRef()));
     }
 }

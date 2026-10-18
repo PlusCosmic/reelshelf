@@ -27,6 +27,7 @@ using Reelshelf.QueueMetrics;
 using Reelshelf.Storage;
 using Reelshelf.Twitch;
 using Reelshelf.Video;
+using Reelshelf.Video.R2;
 using Reelshelf.Video.Transcoding;
 using StackExchange.Redis;
 
@@ -264,6 +265,8 @@ internal static class ReelshelfApiConfiguration
         // Each clip records its host in clip.video_host; adding a host is implementing IClipVideoHost and
         // IClipVideoMediaUrls and registering them here under its name.
         builder.Services.AddClipVideoHost<BunnyService, BunnyMediaUrls>(VideoHostNames.Bunny);
+        // The r2 host only when R2:* is configured, so VideoHost:NewUploads=r2 without it fails at startup.
+        builder.Services.AddR2VideoHost(builder.Configuration);
         builder.Services.AddClipVideoHostRouting(builder.Configuration);
         builder.Services.AddScoped<ClipVideoUpdateHandler>();
         builder.Services.AddScoped<FFmpegService>();

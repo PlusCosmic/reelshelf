@@ -37,7 +37,7 @@ public class BunnyService : IClipVideoHost
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
     }
 
-    public async Task<HostedVideo> CreateVideoAsync(Guid ownerId, GameCategory gameCategory, string title)
+    public async Task<HostedVideo> CreateVideoAsync(Guid clipId, Guid ownerId, GameCategory gameCategory, string title)
     {
         ClipsStatements.ClipCollectionRow clipCollection =
             await _clipsStatements.GetCollectionByOwnerAndCategory(ownerId, gameCategory.Id)

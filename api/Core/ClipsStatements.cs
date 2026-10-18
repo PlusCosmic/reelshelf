@@ -148,6 +148,9 @@ public class ClipsStatements(NpgsqlConnection connection)
                     c.storage_size,
                     c.video_state,
                     c.video_host,
+                    c.video_version,
+                    c.video_codecs,
+                    c.video_height,
                     c.encode_progress
                 FROM clip c
                 WHERE {where}
@@ -167,12 +170,15 @@ public class ClipsStatements(NpgsqlConnection connection)
                     f.storage_size,
                     f.video_state,
                     f.video_host,
+                    f.video_version,
+                    f.video_codecs,
+                    f.video_height,
                     f.encode_progress,
                     STRING_AGG(t.name, ',' ORDER BY t.name) as tag_names
                 FROM filtered f
                 LEFT JOIN clip_tag ct ON f.id = ct.clip_id
                 LEFT JOIN tag t ON ct.tag_id = t.id
-                GROUP BY f.id, f.owner_id, f.video_id, f.game_category_id, f.md5_hash, f.created_at, f.title, f.length, f.thumbnail_file_name, f.date_uploaded, f.storage_size, f.video_state, f.video_host, f.encode_progress
+                GROUP BY f.id, f.owner_id, f.video_id, f.game_category_id, f.md5_hash, f.created_at, f.title, f.length, f.thumbnail_file_name, f.date_uploaded, f.storage_size, f.video_state, f.video_host, f.video_version, f.video_codecs, f.video_height, f.encode_progress
             )
             SELECT *
             FROM tagged
@@ -244,7 +250,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         const string sql = """
             INSERT INTO clip (owner_id, video_host, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, encode_progress, file_size, source_provider, source_clip_id)
             VALUES (@ownerId, @videoHost, @videoId, @gameCategoryId, @md5Hash, @createdAt, @title, @length, @thumbnailFileName, @dateUploaded, @storageSize, @encodeProgress, @fileSize, @sourceProvider, @sourceClipId)
-            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, encode_progress, file_size
+            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress, file_size
             """;
 
         return await connection.QuerySingleAsync<ClipRow>(sql, new
@@ -375,7 +381,7 @@ public class ClipsStatements(NpgsqlConnection connection)
     public async Task<List<ClipRow>> GetAbandonedClips(DateTimeOffset reservedBefore)
     {
         const string sql = """
-            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, encode_progress, file_size
+            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress, file_size
             FROM clip
             WHERE reserved_at < @reservedBefore
               AND COALESCE(storage_size, 0) = 0
@@ -407,13 +413,16 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.storage_size,
                 c.video_state,
                 c.video_host,
+                c.video_version,
+                c.video_codecs,
+                c.video_height,
                 c.encode_progress,
                 STRING_AGG(t.name, ',') as tag_names
             FROM clip c
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
             LEFT JOIN tag t ON ct.tag_id = t.id
             WHERE c.id = @clipId
-            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.encode_progress
+            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ClipWithTagsRow>(sql, new { clipId });
@@ -518,14 +527,14 @@ public class ClipsStatements(NpgsqlConnection connection)
     public async Task<ClipRow?> GetClipById(Guid clipId)
     {
         const string sql =
-            "SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, encode_progress FROM clip WHERE id = @clipId LIMIT 1";
+            "SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress FROM clip WHERE id = @clipId LIMIT 1";
         return await connection.QuerySingleOrDefaultAsync<ClipRow>(sql, new { clipId });
     }
 
     public async Task<ClipRow?> GetClipByVideoId(Guid videoId)
     {
         const string sql =
-            "SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, encode_progress FROM clip WHERE video_id = @videoId LIMIT 1";
+            "SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress FROM clip WHERE video_id = @videoId LIMIT 1";
         return await connection.QuerySingleOrDefaultAsync<ClipRow>(sql, new { videoId });
     }
 
@@ -596,6 +605,9 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.date_uploaded,
                 c.video_state,
                 c.video_host,
+                c.video_version,
+                c.video_codecs,
+                c.video_height,
                 gc.name as game_name
             FROM clip_share cs
             INNER JOIN clip c ON c.id = cs.clip_id
@@ -624,13 +636,16 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.storage_size,
                 c.video_state,
                 c.video_host,
+                c.video_version,
+                c.video_codecs,
+                c.video_height,
                 c.encode_progress,
                 STRING_AGG(t.name, ',') as tag_names
             FROM clip c
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
             LEFT JOIN tag t ON ct.tag_id = t.id
             WHERE c.id = @clipId AND c.owner_id = @ownerId
-            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.encode_progress
+            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ClipWithTagsRow>(sql, new { clipId, ownerId });
@@ -682,14 +697,14 @@ public class ClipsStatements(NpgsqlConnection connection)
 
     public async Task<List<ClipRow>> GetAllClipsForCategory(Guid gameCategoryId)
     {
-        const string sql = "SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, encode_progress FROM clip WHERE game_category_id = @gameCategoryId";
+        const string sql = "SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress FROM clip WHERE game_category_id = @gameCategoryId";
         return (await connection.QueryAsync<ClipRow>(sql, new { gameCategoryId })).ToList();
     }
 
     public async Task<List<ClipRow>> GetClipsNeedingStatusUpdate()
     {
         const string sql = """
-            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, encode_progress
+            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress
             FROM clip
             WHERE video_state <> @Ready
             """;
@@ -716,7 +731,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 video_state = @videoState,
                 encode_progress = @encodeProgress
             WHERE id = @clipId
-            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, encode_progress, file_size
+            RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress, file_size
             """;
 
         HostedVideoInfo info = video.Info;
@@ -792,20 +807,63 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// A transcode worker finished the clip's encode: it is ready, with the output's length and size (which the
-    /// storage quota counts from now on). <c>video_status</c> is left alone, as in <see cref="SetTranscodeProgress"/>.
+    /// A transcode worker finished a new video version for the clip (a first encode, or a trim): it is ready on that
+    /// version, with the output's length, size, codecs and height. The source upload is gone by now, so the AV1 size
+    /// alone counts toward the quota (<see cref="StorageBytesExpression"/>) and the declared upload size is cleared.
+    /// <c>video_status</c> is left alone, as in <see cref="SetTranscodeProgress"/>. Returns the version the clip was
+    /// on before, so the caller can delete that version's files when it differs; null when there is no such clip.
     /// </summary>
-    public async Task SetTranscodeReady(Guid clipId, int lengthSeconds, long storageSize)
+    public async Task<int?> SetTranscodeReady(
+        Guid clipId,
+        int videoVersion,
+        int lengthSeconds,
+        long storageSize,
+        string? codecs,
+        int? height)
     {
+        // The locked subquery reads the row as it was, for the version being replaced.
         const string sql = """
             UPDATE clip
             SET video_state = 'ready',
                 encode_progress = 100,
                 length = @lengthSeconds,
-                storage_size = @storageSize
-            WHERE id = @clipId
+                storage_size = @storageSize,
+                file_size = NULL,
+                video_version = @videoVersion,
+                video_codecs = @codecs,
+                video_height = @height
+            FROM (SELECT id, video_version FROM clip WHERE id = @clipId FOR UPDATE) old_clip
+            WHERE clip.id = old_clip.id
+            RETURNING old_clip.video_version
             """;
-        await connection.ExecuteAsync(sql, new { clipId, lengthSeconds, storageSize });
+        return await connection.QuerySingleOrDefaultAsync<int?>(sql,
+            new { clipId, videoVersion, lengthSeconds, storageSize, codecs, height });
+    }
+
+    /// <summary>
+    /// A server-side upload finished: the clip's source is stored and waiting for its transcode. Only a clip still
+    /// waiting for its bytes moves, so a repeated upload can't take a clip that is already further along back.
+    /// Returns whether the clip moved.
+    /// </summary>
+    public async Task<bool> SetSourceUploaded(Guid clipId)
+    {
+        const string sql = """
+            UPDATE clip
+            SET video_state = 'uploaded', date_uploaded = now(), encode_progress = 0
+            WHERE id = @clipId AND video_state IN ('awaiting_upload', 'upload_failed')
+            """;
+        return await connection.ExecuteAsync(sql, new { clipId }) > 0;
+    }
+
+    /// <summary>A server-side upload into the clip failed before its source was stored.</summary>
+    public async Task SetUploadFailed(Guid clipId)
+    {
+        const string sql = """
+            UPDATE clip
+            SET video_state = 'upload_failed'
+            WHERE id = @clipId AND video_state = 'awaiting_upload'
+            """;
+        await connection.ExecuteAsync(sql, new { clipId });
     }
 
     /// <summary>A clip's transcode failed for good. A clip that is already ready keeps the video it has.</summary>
@@ -819,7 +877,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         await connection.ExecuteAsync(sql, new { clipId });
     }
 
-    public class ClipRow
+    public class ClipRow : IClipVideoColumns
     {
         public Guid Id { get; set; }
         public Guid OwnerId { get; set; }
@@ -840,6 +898,9 @@ public class ClipsStatements(NpgsqlConnection connection)
         /// the host lookups, when a query leaves <c>video_host</c> out, so a clip is never sent to the wrong host.
         /// </summary>
         public string VideoHost { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
+        public string? VideoCodecs { get; set; }
+        public int? VideoHeight { get; set; }
         public int? EncodeProgress { get; set; }
         public long? FileSize { get; set; }
     }
@@ -890,7 +951,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         public DateTimeOffset? RevokedAt { get; set; }
     }
 
-    public class SharedClipRow
+    public class SharedClipRow : IClipVideoColumns
     {
         public Guid ShareId { get; set; }
         public string Token { get; set; } = string.Empty;
@@ -910,10 +971,13 @@ public class ClipsStatements(NpgsqlConnection connection)
         /// the host lookups, when a query leaves <c>video_host</c> out, so a clip is never sent to the wrong host.
         /// </summary>
         public string VideoHost { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
+        public string? VideoCodecs { get; set; }
+        public int? VideoHeight { get; set; }
         public string GameName { get; set; } = string.Empty;
     }
 
-    public class ClipWithTagsRow
+    public class ClipWithTagsRow : IClipVideoColumns
     {
         public Guid Id { get; set; }
         public Guid OwnerId { get; set; }
@@ -935,6 +999,9 @@ public class ClipsStatements(NpgsqlConnection connection)
         /// the host lookups, when a query leaves <c>video_host</c> out, so a clip is never sent to the wrong host.
         /// </summary>
         public string VideoHost { get; set; } = "";
+        public int VideoVersion { get; set; } = 1;
+        public string? VideoCodecs { get; set; }
+        public int? VideoHeight { get; set; }
         public int? EncodeProgress { get; set; }
     }
 

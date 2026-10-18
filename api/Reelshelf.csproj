@@ -21,6 +21,7 @@
     <ItemGroup>
         <PackageReference Include="Anthropic" Version="12.58.0" />
         <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
+        <PackageReference Include="AWSSDK.S3" Version="4.0.104.4" />
         <PackageReference Include="Dapper" Version="2.1.89" />
         <PackageReference Include="FFMpegCore" Version="5.5.0" />
         <PackageReference Include="IGDB" Version="6.1.0" />

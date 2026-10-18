@@ -5,10 +5,6 @@ import type {
   ActivityParticipantResponse,
   ActivitySessionResponse,
 } from "@/api-client";
-import {
-  activityVideoPlaylistUrl,
-  activityVideoThumbnailUrl,
-} from "@/shared/utils/clipMediaUrls";
 import { createDiscordActivityApi } from "./apiClients";
 
 export type {
@@ -29,14 +25,11 @@ export function activityImageUrl(
   return url.replace(/^https:\/\/cdn\.discordapp\.com\//, "/discord-cdn/");
 }
 
-/** The video CDN reaches the Activity through its own URL Mapping; see `clipMediaUrls.ts`. */
-export function activityStreamUrl(videoId: string): string {
-  return activityVideoPlaylistUrl(videoId);
-}
-
-export function activityThumbnailUrl(videoId: string): string {
-  return activityVideoThumbnailUrl(videoId);
-}
+/** Each video host's media reaches the Activity through its own URL Mapping; see `clipMediaUrls.ts`. */
+export {
+  activityStreamSource,
+  activityThumbnailUrl,
+} from "@/shared/utils/clipMediaUrls";
 
 /** A room member's own clips, newest first; guests are refused with a 403. */
 export async function fetchOwnClips(

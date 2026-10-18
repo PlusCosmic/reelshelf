@@ -18,6 +18,7 @@ public sealed class WatchRoomHub(
     ActivitySignInService signIn,
     ClipsStatements clips,
     GameCategoryStatements gameCategories,
+    ClipMediaUrls mediaUrls,
     TimeProvider timeProvider) : Hub
 {
     public const string Path = "/api/activity/hub";
@@ -76,7 +77,8 @@ public sealed class WatchRoomHub(
             string.IsNullOrWhiteSpace(clip.Title) ? "Untitled clip" : clip.Title,
             game,
             caller.AccountName ?? caller.Name,
-            clip.Length ?? 0);
+            clip.Length ?? 0,
+            ActivityMedia.For(mediaUrls, clip.ToVideoRef()));
 
         switch (room.Enqueue(Context.ConnectionId, nowPlaying))
         {

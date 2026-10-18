@@ -7,15 +7,16 @@ namespace Reelshelf.Video;
 /// this rather than a provider's client. Each clip records the host that holds its video (<c>clip.video_host</c>,
 /// one of <see cref="VideoHostNames"/>) and <see cref="ClipVideoHosts"/> routes its calls there; hosts are
 /// registered under their name with <see cref="VideoHostRegistration.AddClipVideoHost{THost, TMediaUrls}"/>.
-/// <see cref="Bunny.BunnyService"/> is the only implementation today.
+/// <see cref="Bunny.BunnyService"/> (Bunny Stream) and <see cref="R2.R2VideoHost"/> (our own pipeline) implement it.
 /// </summary>
 public interface IClipVideoHost
 {
     /// <summary>
-    /// Creates an empty video for one of the owner's clips in <paramref name="gameCategory"/>, ready for its bytes
-    /// to be uploaded. The host files it in the owner's container for the category, creating that if need be.
+    /// Creates an empty video for the owner's clip <paramref name="clipId"/> in <paramref name="gameCategory"/>, ready
+    /// for its bytes to be uploaded. A host with containers files it in the owner's container for the category,
+    /// creating that if need be; a host that keys its storage by clip may use the clip id as the video id.
     /// </summary>
-    Task<HostedVideo> CreateVideoAsync(Guid ownerId, GameCategory gameCategory, string title);
+    Task<HostedVideo> CreateVideoAsync(Guid clipId, Guid ownerId, GameCategory gameCategory, string title);
 
     /// <summary>
     /// Where the browser uploads the bytes of a video <see cref="CreateVideoAsync"/> made, authorised for that video
@@ -31,6 +32,13 @@ public interface IClipVideoHost
 
     /// <summary>The video as the host sees it now, or null when the host has no such video.</summary>
     Task<HostedVideoInfo?> GetVideoAsync(Guid videoId);
+
+    /// <summary>
+    /// Whether the clip's status has to be fetched from the host (<see cref="Core.ClipStatusRefreshService"/>, the
+    /// metadata backfill). False for a host whose status reaches the clip row through the app itself, as our own
+    /// transcode worker's reports do: polling it would only read the row back.
+    /// </summary>
+    bool NeedsStatusPolling => true;
 
     /// <summary>Idempotent: a video the host no longer knows about counts as deleted.</summary>
     Task DeleteVideoAsync(Guid videoId);
@@ -49,8 +57,9 @@ public sealed record HostedVideo(Guid VideoId, Guid ContainerId, HostedVideoInfo
 /// <param name="Status">The host's status mapped onto the app's own, stored in <c>clip.video_state</c>.</param>
 /// <param name="ThumbnailFileName">The thumbnail's file name, or null when the host no longer stores one.</param>
 /// <param name="HostStatus">
-/// The host's own status number, written only to the legacy <c>clip.video_status</c> column so the previous app
-/// image keeps working during a deploy. Nothing reads it; it goes when that column is dropped.
+/// Bunny's own status number, written only to the legacy <c>clip.video_status</c> column so the previous app
+/// image keeps working during a deploy. Nothing reads it; it goes when that column is dropped. Null for a host with
+/// no such number, whose clips leave the column NULL.
 /// </param>
 public sealed record HostedVideoInfo(
     string Title,
@@ -60,4 +69,4 @@ public sealed record HostedVideoInfo(
     long StorageSize,
     DateTimeOffset UploadedAt,
     string? ThumbnailFileName,
-    int HostStatus);
+    int? HostStatus);

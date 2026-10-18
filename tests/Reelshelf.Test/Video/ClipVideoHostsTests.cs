@@ -51,7 +51,7 @@ public class ClipVideoHostsTests
         using IServiceScope scope = provider.CreateScope();
 
         Assert.IsType<FakeHost>(scope.ServiceProvider.GetRequiredService<ClipVideoHosts>().For(VideoHostNames.R2));
-        Assert.Equal("fake", provider.GetRequiredService<ClipMediaUrls>().Thumbnail(VideoHostNames.R2, Guid.Empty));
+        Assert.Equal("fake", provider.GetRequiredService<ClipMediaUrls>().Thumbnail(new ClipVideoRef(VideoHostNames.R2, Guid.Empty)));
     }
 
     [Fact]
@@ -172,18 +172,20 @@ public class ClipVideoHostsTests
 
     private sealed class FakeMediaUrls : IClipVideoMediaUrls
     {
-        public List<PlaybackSource> Sources(Guid videoId) => [];
+        public List<PlaybackSource> Sources(ClipVideoRef video) => [];
 
-        public Uri Playlist(Guid videoId) => new("https://fake.example/playlist.m3u8");
+        public Uri ServerStream(ClipVideoRef video) => new("https://fake.example/playlist.m3u8");
 
-        public string Thumbnail(Guid videoId) => "fake";
+        public string Thumbnail(ClipVideoRef video) => "fake";
 
-        public List<string> DetectionFrames(Guid videoId) => [];
+        public List<string> DetectionFrames(ClipVideoRef video) => [];
+
+        public string MediaPath(ClipVideoRef video) => "fake";
     }
 
     private sealed class FakeHost : IClipVideoHost
     {
-        public Task<HostedVideo> CreateVideoAsync(Guid ownerId, GameCategory gameCategory, string title) =>
+        public Task<HostedVideo> CreateVideoAsync(Guid clipId, Guid ownerId, GameCategory gameCategory, string title) =>
             throw new NotSupportedException();
 
         public UploadTarget CreateUploadTarget(HostedVideo video, string title) => throw new NotSupportedException();

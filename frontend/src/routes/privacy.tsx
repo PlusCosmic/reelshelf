@@ -11,7 +11,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyRoute() {
   return (
-    <LegalPage title="Privacy policy" updated="17 October 2026">
+    <LegalPage title="Privacy policy" updated="18 October 2026">
       <p>
         This explains what Reelshelf, run by {legalOperator}, collects, why, and
         who else handles it. We don't sell your data, show ads or use tracking
@@ -82,7 +82,10 @@ function PrivacyRoute() {
       <h2>Who else handles your data</h2>
       <ul>
         <li>
-          <strong>Bunny.net</strong> stores and streams your clips.
+          <strong>Bunny.net</strong> stores and streams your clips. We are
+          moving clips to our own pipeline, so some new clips are instead stored
+          and delivered by <strong>Cloudflare</strong> (R2 storage and its CDN)
+          and encoded on servers we run.
         </li>
         <li>
           <strong>Discord and Twitch</strong> handle sign-in, Twitch clip import
@@ -125,14 +128,15 @@ function PrivacyRoute() {
 
       <h2>How long we keep it</h2>
       <p>
-        We keep your data while your account exists. Deleting a clip removes the
-        video from storage and deletes its tags, detections and transcripts.
-        Unlinking a sign-in method deletes its stored tokens. You can delete
-        your whole account in Settings: it stops working straight away, and its
-        clips are removed from storage and the rest of its data deleted shortly
-        after, usually within minutes. Collections you made go with it,
-        including for their collaborators. Backups and logs age out on their own
-        schedule.
+        We keep your data while your account exists. For clips in our own
+        pipeline, the file you uploaded is deleted once it has been encoded, and
+        only the encoded video is kept. Deleting a clip removes the video from
+        storage and deletes its tags, detections and transcripts. Unlinking a
+        sign-in method deletes its stored tokens. You can delete your whole
+        account in Settings: it stops working straight away, and its clips are
+        removed from storage and the rest of its data deleted shortly after,
+        usually within minutes. Collections you made go with it, including for
+        their collaborators. Backups and logs age out on their own schedule.
       </p>
 
       <h2>Your rights</h2>
