@@ -91,15 +91,23 @@ public static class EncodeArguments
         return args;
     }
 
+    /// <summary>
+    /// Ends the frame filter: full-range 8-bit 4:2:0, the only kind of JPEG the mjpeg encoder writes without
+    /// <c>-strict unofficial</c>. Without it, ffmpeg 7.1 can hand the encoder limited-range YUV for some sources and
+    /// it refuses to open ("Non full-range YUV is non-standard"), so no frames are made.
+    /// </summary>
+    public const string JpegFilter = "scale=out_range=full,format=yuvj420p";
+
     /// <summary>One JPEG frame at <paramref name="seconds"/> into the input, at the output's size (tone-mapped when HDR).</summary>
     public static IReadOnlyList<string> Frame(string input, string output, double seconds, bool toneMap)
     {
-        string filter = toneMap ? $"{ScaleFilter()},{ToneMapFilter}" : ScaleFilter();
+        string filter = (toneMap ? $"{ScaleFilter()},{ToneMapFilter}" : ScaleFilter()) + "," + JpegFilter;
         return
         [
             "-hide_banner", "-nostdin", "-y", "-loglevel", "error",
             "-ss", TrimRange.Seconds(seconds), "-i", input,
-            "-map", "0:v:0", "-an", "-frames:v", "1", "-vf", filter, "-q:v", "2", "-update", "1", output
+            "-map", "0:v:0", "-an", "-frames:v", "1", "-vf", filter, "-color_range", "pc",
+            "-q:v", "2", "-update", "1", output
         ];
     }
 

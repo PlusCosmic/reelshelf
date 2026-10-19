@@ -99,8 +99,17 @@ public class EncodeArgumentsTests
 
         AssertOption(args, "-ss", "30.123");
         AssertOption(args, "-frames:v", "1");
-        Assert.Equal(EncodeArguments.ScaleFilter(), Option(args, "-vf"));
+        Assert.Equal($"{EncodeArguments.ScaleFilter()},{EncodeArguments.JpegFilter}", Option(args, "-vf"));
+        AssertOption(args, "-color_range", "pc");
         Assert.Equal("thumbnail_3.jpg", args[^1]);
+    }
+
+    [Fact]
+    public void Frame_ToneMapsBeforeConvertingToFullRangeJpeg()
+    {
+        IReadOnlyList<string> args = EncodeArguments.Frame("in", "thumbnail.jpg", 0, toneMap: true);
+
+        Assert.EndsWith($"{EncodeArguments.ToneMapFilter},{EncodeArguments.JpegFilter}", Option(args, "-vf"));
     }
 
     [Fact]
