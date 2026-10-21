@@ -7,7 +7,8 @@ public static class OverflowSetup
     /// <summary>
     /// Registers the overflow pool where <c>Overflow:Enabled</c> is true, outside the <c>OpenApi</c> environment
     /// (which builds the app without secrets and runs no background services). Startup fails when it is on and any
-    /// of the cluster, task definition, subnets, security groups or region is missing, so a half-configured pool
+    /// of the cluster, task definition, capacity provider or region is missing (or, on Fargate, the subnets or security
+    /// groups), so a half-configured pool
     /// never runs. Call it after the R2 host, whose storage gates each tick.
     /// </summary>
     public static void AddTranscodeOverflow(this WebApplicationBuilder builder)

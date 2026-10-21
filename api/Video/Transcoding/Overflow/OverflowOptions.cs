@@ -2,17 +2,20 @@ namespace Reelshelf.Video.Transcoding.Overflow;
 
 /// <summary>
 /// The overflow pool (<c>Overflow:*</c>, docs/video-pipeline/workers-and-jobs.md#the-overflow-pool): one-shot transcode
-/// workers on AWS Fargate Spot that the API starts with ECS <c>RunTask</c> when <c>transcode_run</c> backs up. The
-/// workers stop themselves once idle, so the API only ever starts tasks. <see cref="Cluster"/>,
-/// <see cref="TaskDefinition"/>, <see cref="Subnets"/> and <see cref="SecurityGroups"/> come from the infrastructure
-/// stack's outputs.
+/// workers on AWS Fargate Spot, or on an ECS EC2 capacity provider, that the API starts with ECS <c>RunTask</c> when
+/// <c>transcode_run</c> backs up. The workers stop themselves once idle, so the API only ever starts tasks.
+/// <see cref="Cluster"/>, <see cref="TaskDefinition"/>, <see cref="CapacityProvider"/>, <see cref="Subnets"/> and
+/// <see cref="SecurityGroups"/> come from the infrastructure stack's outputs.
 /// </summary>
 public sealed class OverflowOptions
 {
     public const string SectionName = "Overflow";
 
-    /// <summary>The capacity provider every overflow task is launched on.</summary>
-    public const string CapacityProvider = "FARGATE_SPOT";
+    /// <summary>The capacity provider overflow tasks are launched on unless <see cref="CapacityProvider"/> says otherwise.</summary>
+    public const string DefaultCapacityProvider = "FARGATE_SPOT";
+
+    /// <summary>The capacity providers that are Fargate, whose tasks need an <c>awsvpcConfiguration</c>.</summary>
+    public static readonly IReadOnlyList<string> FargateCapacityProviders = ["FARGATE_SPOT", "FARGATE"];
 
     /// <summary>The longest <c>startedBy</c> ECS accepts.</summary>
     public const int MaxStartedByLength = 128;
@@ -58,10 +61,20 @@ public sealed class OverflowOptions
     /// </summary>
     public string TaskDefinition { get; set; } = "";
 
-    /// <summary>Comma-separated subnet ids the tasks run in; tasks get a public IP to reach the API and R2.</summary>
+    /// <summary>
+    /// The capacity provider every overflow task is launched on. <c>FARGATE_SPOT</c> (the default) or <c>FARGATE</c>
+    /// runs the task in <see cref="Subnets"/> with a public IP; any other name is taken as an EC2 capacity provider on
+    /// the cluster, whose task definition uses bridge networking, so no network configuration is sent.
+    /// </summary>
+    public string CapacityProvider { get; set; } = DefaultCapacityProvider;
+
+    /// <summary>
+    /// Comma-separated subnet ids the tasks run in; tasks get a public IP to reach the API and R2. Fargate only: an
+    /// EC2 capacity provider's instances are already in their subnets.
+    /// </summary>
     public string Subnets { get; set; } = "";
 
-    /// <summary>Comma-separated security group ids for the tasks.</summary>
+    /// <summary>Comma-separated security group ids for the tasks. Fargate only, like <see cref="Subnets"/>.</summary>
     public string SecurityGroups { get; set; } = "";
 
     public OverflowAwsOptions Aws { get; set; } = new();
@@ -74,9 +87,13 @@ public sealed class OverflowOptions
 
     public IReadOnlyList<string> SecurityGroupList => SplitList(SecurityGroups);
 
+    /// <summary>Whether <see cref="CapacityProvider"/> is Fargate (awsvpc networking) rather than EC2 (bridge).</summary>
+    public bool IsFargate => FargateCapacityProviders.Contains(CapacityProvider.Trim());
+
     /// <summary>
     /// What is wrong with these settings for an enabled pool, if anything: a missing cluster, task definition,
-    /// subnets, security groups or region, half a key pair, unknown job types, or limits below 1.
+    /// capacity provider or region, missing subnets or security groups on Fargate, half a key pair, unknown job types,
+    /// or limits below 1.
     /// </summary>
     public IReadOnlyList<string> Problems()
     {
@@ -91,8 +108,13 @@ public sealed class OverflowOptions
 
         Require(Cluster, nameof(Cluster));
         Require(TaskDefinition, nameof(TaskDefinition));
-        Require(Subnets, nameof(Subnets));
-        Require(SecurityGroups, nameof(SecurityGroups));
+        Require(CapacityProvider, nameof(CapacityProvider));
+        if (IsFargate)
+        {
+            Require(Subnets, nameof(Subnets));
+            Require(SecurityGroups, nameof(SecurityGroups));
+        }
+
         Require(Aws.Region, $"{nameof(Aws)}:{nameof(OverflowAwsOptions.Region)}");
 
         bool hasKey = !string.IsNullOrWhiteSpace(Aws.AccessKeyId);

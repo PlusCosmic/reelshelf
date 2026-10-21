@@ -20,9 +20,10 @@ public interface IOverflowTaskLauncher
 }
 
 /// <summary>
-/// The overflow pool on ECS: Fargate Spot tasks of <see cref="OverflowOptions.TaskDefinition"/>, tagged with
-/// <see cref="OverflowOptions.StartedBy"/> so <c>ListTasks</c> finds them again. The task definition's roles,
-/// secrets and environment are left as they are; only the network is set here.
+/// The overflow pool on ECS: tasks of <see cref="OverflowOptions.TaskDefinition"/> on
+/// <see cref="OverflowOptions.CapacityProvider"/>, tagged with <see cref="OverflowOptions.StartedBy"/> so
+/// <c>ListTasks</c> finds them again. The task definition's roles, secrets and environment are left as they are; only
+/// a Fargate task's network is set here.
 /// </summary>
 public sealed class EcsOverflowTaskLauncher(
     IAmazonECS ecs,
@@ -35,7 +36,8 @@ public sealed class EcsOverflowTaskLauncher(
     public async Task<int> CountActiveTasksAsync(CancellationToken cancellationToken)
     {
         OverflowOptions current = options.Value;
-        // A task that is provisioning or starting has desired status RUNNING; PENDING is listed too, as ECS allows it.
+        // A task that is provisioning or starting has desired status RUNNING (on EC2 that includes one waiting in
+        // PROVISIONING for managed scaling to start an instance); PENDING is listed too, as ECS allows it.
         HashSet<string> tasks = [];
         foreach (DesiredStatus status in new[] { DesiredStatus.RUNNING, DesiredStatus.PENDING })
         {
@@ -78,7 +80,7 @@ public sealed class EcsOverflowTaskLauncher(
             started += accepted;
             foreach (Failure failure in response.Failures ?? [])
             {
-                // Fargate Spot without spare capacity shows up here rather than as an error.
+                // A capacity provider without spare capacity shows up here rather than as an error.
                 logger.LogWarning("ECS couldn't start an overflow task: {Reason} {Detail}", failure.Reason, failure.Detail);
             }
 
@@ -92,9 +94,10 @@ public sealed class EcsOverflowTaskLauncher(
     }
 
     /// <summary>
-    /// One <c>RunTask</c> call for <paramref name="count"/> tasks on <see cref="OverflowOptions.CapacityProvider"/>,
-    /// with a public IP so a task in a public subnet reaches the API and R2 without a NAT gateway. The client token
-    /// makes the SDK's own retries of this call idempotent.
+    /// One <c>RunTask</c> call for <paramref name="count"/> tasks on <see cref="OverflowOptions.CapacityProvider"/>.
+    /// On Fargate the task gets a public IP so, in a public subnet, it reaches the API and R2 without a NAT gateway; on
+    /// an EC2 capacity provider no network configuration is sent, since the task definition's bridge mode owns it. The
+    /// client token makes the SDK's own retries of this call idempotent.
     /// </summary>
     public static RunTaskRequest BuildRunTaskRequest(OverflowOptions options, int count) => new()
     {
@@ -105,17 +108,19 @@ public sealed class EcsOverflowTaskLauncher(
         ClientToken = Guid.NewGuid().ToString("N"),
         CapacityProviderStrategy =
         [
-            new CapacityProviderStrategyItem { CapacityProvider = OverflowOptions.CapacityProvider, Weight = 1 }
+            new CapacityProviderStrategyItem { CapacityProvider = options.CapacityProvider.Trim(), Weight = 1 }
         ],
-        NetworkConfiguration = new NetworkConfiguration
-        {
-            AwsvpcConfiguration = new AwsVpcConfiguration
+        NetworkConfiguration = options.IsFargate
+            ? new NetworkConfiguration
             {
-                Subnets = options.SubnetList.ToList(),
-                SecurityGroups = options.SecurityGroupList.ToList(),
-                AssignPublicIp = AssignPublicIp.ENABLED
+                AwsvpcConfiguration = new AwsVpcConfiguration
+                {
+                    Subnets = options.SubnetList.ToList(),
+                    SecurityGroups = options.SecurityGroupList.ToList(),
+                    AssignPublicIp = AssignPublicIp.ENABLED
+                }
             }
-        }
+            : null
     };
 
     /// <summary>

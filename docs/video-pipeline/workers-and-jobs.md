@@ -240,7 +240,7 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
 ## The overflow pool (built in #248)
 
 When `transcode_run` backs up (a burst of uploads, or the Bunny migration), the API starts extra one-shot workers on
-AWS Fargate Spot with ECS `RunTask`. They run the same image as the dedicated worker, with `Worker__ExitWhenIdleAfter`
+AWS Fargate Spot (or on an ECS EC2 capacity provider, `Overflow:CapacityProvider`) with ECS `RunTask`. They run the same image as the dedicated worker, with `Worker__ExitWhenIdleAfter`
 set in the task definition (#246), so they stop themselves once the queue is empty. The API only ever starts tasks
 and never stops one. The code is in
 `api/Video/Transcoding/Overflow/`. The AWS resources (cluster, task definition, networking, IAM) are
@@ -261,7 +261,8 @@ PlusCosmic/infrastructure#214.
      past its retry delay, has only just become available, so the dedicated worker gets the threshold to take it
      first.
   3. It counts the overflow tasks running or provisioning: ECS `ListTasks` with `startedBy` = `Overflow:StartedBy`
-     (`reelshelf-overflow`), for desired status `RUNNING` and `PENDING`.
+     (`reelshelf-overflow`), for desired status `RUNNING` and `PENDING`. On an EC2 capacity provider a task waiting
+     for an instance sits in `PROVISIONING` with desired status `RUNNING`, so it is counted too.
   4. Once the oldest job has waited `Overflow:ScaleUpAfter` (2 min), it starts
      `min(pending - running, MaxTasks - running, MaxStartPerTick)` tasks. `Overflow:MaxTasks` (4) is the hard cap on
      spend, and `Overflow:MaxStartPerTick` defaults to 4.
@@ -269,24 +270,33 @@ PlusCosmic/infrastructure#214.
      counted twice.
 - **`RunTask`** (`EcsOverflowTaskLauncher`):
   - It sends `Overflow:Cluster` and `Overflow:TaskDefinition`, with `count` up to 10 per call.
-  - Tasks go on the `FARGATE_SPOT` capacity provider (weight 1, no launch type).
-  - `awsvpcConfiguration` has `Overflow:Subnets` and `Overflow:SecurityGroups` (comma-separated ids) and
-    `assignPublicIp=ENABLED`, so a task in a public subnet reaches the API and R2 without a NAT gateway.
+  - Tasks go on the `Overflow:CapacityProvider` capacity provider (default `FARGATE_SPOT`; weight 1, no launch
+    type).
+  - On `FARGATE_SPOT` or `FARGATE`, `awsvpcConfiguration` has `Overflow:Subnets` and `Overflow:SecurityGroups`
+    (comma-separated ids) and `assignPublicIp=ENABLED`, so a task in a public subnet reaches the API and R2 without
+    a NAT gateway.
+  - Any other name is taken as an EC2 capacity provider (an Auto Scaling Group on the same cluster). Its task
+    definition uses bridge networking, because an awsvpc task on EC2 can't get a public IP and there is no NAT, so
+    no `networkConfiguration` is sent and the subnets and security groups aren't needed. ECS managed scaling starts
+    and stops the group's instances, with managed termination protection so it never stops an instance with a task
+    on it. A Spot interruption reaches the worker as SIGTERM through `ECS_ENABLE_SPOT_INSTANCE_DRAINING`, and the
+    worker releases or finishes its job as on any shutdown.
   - `startedBy` is set, plus a fresh `clientToken` per call so the SDK's retries can't start tasks twice.
   - It sets no tags and no overrides. The task definition's roles, secrets (`Worker__ApiBaseUrl`, `Worker__Secret`)
     and environment are used as they are.
-  - When Fargate Spot has no capacity, ECS reports it in the response's `failures`. Those are logged, and only the
+  - When the capacity provider has no capacity, ECS reports it in the response's `failures`. Those are logged, and only the
     tasks ECS started count.
 - **Errors:** a failed backlog count, `ListTasks` or `RunTask` is logged and tried again on the next tick, with no
   cooldown. Nothing here throws into the API.
 - **AWS client:** the client is `AWSSDK.ECS`, in `Overflow:Aws:Region` (the AWS project's selected Region).
   - With `Overflow:Aws:AccessKeyId` and `SecretAccessKey`, it signs with that key.
   - With neither, it uses the SDK's default credential chain.
-  - Startup fails when `Enabled` is on and any of the cluster, task definition, subnets, security groups or
-    region is missing. It also fails on half a key pair, an unknown job type, or `MaxTasks`/`MaxStartPerTick`
+  - Startup fails when `Enabled` is on and any of the cluster, task definition, capacity provider or region is
+    missing, or, on a Fargate provider, the subnets or security groups. It also fails on half a key pair, an unknown job type, or `MaxTasks`/`MaxStartPerTick`
     below 1.
 - **Settings from the infrastructure stack** (#214's outputs): `Overflow__Cluster`, `Overflow__TaskDefinition`,
-  `Overflow__Subnets`, `Overflow__SecurityGroups`, plus `Overflow__Aws__Region` and the API's access key.
+  `Overflow__Subnets`, `Overflow__SecurityGroups` (Fargate) or `Overflow__CapacityProvider` (EC2), plus
+  `Overflow__Aws__Region` and the API's access key.
 - **IAM** for the API's credentials:
   - `ecs:RunTask` on the worker's task definition, which can be limited to the cluster with the `ecs:cluster`
     condition key.
@@ -294,6 +304,7 @@ PlusCosmic/infrastructure#214.
   - `iam:PassRole` for the task definition's execution role (and its task role, if it has one), with
     `iam:PassedToService` = `ecs-tasks.amazonaws.com`.
   - No `ecs:TagResource` is needed, since `RunTask` sets no tags.
+  - An EC2 capacity provider needs nothing more: the Auto Scaling Group passes the instance role, not the API.
 - **Metrics:** the `Reelshelf.Overflow` meter has two instruments, and both are exported with the queue gauges when
   `QueueMetrics:Exporter=otlp`:
   - `reelshelf.overflow.tasks_running`, a gauge of the tasks as last counted. It reports nothing before the first
