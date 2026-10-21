@@ -145,8 +145,10 @@ public sealed class WorkerLoop(
         }
 
         Directory.CreateDirectory(settings.WorkDirectory);
-        logger.LogInformation("Worker started against {Api}: SVT-AV1 preset {Preset}, lp {Lp}, {Bitrate} kbps, nice {Nice}",
-            settings.ApiBaseUrl, settings.Preset, settings.LogicalProcessors, settings.TargetBitrateKbps, settings.Niceness);
+        logger.LogInformation(
+            "Worker started against {Api}: SVT-AV1 preset {Preset}, lp {Lp}, {Bitrate} kbps ({HighFrameRateBitrate} kbps above 32 fps), nice {Nice}",
+            settings.ApiBaseUrl, settings.Preset, settings.LogicalProcessors, settings.TargetBitrateKbps,
+            settings.HighFrameRateBitrateKbps, settings.Niceness);
     }
 
     /// <summary>Claims and runs one job. False when the queue had none. Throws <see cref="WorkerApiException"/> when the claim fails.</summary>

@@ -14,8 +14,10 @@
 - **No originals.** The uploaded source is deleted once its transcode succeeds, as with Bunny today: 4K60 sources
   are too large to keep. Anything made later (a fallback, new bitrates, a trim) works from the AV1 output, and that
   generation loss is accepted. Incomplete multipart uploads are aborted by an R2 lifecycle rule.
-- **30 fps output**, the usual rate for web viewing. 60 fps would cost more storage (as a rule of thumb about 1.3–1.6×
-  the bitrate at the same quality, rather than 2×; the benchmark will show the real figure).
+- **The source's frame rate, capped at 60** (was 30 fps until 2026-10-21). Game clips are mostly recorded at 60,
+  which Bunny kept, and forcing 30 visibly lost smoothness. 60 fps costs more storage (as a rule of thumb about
+  1.3–1.6× the bitrate at the same quality, rather than 2×), so above 32 fps the encode gets 6000 kbps instead of
+  4000 (`Worker:HighFrameRateBitrateKbps`).
 - **Quota** counts the AV1 output only (`clip.storage_size`), plus `file_size` until the encode reports its size.
 
 ## Undecided

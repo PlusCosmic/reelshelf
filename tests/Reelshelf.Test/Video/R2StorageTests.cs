@@ -194,6 +194,27 @@ public class R2StorageTests
         Assert.Equal(expected, TranscodeOutputs.NormalizeCodecs(reported));
     }
 
+    [Fact]
+    public async Task DeleteOtherVersions_KeepsTheVersion_TheUploadAndOtherClips()
+    {
+        FakeR2Client r2 = new();
+        Guid other = Guid.NewGuid();
+        string[] older = [$"clips/{ClipId}/v1/av1.mp4", $"clips/{ClipId}/v1/preview.mp4", $"clips/{ClipId}/v20/av1.mp4"];
+        string[] kept = [$"clips/{ClipId}/v2/av1.mp4", $"clips/{ClipId}/v2/thumbnail_5.jpg", $"uploads/{ClipId}", $"clips/{other}/v1/av1.mp4"];
+        foreach (string key in older.Concat(kept))
+        {
+            r2.Objects[key] = 1;
+        }
+
+        using R2Storage storage = r2.Storage();
+        await storage.DeleteOtherVersionsAsync(ClipId, 2);
+
+        Assert.Equal(Sorted(kept), Sorted(r2.Objects.Keys));
+
+        await storage.DeleteAllVersionsAsync(ClipId);
+        Assert.Equal(Sorted([$"uploads/{ClipId}", $"clips/{other}/v1/av1.mp4"]), Sorted(r2.Objects.Keys));
+    }
+
     private static string[] Sorted(IEnumerable<string> values) => values.Order(StringComparer.Ordinal).ToArray();
 
     private static IConfiguration Configuration(params (string Key, string Value)[] values)

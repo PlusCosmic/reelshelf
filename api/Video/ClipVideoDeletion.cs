@@ -3,8 +3,8 @@ using Reelshelf.Video.Transcoding;
 namespace Reelshelf.Video;
 
 /// <summary>
-/// Deletes what a clip's video left at its hosts before the clip row goes: the video at the host it plays from, a
-/// Bunny clip's R2 copy a <c>migrate</c> job may have written, and a migrated clip's Bunny copy still waiting out its
+/// Deletes what a clip's video left at its hosts before the clip row goes: the video at the host it plays from, any
+/// R2 copy of a Bunny clip (a <c>migrate</c> job's output, or the versions of a clip switched back to Bunny), and a migrated clip's Bunny copy still waiting out its
 /// grace period (<c>bunny_video_id</c>), which the delete sweep can't find once the row is gone. Every step is
 /// idempotent (a host that no longer knows a video counts it as deleted), so a failed delete is simply repeated.
 /// </summary>
@@ -16,8 +16,9 @@ public static class ClipVideoDeletion
         await videoHosts.For(videoHost).DeleteVideoAsync(videoId);
         if (videoHost == VideoHostNames.Bunny)
         {
-            // A migrate job may have written the clip's R2 copy already; deleting the clip cascades to the job.
-            await transcodeStorage.DeleteVersionAsync(clipId, TranscodeQueue.MigratedVideoVersion);
+            // A migrate job may have written the clip's R2 copy already (deleting the clip cascades to the job), and a
+            // clip switched back to Bunny keeps the versions it played on R2.
+            await transcodeStorage.DeleteAllVersionsAsync(clipId);
         }
 
         await DeleteBunnyCopyAsync(videoHosts, videoHost, videoId, bunnyVideoId);

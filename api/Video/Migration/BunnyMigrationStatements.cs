@@ -12,7 +12,9 @@ public class BunnyMigrationStatements(NpgsqlConnection connection)
     /// oldest first, and returns the clips queued. A clip is skipped while it has any job pending or running, and for
     /// good once it has had a <c>migrate</c> job: a failed one is left for a person to look at, and a succeeded one
     /// whose clip is on Bunny again was switched back on purpose. Deleting the run lets the clip be queued again. Two
-    /// instances backfilling at once take turns on an advisory lock, so neither overshoots the batch.
+    /// instances backfilling at once take turns on an advisory lock, so neither overshoots the batch. Each job writes
+    /// the clip's next video version (<c>video_version + 1</c>): outputs are cached as immutable, so a clip moved
+    /// before, switched back and moved again must not reuse the keys it played from.
     /// </summary>
     public async Task<List<Guid>> QueueBatchAsync(int batchSize)
     {
@@ -22,7 +24,7 @@ public class BunnyMigrationStatements(NpgsqlConnection connection)
             """;
         const string queue = """
             INSERT INTO transcode_run (clip_id, type, input, video_version, priority)
-            SELECT clip.id, 'migrate', '{}'::jsonb, @VideoVersion, @Priority
+            SELECT clip.id, 'migrate', '{}'::jsonb, clip.video_version + 1, @Priority
             FROM clip
             WHERE clip.video_host = 'bunny'
               AND clip.video_state = 'ready'
@@ -53,7 +55,6 @@ public class BunnyMigrationStatements(NpgsqlConnection connection)
                 ? []
                 : (await connection.QueryAsync<Guid>(queue, new
                 {
-                    VideoVersion = TranscodeQueue.MigratedVideoVersion,
                     Priority = TranscodeRunTypes.DefaultPriority(TranscodeRunTypes.Migrate),
                     Limit = limit
                 }, transaction)).ToList();

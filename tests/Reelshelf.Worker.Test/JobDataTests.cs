@@ -70,7 +70,7 @@ public class JobDataTests
     [InlineData("Main", -99, "yuv420p", 854, 480, "av01.0.04M.08")]
     public void Codecs_DescribeTheAv1Stream(string profile, int? level, string pixelFormat, int width, int height, string expected)
     {
-        VideoStreamInfo video = new("av1", profile, level, width, height, pixelFormat, "bt709", "bt709");
+        VideoStreamInfo video = new("av1", profile, level, width, height, pixelFormat, "bt709", "bt709", FrameRate.Default);
 
         Assert.Equal(expected, Codecs.Video(video));
     }
@@ -78,7 +78,7 @@ public class JobDataTests
     [Fact]
     public void Codecs_AppendTheAudio()
     {
-        VideoStreamInfo video = new("av1", "Main", 8, 1920, 1080, "yuv420p", null, null);
+        VideoStreamInfo video = new("av1", "Main", 8, 1920, 1080, "yuv420p", null, null, FrameRate.Default);
 
         Assert.Equal("av01.0.08M.08,opus", Codecs.For(new MediaInfo(10, 1, video, new AudioStreamInfo("opus", null))));
         Assert.Equal("av01.0.08M.08", Codecs.For(new MediaInfo(10, 1, video, null)));
@@ -131,8 +131,8 @@ public class JobDataTests
 
         Assert.Equal(3.2, media.DurationSeconds);
         Assert.Null(media.Video);
-        Assert.True(new VideoStreamInfo("h264", null, null, 1, 1, "yuv420p", "arib-std-b67", null).IsHdr);
-        Assert.False(new VideoStreamInfo("h264", null, null, 1, 1, "yuv420p", "bt709", null).IsHdr);
+        Assert.True(new VideoStreamInfo("h264", null, null, 1, 1, "yuv420p", "arib-std-b67", null, FrameRate.Default).IsHdr);
+        Assert.False(new VideoStreamInfo("h264", null, null, 1, 1, "yuv420p", "bt709", null, FrameRate.Default).IsHdr);
     }
 
     [Fact]
@@ -146,6 +146,7 @@ public class JobDataTests
         Assert.NotNull(new WorkerSettings { ApiBaseUrl = "ftp://x", Secret = new string('s', 32) }.Problem());
         Assert.NotNull((new WorkerSettings { ApiBaseUrl = "https://x", Secret = new string('s', 32), Preset = 14 }).Problem());
         Assert.NotNull((new WorkerSettings { ApiBaseUrl = "https://x", Secret = new string('s', 32), Niceness = 20 }).Problem());
+        Assert.NotNull((new WorkerSettings { ApiBaseUrl = "https://x", Secret = new string('s', 32), HighFrameRateBitrateKbps = 0 }).Problem());
     }
 
     [Fact]

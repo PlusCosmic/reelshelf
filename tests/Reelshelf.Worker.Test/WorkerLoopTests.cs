@@ -99,7 +99,7 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
     }
 
     [SvtAv1Fact]
-    public async Task Transcode_EncodesTheTrimmedSource_UploadsFramesFirst_AndCompletes()
+    public async Task Transcode_EncodesTheTrimmedSource_At60Fps_UploadsFramesFirst_AndCompletes()
     {
         string source = await GenerateAsync("source.mp4", "testsrc2=size=1280x720:rate=60:duration=4", audio: true,
             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac");
@@ -125,7 +125,9 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
         Assert.Equal("av1", video.Video!.Codec);
         Assert.Equal("opus", video.Audio!.Codec);
         Assert.Equal(outputs.GetProperty("codecs").GetString(), Codecs.For(video));
-        Assert.Equal("30/1", await FrameRateAsync(api.Uploads[OutputFiles.Video].Path));
+        // The source's 60 fps is kept, with a keyframe every second (60 frames).
+        Assert.Equal("60/1", await FrameRateAsync(api.Uploads[OutputFiles.Video].Path));
+        AssertKeyframesAboutASecondApart(await KeyframeTimesAsync(api.Uploads[OutputFiles.Video].Path));
 
         MediaInfo preview = await ProbeAsync(api.Uploads[OutputFiles.Preview].Path);
         Assert.Equal("av1", preview.Video!.Codec);
@@ -194,6 +196,36 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
 
         Assert.Null(api.Failure);
         Assert.InRange(api.Completion!.Value.GetProperty("length_seconds").GetDouble(), 1.4, 1.6);
+    }
+
+    [SvtAv1Fact]
+    public async Task Transcode_CapsAHighFrameRateSourceAt60()
+    {
+        string source = await GenerateAsync("source-120.mp4", "testsrc2=size=640x360:rate=120:duration=2", audio: false,
+            "-c:v", "libx264", "-pix_fmt", "yuv420p");
+        api.Enqueue(JobTypes.Transcode, source, TranscodeOutputs);
+
+        Assert.True(await RunOnceAsync());
+
+        Assert.Null(api.Failure);
+        Assert.Equal("60/1", await FrameRateAsync(api.Uploads[OutputFiles.Video].Path));
+        Assert.Equal("15/1", await FrameRateAsync(api.Uploads[OutputFiles.Preview].Path));
+    }
+
+    [SvtAv1Fact]
+    public async Task FrameAccurateTrim_KeepsTheInputsFrameRate()
+    {
+        string source = await GenerateAsync("av1-60.mp4", "testsrc2=size=640x360:rate=60:duration=4", audio: true,
+            "-c:v", "libsvtav1", "-preset", "12", "-g", "60", "-pix_fmt", "yuv420p", "-c:a", "libopus",
+            "-movflags", "+faststart");
+        api.Enqueue(JobTypes.Trim, source, TrimOutputs,
+            """{"trim_start_seconds": 0.5, "trim_end_seconds": 3.5, "frame_accurate": true}""");
+
+        Assert.True(await RunOnceAsync());
+
+        Assert.Null(api.Failure);
+        Assert.Equal("60/1", await FrameRateAsync(api.Uploads[OutputFiles.Video].Path));
+        AssertKeyframesAboutASecondApart(await KeyframeTimesAsync(api.Uploads[OutputFiles.Video].Path));
     }
 
     [SvtAv1Fact]
@@ -574,6 +606,25 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
     private static async Task<string> FrameRateAsync(string path) =>
         (await RunAsync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate",
             "-of", "default=noprint_wrappers=1:nokey=1", path])).Trim();
+
+    /// <summary>The presentation times of the video's keyframes, in seconds.</summary>
+    private static async Task<List<double>> KeyframeTimesAsync(string path) =>
+        (await RunAsync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-skip_frame", "nokey",
+            "-show_entries", "frame=pts_time", "-of", "csv=p=0", path]))
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(line => double.Parse(line.TrimEnd(','), System.Globalization.CultureInfo.InvariantCulture))
+        .ToList();
+
+    /// <summary>A keyframe at the start and then one about every second, which stream-copied trims rely on.</summary>
+    private static void AssertKeyframesAboutASecondApart(List<double> keyframes)
+    {
+        Assert.True(keyframes.Count >= 2, $"only {keyframes.Count} keyframe(s)");
+        Assert.InRange(keyframes[0], 0, 0.05);
+        foreach ((double previous, double next) in keyframes.Zip(keyframes.Skip(1)))
+        {
+            Assert.InRange(next - previous, 0.9, 1.1);
+        }
+    }
 
     private static async Task<string> RunAsync(string tool, IEnumerable<string> args)
     {

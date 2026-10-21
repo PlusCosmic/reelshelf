@@ -145,7 +145,7 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
 - **Configuration** (`Worker__*` environment variables, `WorkerSettings`): `ApiBaseUrl` and `Secret` (one of the API's
   secrets, `Worker:Secret` or a `Worker:Secrets:<name>`) are required, and startup fails without them or without libsvtav1 and libopus in ffmpeg. The rest
   have defaults: `Preset` (SVT-AV1, 8), `LogicalProcessors` (SVT-AV1 `lp`, 0 = all cores), `TargetBitrateKbps`
-  (4000), `AudioBitrateKbps` (128), `Niceness` (10), `IdlePollInterval`/`MaxIdlePollInterval` (5 s doubling to 60 s),
+  (4000), `HighFrameRateBitrateKbps` (6000, used instead above 32 fps), `AudioBitrateKbps` (128), `Niceness` (10), `IdlePollInterval`/`MaxIdlePollInterval` (5 s doubling to 60 s),
   `ErrorBackoff`/`MaxErrorBackoff` (5 s to 5 min), `ExitWhenIdleAfter` (unset), `HeartbeatInterval` (30 s), `ShutdownGrace` (20 s),
   `MaxSourceBytes` (8 GiB, which also caps a remuxed HLS source), `RemuxTimeout` (20 min), `WorkDirectory` (`/work` in the image) and `FfmpegPath`/`FfprobePath`. It holds no
   storage keys: everything goes through the job's presigned URLs, and the secret is only ever sent to the API.
@@ -162,15 +162,22 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   `thumbnails_ready`. `thumbnail.jpg` is the first frame (Bunny's `thumbnailTime`, which Reelshelf sets to 0), and
   `thumbnail_1..5.jpg` split the clip into sixths (1/6 … 5/6), never the last frame. Bunny doesn't document its own
   spread; if detection scores drop on worker-made frames, re-score the labelled clips and adjust `FrameTimings`.
-- **`transcode`:** `-ss`/`-t` as input options (so a trim from the input is frame-accurate), `fps=30`, fitted in
-  1920×1080 (1080×1920 for portrait sources) with `force_original_aspect_ratio=decrease:force_divisible_by=2` and
-  never enlarged, `format=yuv420p`, `-fps_mode cfr`, SVT-AV1 at the target bitrate (VBR) with `-g 30`, Opus stereo,
+- **`transcode`:** `-ss`/`-t` as input options (so a trim from the input is frame-accurate), `fps=<target>`, fitted
+  in 1920×1080 (1080×1920 for portrait sources) with `force_original_aspect_ratio=decrease:force_divisible_by=2` and
+  never enlarged, `format=yuv420p`, `-fps_mode cfr`, SVT-AV1 at the target bitrate (VBR) with `-g` one second of
+  frames, Opus stereo,
   metadata and chapters stripped (phone GPS tags), `-movflags +faststart`. Progress comes from `-progress pipe:1` and
   is reported every 5% or 10 s, and at least every heartbeat interval through the downloads and uploads. Then a
   `preview.mp4` when the job has a URL for it: 3 silent seconds from a third of the way in, at most 640×360, 15 fps,
   AV1 at CRF 45. Then `av1.mp4` is uploaded and completion reports `length_seconds` and `size_bytes` of the
   produced file and `outputs`: `codecs`, `width`, `height` and `files`.
-- **HDR is tone-mapped, not refused.** HDR captures (PQ from HDR10 recording, HLG from phones) are common enough in
+- **Frame rate:** the target is the source's own rate (`FrameRate.Target`), read from the ffprobe the worker already
+  runs: the video stream's `avg_frame_rate`, or `r_frame_rate` when that is `0/0` or missing, kept as the exact
+  rational (`60000/1001` stays `60000/1001`). It is capped at 60 (a 120, 144 or 240 fps capture becomes 60), and
+  an unknown rate or one below 1 fps becomes 30. A variable-rate source (a game recorder's `2987/100`) is encoded at
+  that average, constant (`-fps_mode cfr`). `-g` is the target rounded, one keyframe a second, which the stream-copy
+  trim relies on. Above 32 fps the encode gets `HighFrameRateBitrateKbps` (6000) instead of `TargetBitrateKbps`
+  (4000). A clip Bunny stored at 60 fps therefore stays at 60 when it is migrated. The preview stays at 15 fps. HDR captures (PQ from HDR10 recording, HLG from phones) are common enough in
   game clips that refusing them would fail real uploads, and the clip only needs to look right in SDR. A source whose
   transfer is `smpte2084` or `arib-std-b67` goes through zscale to linear light, BT.709 primaries, the Hable curve
   and back to BT.709 limited range (`EncodeArguments.ToneMapFilter`), and the output is tagged BT.709;
@@ -182,7 +189,7 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   main tier, 8-bit, then `opus` when there is audio. A 1080p30 clip is `av01.0.08M.08,opus`; 720p is
   `av01.0.05M.08,opus`.
 - **`trim`:** the current output is cut with `-c copy` (the start snaps to the keyframe at or before it, within a
-  second) or, with `frame_accurate`, re-encoded with the same settings; the frames are then taken from the new
+  second) or, with `frame_accurate`, re-encoded with the same settings at its input's frame rate; the frames are then taken from the new
   version. **`thumbnails`:** only the frames, with the existing output's length, size and codecs. `fallback` fails
   as unsupported.
 - **`migrate`** (#240, [bunny-migration.md](bunny-migration.md)): `source_url` is the clip's public, unsigned Bunny
@@ -220,8 +227,9 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   `nice` here. The image puts the work directory at `/work` so the root filesystem can be read-only.
 - **Tests:** unit tests for the argument lists, frame timing, trim input, codecs strings and ffprobe parsing, and
   `[SvtAv1Fact]` tests that run the whole loop against `FakeWorkerApi` (the worker endpoints and a bucket on a
-  loopback `HttpListener`) on `lavfi` test clips: transcode with a trim, HDR at 1440p, stream-copy and frame-accurate
-  trims, thumbnails, `migrate` from a `lavfi`-made two-variant HLS ladder served by the fake's storage (the 720p
+  loopback `HttpListener`) on `lavfi` test clips: transcode with a trim of a 60 fps source (kept at 60, keyframes a
+  second apart), a 120 fps source capped at 60, HDR at 1440p, stream-copy and frame-accurate trims (one keeping its
+  60 fps input's rate), thumbnails, `migrate` from a `lavfi`-made two-variant HLS ladder served by the fake's storage (the 720p
   variant is the one encoded), a 503 on the playlist (retried), a 404 playlist and one that isn't HLS (both not
   retryable), a shutdown during the remux (released at once), a lost lease, unreadable input, shutdown (released mid-encode past the grace, and at once
   before the encode), an ffmpeg crash (failed, also during the grace) and an empty queue. They skip when the local ffmpeg has
@@ -331,7 +339,8 @@ trim:
 - **Trim later, from the AV1 output.** After the source is deleted, a trim can only shorten the current output, and
   can never be undone or extended. Two ways to cut it:
   - **Stream copy** (`-c copy`): no quality loss, but cut points snap to keyframes. Encoding with a keyframe every
-    second (`-g 30` at 30 fps) keeps trims accurate to about a second, for a small size cost.
+    second (`-g` set to the frame rate, e.g. 60 at 60 fps) keeps trims accurate to about a second, for a small
+    size cost.
   - **Re-encode** the trimmed range: frame-accurate, but a second generation of compression. One trim is barely
     visible; repeated re-trims compound.
 

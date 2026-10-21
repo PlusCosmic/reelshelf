@@ -43,6 +43,9 @@ public sealed class WorkerSettings
     /// <summary>The AV1 output's target video bitrate (VBR).</summary>
     public int TargetBitrateKbps { get; set; } = 4000;
 
+    /// <summary>The target video bitrate (VBR) instead of <see cref="TargetBitrateKbps"/> when the output is above 32 fps.</summary>
+    public int HighFrameRateBitrateKbps { get; set; } = 6000;
+
     /// <summary>The Opus audio bitrate.</summary>
     public int AudioBitrateKbps { get; set; } = 128;
 
@@ -93,9 +96,10 @@ public sealed class WorkerSettings
             return "Worker:Preset must be between 0 and 13";
         }
 
-        if (LogicalProcessors < 0 || TargetBitrateKbps <= 0 || AudioBitrateKbps <= 0 || MaxSourceBytes <= 0)
+        if (LogicalProcessors < 0 || TargetBitrateKbps <= 0 || HighFrameRateBitrateKbps <= 0 || AudioBitrateKbps <= 0 ||
+            MaxSourceBytes <= 0)
         {
-            return "Worker:LogicalProcessors, TargetBitrateKbps, AudioBitrateKbps and MaxSourceBytes must be positive";
+            return "Worker:LogicalProcessors, TargetBitrateKbps, HighFrameRateBitrateKbps, AudioBitrateKbps and MaxSourceBytes must be positive";
         }
 
         if (ExitWhenIdleAfter <= TimeSpan.Zero)

@@ -86,7 +86,7 @@ The browser uploads straight to the bucket with a presigned S3 multipart upload;
    uploader shows before deleting the clip. A probe that times out or can't read from storage answers 503 and the
    browser completes again, which finds the joined object. A passing file is marked `uploaded` with its `transcode`
    queued in one transaction, as the Twitch import's server-side upload is. HDR and variable frame rate aren't
-   checked here: the worker probes the whole source again, tone-maps HDR and forces 30 fps CFR.
+   checked here: the worker probes the whole source again, tone-maps HDR and encodes at a constant frame rate (the source's, capped at 60).
 
 5. **Cancel:** deleting the clip, as for Bunny. Deleting an R2 clip aborts any multipart upload still open on its
    key (listed by prefix), so the clip delete, the abandoned-upload purge and account deletion all free the stored

@@ -184,7 +184,8 @@ public class AccountDeletionServiceTests
         Assert.Equal([otherContainer], other.DeletedCollections);
         Assert.True(store.AccountDeleted);
         // A Bunny clip's R2 copy, which a migrate job may have written, goes too; an R2 clip's host deletes its own.
-        Assert.Equal(bunnyClips.Select(clipId => (clipId, 1)).Order(), storage.DeletedVersions.Order());
+        Assert.Equal(bunnyClips.Order(), storage.DeletedAllVersions.Order());
+        Assert.Empty(storage.DeletedVersions);
     }
 
     [Fact]
@@ -230,6 +231,7 @@ public class AccountDeletionServiceTests
     {
         private readonly Lock _lock = new();
         public List<(Guid ClipId, int Version)> DeletedVersions { get; } = [];
+        public List<Guid> DeletedAllVersions { get; } = [];
 
         public TranscodeJobUrls UrlsFor(Guid clipId, string jobType, int videoVersion, int currentVersion, TimeSpan lifetime) =>
             TranscodeJobUrls.None;
@@ -241,6 +243,19 @@ public class AccountDeletionServiceTests
             lock (_lock)
             {
                 DeletedVersions.Add((clipId, videoVersion));
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion) =>
+            throw new InvalidOperationException("Account deletion never keeps a version");
+
+        public Task DeleteAllVersionsAsync(Guid clipId)
+        {
+            lock (_lock)
+            {
+                DeletedAllVersions.Add(clipId);
             }
 
             return Task.CompletedTask;

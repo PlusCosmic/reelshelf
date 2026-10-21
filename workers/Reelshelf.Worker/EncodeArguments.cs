@@ -8,7 +8,8 @@ namespace Reelshelf.Worker;
 /// </summary>
 public static class EncodeArguments
 {
-    public const int FrameRate = 30;
+    /// <summary>Above this rate the encode gets <see cref="WorkerSettings.HighFrameRateBitrateKbps"/>.</summary>
+    public const double HighFrameRateAbove = 32;
 
     /// <summary>The output fits in 1920×1080, or 1080×1920 when the source is portrait, and is never upscaled.</summary>
     public const int MaxLongSide = 1920;
@@ -40,13 +41,20 @@ public static class EncodeArguments
         string.Create(CultureInfo.InvariantCulture,
             $"scale=w='if(gte(iw,ih),min({longSide},iw),min({shortSide},iw))':h='if(gte(iw,ih),min({shortSide},ih),min({longSide},ih))':force_original_aspect_ratio=decrease:force_divisible_by=2");
 
-    /// <summary>The main encode's filters: constant 30 fps, fitted to 1080p, tone-mapped when HDR, 8-bit 4:2:0.</summary>
-    public static string VideoFilter(bool toneMap) =>
-        $"fps={FrameRate},{ScaleFilter()}{(toneMap ? "," + ToneMapFilter : "")},format=yuv420p";
+    /// <summary>
+    /// The main encode's filters: the constant <paramref name="frameRate"/> (the source's, capped at 60; see
+    /// <see cref="FrameRate.Target"/>), fitted to 1080p, tone-mapped when HDR, 8-bit 4:2:0.
+    /// </summary>
+    public static string VideoFilter(bool toneMap, FrameRate frameRate) =>
+        $"fps={frameRate},{ScaleFilter()}{(toneMap ? "," + ToneMapFilter : "")},format=yuv420p";
+
+    /// <summary>The video bitrate for <paramref name="frameRate"/>: more for high frame rates, which have more frames to spend it on.</summary>
+    public static int BitrateKbps(WorkerSettings settings, FrameRate frameRate) =>
+        frameRate.Value > HighFrameRateAbove ? settings.HighFrameRateBitrateKbps : settings.TargetBitrateKbps;
 
     /// <summary>
-    /// The source (or the part of it <paramref name="trim"/> keeps) as the AV1 MP4: SVT-AV1 at the target bitrate with
-    /// a keyframe every second, Opus audio when there is any, metadata dropped, <c>+faststart</c>, progress on stdout.
+    /// The source (or the part of it <paramref name="trim"/> keeps) as the AV1 MP4 at a constant
+    /// <paramref name="frameRate"/>: SVT-AV1 at the bitrate for that rate with a keyframe every second, Opus audio when there is any, metadata dropped, <c>+faststart</c>, progress on stdout.
     /// Seeking as an input option and re-encoding makes the cut frame-accurate.
     /// </summary>
     public static IReadOnlyList<string> Transcode(
@@ -54,14 +62,15 @@ public static class EncodeArguments
         string output,
         WorkerSettings settings,
         TrimRange trim,
-        bool toneMap)
+        bool toneMap,
+        FrameRate frameRate)
     {
         List<string> args = ["-hide_banner", "-nostdin", "-y", "-loglevel", "error"];
         AddTrim(args, trim);
         args.AddRange(["-i", input, "-map", "0:v:0", "-map", "0:a:0?", "-map_metadata", "-1", "-map_chapters", "-1"]);
-        args.AddRange(["-vf", VideoFilter(toneMap), "-fps_mode", "cfr"]);
-        args.AddRange(["-c:v", "libsvtav1", "-preset", Invariant(settings.Preset), "-b:v", $"{Invariant(settings.TargetBitrateKbps)}k"]);
-        args.AddRange(["-g", Invariant(FrameRate)]);
+        args.AddRange(["-vf", VideoFilter(toneMap, frameRate), "-fps_mode", "cfr"]);
+        args.AddRange(["-c:v", "libsvtav1", "-preset", Invariant(settings.Preset), "-b:v", $"{Invariant(BitrateKbps(settings, frameRate))}k"]);
+        args.AddRange(["-g", Invariant(frameRate.KeyframeInterval)]);
         if (settings.LogicalProcessors > 0)
         {
             args.AddRange(["-svtav1-params", $"lp={Invariant(settings.LogicalProcessors)}"]);
@@ -79,7 +88,7 @@ public static class EncodeArguments
 
     /// <summary>
     /// A cut of an existing output without re-encoding. The cut starts on the keyframe at or before the trim's start,
-    /// which <c>-g 30</c> keeps within a second.
+    /// which the encode's <c>-g</c> (one keyframe a second at its frame rate) keeps within a second.
     /// </summary>
     public static IReadOnlyList<string> TrimCopy(string input, string output, TrimRange trim)
     {

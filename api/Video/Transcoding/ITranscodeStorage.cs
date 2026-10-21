@@ -27,6 +27,15 @@ public interface ITranscodeStorage
 
     /// <summary>Deletes one version's outputs. Idempotent.</summary>
     Task DeleteVersionAsync(Guid clipId, int videoVersion);
+
+    /// <summary>
+    /// Deletes every version's outputs under <c>clips/{clipId}/</c> except <paramref name="keepVersion"/>'s, as a
+    /// finished <c>migrate</c> leaves the versions of an earlier move. Never touches the uploaded source. Idempotent.
+    /// </summary>
+    Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion);
+
+    /// <summary>Deletes every version's outputs under <c>clips/{clipId}/</c>, but not the uploaded source. Idempotent.</summary>
+    Task DeleteAllVersionsAsync(Guid clipId);
 }
 
 /// <summary>A claimed job's URLs, as the claim response carries them (both null when there is no storage).</summary>
@@ -53,4 +62,8 @@ public sealed class UnconfiguredTranscodeStorage(ILogger<UnconfiguredTranscodeSt
     public Task DeleteSourceAsync(Guid clipId) => Task.CompletedTask;
 
     public Task DeleteVersionAsync(Guid clipId, int videoVersion) => Task.CompletedTask;
+
+    public Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion) => Task.CompletedTask;
+
+    public Task DeleteAllVersionsAsync(Guid clipId) => Task.CompletedTask;
 }

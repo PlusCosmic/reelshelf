@@ -41,8 +41,10 @@ public sealed class JobRunner(
             ? await hlsRemux.RemuxAsync(job.SourceUrl, source, cancellationToken)
             : await transfer.DownloadAsync(job.SourceUrl, source, settings.MaxSourceBytes, cancellationToken);
         MediaInfo media = await ProbeInputAsync(source, cancellationToken);
-        logger.LogInformation("Job {RunId}: {Type} of a {Duration:0.##}s {Width}x{Height} {Codec} source ({Bytes} bytes)",
-            job.RunId, job.Type, media.DurationSeconds, media.Video!.Width, media.Video.Height, media.Video.Codec, sourceBytes);
+        logger.LogInformation(
+            "Job {RunId}: {Type} of a {Duration:0.##}s {Width}x{Height} {Codec} source ({Bytes} bytes), encoding at {FrameRate} fps",
+            job.RunId, job.Type, media.DurationSeconds, media.Video!.Width, media.Video.Height, media.Video.Codec, sourceBytes,
+            media.Video.TargetFrameRate);
 
         return job.Type switch
         {
@@ -74,7 +76,8 @@ public sealed class JobRunner(
 
         string video = Path.Combine(workDirectory, OutputFiles.Video);
         reporter.EncodeStarting();
-        await ffmpeg.RunFfmpegAsync(EncodeArguments.Transcode(source, video, settings, trim, toneMap), cancellationToken,
+        await ffmpeg.RunFfmpegAsync(EncodeArguments.Transcode(source, video, settings, trim, toneMap, media.Video.TargetFrameRate),
+            cancellationToken,
             trim.LengthSeconds, share => reporter.Report((int)(share * 100)));
 
         if (job.UploadUrls!.TryGetValue(OutputFiles.Preview, out string? previewUrl))
@@ -127,7 +130,7 @@ public sealed class JobRunner(
         TrimRange trim = input.Resolve(media.DurationSeconds);
         string video = Path.Combine(workDirectory, OutputFiles.Video);
         IReadOnlyList<string> arguments = input.FrameAccurate
-            ? EncodeArguments.Transcode(source, video, settings, trim, toneMap: false)
+            ? EncodeArguments.Transcode(source, video, settings, trim, toneMap: false, media.Video!.TargetFrameRate)
             : EncodeArguments.TrimCopy(source, video, trim);
         reporter.EncodeStarting();
         await ffmpeg.RunFfmpegAsync(arguments, cancellationToken, trim.LengthSeconds,

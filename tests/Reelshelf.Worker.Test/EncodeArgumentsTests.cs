@@ -4,14 +4,19 @@ namespace Reelshelf.Worker.Test;
 
 public class EncodeArgumentsTests
 {
-    private static readonly WorkerSettings Settings = new() { Preset = 7, LogicalProcessors = 4, TargetBitrateKbps = 4000 };
+    private static readonly WorkerSettings Settings = new()
+    {
+        Preset = 7, LogicalProcessors = 4, TargetBitrateKbps = 4000, HighFrameRateBitrateKbps = 6000
+    };
+
+    private static readonly FrameRate Thirty = new(30, 1);
 
     private static readonly TrimRange Whole = new(0, 60, false);
 
     [Fact]
     public void Transcode_EncodesSvtAv1_At30FpsWithAKeyframeEverySecond_AndOpus()
     {
-        IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", Settings, Whole, toneMap: false);
+        IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", Settings, Whole, toneMap: false, Thirty);
 
         AssertOption(args, "-c:v", "libsvtav1");
         AssertOption(args, "-preset", "7");
@@ -38,7 +43,7 @@ public class EncodeArgumentsTests
     [Fact]
     public void Transcode_LeavesLpToSvtAv1_WhenUnset()
     {
-        IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", new WorkerSettings(), Whole, toneMap: false);
+        IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", new WorkerSettings(), Whole, toneMap: false, Thirty);
 
         Assert.DoesNotContain("-svtav1-params", args);
         AssertOption(args, "-preset", "8");
@@ -48,7 +53,7 @@ public class EncodeArgumentsTests
     public void Transcode_CutsTheTrim_AsInputOptions_SoTheReencodeIsFrameAccurate()
     {
         IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", Settings, new TrimRange(12.5, 30.25, true),
-            toneMap: false);
+            toneMap: false, Thirty);
 
         int input = args.ToList().IndexOf("-i");
         AssertOption(args, "-ss", "12.5");
@@ -60,12 +65,84 @@ public class EncodeArgumentsTests
     [Fact]
     public void Transcode_ToneMapsHdr_AndTagsTheOutputBt709()
     {
-        IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", Settings, Whole, toneMap: true);
+        IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", Settings, Whole, toneMap: true, Thirty);
 
         Assert.Contains(EncodeArguments.ToneMapFilter, Option(args, "-vf"));
         AssertOption(args, "-color_primaries", "bt709");
         AssertOption(args, "-color_trc", "bt709");
         AssertOption(args, "-colorspace", "bt709");
+    }
+
+    [Fact]
+    public void Transcode_KeepsA60FpsSource_WithAKeyframeEverySecond_AndTheHighFrameRateBitrate()
+    {
+        IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", Settings, Whole, toneMap: false,
+            new FrameRate(60, 1));
+
+        Assert.StartsWith("fps=60,scale=", Option(args, "-vf"));
+        AssertOption(args, "-fps_mode", "cfr");
+        AssertOption(args, "-g", "60");
+        AssertOption(args, "-b:v", "6000k");
+    }
+
+    [Fact]
+    public void Transcode_KeepsAnNtscRateExact()
+    {
+        IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", Settings, Whole, toneMap: false,
+            new FrameRate(60000, 1001));
+
+        Assert.StartsWith("fps=60000/1001,", Option(args, "-vf"));
+        AssertOption(args, "-g", "60");
+        AssertOption(args, "-b:v", "6000k");
+
+        args = EncodeArguments.Transcode("in", "out.mp4", Settings, Whole, toneMap: false, new FrameRate(30000, 1001));
+        Assert.StartsWith("fps=30000/1001,", Option(args, "-vf"));
+        AssertOption(args, "-g", "30");
+        AssertOption(args, "-b:v", "4000k");
+    }
+
+    [Theory]
+    [InlineData("60/1", "60/1", "60")]
+    [InlineData("60000/1001", "60000/1001", "60000/1001")]
+    [InlineData("30/1", "30/1", "30")]
+    [InlineData("30000/1001", "30000/1001", "30000/1001")]
+    [InlineData("144/1", "144/1", "60")]
+    [InlineData("240/1", "0/0", "60")]
+    [InlineData("0/0", "0/0", "30")]
+    [InlineData(null, null, "30")]
+    [InlineData("1/2", "1/2", "30")]
+    [InlineData("0/0", "60/1", "60")]
+    [InlineData(null, "25/1", "25")]
+    [InlineData("2987/100", "30/1", "2987/100")]
+    [InlineData("nonsense", "24/1", "24")]
+    public void TargetFrameRate_KeepsTheSourceRate_CappedAt60_Else30(string? average, string? real, string expected)
+    {
+        Assert.Equal(expected, FrameRate.Target(average, real).ToString());
+    }
+
+    [Theory]
+    [InlineData(60, 1, 60)]
+    [InlineData(60000, 1001, 60)]
+    [InlineData(30, 1, 30)]
+    [InlineData(2987, 100, 30)]
+    [InlineData(25, 1, 25)]
+    public void KeyframeInterval_IsOneSecondAtTheRate(long numerator, long denominator, int expected)
+    {
+        Assert.Equal(expected, new FrameRate(numerator, denominator).KeyframeInterval);
+    }
+
+    [Fact]
+    public void MediaInfo_ReadsTheTargetFrameRate_FromAvgFrameRate_ElseRFrameRate()
+    {
+        static MediaInfo Parse(string rates) => MediaInfo.Parse(
+            """{"streams": [{"codec_type": "video", "codec_name": "h264", "width": 1920, "height": 1080, """ + rates +
+            """}], "format": {"duration": "10"}}""");
+
+        Assert.Equal(new FrameRate(60000, 1001),
+            Parse("\"avg_frame_rate\": \"60000/1001\", \"r_frame_rate\": \"60000/1001\"").Video!.TargetFrameRate);
+        Assert.Equal(new FrameRate(60, 1),
+            Parse("\"avg_frame_rate\": \"0/0\", \"r_frame_rate\": \"144/1\"").Video!.TargetFrameRate);
+        Assert.Equal(FrameRate.Default, Parse("\"codec_tag\": \"0\"").Video!.TargetFrameRate);
     }
 
     [Fact]

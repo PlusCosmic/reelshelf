@@ -48,9 +48,6 @@ public class TranscodeQueue(
     IOptionsMonitor<TranscodingOptions> options,
     ILogger<TranscodeQueue> logger)
 {
-    /// <summary>The version a <c>migrate</c> job writes, and the one its clip plays from on R2 once it moves.</summary>
-    public const int MigratedVideoVersion = 1;
-
     /// <summary>
     /// How many migrate jobs one claim fails for clips no longer on Bunny before it gives up for this call, so a
     /// backlog of them can't hold a worker's request for long.
@@ -197,9 +194,10 @@ public class TranscodeQueue(
     /// commits, a transcode's uploaded source is deleted, as is any version the clip moved off, and a transcode's
     /// clip gets its legend detection and transcription queued. A repeat of the report (the worker retrying after a
     /// lost response) is accepted and changes nothing, beyond retrying the source delete and re-queueing the
-    /// follow-ups, which are idempotent. A migrate's clip moves from Bunny to R2 on version 1 in the same transaction,
-    /// with nothing queued after; if the clip is no longer on Bunny by then, the run still succeeds, the clip is left
-    /// alone and the job's uploads are deleted (unless the clip plays from R2 version 1 itself).
+    /// follow-ups, which are idempotent. A migrate's clip moves from Bunny to R2 on the job's version in the same
+    /// transaction, with nothing queued after, and once that commits every other version under the clip's prefix (an
+    /// earlier move's) is deleted; if the clip is no longer on Bunny by then, the run still succeeds, the clip is left
+    /// alone and the job's version is deleted (unless the clip plays from that version itself).
     /// </summary>
     public async Task<TranscodeReportOutcome> CompleteAsync(
         Guid runId,
@@ -231,8 +229,8 @@ public class TranscodeQueue(
             }
             else if (completed is { Type: TranscodeRunTypes.Migrate })
             {
-                migrated = await updateHandler.ApplyMigrationCompletedAsync(completed.ClipId, clipLength, sizeBytes,
-                    reported.Codecs, reported.Height);
+                migrated = await updateHandler.ApplyMigrationCompletedAsync(completed.ClipId, completed.VideoVersion,
+                    clipLength, sizeBytes, reported.Codecs, reported.Height);
             }
 
             return completed;
@@ -269,7 +267,9 @@ public class TranscodeQueue(
             // nothing.
             if (migrated == true)
             {
-                logger.LogInformation("Moved clip {ClipId} from Bunny to R2", run.ClipId);
+                logger.LogInformation("Moved clip {ClipId} from Bunny to R2 version {Version}", run.ClipId,
+                    run.VideoVersion);
+                await DeleteEarlierMigrationsAsync(run);
             }
             else if (migrated == false)
             {
@@ -317,27 +317,58 @@ public class TranscodeQueue(
     }
 
     /// <summary>
+    /// After a migrate moved its clip, deletes every other version under the clip's prefix: the files of an earlier
+    /// move (a clip switched back to Bunny and migrated again), which the immutable caching kept from being reused.
+    /// The clip is read again first and nothing is deleted unless it still plays from the job's version, so the
+    /// version it plays from always stays. Uploads are never touched. A failure is logged and the leftovers stay;
+    /// the completion has already succeeded.
+    /// </summary>
+    private async Task DeleteEarlierMigrationsAsync(TranscodeStatements.FinishedRunRow run)
+    {
+        try
+        {
+            TranscodeStatements.ClipVersionRow? clip = await statements.GetClipVersionAsync(run.ClipId);
+            if (clip is not { VideoHost: VideoHostNames.R2 } || clip.VideoVersion != run.VideoVersion)
+            {
+                logger.LogWarning(
+                    "Clip {ClipId} no longer plays from R2 version {Version} of migrate job {RunId}; kept its other versions",
+                    run.ClipId, run.VideoVersion, run.Id);
+                return;
+            }
+
+            await storage.DeleteOtherVersionsAsync(run.ClipId, run.VideoVersion);
+            logger.LogInformation("Deleted every version of clip {ClipId} but {Version} after migrate job {RunId}",
+                run.ClipId, run.VideoVersion, run.Id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not delete the earlier versions of clip {ClipId} after migrate job {RunId}",
+                run.ClipId, run.Id);
+        }
+    }
+
+    /// <summary>
     /// Deletes the outputs of a migrate job whose clip left Bunny before it completed, so nothing plays from them. A
-    /// clip that is on R2 version 1 by then plays from those very keys, so they stay. Failures are logged, as in
-    /// <see cref="CleanUpAfterCompletionAsync"/>.
+    /// clip that is on R2 on the job's version by then plays from those very keys, so they stay. Failures are logged,
+    /// as in <see cref="CleanUpAfterCompletionAsync"/>.
     /// </summary>
     private async Task DeleteAbandonedMigrationAsync(TranscodeStatements.FinishedRunRow run)
     {
         try
         {
             TranscodeStatements.ClipVersionRow? clip = await statements.GetClipVersionAsync(run.ClipId);
-            if (clip is { VideoHost: VideoHostNames.R2, VideoVersion: MigratedVideoVersion })
+            if (clip is { VideoHost: VideoHostNames.R2 } && clip.VideoVersion == run.VideoVersion)
             {
                 logger.LogWarning(
                     "Migrate job {RunId} finished after clip {ClipId} was already on R2 version {Version}; kept its files",
-                    run.Id, run.ClipId, MigratedVideoVersion);
+                    run.Id, run.ClipId, run.VideoVersion);
                 return;
             }
 
-            await storage.DeleteVersionAsync(run.ClipId, MigratedVideoVersion);
+            await storage.DeleteVersionAsync(run.ClipId, run.VideoVersion);
             logger.LogInformation(
                 "Migrate job {RunId} finished after clip {ClipId} left Bunny; deleted its version {Version} outputs",
-                run.Id, run.ClipId, MigratedVideoVersion);
+                run.Id, run.ClipId, run.VideoVersion);
         }
         catch (Exception ex)
         {

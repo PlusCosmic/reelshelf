@@ -42,9 +42,9 @@ Stream with H.264 and about $195 for Bunny with AV1. Storage and delivery are bu
 
 ### Encoding notes
 
-- Force constant frame rate with `fps=30` and `-fps_mode cfr`; game recorders often produce variable frame rate.
-  30 fps output is decided (see open-questions.md).
-- A keyframe every second (`-g 30`), so later trims can stream-copy accurately (see workers-and-jobs.md).
+- Force constant frame rate with `fps=<the source's rate, capped at 60>` and `-fps_mode cfr`; game recorders often
+  produce variable frame rate (see open-questions.md and workers-and-jobs.md).
+- A keyframe every second (`-g` the frame rate), so later trims can stream-copy accurately (see workers-and-jobs.md).
 - Delete the uploaded source once the transcode succeeds; originals aren't kept.
 - Tone-map HDR sources (zscale or libplacebo), or reject them.
 - Scale with `force_original_aspect_ratio=decrease`, keep dimensions even, and never upscale sources below 1080p.
