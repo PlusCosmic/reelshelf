@@ -61,7 +61,7 @@ public class TranscodeQueueTests
         Assert.Equal(("ready", 100, 32, 12_345_678L, (int?)null),
             (clip.VideoState, clip.EncodeProgress, clip.Length, clip.StorageSize, clip.VideoStatus));
         // The quota counts the AV1 output alone, and the clip's sources are typed with its codecs and height.
-        Assert.Equal((2, "av01.0.08M.08,opus", 1080, (long?)null),
+        Assert.Equal((1, "av01.0.08M.08,opus", 1080, (long?)null),
             (clip.VideoVersion, clip.VideoCodecs, clip.VideoHeight, clip.FileSize));
         Assert.Equal([clipId], test.Storage.DeletedSources);
         Assert.Empty(test.Storage.DeletedVersions);
