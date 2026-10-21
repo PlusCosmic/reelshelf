@@ -61,7 +61,7 @@ public class TranscodeQueueTests
         Assert.Equal(("ready", 100, 32, 12_345_678L, (int?)null),
             (clip.VideoState, clip.EncodeProgress, clip.Length, clip.StorageSize, clip.VideoStatus));
         // The quota counts the AV1 output alone, and the clip's sources are typed with its codecs and height.
-        Assert.Equal((1, "av01.0.08M.08,opus", 1080, (long?)null),
+        Assert.Equal((2, "av01.0.08M.08,opus", 1080, (long?)null),
             (clip.VideoVersion, clip.VideoCodecs, clip.VideoHeight, clip.FileSize));
         Assert.Equal([clipId], test.Storage.DeletedSources);
         Assert.Empty(test.Storage.DeletedVersions);
@@ -371,13 +371,14 @@ public class TranscodeQueueTests
         await using TestQueue test = await TestQueue.CreateAsync();
         Guid bunnyVideoId = Guid.NewGuid();
         Guid clipId = await test.AddBunnyClipAsync(bunnyVideoId);
-        Guid? runId = await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Migrate, new TranscodeRunInput());
+        // The backfill queues the clip's next version (it is on 1 by default).
+        Guid? runId = await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Migrate, new TranscodeRunInput(), videoVersion: 2);
         Assert.NotNull(runId);
         Assert.Equal(10, await test.Connection.ExecuteScalarAsync<int>(
             "SELECT priority FROM transcode_run WHERE id = @RunId", new { RunId = runId }));
 
         ClaimedTranscodeRun job = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
-        Assert.Equal((runId.Value, clipId, "migrate", 1), (job.RunId, job.ClipId, job.Type, job.VideoVersion));
+        Assert.Equal((runId.Value, clipId, "migrate", 2), (job.RunId, job.ClipId, job.Type, job.VideoVersion));
         // The source is the clip's public Bunny HLS master playlist, not a storage URL; the uploads are the storage's.
         Assert.Equal($"https://vz-test.b-cdn.net/{bunnyVideoId}/playlist.m3u8", job.SourceUrl);
         Assert.Equal("put av1.mp4", Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(job.UploadUrls)["av1.mp4"]);
@@ -397,19 +398,23 @@ public class TranscodeQueueTests
         ClipAfter clip = await test.ClipAsync(clipId);
         Assert.Equal(("ready", 100, 30, 7_000_000L, (int?)null), (clip.VideoState, clip.EncodeProgress, clip.Length,
             clip.StorageSize, clip.VideoStatus));
-        Assert.Equal((1, "av01.0.08M.08,opus", 1080, (long?)null),
+        Assert.Equal((2, "av01.0.08M.08,opus", 1080, (long?)null),
             (clip.VideoVersion, clip.VideoCodecs, clip.VideoHeight, clip.FileSize));
         // On R2 under its own id, with the Bunny video kept for the sweep and the grace period started.
         Assert.Equal((VideoHostNames.R2, clipId, (Guid?)bunnyVideoId, true), await test.HostAsync(clipId));
         Assert.Equal("succeeded", await test.RunStatusAsync(job.RunId));
         Assert.Empty(test.Storage.DeletedSources);
         Assert.Empty(test.Storage.DeletedVersions);
+        // Every other version (an earlier move's) goes once the clip plays from the new one.
+        Assert.Equal([(clipId, 2)], test.Storage.KeptVersions);
 
         // A repeated completion changes nothing and deletes nothing.
         Assert.Equal(TranscodeReportOutcome.Applied,
             await test.Queue.CompleteAsync(job.RunId, job.LeaseId, outputs.RootElement, 29.6, 7_000_000));
         Assert.Equal((VideoHostNames.R2, clipId, (Guid?)bunnyVideoId, true), await test.HostAsync(clipId));
+        Assert.Equal(2, (await test.ClipAsync(clipId)).VideoVersion);
         Assert.Empty(test.Storage.DeletedVersions);
+        Assert.Equal([(clipId, 2)], test.Storage.KeptVersions);
     }
 
     [PostgresFact]
@@ -434,12 +439,12 @@ public class TranscodeQueueTests
     {
         await using TestQueue test = await TestQueue.CreateAsync();
         Guid clipId = await test.AddBunnyClipAsync(Guid.NewGuid());
-        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Migrate, new TranscodeRunInput());
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Migrate, new TranscodeRunInput(), videoVersion: 2);
         ClaimedTranscodeRun job = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
 
         // Moved meanwhile, and already on a later version than the one the job wrote.
         await test.Connection.ExecuteAsync(
-            "UPDATE clip SET video_host = 'r2', video_id = id, video_version = 2, length = 5 WHERE id = @ClipId",
+            "UPDATE clip SET video_host = 'r2', video_id = id, video_version = 3, length = 5 WHERE id = @ClipId",
             new { ClipId = clipId });
 
         using JsonDocument outputs = JsonDocument.Parse("""{"codecs": "av01.0.08M.08,opus", "height": 1080}""");
@@ -448,24 +453,61 @@ public class TranscodeQueueTests
 
         Assert.Equal("succeeded", await test.RunStatusAsync(job.RunId));
         ClipAfter clip = await test.ClipAsync(clipId);
-        Assert.Equal((2, 5, 999L), (clip.VideoVersion, clip.Length, clip.StorageSize));
+        Assert.Equal((3, 5, 999L), (clip.VideoVersion, clip.Length, clip.StorageSize));
         Assert.Equal((VideoHostNames.R2, clipId, (Guid?)null, false), await test.HostAsync(clipId));
-        Assert.Equal([(clipId, 1)], test.Storage.DeletedVersions);
+        // The job's own version goes; nothing else does.
+        Assert.Equal([(clipId, 2)], test.Storage.DeletedVersions);
+        Assert.Empty(test.Storage.KeptVersions);
     }
 
     [PostgresFact]
-    public async Task Migrate_WhenTheClipAlreadyPlaysFromR2VersionOne_KeepsThoseFiles()
+    public async Task Migrate_WhenTheClipAlreadyPlaysFromTheJobsVersion_KeepsThoseFiles()
     {
         await using TestQueue test = await TestQueue.CreateAsync();
         Guid clipId = await test.AddBunnyClipAsync(Guid.NewGuid());
-        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Migrate, new TranscodeRunInput());
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Migrate, new TranscodeRunInput(), videoVersion: 2);
         ClaimedTranscodeRun job = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
-        await test.Connection.ExecuteAsync("UPDATE clip SET video_host = 'r2', video_id = id WHERE id = @ClipId",
+        await test.Connection.ExecuteAsync(
+            "UPDATE clip SET video_host = 'r2', video_id = id, video_version = 2 WHERE id = @ClipId",
             new { ClipId = clipId });
 
         Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.CompleteAsync(job.RunId, job.LeaseId, null, 29.6, 7_000_000));
 
         Assert.Empty(test.Storage.DeletedVersions);
+        Assert.Empty(test.Storage.KeptVersions);
+    }
+
+    [PostgresFact]
+    public async Task Migrate_SignsItsUploadsUnderTheNewVersion_AndOnCompletionDeletesOnlyTheOlderVersions()
+    {
+        FakeR2Client r2 = new();
+        await using TestQueue test = await TestQueue.CreateAsync(storage: r2.Storage());
+        Guid clipId = await test.AddBunnyClipAsync(Guid.NewGuid());
+        // Moved before (on version 1), switched back to Bunny with its version left alone, and now moved again.
+        Guid other = Guid.NewGuid();
+        // v20/ starts like v2/ but is another version.
+        string[] earlier = [$"clips/{clipId}/v1/av1.mp4", $"clips/{clipId}/v1/thumbnail.jpg", $"clips/{clipId}/v20/av1.mp4"];
+        string[] kept =
+        [
+            $"clips/{clipId}/v2/av1.mp4", $"clips/{clipId}/v2/thumbnail.jpg", $"uploads/{clipId}",
+            $"clips/{other}/v1/av1.mp4"
+        ];
+        foreach (string key in earlier.Concat(kept))
+        {
+            r2.Objects[key] = 10;
+        }
+
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Migrate, new TranscodeRunInput(), videoVersion: 2);
+        ClaimedTranscodeRun job = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        Assert.Contains($"/clips/{clipId}/v2/av1.mp4?",
+            Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(job.UploadUrls)["av1.mp4"]);
+
+        Assert.Equal(TranscodeReportOutcome.Applied,
+            await test.Queue.CompleteAsync(job.RunId, job.LeaseId, null, 29.6, 7_000_000));
+
+        Assert.Equal(2, (await test.ClipAsync(clipId)).VideoVersion);
+        // The earlier versions are gone; the new version, the upload and other clips' files stay.
+        Assert.Equal(kept.Order(), r2.Objects.Keys.Order());
     }
 
     [PostgresFact]
@@ -551,6 +593,9 @@ public class TranscodeQueueTests
         public List<Guid> DeletedSources { get; } = [];
         public List<(Guid ClipId, int Version)> DeletedVersions { get; } = [];
 
+        /// <summary>The clips whose other versions were deleted, with the version kept.</summary>
+        public List<(Guid ClipId, int Kept)> KeptVersions { get; } = [];
+
         public TranscodeJobUrls UrlsFor(Guid clipId, string jobType, int videoVersion, int currentVersion, TimeSpan lifetime) =>
             new($"get {jobType} {clipId} v{videoVersion} from v{currentVersion} for {lifetime}",
                 new Dictionary<string, string> { ["av1.mp4"] = "put av1.mp4" });
@@ -566,6 +611,15 @@ public class TranscodeQueueTests
             DeletedVersions.Add((clipId, videoVersion));
             return Task.CompletedTask;
         }
+
+        public Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion)
+        {
+            KeptVersions.Add((clipId, keepVersion));
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteAllVersionsAsync(Guid clipId) =>
+            throw new InvalidOperationException("The queue never deletes every version");
     }
 
     private sealed class TestQueue : IAsyncDisposable
@@ -590,7 +644,9 @@ public class TranscodeQueueTests
 
         public FakeStorage Storage { get; }
 
-        public static async Task<TestQueue> CreateAsync(int maxAttempts = 3, int maxReleases = 10)
+        /// <param name="storage">The storage the queue uses instead of <see cref="Storage"/>, e.g. R2 over <see cref="FakeR2Client"/>.</param>
+        public static async Task<TestQueue> CreateAsync(int maxAttempts = 3, int maxReleases = 10,
+            ITranscodeStorage? storage = null)
         {
             // The API sets this at startup; the statements' row classes rely on it.
             DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -619,18 +675,18 @@ public class TranscodeQueueTests
                     new FixedOptions<ClipTranscriptionOptions>(new ClipTranscriptionOptions { AutoQueue = false }),
                     null!, NullLogger<ClipTranscriptionService>.Instance),
                 NullLogger<ClipVideoUpdateHandler>.Instance);
-            FakeStorage storage = new();
+            FakeStorage fake = new();
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?> { ["BunnyCdnBaseUrl"] = "https://vz-test.b-cdn.net/" })
                 .Build();
             TranscodeQueue queue = new(
                 new TranscodeStatements(scoped),
                 handler,
-                storage,
+                storage ?? fake,
                 new BunnyMediaUrls(configuration),
                 new FixedOptions<TranscodingOptions>(new TranscodingOptions { MaxAttempts = maxAttempts, MaxReleases = maxReleases }),
                 NullLogger<TranscodeQueue>.Instance);
-            return new TestQueue(dataSource, connection, schema, queue, storage);
+            return new TestQueue(dataSource, connection, schema, queue, fake);
         }
 
         public async Task<Guid> AddClipAsync(string videoState)

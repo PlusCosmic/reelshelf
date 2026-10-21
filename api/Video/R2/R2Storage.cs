@@ -319,8 +319,8 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
         }
     }
 
-    /// <summary>Deletes every object under <paramref name="prefix"/>.</summary>
-    public async Task DeletePrefixAsync(string prefix)
+    /// <summary>Deletes every object under <paramref name="prefix"/>, or only those <paramref name="where"/> picks.</summary>
+    public async Task DeletePrefixAsync(string prefix, Func<string, bool>? where = null)
     {
         string? continuationToken = null;
         do
@@ -329,7 +329,7 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
             {
                 BucketName = _options.Bucket, Prefix = prefix, ContinuationToken = continuationToken
             });
-            await DeleteObjectsAsync((page.S3Objects ?? []).Select(item => item.Key));
+            await DeleteObjectsAsync((page.S3Objects ?? []).Select(item => item.Key).Where(key => where?.Invoke(key) ?? true));
             continuationToken = page.IsTruncated == true ? page.NextContinuationToken : null;
         } while (continuationToken is not null);
     }
@@ -338,6 +338,15 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
 
     public Task DeleteVersionAsync(Guid clipId, int videoVersion) =>
         DeletePrefixAsync(R2ObjectKeys.VersionFolder(clipId, videoVersion) + "/");
+
+    public Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion)
+    {
+        // The trailing slash keeps v1/ from matching v10/.
+        string kept = R2ObjectKeys.VersionFolder(clipId, keepVersion) + "/";
+        return DeletePrefixAsync(R2ObjectKeys.ClipPrefix(clipId), key => !key.StartsWith(kept, StringComparison.Ordinal));
+    }
+
+    public Task DeleteAllVersionsAsync(Guid clipId) => DeletePrefixAsync(R2ObjectKeys.ClipPrefix(clipId));
 
     public void Dispose() => _client.Dispose();
 

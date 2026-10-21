@@ -34,7 +34,8 @@ public sealed record MediaInfo(double DurationSeconds, long? SizeBytes, VideoStr
                         (int)(Number(stream, "height") ?? 0),
                         Text(stream, "pix_fmt"),
                         Text(stream, "color_transfer"),
-                        Text(stream, "color_primaries"));
+                        Text(stream, "color_primaries"),
+                        FrameRate.Target(Text(stream, "avg_frame_rate"), Text(stream, "r_frame_rate")));
                 }
                 else if (type == "audio" && audio is null)
                 {
@@ -95,7 +96,8 @@ public sealed record VideoStreamInfo(
     int Height,
     string? PixelFormat,
     string? ColorTransfer,
-    string? ColorPrimaries)
+    string? ColorPrimaries,
+    FrameRate TargetFrameRate)
 {
     /// <summary>PQ (HDR10, Dolby Vision's base layer) or HLG, which need tone-mapping down to SDR.</summary>
     public bool IsHdr => ColorTransfer is "smpte2084" or "arib-std-b67";

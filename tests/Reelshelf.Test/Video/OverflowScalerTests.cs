@@ -438,6 +438,10 @@ public class OverflowScalerTests
         public Task DeleteSourceAsync(Guid clipId) => Task.CompletedTask;
 
         public Task DeleteVersionAsync(Guid clipId, int videoVersion) => Task.CompletedTask;
+
+        public Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion) => Task.CompletedTask;
+
+        public Task DeleteAllVersionsAsync(Guid clipId) => Task.CompletedTask;
     }
 
     private sealed class Clock : TimeProvider

@@ -851,13 +851,15 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// A <c>migrate</c> job finished: the Bunny clip moves to R2 on version 1, with the output's length, size, codecs
+    /// A <c>migrate</c> job finished: the Bunny clip moves to R2 on the job's <paramref name="videoVersion"/>, with the
+    /// output's length, size, codecs
     /// and height, and is ready there. Its Bunny video id is kept in <c>bunny_video_id</c> for the delete sweep, and
     /// <c>migrated_at</c> starts the grace period. As for a transcode, the AV1 size alone counts toward the quota and
     /// the legacy <c>video_status</c> is cleared, like every R2 clip's. The Bunny collection (<c>clip_collection</c>) is
     /// left for the sweep. Only a clip still on Bunny moves; returns whether this one did.
     /// </summary>
-    public async Task<bool> SetMigratedToR2(Guid clipId, int lengthSeconds, long storageSize, string? codecs, int? height)
+    public async Task<bool> SetMigratedToR2(Guid clipId, int videoVersion, int lengthSeconds, long storageSize,
+        string? codecs, int? height)
     {
         // SET reads the row as it was, so bunny_video_id takes the Bunny id before video_id becomes the clip id.
         const string sql = """
@@ -866,7 +868,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 migrated_at = now(),
                 video_host = 'r2',
                 video_id = id,
-                video_version = 1,
+                video_version = @videoVersion,
                 video_codecs = @codecs,
                 video_height = @height,
                 length = @lengthSeconds,
@@ -877,7 +879,8 @@ public class ClipsStatements(NpgsqlConnection connection)
                 encode_progress = 100
             WHERE id = @clipId AND video_host = 'bunny'
             """;
-        return await connection.ExecuteAsync(sql, new { clipId, lengthSeconds, storageSize, codecs, height }) > 0;
+        return await connection.ExecuteAsync(sql,
+            new { clipId, videoVersion, lengthSeconds, storageSize, codecs, height }) > 0;
     }
 
     /// <summary>

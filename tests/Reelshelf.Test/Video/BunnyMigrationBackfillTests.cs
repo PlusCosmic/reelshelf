@@ -32,10 +32,16 @@ public class BunnyMigrationBackfillTests
         // A finished job of another type doesn't hold a clip back.
         await test.AddRunAsync(oldest, "thumbnails", "succeeded");
 
+        // A clip switched back to Bunny after an earlier move keeps the version it reached on R2.
+        await test.Connection.ExecuteAsync("UPDATE clip SET video_version = 3 WHERE id = @Older", new { Older = older });
+
         Assert.Equal([oldest, older], await test.Statements.QueueBatchAsync(batchSize: 2));
-        Assert.Equal((10, 1, "{}"), await test.Connection.QuerySingleAsync<(int, int, string)>(
+        // Each job writes the clip's next version, never keys it played from before (they are cached as immutable).
+        Assert.Equal((10, 2, "{}"), await test.Connection.QuerySingleAsync<(int, int, string)>(
             "SELECT priority, video_version, input::text FROM transcode_run WHERE clip_id = @Oldest AND type = 'migrate'",
             new { Oldest = oldest }));
+        Assert.Equal(4, await test.Connection.ExecuteScalarAsync<int>(
+            "SELECT video_version FROM transcode_run WHERE clip_id = @Older AND type = 'migrate'", new { Older = older }));
 
         // The batch is full until a job finishes.
         Assert.Empty(await test.Statements.QueueBatchAsync(batchSize: 2));

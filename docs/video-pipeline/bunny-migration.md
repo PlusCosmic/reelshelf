@@ -52,6 +52,11 @@ Prod's Bunny library on 2026-10-18: **820 clips, 25.2 hours, 87 GB** on Bunny (e
   (default false) and R2 is configured. It never queues a clip that already has a pending or running job of any type,
   nor one that has had a `migrate` before (failed, or succeeded and then switched back); deleting that run lets
   the backfill take the clip again.
+- Each job targets the clip's **next** video version, `video_version + 1`, recorded on the run's `video_version`
+  when it is queued. A clip never moved before is on version 1 (the column's default), so it goes to v2; one that
+  moved, was switched back and is moved again goes past every version it played from. Outputs are cached
+  `immutable` for a year, so writing new files into keys a clip already played from would leave Cloudflare and
+  browsers serving the old ones. Versions are opaque, so skipping v1 costs nothing.
 - `Migration:BatchSize` must be larger than the total number of workers: the dedicated worker plus
   `Overflow:MaxTasks` overflow tasks ([the overflow pool](workers-and-jobs.md#the-overflow-pool-built-in-248)).
   Otherwise some workers sit idle, and overflow tasks started for the backlog exit with nothing to claim. The
@@ -63,7 +68,7 @@ Prod's Bunny library on 2026-10-18: **820 clips, 25.2 hours, 87 GB** on Bunny (e
     today). It's a public CDN URL, not a storage key, so the job's input carries no `SourceKey`, and the claim
     builds it from the clip's current Bunny `video_id`. ffmpeg's HLS demuxer picks the highest-resolution
     variant by default.
-  - `upload_urls`: the usual transcode keys under `clips/{clipId}/v1/`.
+  - `upload_urls`: the usual transcode keys under `clips/{clipId}/v{n}/`, `n` being the run's `video_version`.
 - The worker reports progress as it does for a `transcode`, but the clip isn't touched.
 
 ### Worker
@@ -71,7 +76,8 @@ Prod's Bunny library on 2026-10-18: **820 clips, 25.2 hours, 87 GB** on Bunny (e
 - A `migrate` job first remuxes the HLS input to a local MP4 (`ffmpeg -i <playlist> -c copy`, retried like any
   storage read). It then follows the `transcode` path unchanged: ffprobe, six frames, `thumbnails_ready`, the
   AV1 encode, `preview.mp4`, uploads, and completion with `codecs`, `width`, `height`, `files`, `length_seconds`
-  and `size_bytes`.
+  and `size_bytes`. Like every encode it keeps the source's frame rate, capped at 60 fps, so a clip Bunny stored at
+  60 fps stays at 60 ([the worker](workers-and-jobs.md#the-worker-built-in-214)).
 - An HLS input that can't be read (a 404 or 403 on the playlist) fails as `retryable: false`, since retrying
   won't bring the video back.
 
@@ -80,16 +86,23 @@ Prod's Bunny library on 2026-10-18: **820 clips, 25.2 hours, 87 GB** on Bunny (e
 In one transaction with the run:
 
 - `bunny_video_id` gets the old `video_id` and `migrated_at` gets now();
-- `video_host = 'r2'`, `video_id` = clip id, `video_version = 1`;
+- `video_host = 'r2'`, `video_id` = clip id, `video_version` = the run's version;
 - `video_codecs`, `video_height`, `length` and `storage_size` are set (`file_size` is cleared, as for a
   transcode), and `video_state = 'ready'`;
 - the clip's container membership (`clip_collection`) is left alone for the sweep.
 
-Detection and transcription aren't queued. If the clip isn't on Bunny any more by the time the job completes, the
-run succeeds, the clip isn't touched, and the uploaded `clips/{clipId}/v1/` objects are deleted (unless the clip
-itself plays from R2 version 1). A deleted clip takes its run with it (`transcode_run` cascades from `clip`), so
-the worker's completion gets 404; deleting a Bunny clip therefore deletes `clips/{clipId}/v1/` itself, and only a
-PUT the worker makes after that is left behind. Status polling, the webhook and the metadata backfill write what
+Detection and transcription aren't queued. Once that transaction has committed, every other version under
+`clips/{clipId}/` is deleted (an earlier move's files, when the clip was switched back and moved again): the
+objects under the prefix are listed and everything outside `clips/{clipId}/v{n}/` goes. The clip is read again
+first, and nothing is deleted unless it still plays from R2 version `n`, so the version it plays from always stays;
+`uploads/` is never touched. A failure there is only logged: the completion has already succeeded, and the leftovers
+stay until the clip is deleted. A repeated completion changes and deletes nothing.
+
+If the clip isn't on Bunny any more by the time the job completes, the run succeeds, the clip isn't touched, and
+the job's own `clips/{clipId}/v{n}/` objects are deleted (unless the clip itself plays from R2 version `n`). A
+deleted clip takes its run with it (`transcode_run` cascades from `clip`), so the worker's completion gets 404;
+deleting a Bunny clip therefore deletes everything under `clips/{clipId}/` itself, and only a PUT the worker makes
+after that is left behind. Status polling, the webhook and the metadata backfill write what
 Bunny reports only while the clip is still on Bunny with that video, so none of them can overwrite a clip that has
 just moved. A final failure leaves the clip on Bunny, and the run's error shows why. A later backfill pass doesn't
 pick it up again automatically: clips with a failed `migrate` are left for a person to look at.
@@ -120,20 +133,42 @@ row. So deleting a clip (`ClipService.DeleteClip`, which the uploader's cancel u
 and account deletion delete a pending `bunny_video_id` at Bunny too (`ClipVideoDeletion`), and account deletion does
 so before it deletes the account's collections.
 
-### Switching a clip back (within the grace period)
+### Reverting and re-running the migration
 
-```sql
-update clip set video_host = 'bunny', video_id = bunny_video_id, bunny_video_id = null, video_version = 1,
-  video_codecs = null, video_height = null, migrated_at = null
-where id = '<clip id>' and bunny_video_id is not null;
-```
+To put moved clips back on their Bunny copies and move them again (for instance after the encode settings
+changed, as when the worker started keeping 60 fps instead of forcing 30):
 
-(`video_version` is `NOT NULL`, and Bunny clips keep 1. SET reads the row as it was, so `video_id` takes the old
-`bunny_video_id`.) It waits for a sweep deleting that copy right then, and then changes nothing, since
-`bunny_video_id` is gone; the sweep never deletes a copy the clip plays from, even if `bunny_video_id` were left set. Then delete `clips/{clipId}/` from the bucket. The
-clip's succeeded `migrate` run keeps the backfill from queueing it again; delete the run to try once more. The
-clip shows Bunny's copy again. Status polling picks it up, and no URL is cached against the R2 copy that wasn't
-there before (#229).
+1. Set `Migration:Enabled` and `Migration:DeleteBunny` to false, on every instance, and wait for the deploy. The
+   backfill then queues nothing, and the sweep deletes no Bunny copy while you revert. Make sure every worker runs
+   the encode you want (the re-run uses whatever the workers do), and wait until no `migrate` run is `running`, so
+   no worker cut off in step 2 is still writing files.
+2. In one transaction:
+
+   ```sql
+   begin;
+   delete from transcode_run where type = 'migrate';
+   update clip set video_host = 'bunny', video_id = bunny_video_id, bunny_video_id = null,
+     video_codecs = null, video_height = null, migrated_at = null
+   where bunny_video_id is not null and video_host = 'r2' and video_state = 'ready';
+   commit;
+   ```
+
+   Leave `video_version` alone, so the re-run goes to the next version and never reuses keys a clip played from.
+   SET reads the row as it was, so `video_id` takes the old `bunny_video_id`. Deleting the `migrate` runs lets the
+   backfill take the clips again; a run still in flight then gets 404 on completion. To revert one clip, add
+   `and id = '<clip id>'` to the update and delete only that clip's `migrate` runs.
+
+3. Turn both settings back on. The re-run moves each clip to `video_version + 1` and, once it completes, deletes
+   the earlier versions under `clips/{clipId}/` by itself, including any files a run cut off in step 2 had uploaded.
+
+The reverted clips play from Bunny again at once. Status polling picks them up, and no URL is cached against an R2
+version that wasn't there before (#229). `length` and `storage_size` keep the R2 encode's values until the re-run
+sets them again.
+
+- A clip whose Bunny copy the sweep has already deleted (`bunny_video_id` is null) can't be reverted: the update
+  leaves it on R2, and the backfill won't move it again.
+- A clip trimmed on R2 after its move loses that trim: its Bunny copy is the untrimmed original, and the re-run
+  encodes that.
 
 ## After the last clip
 

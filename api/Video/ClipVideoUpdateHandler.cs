@@ -100,17 +100,18 @@ public class ClipVideoUpdateHandler(
         clipsStatements.SetTranscodeReady(clipId, videoVersion, lengthSeconds, storageSize, codecs, height);
 
     /// <summary>
-    /// A <c>migrate</c> job finished: the clip moves from Bunny to R2 on version 1 and is ready there
+    /// A <c>migrate</c> job finished: the clip moves from Bunny to R2 on the job's version and is ready there
     /// (<see cref="ClipsStatements.SetMigratedToR2"/>). Nothing is queued after it: legend detection, transcripts and
     /// summaries are keyed by clip and stay. False when the clip is no longer on Bunny, so nothing moved.
     /// </summary>
     public Task<bool> ApplyMigrationCompletedAsync(
         Guid clipId,
+        int videoVersion,
         int lengthSeconds,
         long storageSize,
         string? codecs,
         int? height) =>
-        clipsStatements.SetMigratedToR2(clipId, lengthSeconds, storageSize, codecs, height);
+        clipsStatements.SetMigratedToR2(clipId, videoVersion, lengthSeconds, storageSize, codecs, height);
 
     /// <summary>
     /// A transcode was handed back by a worker that was shutting down: a processing clip is back to <c>uploaded</c>

@@ -49,7 +49,9 @@ public class ClipVideoDeletionTests
         await ClipVideoDeletion.DeleteAsync(bunny.Hosts(), storage, clipId, VideoHostNames.Bunny, videoId, videoId);
 
         Assert.Equal([videoId], bunny.DeletedVideos);
-        Assert.Equal([(clipId, TranscodeQueue.MigratedVideoVersion)], storage.DeletedVersions);
+        // Every version under clips/{clipId}/: a migrate may have written any of them.
+        Assert.Equal([clipId], storage.DeletedAllVersions);
+        Assert.Empty(storage.DeletedVersions);
     }
 
     [Fact]
@@ -73,9 +75,20 @@ public class ClipVideoDeletionTests
 
         public Task DeleteSourceAsync(Guid clipId) => Task.CompletedTask;
 
+        public List<Guid> DeletedAllVersions { get; } = [];
+
         public Task DeleteVersionAsync(Guid clipId, int videoVersion)
         {
             DeletedVersions.Add((clipId, videoVersion));
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion) =>
+            throw new InvalidOperationException("Deleting a clip never keeps a version");
+
+        public Task DeleteAllVersionsAsync(Guid clipId)
+        {
+            DeletedAllVersions.Add(clipId);
             return Task.CompletedTask;
         }
     }
