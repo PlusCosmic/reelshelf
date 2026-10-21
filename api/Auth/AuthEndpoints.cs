@@ -212,7 +212,7 @@ public static class AuthEndpoints
             avatarUrl,
             Email: null));
 
-        await SignInAccount(ctx, outcome.User, persistent: true);
+        await SignInAccount(ctx, outcome.User);
 
         return TypedResults.Ok(new DevLoginResponse(ResolveReturnUrl(request.ReturnUrl) ?? _frontendOrigin));
     }
@@ -254,7 +254,7 @@ public static class AuthEndpoints
         return props;
     }
 
-    private static async Task SignInAccount(HttpContext ctx, UserStatements.UserRow user, bool persistent = false)
+    private static async Task SignInAccount(HttpContext ctx, UserStatements.UserRow user)
     {
         List<Claim> claims =
         [
@@ -263,14 +263,17 @@ public static class AuthEndpoints
         ];
 
         ClaimsPrincipal principal = new(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
-        AuthenticationProperties properties = new();
-        if (persistent)
-        {
-            properties.IsPersistent = true;
-            properties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7);
-        }
+        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, SessionProperties());
+    }
 
-        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, properties);
+    /// <summary>
+    /// Every session is persistent: without it the cookie has no Expires and the browser drops it when it closes
+    /// (mobile browsers do so often), however long the ticket inside is valid. ExpiresUtc is left unset so the
+    /// cookie scheme's ExpireTimeSpan and sliding renewal decide how long it lasts.
+    /// </summary>
+    internal static AuthenticationProperties SessionProperties()
+    {
+        return new AuthenticationProperties { IsPersistent = true };
     }
 
     private static Guid? GetUserId(ClaimsPrincipal principal)
