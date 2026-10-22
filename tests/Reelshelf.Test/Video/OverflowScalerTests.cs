@@ -1,7 +1,4 @@
 using System.Diagnostics.Metrics;
-using Amazon.ECS;
-using CapacityProviderStrategyItem = Amazon.ECS.Model.CapacityProviderStrategyItem;
-using RunTaskRequest = Amazon.ECS.Model.RunTaskRequest;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,8 +12,8 @@ using Xunit;
 namespace Reelshelf.Test.Video;
 
 /// <summary>
-/// The overflow pool's decision (<see cref="OverflowScaler"/>) against a fake backlog and a fake ECS, its startup
-/// checks (<see cref="OverflowSetup"/>) and the <c>RunTask</c> request it sends.
+/// The overflow pool's decision (<see cref="OverflowScaler"/>) against a fake backlog and a fake launcher, and its startup
+/// checks (<see cref="OverflowSetup"/>).
 /// </summary>
 public class OverflowScalerTests
 {
@@ -165,11 +162,11 @@ public class OverflowScalerTests
     }
 
     [Fact]
-    public async Task ListTasksFailing_IsLoggedAndRetriedOnTheNextTick()
+    public async Task CountingFailing_IsLoggedAndRetriedOnTheNextTick()
     {
         Harness test = new();
         test.Backlog.Next = new OverflowBacklog(10, Old);
-        test.Launcher.ListError = new AmazonECSException("throttled");
+        test.Launcher.ListError = new InvalidOperationException("throttled");
 
         OverflowTick failed = await test.TickAsync();
         Assert.Equal(OverflowTickOutcome.CountFailed, failed.Outcome);
@@ -181,11 +178,11 @@ public class OverflowScalerTests
     }
 
     [Fact]
-    public async Task RunTaskFailing_IsLoggedAndRetriedOnTheNextTick_WithoutACooldown()
+    public async Task StartingFailing_IsLoggedAndRetriedOnTheNextTick_WithoutACooldown()
     {
         Harness test = new();
         test.Backlog.Next = new OverflowBacklog(10, Old);
-        test.Launcher.StartError = new AmazonECSException("AccessDenied");
+        test.Launcher.StartError = new InvalidOperationException("PERMISSION_DENIED");
 
         Assert.Equal(OverflowTickOutcome.StartFailed, (await test.TickAsync()).Outcome);
 
@@ -267,68 +264,10 @@ public class OverflowScalerTests
         Assert.True(RegistersTheService(services));
         using ServiceProvider provider = services.BuildServiceProvider();
         OverflowOptions options = provider.GetRequiredService<IOptions<OverflowOptions>>().Value;
-        Assert.Equal(["subnet-a", "subnet-b"], options.SubnetList);
+        Assert.Equal("europe-west9", options.Batch.Region);
     }
 
     [Theory]
-    [InlineData("Overflow:Cluster")]
-    [InlineData("Overflow:TaskDefinition")]
-    [InlineData("Overflow:Subnets")]
-    [InlineData("Overflow:SecurityGroups")]
-    [InlineData("Overflow:Aws:Region")]
-    [InlineData("Overflow:CapacityProvider")]
-    public void Setup_Enabled_FailsWithoutARequiredSetting(string key)
-    {
-        Dictionary<string, string?> settings = CompleteSettings();
-        settings[key] = " ";
-
-        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => Build(settings));
-        Assert.Contains($"{key} is missing", error.Message);
-    }
-
-    [Theory]
-    [InlineData("FARGATE_SPOT")]
-    [InlineData("FARGATE")]
-    public void Setup_Enabled_OnFargate_StillNeedsSubnetsAndSecurityGroups(string capacityProvider)
-    {
-        Dictionary<string, string?> settings = CompleteSettings();
-        settings["Overflow:CapacityProvider"] = capacityProvider;
-        settings.Remove("Overflow:Subnets");
-        settings.Remove("Overflow:SecurityGroups");
-
-        string message = Assert.Throws<InvalidOperationException>(() => Build(settings)).Message;
-        Assert.Contains("Overflow:Subnets is missing", message);
-        Assert.Contains("Overflow:SecurityGroups is missing", message);
-    }
-
-    [Fact]
-    public void Setup_Enabled_OnAnEc2CapacityProvider_NeedsNoSubnetsOrSecurityGroups()
-    {
-        Dictionary<string, string?> settings = CompleteSettings();
-        settings["Overflow:CapacityProvider"] = "reelshelf-ec2-spot";
-        settings.Remove("Overflow:Subnets");
-        settings.Remove("Overflow:SecurityGroups");
-
-        IServiceCollection services = Build(settings);
-        Assert.True(RegistersTheService(services));
-        using ServiceProvider provider = services.BuildServiceProvider();
-        OverflowOptions options = provider.GetRequiredService<IOptions<OverflowOptions>>().Value;
-        Assert.Equal("reelshelf-ec2-spot", options.CapacityProvider);
-        Assert.False(options.IsFargate);
-    }
-
-    [Fact]
-    public void CapacityProvider_DefaultsToFargateSpot()
-    {
-        Assert.Equal("FARGATE_SPOT", new OverflowOptions().CapacityProvider);
-        Assert.True(new OverflowOptions().IsFargate);
-
-        using ServiceProvider provider = Build(CompleteSettings()).BuildServiceProvider();
-        Assert.Equal("FARGATE_SPOT", provider.GetRequiredService<IOptions<OverflowOptions>>().Value.CapacityProvider);
-    }
-
-    [Theory]
-    [InlineData("Overflow:Aws:AccessKeyId", "AKIAEXAMPLE", "AccessKeyId and SecretAccessKey")]
     [InlineData("Overflow:JobTypes", "transcode,encode", "unknown job types: encode")]
     [InlineData("Overflow:MaxTasks", "0", "MaxTasks must be at least 1")]
     [InlineData("Overflow:MaxStartPerTick", "0", "MaxStartPerTick must be at least 1")]
@@ -347,95 +286,16 @@ public class OverflowScalerTests
             "OpenApi")));
     }
 
-    [Fact]
-    public void RunTaskRequest_LaunchesOnFargateSpotWithAPublicIp()
-    {
-        OverflowOptions options = new()
-        {
-            Cluster = "reelshelf",
-            TaskDefinition = "reelshelf-worker:3",
-            Subnets = "subnet-a, subnet-b",
-            SecurityGroups = "sg-1",
-            StartedBy = "reelshelf-overflow"
-        };
-
-        RunTaskRequest request = EcsOverflowTaskLauncher.BuildRunTaskRequest(options, 3);
-
-        Assert.Equal("reelshelf", request.Cluster);
-        Assert.Equal("reelshelf-worker:3", request.TaskDefinition);
-        Assert.Equal(3, request.Count);
-        Assert.Equal("reelshelf-overflow", request.StartedBy);
-        Assert.Null(request.LaunchType);
-        CapacityProviderStrategyItem strategy = Assert.Single(request.CapacityProviderStrategy);
-        Assert.Equal("FARGATE_SPOT", strategy.CapacityProvider);
-        Assert.Equal(["subnet-a", "subnet-b"], request.NetworkConfiguration.AwsvpcConfiguration.Subnets);
-        Assert.Equal(["sg-1"], request.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups);
-        Assert.Equal(AssignPublicIp.ENABLED, request.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp);
-        // The task definition's roles, secrets and environment are left alone.
-        Assert.Null(request.Overrides);
-        // No tags: the API's IAM user has no ecs:TagResource, and startedBy is how the tasks are found again.
-        Assert.True(request.Tags is null or { Count: 0 });
-        Assert.Null(request.PropagateTags);
-        Assert.False(string.IsNullOrEmpty(request.ClientToken));
-        Assert.NotEqual(request.ClientToken, EcsOverflowTaskLauncher.BuildRunTaskRequest(options, 3).ClientToken);
-    }
-
-    [Fact]
-    public void RunTaskRequest_OnFargate_AlsoSendsTheAwsvpcConfiguration()
-    {
-        OverflowOptions options = new()
-        {
-            Cluster = "reelshelf",
-            TaskDefinition = "reelshelf-worker:3",
-            CapacityProvider = "FARGATE",
-            Subnets = "subnet-a",
-            SecurityGroups = "sg-1"
-        };
-
-        RunTaskRequest request = EcsOverflowTaskLauncher.BuildRunTaskRequest(options, 1);
-
-        Assert.Equal("FARGATE", Assert.Single(request.CapacityProviderStrategy).CapacityProvider);
-        Assert.Equal(["subnet-a"], request.NetworkConfiguration.AwsvpcConfiguration.Subnets);
-        Assert.Equal(AssignPublicIp.ENABLED, request.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp);
-    }
-
-    [Fact]
-    public void RunTaskRequest_OnAnEc2CapacityProvider_LeavesNetworkingToTheTaskDefinition()
-    {
-        OverflowOptions options = new()
-        {
-            Cluster = "reelshelf",
-            TaskDefinition = "reelshelf-worker-ec2:1",
-            CapacityProvider = " reelshelf-ec2-spot ",
-            // Ignored on EC2: bridge mode has no awsvpcConfiguration.
-            Subnets = "subnet-a",
-            SecurityGroups = "sg-1",
-            StartedBy = "reelshelf-overflow"
-        };
-
-        RunTaskRequest request = EcsOverflowTaskLauncher.BuildRunTaskRequest(options, 2);
-
-        Assert.Equal("reelshelf-worker-ec2:1", request.TaskDefinition);
-        Assert.Equal(2, request.Count);
-        Assert.Equal("reelshelf-overflow", request.StartedBy);
-        Assert.Null(request.LaunchType);
-        CapacityProviderStrategyItem strategy = Assert.Single(request.CapacityProviderStrategy);
-        Assert.Equal("reelshelf-ec2-spot", strategy.CapacityProvider);
-        Assert.Equal(1, strategy.Weight);
-        Assert.Null(request.NetworkConfiguration);
-        Assert.Null(request.Overrides);
-        Assert.True(request.Tags is null or { Count: 0 });
-        Assert.False(string.IsNullOrEmpty(request.ClientToken));
-    }
-
     private static Dictionary<string, string?> CompleteSettings() => new()
     {
         ["Overflow:Enabled"] = "true",
-        ["Overflow:Cluster"] = "reelshelf",
-        ["Overflow:TaskDefinition"] = "reelshelf-worker",
-        ["Overflow:Subnets"] = "subnet-a,subnet-b",
-        ["Overflow:SecurityGroups"] = "sg-1",
-        ["Overflow:Aws:Region"] = "eu-north-1"
+        ["Overflow:Batch:ProjectId"] = "p",
+        ["Overflow:Batch:Region"] = "europe-west9",
+        ["Overflow:Batch:InstanceTemplate"] = "reelshelf-overflow-c4-v1",
+        ["Overflow:Batch:ServiceAccount"] = "worker@p.iam.gserviceaccount.com",
+        ["Overflow:Batch:WorkerImage"] = "ghcr.io/pluscosmic/reelshelf-worker:sha-abc",
+        ["Overflow:Batch:WorkerSecret"] = "projects/p/secrets/reelshelf-worker-gcp/versions/latest",
+        ["Overflow:Batch:ApiBaseUrl"] = "https://reelshelf.example"
     };
 
     private static bool RegistersTheService(IServiceCollection services) =>

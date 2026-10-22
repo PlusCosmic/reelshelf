@@ -64,6 +64,7 @@
   - **Overflow is built (#248):** the API starts Fargate Spot workers itself with ECS `RunTask` (the middle option's
     second choice), so scaling needs no CloudWatch metric. It counts the claimable backlog with the claim's own rule
     and ages it from `available_at`. See [workers-and-jobs.md](workers-and-jobs.md#the-overflow-pool-built-in-248).
+    It has since moved to Google Cloud Batch, and the ECS backend is gone ([batch-overflow.md](batch-overflow.md)).
 - **Fallback:** the storage discussion lists an H.264 720p fallback, pre-generated or made on first request.
   Current call (2026-10-18): none for now, since everyone using Reelshelf can decode AV1. Build the seams (a
   `sources` list, a "can't play on this device" message, room in the queue for a fallback job) and add an

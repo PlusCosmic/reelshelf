@@ -16,7 +16,7 @@ public interface IPreemptionNotice
     CancellationToken Preempted { get; }
 }
 
-/// <summary>No notice: the dedicated worker and ECS tasks, which get SIGTERM.</summary>
+/// <summary>No notice: the dedicated worker, which gets SIGTERM.</summary>
 public sealed class NoPreemptionNotice : IPreemptionNotice
 {
     public CancellationToken Preempted => CancellationToken.None;

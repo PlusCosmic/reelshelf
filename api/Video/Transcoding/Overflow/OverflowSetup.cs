@@ -1,13 +1,11 @@
-using Amazon.ECS;
-
 namespace Reelshelf.Video.Transcoding.Overflow;
 
 public static class OverflowSetup
 {
     /// <summary>
     /// Registers the overflow pool where <c>Overflow:Enabled</c> is true, outside the <c>OpenApi</c> environment
-    /// (which builds the app without secrets and runs no background services), with the launcher of
-    /// <c>Overflow:Backend</c>. Startup fails when it is on and that backend's settings are incomplete
+    /// (which builds the app without secrets and runs no background services), with the Google Cloud Batch launcher.
+    /// Startup fails when it is on and the settings are incomplete
     /// (<see cref="OverflowOptions.Problems"/>), so a half-configured pool never runs. Call it after the R2 host, whose
     /// storage gates each tick.
     /// </summary>
@@ -33,16 +31,8 @@ public static class OverflowSetup
                 $"Overflow:Enabled is on, but its settings are incomplete: {string.Join("; ", problems)}");
         }
 
-        if (settings.IsBatch)
-        {
-            builder.Services.AddSingleton<IBatchJobs>(_ => new GoogleBatchJobs(GoogleBatchJobs.CreateClient(settings.Batch)));
-            builder.Services.AddSingleton<IOverflowTaskLauncher, BatchOverflowTaskLauncher>();
-        }
-        else
-        {
-            builder.Services.AddSingleton<IAmazonECS>(_ => EcsOverflowTaskLauncher.CreateClient(settings.Aws));
-            builder.Services.AddSingleton<IOverflowTaskLauncher, EcsOverflowTaskLauncher>();
-        }
+        builder.Services.AddSingleton<IBatchJobs>(_ => new GoogleBatchJobs(GoogleBatchJobs.CreateClient(settings.Batch)));
+        builder.Services.AddSingleton<IOverflowTaskLauncher, BatchOverflowTaskLauncher>();
 
         builder.Services.AddSingleton<IOverflowBacklogReader, OverflowBacklogStatements>();
         builder.Services.AddSingleton<OverflowMetrics>();
