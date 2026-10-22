@@ -17,8 +17,8 @@ public sealed class OverflowBackgroundService(
         await Task.Yield();
         OverflowOptions current = options.Value;
         logger.LogInformation(
-            "Overflow pool on: checking every {Interval}, up to {MaxTasks} Fargate Spot tasks in cluster {Cluster}",
-            current.EffectiveInterval, current.MaxTasks, current.Cluster);
+            "Overflow pool on: checking every {Interval}, up to {MaxTasks} Batch workers in {Region}",
+            current.EffectiveInterval, current.MaxTasks, current.Batch.Region);
 
         using PeriodicTimer timer = new(current.EffectiveInterval);
         do

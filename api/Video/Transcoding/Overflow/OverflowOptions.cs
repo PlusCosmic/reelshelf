@@ -4,45 +4,21 @@ namespace Reelshelf.Video.Transcoding.Overflow;
 
 /// <summary>
 /// The overflow pool (<c>Overflow:*</c>, docs/video-pipeline/workers-and-jobs.md#the-overflow-pool): one-shot transcode
-/// workers that the API starts when <c>transcode_run</c> backs up, on the <see cref="Backend"/>: ECS (AWS Fargate Spot,
-/// or an ECS EC2 capacity provider, with <c>RunTask</c>) or Google Cloud Batch (<see cref="Batch"/>). The workers stop
-/// themselves once idle, so the API only ever starts them. For ECS, <see cref="Cluster"/>,
-/// <see cref="TaskDefinition"/>, <see cref="CapacityProvider"/>, <see cref="Subnets"/> and <see cref="SecurityGroups"/>
-/// come from the infrastructure stack's outputs; for Batch, PlusCosmic/infrastructure's gcp/overflow-workers/setup.sh
-/// prints the settings.
+/// workers that the API starts on Google Cloud Batch (<see cref="Batch"/>) when <c>transcode_run</c> backs up. The
+/// workers stop themselves once idle, so the API only ever starts them. PlusCosmic/infrastructure's
+/// gcp/overflow-workers/setup.sh prints the settings.
 /// </summary>
 public sealed partial class OverflowOptions
 {
     public const string SectionName = "Overflow";
 
-    /// <summary><see cref="Backend"/>: tasks on ECS with <c>RunTask</c>.</summary>
-    public const string EcsBackend = "ecs";
-
-    /// <summary><see cref="Backend"/>: jobs on Google Cloud Batch.</summary>
-    public const string BatchBackend = "batch";
-
-    /// <summary>The longest GCP label value, which <see cref="StartedBy"/> is on the Batch backend.</summary>
+    /// <summary>The longest GCP label value, which <see cref="StartedBy"/> is.</summary>
     public const int MaxGcpLabelLength = 63;
-
-    /// <summary>The capacity provider overflow tasks are launched on unless <see cref="CapacityProvider"/> says otherwise.</summary>
-    public const string DefaultCapacityProvider = "FARGATE_SPOT";
-
-    /// <summary>The capacity providers that are Fargate, whose tasks need an <c>awsvpcConfiguration</c>.</summary>
-    public static readonly IReadOnlyList<string> FargateCapacityProviders = ["FARGATE_SPOT", "FARGATE"];
-
-    /// <summary>The longest <c>startedBy</c> ECS accepts.</summary>
-    public const int MaxStartedByLength = 128;
 
     private static readonly TimeSpan MinimumInterval = TimeSpan.FromSeconds(5);
 
-    /// <summary>Off by default; on, startup fails unless the chosen backend's settings are all set.</summary>
+    /// <summary>Off by default; on, startup fails unless the Batch settings are all set.</summary>
     public bool Enabled { get; set; }
-
-    /// <summary>
-    /// Where the workers run: <c>ecs</c> (the default) or <c>batch</c>. Only that backend's settings are needed; the
-    /// scaling settings below apply to both.
-    /// </summary>
-    public string Backend { get; set; } = EcsBackend;
 
     /// <summary>How often the queue and the running tasks are counted.</summary>
     public TimeSpan Interval { get; set; } = TimeSpan.FromSeconds(30);
@@ -68,107 +44,26 @@ public sealed partial class OverflowOptions
     /// <summary>How long after starting tasks no more are started, so tasks still provisioning aren't double-counted.</summary>
     public TimeSpan Cooldown { get; set; } = TimeSpan.FromMinutes(2);
 
-    /// <summary>
-    /// The <c>startedBy</c> tag on every ECS task the API starts, or the <c>pool</c> label on every Batch job, by which
-    /// it counts them again.
-    /// </summary>
+    /// <summary>The <c>pool</c> label on every Batch job the API starts, by which it counts them again.</summary>
     public string StartedBy { get; set; } = "reelshelf-overflow";
 
-    /// <summary>The ECS cluster's name or ARN.</summary>
-    public string Cluster { get; set; } = "";
-
-    /// <summary>
-    /// The worker's task definition (family, <c>family:revision</c> or ARN). Its roles, secrets and environment are
-    /// used as they are.
-    /// </summary>
-    public string TaskDefinition { get; set; } = "";
-
-    /// <summary>
-    /// The capacity provider every overflow task is launched on. <c>FARGATE_SPOT</c> (the default) or <c>FARGATE</c>
-    /// runs the task in <see cref="Subnets"/> with a public IP; any other name is taken as an EC2 capacity provider on
-    /// the cluster, whose task definition uses bridge networking, so no network configuration is sent.
-    /// </summary>
-    public string CapacityProvider { get; set; } = DefaultCapacityProvider;
-
-    /// <summary>
-    /// Comma-separated subnet ids the tasks run in; tasks get a public IP to reach the API and R2. Fargate only: an
-    /// EC2 capacity provider's instances are already in their subnets.
-    /// </summary>
-    public string Subnets { get; set; } = "";
-
-    /// <summary>Comma-separated security group ids for the tasks. Fargate only, like <see cref="Subnets"/>.</summary>
-    public string SecurityGroups { get; set; } = "";
-
-    public OverflowAwsOptions Aws { get; set; } = new();
-
     public OverflowBatchOptions Batch { get; set; } = new();
-
-    public bool IsBatch => string.Equals(Backend.Trim(), BatchBackend, StringComparison.OrdinalIgnoreCase);
 
     public TimeSpan EffectiveInterval => Interval < MinimumInterval ? MinimumInterval : Interval;
 
     public IReadOnlyList<string> JobTypeList => SplitList(JobTypes);
 
-    public IReadOnlyList<string> SubnetList => SplitList(Subnets);
-
-    public IReadOnlyList<string> SecurityGroupList => SplitList(SecurityGroups);
-
-    /// <summary>Whether <see cref="CapacityProvider"/> is Fargate (awsvpc networking) rather than EC2 (bridge).</summary>
-    public bool IsFargate => FargateCapacityProviders.Contains(CapacityProvider.Trim());
-
     /// <summary>
-    /// What is wrong with these settings for an enabled pool, if anything: an unknown backend; for ECS a missing
-    /// cluster, task definition, capacity provider or region, missing subnets or security groups on Fargate, or half a
-    /// key pair; for Batch whatever <see cref="OverflowBatchOptions.Problems"/> finds; and for both unknown job types or
-    /// limits below 1.
+    /// What is wrong with these settings for an enabled pool, if anything: whatever
+    /// <see cref="OverflowBatchOptions.Problems"/> finds, a <see cref="StartedBy"/> that isn't a GCP label value,
+    /// unknown job types, or limits below 1.
     /// </summary>
     public IReadOnlyList<string> Problems()
     {
-        List<string> problems = [];
-        void Require(string value, string name)
+        List<string> problems = [.. Batch.Problems()];
+        if (!GcpLabelValue().IsMatch(StartedBy.Trim()))
         {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                problems.Add($"{SectionName}:{name} is missing");
-            }
-        }
-
-        if (IsBatch)
-        {
-            problems.AddRange(Batch.Problems());
-            if (!GcpLabelValue().IsMatch(StartedBy.Trim()))
-            {
-                problems.Add($"{SectionName}:{nameof(StartedBy)} must be 1 to {MaxGcpLabelLength} lowercase letters, digits, - or _ on the Batch backend (it is a label)");
-            }
-        }
-        else if (string.Equals(Backend.Trim(), EcsBackend, StringComparison.OrdinalIgnoreCase))
-        {
-            Require(Cluster, nameof(Cluster));
-            Require(TaskDefinition, nameof(TaskDefinition));
-            Require(CapacityProvider, nameof(CapacityProvider));
-            if (IsFargate)
-            {
-                Require(Subnets, nameof(Subnets));
-                Require(SecurityGroups, nameof(SecurityGroups));
-            }
-
-            Require(Aws.Region, $"{nameof(Aws)}:{nameof(OverflowAwsOptions.Region)}");
-
-            bool hasKey = !string.IsNullOrWhiteSpace(Aws.AccessKeyId);
-            bool hasSecret = !string.IsNullOrWhiteSpace(Aws.SecretAccessKey);
-            if (hasKey != hasSecret)
-            {
-                problems.Add($"{SectionName}:Aws needs both AccessKeyId and SecretAccessKey, or neither for the default credential chain");
-            }
-
-            if (string.IsNullOrWhiteSpace(StartedBy) || StartedBy.Trim().Length > MaxStartedByLength)
-            {
-                problems.Add($"{SectionName}:{nameof(StartedBy)} must be 1 to {MaxStartedByLength} characters");
-            }
-        }
-        else
-        {
-            problems.Add($"{SectionName}:{nameof(Backend)} must be {EcsBackend} or {BatchBackend}");
+            problems.Add($"{SectionName}:{nameof(StartedBy)} must be 1 to {MaxGcpLabelLength} lowercase letters, digits, - or _ (it is a label)");
         }
 
         List<string> unknownTypes = JobTypeList.Where(type => !TranscodeRunTypes.All.Contains(type)).ToList();
@@ -200,17 +95,6 @@ public sealed partial class OverflowOptions
 
     [GeneratedRegex("^[a-z0-9_-]{1,63}$")]
     private static partial Regex GcpLabelValue();
-}
-
-/// <summary>
-/// How the API reaches ECS. <see cref="Region"/> is the AWS project's selected Region. Without keys the SDK's default
-/// credential chain is used (environment, profile, instance role).
-/// </summary>
-public sealed class OverflowAwsOptions
-{
-    public string Region { get; set; } = "";
-    public string AccessKeyId { get; set; } = "";
-    public string SecretAccessKey { get; set; } = "";
 }
 
 /// <summary>

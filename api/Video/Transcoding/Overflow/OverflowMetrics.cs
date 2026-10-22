@@ -20,9 +20,9 @@ public sealed class OverflowMetrics
     {
         Meter = meterFactory.Create(MeterName);
         Meter.CreateObservableGauge("reelshelf.overflow.tasks_running", ObserveRunning, "{task}",
-            "Overflow worker tasks running or provisioning on ECS, as last counted.");
+            "Overflow worker tasks running or provisioning on Batch, as last counted.");
         _started = Meter.CreateCounter<long>("reelshelf.overflow.tasks_started", "{task}",
-            "Overflow worker tasks started on ECS.");
+            "Overflow worker tasks started on Batch.");
     }
 
     public Meter Meter { get; }

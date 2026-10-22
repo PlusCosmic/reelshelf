@@ -116,6 +116,9 @@ Paris rather than Google's backbone, which is fine for R2: Cloudflare has a poin
 
 ### Backend switch
 
+Removed with the ECS backend after the AWS teardown (2026-10-22): Batch is now the only backend, and
+`Overflow:Backend` is ignored. As planned and built:
+
 `Overflow:Backend`: `ecs` (default, today's behaviour) or `batch`. The shared settings stay where they are
 (`Enabled`, `Interval`, `JobTypes`, `ScaleUpAfter`, `MaxTasks`, `MaxStartPerTick`, `Cooldown`, `StartedBy`).
 The ECS-only settings (`Cluster`, `TaskDefinition`, `CapacityProvider`, `Subnets`, `SecurityGroups`, `Aws:*`)
@@ -232,8 +235,9 @@ on the dedicated worker.
 5. **Quota**, when wanted: C4 in `europe-west9` (24 vCPU, 6 workers) binds first, then `CPUS_ALL_REGIONS` (32),
    then the region's 8 external IPs. For 16 workers ask for C4 in `europe-west9` 64, `CPUS_ALL_REGIONS` 64 and
    `IN_USE_ADDRESSES` 16. Not filed yet.
-6. **AWS teardown**, once Batch has carried real sessions: the "Tear down" section of
-   `aws/overflow-workers/README.md`. It's Harry's call.
+6. **AWS teardown** (done 2026-10-22): the stack `reelshelf-overflow-workers-prod` deleted, its API user's key
+   and the `reelshelf/worker/aws` secret with it, and then the ECS backend removed from the API and
+   `aws/overflow-workers/` from infrastructure.
 
 ## Open questions
 

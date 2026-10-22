@@ -170,8 +170,6 @@ public class BatchOverflowTests
                                                 descriptor.ImplementationType == typeof(OverflowBackgroundService));
         Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IOverflowTaskLauncher) &&
                                                 descriptor.ImplementationType == typeof(BatchOverflowTaskLauncher));
-        // No ECS settings needed.
-        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(Amazon.ECS.IAmazonECS));
     }
 
     [Theory]
@@ -191,7 +189,6 @@ public class BatchOverflowTests
     }
 
     [Theory]
-    [InlineData("Overflow:Backend", "gke", "Overflow:Backend must be ecs or batch")]
     [InlineData("Overflow:StartedBy", "Reelshelf Overflow", "StartedBy must be 1 to 63 lowercase letters")]
     [InlineData("Overflow:Batch:ApiBaseUrl", "reelshelf.example", "ApiBaseUrl must be an absolute http(s) URL")]
     [InlineData("Overflow:Batch:Vcpus", "0", "Vcpus and MemoryMib must be at least 1")]
@@ -203,13 +200,6 @@ public class BatchOverflowTests
         settings[key] = value;
 
         Assert.Contains(message, Assert.Throws<InvalidOperationException>(() => Build(settings)).Message);
-    }
-
-    [Fact]
-    public void Backend_DefaultsToEcs()
-    {
-        Assert.False(new OverflowOptions().IsBatch);
-        Assert.Equal("ecs", new OverflowOptions().Backend);
     }
 
     [Fact]
@@ -227,7 +217,6 @@ public class BatchOverflowTests
     private static Dictionary<string, string?> Settings() => new()
     {
         ["Overflow:Enabled"] = "true",
-        ["Overflow:Backend"] = "batch",
         ["Overflow:Batch:ProjectId"] = "p",
         ["Overflow:Batch:Region"] = "europe-west9",
         ["Overflow:Batch:InstanceTemplate"] = "projects/p/global/instanceTemplates/reelshelf-overflow-c4-v1",
