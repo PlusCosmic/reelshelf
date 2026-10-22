@@ -17,7 +17,8 @@ gone again soon after the queue empties.
   open since 2026-10-19. EC2 Spot is capped at 8 vCPU (two workers). From zero, ECS managed scaling also
   launched two instances for a single task.
 - **GCP gives more out of the box.** The project `reelshelf-512321` gets 32 vCPU across all regions by
-  default (8 workers), and Batch starts each worker on its own VM, which it deletes when the worker exits.
+  default, of which C4 in `europe-west9` may use 24 (6 workers), and Batch starts each worker on its own VM,
+  which it deletes when the worker exits.
   Nothing sits idle between sessions.
 - **Price.** Spot `c4-highcpu-4` in Paris costs about **$0.032 per worker-hour**, which is about half the
   price of Fargate Spot. A 10-clip session uses about 60 worker-minutes, about **3 cents**.
@@ -199,7 +200,7 @@ The defaults were tuned for a long-running pool. For a session burst on Batch:
 | `ScaleUpAfter`             | 2 min | 30 s         | The dedicated worker takes the first clip at once; the rest shouldn't wait 2 minutes.     |
 | `Cooldown`                 | 2 min | 0            | Batch counts tasks from the moment the job exists, so starting VMs aren't double-counted. |
 | `MaxStartPerTick`          | 4     | = `MaxTasks` | Start the whole burst in one tick.                                                        |
-| `MaxTasks`                 | 4     | 8            | 32 vCPU / 4. Raise it when the quota goes up.                                             |
+| `MaxTasks`                 | 4     | 6            | C4's 24 vCPU in Paris / 4. Raise it when the quota goes up.                               |
 | Worker `ExitWhenIdleAfter` | 3 min | 1 min        | Shrink soon after the queue empties. A late upload just triggers a new scale-up.          |
 
 These are settings, not code changes, so ECS keeps its current values.
@@ -224,11 +225,13 @@ on the dedicated worker.
 3. **API PR** (this repo): the backend switch, `BatchOverflowTaskLauncher`, options, the worker's preemption
    watcher, the shorter `StaleAfter`, tests and docs. Once its worker image is deployed, repeat the runbook's
    preemption test and check the job is released at once.
-4. **Turn it on:** `Overflow__Backend=batch`, the `Overflow__Batch__*` settings and the scaler settings above,
-   with `MaxTasks=2` at first. Watch a few real sessions with `reelshelf.overflow.tasks_running` and the Batch
-   job list, then raise it to 8.
-5. **Quota**, when wanted: ask for `CPUS_ALL_REGIONS` 64 and C4 in `europe-west9` 64, which gives 16 workers.
-   Not filed yet.
+4. **Turn it on** (done 2026-10-22): `Overflow__Backend=batch`, the `Overflow__Batch__*` settings and the
+   scaler settings above, with `MaxTasks=6`. A 50-clip stress test grew the pool one worker per waiting clip up
+   to the cap; the job past the C4 quota (a test worker held 4 vCPU) failed with `QUOTA_EXCEEDED` and was
+   deleted by the never-started sweep after 10 minutes. Dashboards: infrastructure's `services/monitoring.yml`.
+5. **Quota**, when wanted: C4 in `europe-west9` (24 vCPU, 6 workers) binds first, then `CPUS_ALL_REGIONS` (32),
+   then the region's 8 external IPs. For 16 workers ask for C4 in `europe-west9` 64, `CPUS_ALL_REGIONS` 64 and
+   `IN_USE_ADDRESSES` 16. Not filed yet.
 6. **AWS teardown**, once Batch has carried real sessions: the "Tear down" section of
    `aws/overflow-workers/README.md`. It's Harry's call.
 
