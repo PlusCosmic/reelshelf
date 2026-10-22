@@ -6,15 +6,18 @@ using Microsoft.Extensions.Options;
 
 namespace Reelshelf.Video.Transcoding.Overflow;
 
-/// <summary>Starts and counts the overflow pool's tasks; a fake stands in for ECS in tests.</summary>
+/// <summary>
+/// Starts and counts the overflow pool's tasks (ECS tasks or Batch tasks, one worker each); a fake stands in for the
+/// backend in tests.
+/// </summary>
 public interface IOverflowTaskLauncher
 {
     /// <summary>The overflow tasks running or still provisioning.</summary>
     Task<int> CountActiveTasksAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Starts up to <paramref name="count"/> tasks and returns how many ECS accepted. Throws when nothing could be
-    /// asked of ECS at all.
+    /// Starts up to <paramref name="count"/> tasks and returns how many the backend accepted. Throws when nothing could
+    /// be asked of it at all.
     /// </summary>
     Task<int> StartTasksAsync(int count, CancellationToken cancellationToken);
 }

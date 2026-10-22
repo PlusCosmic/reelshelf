@@ -25,10 +25,16 @@ public sealed class TranscodingOptions
 
     /// <summary>
     /// A running job whose worker has neither claimed nor reported progress for this long is reclaimed by the next
-    /// claim. Longer than the worst-case encode, so a worker that never reports progress still finishes; each
-    /// progress report starts it again.
+    /// claim, so a worker that died without a word (a preempted Spot VM, a crash) holds its job only this long. Workers
+    /// send progress at least every 30 s for the whole job, transfers included, so this is ten of those.
     /// </summary>
-    public TimeSpan StaleAfter { get; set; } = TimeSpan.FromHours(1);
+    public TimeSpan StaleAfter { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// How long a claimed job's presigned URLs live. Longer than the worst-case job, download, encode and uploads
+    /// included, since a worker can't renew them; at most 7 days (R2's limit).
+    /// </summary>
+    public TimeSpan PresignLifetime { get; set; } = TimeSpan.FromHours(2);
 
     /// <summary>
     /// Queue legend detection when a transcode reports its thumbnails ready, instead of waiting for the encode to

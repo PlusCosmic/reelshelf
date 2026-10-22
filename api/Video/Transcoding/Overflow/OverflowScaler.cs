@@ -29,10 +29,10 @@ public enum OverflowTickOutcome
     /// <summary>The running tasks already cover the backlog, or <see cref="OverflowOptions.MaxTasks"/> are running.</summary>
     Enough,
 
-    /// <summary><c>RunTask</c> failed; the next tick tries again.</summary>
+    /// <summary>Starting workers failed (<c>RunTask</c> or <c>CreateJob</c>); the next tick tries again.</summary>
     StartFailed,
 
-    /// <summary>Tasks were asked for; <see cref="OverflowTick.Started"/> says how many ECS started.</summary>
+    /// <summary>Tasks were asked for; <see cref="OverflowTick.Started"/> says how many the backend started.</summary>
     Started
 }
 
@@ -97,7 +97,7 @@ public sealed class OverflowScaler(
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             metrics.SetRunning(null);
-            logger.LogWarning(ex, "Failed to list the overflow tasks on ECS");
+            logger.LogWarning(ex, "Failed to count the overflow tasks");
             return new OverflowTick(OverflowTickOutcome.CountFailed, backlog);
         }
 
@@ -125,7 +125,7 @@ public sealed class OverflowScaler(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Failed to start {Count} overflow tasks on ECS", wanted);
+            logger.LogWarning(ex, "Failed to start {Count} overflow tasks", wanted);
             return new OverflowTick(OverflowTickOutcome.StartFailed, backlog, running);
         }
 
