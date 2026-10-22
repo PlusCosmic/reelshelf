@@ -70,7 +70,8 @@ upload completes and passes its checks (#213, see [r2-bucket.md](r2-bucket.md#br
   [r2-bucket.md](r2-bucket.md#presigned-urls-for-workers)); both are null while R2 isn't configured. The claim is
   the same `FOR UPDATE SKIP LOCKED` update as the other run tables. It takes a pending job whose retry delay has passed (`Transcoding:RetryAfter`, 2 minutes),
   or reclaims a running one whose worker has sent neither a claim nor a progress report for `Transcoding:StaleAfter`
-  (1 hour, longer than the worst-case encode). Before that, it fails the jobs that have used
+  (5 minutes: workers report at least every 30 s for the whole job, transfers included, so a quiet job's worker is
+  gone, such as a Spot VM preempted without warning). Before that, it fails the jobs that have used
   `Transcoding:MaxAttempts` (3), and a failed `transcode` sets its clip to `encode_failed`. Workers pull, so the API
   runs no background service for this.
 - **Leases:** each claim issues a new `lease_id`, and every report must carry it. A worker whose job was reclaimed
@@ -147,6 +148,7 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   have defaults: `Preset` (SVT-AV1, 8), `LogicalProcessors` (SVT-AV1 `lp`, 0 = all cores), `TargetBitrateKbps`
   (4000), `HighFrameRateBitrateKbps` (6000, used instead above 32 fps), `AudioBitrateKbps` (128), `Niceness` (10), `IdlePollInterval`/`MaxIdlePollInterval` (5 s doubling to 60 s),
   `ErrorBackoff`/`MaxErrorBackoff` (5 s to 5 min), `ExitWhenIdleAfter` (unset), `HeartbeatInterval` (30 s), `ShutdownGrace` (20 s),
+  `PreemptionNotice` (empty, or `gce`; see Preemption below),
   `MaxSourceBytes` (8 GiB, which also caps a remuxed HLS source), `RemuxTimeout` (20 min), `WorkDirectory` (`/work` in the image) and `FfmpegPath`/`FfprobePath`. It holds no
   storage keys: everything goes through the job's presigned URLs, and the secret is only ever sent to the API.
 - **Loop:** one job at a time. Claim; on 204 wait, doubling while the queue stays empty; on an API error, back off
@@ -223,16 +225,24 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
   for is under way. Only the shutdown's own stop counts: an ffmpeg crash, even during the grace, fails the job as
   retryable through `/fail` and uses an attempt. The host waits `ShutdownGrace` + 15 s, so the container's stop
   timeout should be at least that (35 s by default).
+- **Preemption:** Batch on GCE gives a preempted Spot VM's container no SIGTERM to speak of: in the smoke test it
+  was gone about 9 s into the 30 s notice, mid-encode, with nothing released, and the job sat `running` until
+  `StaleAfter`. With `PreemptionNotice=gce` (which the Batch pool sets) `GcePreemptionWatcher` reads the metadata
+  server's `instance/preempted` (a hanging GET with `wait_for_change`, at `GceMetadataUrl`); when it turns `TRUE` the
+  job is stopped and released at once, whatever its stage and with no grace, and the worker claims nothing more. It
+  doesn't exit: it waits for the VM to go, so Batch records the preemption (exit code 50001) and runs the task again
+  on a new VM instead of seeing a worker that finished. Read errors are logged and retried every 5 s; off GCE it
+  only logs, so the dedicated worker and ECS tasks leave it empty.
 - **Resource limits** are the deployment's (#215): `cpuset`, CPU weight and memory in the container, plus `lp` and
   `nice` here. The image puts the work directory at `/work` so the root filesystem can be read-only.
-- **Tests:** unit tests for the argument lists, frame timing, trim input, codecs strings and ffprobe parsing, and
+- **Tests:** `PreemptionNoticeTests` (the watcher against a scripted metadata server) and unit tests for the argument lists, frame timing, trim input, codecs strings and ffprobe parsing, and
   `[SvtAv1Fact]` tests that run the whole loop against `FakeWorkerApi` (the worker endpoints and a bucket on a
   loopback `HttpListener`) on `lavfi` test clips: transcode with a trim of a 60 fps source (kept at 60, keyframes a
   second apart), a 120 fps source capped at 60, HDR at 1440p, stream-copy and frame-accurate trims (one keeping its
   60 fps input's rate), thumbnails, `migrate` from a `lavfi`-made two-variant HLS ladder served by the fake's storage (the 720p
   variant is the one encoded), a 503 on the playlist (retried), a 404 playlist and one that isn't HLS (both not
   retryable), a shutdown during the remux (released at once), a lost lease, unreadable input, shutdown (released mid-encode past the grace, and at once
-  before the encode), an ffmpeg crash (failed, also during the grace) and an empty queue. They skip when the local ffmpeg has
+  before the encode), preemption mid-encode (released at once despite a minute's grace, then nothing claimed), an ffmpeg crash (failed, also during the grace) and an empty queue. They skip when the local ffmpeg has
   no libsvtav1. CI's runner has Ubuntu 24.04's ffmpeg (SVT-AV1 1.7), older than the image's. The image moved off
   1.7 because it segfaulted inside `libSvtAv1Enc` on the dedicated server's VM (one CPU socket per vCPU) for an
   ordinary 1080p60 H.264 clip that 2.3 encodes there; the same clip encoded with 1.7 on a one-socket desktop.
@@ -240,11 +250,13 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
 ## The overflow pool (built in #248)
 
 When `transcode_run` backs up (a burst of uploads, or the Bunny migration), the API starts extra one-shot workers on
-AWS Fargate Spot (or on an ECS EC2 capacity provider, `Overflow:CapacityProvider`) with ECS `RunTask`. They run the same image as the dedicated worker, with `Worker__ExitWhenIdleAfter`
-set in the task definition (#246), so they stop themselves once the queue is empty. The API only ever starts tasks
-and never stops one. The code is in
-`api/Video/Transcoding/Overflow/`. The AWS resources (cluster, task definition, networking, IAM) are
-PlusCosmic/infrastructure#214.
+`Overflow:Backend`: `ecs` (the default) runs them on AWS Fargate Spot (or on an ECS EC2 capacity provider,
+`Overflow:CapacityProvider`) with ECS `RunTask`, and `batch` runs them on Google Cloud Batch (see
+[Google Cloud Batch](#google-cloud-batch) below and [batch-overflow.md](batch-overflow.md)). They run the same image
+as the dedicated worker, with `Worker__ExitWhenIdleAfter` set (#246), so they stop themselves once the queue is
+empty. The API only ever starts workers and never stops one. The code is in `api/Video/Transcoding/Overflow/`. The
+AWS resources (cluster, task definition, networking, IAM) are PlusCosmic/infrastructure#214; the GCP ones are its
+`gcp/overflow-workers/`.
 
 - **Gate:** `OverflowBackgroundService` is registered only where `Overflow:Enabled` is true (default false), and
   never in the `OpenApi` environment. Each tick also checks that R2 is configured (`ITranscodeStorage.IsConfigured`).
@@ -260,9 +272,10 @@ PlusCosmic/infrastructure#214.
      the `oldest_pending_age` gauge, which counts from `created_at`. A job released by a restarting worker, or one
      past its retry delay, has only just become available, so the dedicated worker gets the threshold to take it
      first.
-  3. It counts the overflow tasks running or provisioning: ECS `ListTasks` with `startedBy` = `Overflow:StartedBy`
-     (`reelshelf-overflow`), for desired status `RUNNING` and `PENDING`. On an EC2 capacity provider a task waiting
-     for an instance sits in `PROVISIONING` with desired status `RUNNING`, so it is counted too.
+  3. It counts the overflow tasks running or provisioning (`IOverflowTaskLauncher`). On ECS that is `ListTasks`
+     with `startedBy` = `Overflow:StartedBy` (`reelshelf-overflow`), for desired status `RUNNING` and `PENDING`; on
+     an EC2 capacity provider a task waiting for an instance sits in `PROVISIONING` with desired status `RUNNING`,
+     so it is counted too. On Batch, see below.
   4. Once the oldest job has waited `Overflow:ScaleUpAfter` (2 min), it starts
      `min(pending - running, MaxTasks - running, MaxStartPerTick)` tasks. `Overflow:MaxTasks` (4) is the hard cap on
      spend, and `Overflow:MaxStartPerTick` defaults to 4.
@@ -286,7 +299,7 @@ PlusCosmic/infrastructure#214.
     and environment are used as they are.
   - When the capacity provider has no capacity, ECS reports it in the response's `failures`. Those are logged, and only the
     tasks ECS started count.
-- **Errors:** a failed backlog count, `ListTasks` or `RunTask` is logged and tried again on the next tick, with no
+- **Errors:** a failed backlog count, task count or start is logged and tried again on the next tick, with no
   cooldown. Nothing here throws into the API.
 - **AWS client:** the client is `AWSSDK.ECS`, in `Overflow:Aws:Region` (the AWS project's selected Region).
   - With `Overflow:Aws:AccessKeyId` and `SecretAccessKey`, it signs with that key.
@@ -314,6 +327,41 @@ PlusCosmic/infrastructure#214.
   should use separate clusters, or at least separate `StartedBy` values, so each counts only its own tasks.
 - **The Bunny migration** is the pool's first big backlog: keep `Migration:BatchSize` above the total number of
   workers ([bunny-migration.md](bunny-migration.md#api-queueing-migration)).
+
+### Google Cloud Batch
+
+With `Overflow:Backend=batch`, `BatchOverflowTaskLauncher` (`Google.Cloud.Batch.V1`) replaces `RunTask`. The design,
+the measurements and the reasons are in [batch-overflow.md](batch-overflow.md).
+
+- **Starting:** each scale-up is one `CreateJob` of `count` tasks (`taskCount` = `parallelism`), one worker VM each,
+  with id `overflow-{yyyyMMdd-HHmmss}-{4 hex}` and a `requestId` so the SDK's retries create it once. The task is a
+  container of `Overflow:Batch:WorkerImage` with `Worker__ApiBaseUrl`, `Worker__LogicalProcessors` (= `Vcpus`),
+  `Worker__ExitWhenIdleAfter` (1 min) and `Worker__PreemptionNotice=gce`, and `Worker__Secret` from Secret Manager
+  (`secretVariables`, `Overflow:Batch:WorkerSecret`); it asks for `Vcpus` × 1000 milli-CPUs and `MemoryMib`, runs
+  at most `MaxRunDuration` (12 h, a safety cap), and is retried up to twice, explicitly on exit code 50001 (Spot
+  preemption). The VMs come from `Overflow:Batch:InstanceTemplate` (machine type, Spot, boot disk, network and a
+  Standard-tier IP: Batch gives VMs described in an instance policy a Premium-tier IP whatever the project default)
+  with `Overflow:Batch:ServiceAccount` (Batch requires it to match the template's), in `regions/{Region}`, labelled
+  `pool` = `Overflow:StartedBy`, logging to Cloud Logging. Batch takes the whole job or none, so the call returns
+  `count`; capacity problems show up later as tasks that never start.
+- **Counting:** `ListJobs` with `allocation_policy.labels.pool="<StartedBy>" AND status.state!="SUCCEEDED" AND
+status.state!="FAILED"` (Batch filters on the allocation policy's labels, not the job's). Each job counts its
+  tasks less those succeeded or failed, so tasks still waiting for a VM, and a preempted task waiting for its retry,
+  count from the moment the job exists.
+- **Jobs that never start:** a job still `QUEUED` or `SCHEDULED` with no task ever assigned, older than
+  `Overflow:Batch:ProvisionTimeout` (10 min), is deleted while counting, with Batch's latest status event logged
+  (quota exceeded, no Spot capacity), so it stops holding `MaxTasks`. No worker in it has claimed anything. A job
+  that can't be deleted still counts.
+- **Client:** `Overflow:Batch:CredentialsBase64` is the scaler service account's JSON key, base64; empty uses
+  Application Default Credentials. The service account needs `roles/batch.jobsEditor` and `roles/iam.serviceAccountUser`
+  on the worker service account only.
+- **Settings:** startup fails when `Enabled` is on with `Backend=batch` and any of `ProjectId`, `Region`,
+  `InstanceTemplate`, `ServiceAccount`, `WorkerImage`, `WorkerSecret` or `ApiBaseUrl` is missing, on a key that
+  isn't base64, non-positive sizes or durations, or a `StartedBy` that isn't a GCP label value. The ECS settings
+  aren't needed. infrastructure's `gcp/overflow-workers/setup.sh` prints the values, and the bump PR keeps
+  `WorkerImage` current.
+- **Scaling settings for a session burst:** `ScaleUpAfter` 30 s, `Cooldown` 0 (jobs count their tasks at once),
+  `MaxStartPerTick` = `MaxTasks`. These are settings, so ECS keeps its defaults.
 
 ## Downloads
 

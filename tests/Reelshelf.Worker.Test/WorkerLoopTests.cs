@@ -35,13 +35,18 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    /// <summary>The worker's services against the fake API, with <paramref name="overrides"/> on top of the test settings.</summary>
-    private ServiceProvider BuildServices(Dictionary<string, string?>? overrides = null)
+    /// <summary>
+    /// The worker's services against the fake API, with <paramref name="overrides"/> on top of the test settings and
+    /// <paramref name="configure"/> after the worker's own registrations.
+    /// </summary>
+    private ServiceProvider BuildServices(Dictionary<string, string?>? overrides = null,
+        Action<ServiceCollection>? configure = null)
     {
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(Settings(overrides)).Build();
         ServiceCollection collection = new();
         collection.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug));
         collection.AddTranscodeWorker(configuration);
+        configure?.Invoke(collection);
         return collection.BuildServiceProvider();
     }
 

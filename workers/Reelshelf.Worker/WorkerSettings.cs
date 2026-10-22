@@ -11,6 +11,9 @@ public sealed class WorkerSettings
     /// <summary>The API's secret is refused when shorter than this, so the worker refuses it too.</summary>
     public const int MinimumSecretLength = 32;
 
+    /// <summary><see cref="PreemptionNotice"/>: watch GCE's metadata server.</summary>
+    public const string GcePreemptionNotice = "gce";
+
     /// <summary>The site the API is served from, e.g. <c>https://reelshelf.example</c>; requests go to <c>/api/worker/*</c>.</summary>
     public string ApiBaseUrl { get; set; } = "";
 
@@ -78,6 +81,19 @@ public sealed class WorkerSettings
     /// <summary>The longest gap between progress reports while a job runs, which also serve as its heartbeat.</summary>
     public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// Where the worker learns its Spot VM is being preempted, so it hands its job back at once instead of counting
+    /// on SIGTERM: empty (the default) for none, or <c>gce</c> for GCE's metadata server, which the Batch overflow
+    /// pool sets. See <see cref="IPreemptionNotice"/>.
+    /// </summary>
+    public string PreemptionNotice { get; set; } = "";
+
+    /// <summary>GCE's metadata server, for <see cref="PreemptionNotice"/> <c>gce</c>; tests point it elsewhere.</summary>
+    public string GceMetadataUrl { get; set; } = "http://169.254.169.254/computeMetadata/v1";
+
+    public bool WatchesGcePreemption =>
+        string.Equals(PreemptionNotice?.Trim(), GcePreemptionNotice, StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Why the settings can't be used, or null when they can.</summary>
     public string? Problem()
     {
@@ -115,6 +131,11 @@ public sealed class WorkerSettings
         if (Niceness is < 0 or > 19)
         {
             return "Worker:Niceness must be between 0 and 19";
+        }
+
+        if (!string.IsNullOrWhiteSpace(PreemptionNotice) && !WatchesGcePreemption)
+        {
+            return $"Worker:PreemptionNotice must be empty or {GcePreemptionNotice}";
         }
 
         return null;

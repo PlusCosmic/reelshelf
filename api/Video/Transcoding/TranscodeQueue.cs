@@ -58,11 +58,14 @@ public class TranscodeQueue(
     public const int MaxErrorLength = 4000;
 
     /// <summary>
-    /// How long a claimed job's presigned URLs live: past <see cref="TranscodingOptions.StaleAfter"/>, after which a
-    /// quiet job is reclaimed with fresh ones, with an hour to spare for a worker still uploading at that point.
+    /// How long a claimed job's presigned URLs live: <see cref="TranscodingOptions.PresignLifetime"/>, and never less
+    /// than <see cref="TranscodingOptions.StaleAfter"/> plus an hour, so a job still counted as running has working URLs.
     /// </summary>
-    public static TimeSpan PresignLifetime(TranscodingOptions options) =>
-        (options.StaleAfter < TimeSpan.Zero ? TimeSpan.Zero : options.StaleAfter) + TimeSpan.FromHours(1);
+    public static TimeSpan PresignLifetime(TranscodingOptions options)
+    {
+        TimeSpan floor = (options.StaleAfter < TimeSpan.Zero ? TimeSpan.Zero : options.StaleAfter) + TimeSpan.FromHours(1);
+        return options.PresignLifetime > floor ? options.PresignLifetime : floor;
+    }
 
     /// <summary>
     /// Queues a job for a clip, as the video host does when an upload completes. Returns its id, or null when the

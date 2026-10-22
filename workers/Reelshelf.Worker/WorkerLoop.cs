@@ -11,7 +11,9 @@ namespace Reelshelf.Worker;
 /// puts it back in the queue without using an attempt. A job that hasn't started encoding is stopped and released at
 /// once. Releasing is only for shutdown: a job that fails, ffmpeg crashing included, is reported as failed. With
 /// <see cref="WorkerSettings.ExitWhenIdleAfter"/> set, the worker stops the host (exit code 0) once it has gone that
-/// long without claiming a job.
+/// long without claiming a job. When <see cref="IPreemptionNotice"/> says the Spot VM is being preempted, the job is
+/// stopped and released at once, whatever stage it is at, and the worker claims nothing more; it then waits for the
+/// VM to go, so Batch sees the preemption (and retries the task) rather than a worker that exited.
 /// </summary>
 public sealed class WorkerLoop(
     WorkerApiClient api,
@@ -20,23 +22,40 @@ public sealed class WorkerLoop(
     IOptions<WorkerSettings> options,
     ILogger<WorkerLoop> logger,
     IHostApplicationLifetime? lifetime = null,
-    TimeProvider? timeProvider = null) : BackgroundService
+    TimeProvider? timeProvider = null,
+    IPreemptionNotice? preemptionNotice = null) : BackgroundService
 {
     /// <summary>How long a report may take once the worker is shutting down.</summary>
     private static readonly TimeSpan ShutdownReportBudget = TimeSpan.FromSeconds(10);
 
     private readonly WorkerSettings settings = options.Value;
     private readonly TimeProvider time = timeProvider ?? TimeProvider.System;
+    private readonly CancellationToken preempted = preemptionNotice?.Preempted ?? CancellationToken.None;
     private FfmpegCapabilities? capabilities;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await StartAsync();
-        if (await PollAsync(RunOnceAsync, stoppingToken))
+        using CancellationTokenSource polling = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, preempted);
+        if (await PollAsync(RunOnceAsync, polling.Token))
         {
             // Exiting when idle is the expected end of an overflow worker, not a failure.
             Environment.ExitCode = 0;
             lifetime?.StopApplication();
+        }
+
+        if (preempted.IsCancellationRequested && !stoppingToken.IsCancellationRequested)
+        {
+            // Exiting now would look like a finished task to Batch, which would then not run it again elsewhere.
+            logger.LogInformation("Preempted: claiming nothing more, waiting for the VM to stop");
+            try
+            {
+                await Task.Delay(Timeout.Infinite, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Stopped.
+            }
         }
 
         logger.LogInformation("Worker stopped");
@@ -154,6 +173,11 @@ public sealed class WorkerLoop(
     /// <summary>Claims and runs one job. False when the queue had none. Throws <see cref="WorkerApiException"/> when the claim fails.</summary>
     internal async Task<bool> RunOnceAsync(CancellationToken stoppingToken)
     {
+        if (preempted.IsCancellationRequested)
+        {
+            return false;
+        }
+
         // The claim isn't cancelled by shutdown: a job the API has already handed over is better run (or handed
         // back) than left to go stale. HttpClient's timeout bounds it.
         WorkerJob? job = await api.ClaimAsync(CancellationToken.None);
@@ -175,8 +199,20 @@ public sealed class WorkerLoop(
         using CancellationTokenSource shutdown = new();
         using CancellationTokenSource reportBudget = new();
         JobReporter reporter = new(api, job, logger, settings.HeartbeatInterval);
+        await using CancellationTokenRegistration onPreempted = preempted.Register(() =>
+        {
+            // The VM has seconds left: no grace, whatever the stage.
+            logger.LogWarning("Preempted: job {RunId} goes back now", job.RunId);
+            reportBudget.CancelAfter(ShutdownReportBudget);
+            shutdown.Cancel();
+        });
         await using CancellationTokenRegistration onStop = stoppingToken.Register(() =>
         {
+            if (preempted.IsCancellationRequested)
+            {
+                return;
+            }
+
             if (reporter.Encoding)
             {
                 logger.LogInformation("Shutting down: job {RunId} has {Grace} to finish", job.RunId, settings.ShutdownGrace);

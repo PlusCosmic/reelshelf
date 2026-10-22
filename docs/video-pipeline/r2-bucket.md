@@ -123,7 +123,8 @@ Nothing depends on it; the API's gating above is what keeps 404s from being requ
 
 ## Presigned URLs for workers
 
-At claim time (`POST /api/worker/claim`) the API presigns, for at least `Transcoding:StaleAfter` plus an hour:
+At claim time (`POST /api/worker/claim`) the API presigns, for `Transcoding:PresignLifetime` (2 hours, longer than
+the worst-case job, and never less than `Transcoding:StaleAfter` plus an hour):
 
 - `source_url`: a GET of `uploads/{clipId}` for a `transcode`, or of the current `av1.mp4` for `thumbnails`
   (the job's own version) and `trim` (the clip's current version);

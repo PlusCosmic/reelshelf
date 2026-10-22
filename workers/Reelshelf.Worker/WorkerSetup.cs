@@ -31,6 +31,20 @@ public static class WorkerSetup
         services.AddSingleton<FfmpegRunner>();
         services.AddSingleton<HlsRemux>();
         services.AddSingleton<JobRunner>();
+        // The worker's metadata server is local and answers a hanging GET within its 300 s timeout.
+        services.AddHttpClient(GcePreemptionWatcher.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(330));
+        WorkerSettings configured = configuration.GetSection(WorkerSettings.SectionName).Get<WorkerSettings>() ?? new();
+        if (configured.WatchesGcePreemption)
+        {
+            services.AddSingleton<GcePreemptionWatcher>();
+            services.AddSingleton<IPreemptionNotice>(provider => provider.GetRequiredService<GcePreemptionWatcher>());
+            services.AddHostedService(provider => provider.GetRequiredService<GcePreemptionWatcher>());
+        }
+        else
+        {
+            services.AddSingleton<IPreemptionNotice, NoPreemptionNotice>();
+        }
+
         services.AddSingleton<WorkerLoop>();
         services.AddHostedService(provider => provider.GetRequiredService<WorkerLoop>());
         return services;
