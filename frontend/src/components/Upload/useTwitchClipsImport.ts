@@ -28,7 +28,7 @@ import {
   importTwitchClip,
   type TwitchClipsWindow,
 } from "@/shared/services/twitch";
-import { uploadErrorMessage } from "@/utils/clipUpload";
+import { uploadErrorMessage } from "@/utils/uploadErrorMessage";
 
 /** Each import streams a whole clip through the API; two at a time keeps the page responsive. */
 const MAX_ACTIVE_IMPORTS = 2;

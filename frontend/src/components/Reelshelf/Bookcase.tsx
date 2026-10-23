@@ -165,7 +165,13 @@ function Spine({
         <span className="rs-book-ribbon" aria-hidden="true" />
       ) : null}
       {!empty && game.coverUrl ? (
-        <img className="rs-book-weave" src={game.coverUrl} alt="" />
+        <img
+          className="rs-book-weave"
+          src={game.coverUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
       ) : null}
       <span className="rs-book-bands" aria-hidden="true" />
       <span className="rs-book-title" aria-hidden="true">
@@ -217,7 +223,7 @@ function FaceOutBook({
         <span className="rs-book-face-hinge" />
         <span className="rs-book-face-cover">
           {game.coverUrl ? (
-            <img src={game.coverUrl} alt="" />
+            <img src={game.coverUrl} alt="" loading="lazy" decoding="async" />
           ) : (
             <span className="rs-book-face-plain rs-display">{game.name}</span>
           )}

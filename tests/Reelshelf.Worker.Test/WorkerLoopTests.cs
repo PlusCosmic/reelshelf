@@ -150,10 +150,11 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
     [SvtAv1Fact]
     public async Task Transcode_FitsLargeSourcesInside1080p_AndToneMapsHdr()
     {
-        // 10-bit, tagged PQ/BT.2020 like an HDR10 capture.
+        // 10-bit, tagged PQ/BT.2020 like an HDR10 capture. The tags go on the frames with setparams, since ffmpeg 8
+        // no longer lets -color_trc and -color_primaries override what the frames carry.
         string source = await GenerateAsync("hdr.mkv", "testsrc2=size=2560x1440:rate=30:duration=1", audio: false,
-            "-vf", "format=yuv420p10le", "-c:v", "libsvtav1", "-preset", "12",
-            "-color_trc", "smpte2084", "-color_primaries", "bt2020", "-colorspace", "bt2020nc");
+            "-vf", "format=yuv420p10le,setparams=color_trc=smpte2084:color_primaries=bt2020:colorspace=bt2020nc",
+            "-c:v", "libsvtav1", "-preset", "12");
         api.Enqueue(JobTypes.Transcode, source, TranscodeOutputs);
 
         Assert.True(await RunOnceAsync());

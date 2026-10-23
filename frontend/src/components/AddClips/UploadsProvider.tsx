@@ -21,19 +21,7 @@ import { invalidateClipCollections } from "@/hooks/clips.queries";
 import { ApiError } from "@/shared/services/api-error";
 import { deleteClip } from "@/shared/services/clips";
 import { ensureGamingSessionPlaylist } from "@/shared/services/playlists";
-import {
-  calculateClipUploadMd5,
-  createPreparedClipUpload,
-  createS3ClipUpload,
-  createTusClipUpload,
-  isS3MultipartUpload,
-  uploadErrorMessage,
-} from "@/utils/clipUpload";
-import {
-  localResumeStore,
-  multipartResumeKey,
-  resumeSavedMultipartUpload,
-} from "@/utils/s3MultipartUpload";
+import { uploadErrorMessage } from "@/utils/uploadErrorMessage";
 import {
   isActiveUpload,
   isUnfinishedUpload,
@@ -137,6 +125,24 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
             return;
           }
 
+          // The upload clients (tus, MD5) load with the first upload rather than with the library.
+          const [
+            {
+              calculateClipUploadMd5,
+              createPreparedClipUpload,
+              createS3ClipUpload,
+              createTusClipUpload,
+              isS3MultipartUpload,
+            },
+            {
+              localResumeStore,
+              multipartResumeKey,
+              resumeSavedMultipartUpload,
+            },
+          ] = await Promise.all([
+            import("@/utils/clipUpload"),
+            import("@/utils/s3MultipartUpload"),
+          ]);
           const md5Hash = await calculateClipUploadMd5(item.file);
           const duplicateKey = `${item.categoryId}:${md5Hash}`;
           const existing = duplicateKeys.current.get(duplicateKey);

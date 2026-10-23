@@ -54,8 +54,9 @@ function PrivacyRoute() {
       <h2>Cookies and local storage</h2>
       <p>
         We use one cookie to keep you signed in, and your browser's local
-        storage to remember your light or dark theme. Nothing is used for
-        advertising or tracking.
+        storage to remember your light or dark theme and whether you've signed
+        in on that browser before, so the front page can load without waiting to
+        check. Nothing is used for advertising or tracking.
       </p>
 
       <h2>Automated analysis of clips</h2>

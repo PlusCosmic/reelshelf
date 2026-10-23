@@ -56,7 +56,17 @@ internal static class ReelshelfApiConfiguration
         if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
         {
             app.UseDefaultFiles();
-            app.UseStaticFiles();
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                // Vite fingerprints everything under /assets/, so a changed file always has a new name.
+                OnPrepareResponse = context =>
+                {
+                    if (context.Context.Request.Path.StartsWithSegments("/assets"))
+                    {
+                        context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+                    }
+                }
+            });
         }
 
         app.UseExceptionHandler();
