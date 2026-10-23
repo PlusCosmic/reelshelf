@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Caching.Memory;
 using Reelshelf.Auth;
+using Reelshelf.Users;
 
 namespace Reelshelf.Billing;
 
@@ -34,8 +36,31 @@ public sealed class BillingService(
     IStripeBilling stripe,
     IBillingStore store,
     BillingOptions options,
+    IMemoryCache cache,
     ILogger<BillingService> logger) : IAccountSubscriptions
 {
+    private const string PricesCacheKey = "billing:prices";
+
+    /// <summary>How long the plans page trusts Stripe's prices; a price changed in Stripe shows within this.</summary>
+    private static readonly TimeSpan PricesCacheDuration = TimeSpan.FromMinutes(10);
+
+    /// <summary>The paid plans' prices as Stripe has them, by lookup key. A plan without an active price is missing.</summary>
+    public async Task<IReadOnlyDictionary<string, StripePlanPrice>> GetPrices(CancellationToken cancellationToken)
+    {
+        if (cache.TryGetValue(PricesCacheKey, out IReadOnlyDictionary<string, StripePlanPrice>? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        List<StripePlanPrice> prices = await stripe.ListPricesAsync(
+            BillingPlans.All.Select(plan => plan.LookupKey).ToList(), cancellationToken);
+        IReadOnlyDictionary<string, StripePlanPrice> byKey = prices
+            .GroupBy(price => price.LookupKey)
+            .ToDictionary(group => group.Key, group => group.First());
+        cache.Set(PricesCacheKey, byKey, PricesCacheDuration);
+        return byKey;
+    }
+
     public async Task<CheckoutResult> StartCheckout(AuthenticatedUser user, string? lookupKey, CancellationToken cancellationToken)
     {
         BillingPlan? plan = BillingPlans.Find(lookupKey);
@@ -202,15 +227,37 @@ public sealed class BillingService(
 }
 
 /// <summary>Works out an account's <see cref="AccountTier"/> from <c>whitelist.json</c> and its subscriptions.</summary>
-public sealed class AccountTierService(WhitelistService whitelist, IBillingStore store)
+public sealed class AccountTierService(WhitelistService whitelist, IBillingStore store, IUserIdentityStore identities)
 {
     public async Task<AccountTier> GetTier(AuthenticatedUser user)
     {
-        if (whitelist.IsWhitelisted(user.Identities))
-        {
-            return AccountTier.Unlimited;
-        }
+        return await Resolve(user.Id, whitelist.IsWhitelisted(user.Identities));
+    }
 
-        return AccountTiers.Resolve(false, await store.GetSubscriptions(user.Id));
+    public async Task<AccountTier> GetTier(Guid userId)
+    {
+        List<UserStatements.UserIdentityRow> rows = await identities.GetIdentitiesForUser(userId);
+        return await Resolve(userId, whitelist.IsWhitelisted(rows.Select(row => row.ToRef())));
+    }
+
+    /// <summary>
+    /// Of these accounts, each with its identities, the ones on <paramref name="minimum"/> or better: whitelisted
+    /// ones (Unlimited), and ones with a subscription granting such a tier.
+    /// </summary>
+    public async Task<List<Guid>> FilterAtLeast(AccountTier minimum,
+        IEnumerable<IGrouping<Guid, UserIdentityRef>> accounts)
+    {
+        HashSet<Guid> subscribed = (await store.GetUserIdsWithTierAtLeast(minimum)).ToHashSet();
+        return accounts
+            .Where(account => subscribed.Contains(account.Key) || whitelist.IsWhitelisted(account))
+            .Select(account => account.Key)
+            .ToList();
+    }
+
+    private async Task<AccountTier> Resolve(Guid userId, bool whitelisted)
+    {
+        return whitelisted
+            ? AccountTier.Unlimited
+            : AccountTiers.Resolve(false, await store.GetSubscriptions(userId));
     }
 }

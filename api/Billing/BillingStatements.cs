@@ -32,6 +32,9 @@ public interface IBillingStore
 
     Task<List<BillingSubscription>> GetSubscriptions(Guid userId);
 
+    /// <summary>Accounts with a subscription that grants <paramref name="minimum"/> or a better tier now.</summary>
+    Task<List<Guid>> GetUserIdsWithTierAtLeast(AccountTier minimum);
+
     /// <summary>Inserts or replaces the subscription. False when the account is gone or being deleted.</summary>
     Task<bool> UpsertSubscription(BillingSubscription subscription);
 }
@@ -73,6 +76,22 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
         return (await connection.QueryAsync<SubscriptionRow>(sql, new { userId }))
             .Select(row => row.ToSubscription())
             .ToList();
+    }
+
+    public async Task<List<Guid>> GetUserIdsWithTierAtLeast(AccountTier minimum)
+    {
+        string[] tiers = BillingPlans.All
+            .Select(plan => plan.Tier)
+            .Where(tier => tier >= minimum)
+            .Distinct()
+            .Select(TierName)
+            .ToArray();
+        const string sql = """
+            SELECT DISTINCT user_id
+            FROM billing_subscription
+            WHERE tier = ANY(@tiers) AND status IN ('active', 'trialing', 'past_due')
+            """;
+        return (await connection.QueryAsync<Guid>(sql, new { tiers })).ToList();
     }
 
     public async Task<bool> UpsertSubscription(BillingSubscription subscription)

@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from "./AccountPlanResponse";
 export * from "./ActivityClip";
 export * from "./ActivityClipsResponse";
 export * from "./ActivityConfigResponse";
@@ -69,6 +70,9 @@ export * from "./LegendPlayerLabel";
 export * from "./LinkedIdentity";
 export * from "./MultipartUploadInfo";
 export * from "./PagedClipsResponse";
+export * from "./PlanOffer";
+export * from "./PlanOfferPrice";
+export * from "./PlanSubscription";
 export * from "./PlaybackSource";
 export * from "./Playlist";
 export * from "./PlaylistClip";
@@ -91,7 +95,6 @@ export * from "./SetLegendDetectionLabelRequest";
 export * from "./SetLegendDetectionPlayerLabelsRequest";
 export * from "./SharedClipResponse";
 export * from "./StartCheckoutRequest";
-export * from "./StorageUsageResponse";
 export * from "./TopTag";
 export * from "./TwitchClipSummary";
 export * from "./TwitchClipsResponse";

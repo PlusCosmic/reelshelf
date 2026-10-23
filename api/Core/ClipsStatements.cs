@@ -312,6 +312,41 @@ public class ClipsStatements(NpgsqlConnection connection)
         return await connection.QuerySingleAsync<long>(sql, new { ownerId });
     }
 
+    /// <summary>What an owner's plan counts (ADR-0007): every clip they own, the clips they created since
+    /// <paramref name="newSince"/> (deleted ones included), and their storage for the byte backstop.</summary>
+    public async Task<OwnerClipUsage> GetOwnerClipUsage(Guid ownerId, DateTimeOffset newSince)
+    {
+        string sql = $"""
+            SELECT
+                (SELECT COUNT(*) FROM clip WHERE owner_id = @ownerId)::int AS clipcount,
+                (SELECT COUNT(*) FROM clip_creation WHERE owner_id = @ownerId AND created_at >= @newSince)::int AS newclips,
+                (SELECT COALESCE(SUM({StorageBytesExpression}), 0) FROM clip WHERE owner_id = @ownerId)::bigint AS storagebytes
+            """;
+
+        return await connection.QuerySingleAsync<OwnerClipUsage>(sql, new { ownerId, newSince });
+    }
+
+    public sealed record OwnerClipUsage(int ClipCount, int NewClips, long StorageBytes);
+
+    /// <summary>
+    /// Records a clip's creation for the plan's new-clips count, which deleting the clip doesn't undo, and forgets the
+    /// owner's creations older than <paramref name="forgetBefore"/>. Runs under the owner's storage lock.
+    /// </summary>
+    public async Task RecordClipCreation(Guid ownerId, Guid clipId, DateTimeOffset forgetBefore)
+    {
+        const string sql = """
+            DELETE FROM clip_creation WHERE owner_id = @ownerId AND created_at < @forgetBefore;
+            INSERT INTO clip_creation (owner_id, clip_id) VALUES (@ownerId, @clipId);
+            """;
+        await connection.ExecuteAsync(sql, new { ownerId, clipId, forgetBefore });
+    }
+
+    /// <summary>Forgets a creation whose reservation was given back before any video existed.</summary>
+    public async Task ForgetClipCreation(Guid clipId)
+    {
+        await connection.ExecuteAsync("DELETE FROM clip_creation WHERE clip_id = @clipId", new { clipId });
+    }
+
     /// <summary>
     /// Clip count, unviewed count, duration and storage per category for an owner, computed over every
     /// clip row rather than over a page of clips. Storage uses <see cref="StorageBytesExpression"/> so a

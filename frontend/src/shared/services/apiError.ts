@@ -76,6 +76,10 @@ async function readProblemDetails(response: Response): Promise<unknown> {
 }
 
 function getProblemMessage(details: unknown): string | undefined {
+  // Endpoints that answer BadRequest<string> or Conflict<string> send the message as a bare JSON string.
+  if (typeof details === "string" && details.length > 0) {
+    return details;
+  }
   if (!details || typeof details !== "object") {
     return undefined;
   }

@@ -1,24 +1,25 @@
-import type { StorageUsage } from "@/shared/services/user";
-import { formatFileSize } from "@/shared/utils/format";
+import { type AccountPlan, tierNames } from "@/shared/services/plans";
 
-export function StorageMeter({
-  usage,
+/** How many clips the account keeps against its plan's limit; the CSS is the old storage meter's. */
+export function PlanMeter({
+  plan,
   compact = false,
 }: {
-  usage: StorageUsage | undefined;
+  plan: AccountPlan | undefined;
   compact?: boolean;
 }) {
-  if (!usage) return null;
+  if (!plan) return null;
 
-  const used = formatFileSize(usage.usedBytes);
-  const limit = usage.limitBytes ?? null;
+  const tier = tierNames[plan.tier] ?? plan.tier;
+  const limit = plan.clipLimit ?? null;
   const fraction =
-    limit !== null && limit > 0 ? Math.min(1, usage.usedBytes / limit) : 0;
+    limit !== null && limit > 0 ? Math.min(1, plan.clipCount / limit) : 0;
   const nearLimit = limit !== null && (limit === 0 || fraction >= 0.9);
+  const clips = plan.clipCount.toLocaleString();
   const label =
     limit !== null
-      ? `${used} of ${formatFileSize(limit)} used`
-      : `${used} used · Unlimited storage`;
+      ? `${clips} of ${limit.toLocaleString()} clips · ${tier}`
+      : `${clips} ${plan.clipCount === 1 ? "clip" : "clips"} · ${tier}`;
 
   return (
     <div
@@ -26,10 +27,10 @@ export function StorageMeter({
         nearLimit ? " near-limit" : ""
       }`}
       role="meter"
-      aria-label="Clip storage"
+      aria-label="Clips kept"
       aria-valuemin={0}
       aria-valuemax={limit ?? undefined}
-      aria-valuenow={usage.usedBytes}
+      aria-valuenow={plan.clipCount}
       aria-valuetext={label}
     >
       <span className="rs-storage-meter-label">{label}</span>

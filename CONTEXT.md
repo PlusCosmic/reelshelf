@@ -39,7 +39,7 @@ The best available browser-provided path for a local file, used only for upload 
 A group of clips from the same game within the same 5am-to-5am gaming day, represented after upload as an auto-generated **Playlist**.
 
 **Account**:
-A Reelshelf user record that owns clips, playlists and storage. Created on the first sign-in from any provider.
+A Reelshelf user record that owns clips and playlists, on a **Tier**. Created on the first sign-in from any provider.
 
 **Linked Identity**:
 A Discord or Twitch login attached to an **Account**. An **Account** has at least one and at most one per provider; any of them signs in to the same **Account**.
@@ -48,7 +48,7 @@ A Discord or Twitch login attached to an **Account**. An **Account** has at leas
 The oldest **Linked Identity** on an **Account**. The account name and avatar follow it; unlinking it promotes the next-oldest.
 
 **Account Email**:
-The address the user chose for account mail (linked sign-in notices, storage nearly full). Suggested from a provider on first sign-in, but owned by the user; providers never overwrite it.
+The address the user chose for account mail (linked sign-in notices, library nearly full). Suggested from a provider on first sign-in, but owned by the user; providers never overwrite it.
 
 **Twitch Clip Import**:
 Copying a clip from the user's own Twitch channel into the **Library** through the API, using the Twitch login stored on their **Linked Identity**. The imported **Clip** is filed like an upload, including its **Gaming Session**.
@@ -57,12 +57,12 @@ _Avoid_: Treating an import as an upload in the UI copy; the user picks from a l
 **Clip Source**:
 Where an imported **Clip** came from (provider and the clip's id there). Locally uploaded clips have none. One owner holds a given source clip at most once.
 
-**Storage Tier**:
-How much clip storage a user may keep. Everyone who signs in with Discord or Twitch gets the free tier (25 GB); users with a **Linked Identity** listed in `whitelist.json` get the unlimited tier.
-_Avoid_: Treating the whitelist as an access gate; it no longer blocks sign-in.
+**Tier**:
+What an **Account** may keep and add (ADR-0007): Free by default, Plus or Pro from a Stripe subscription, Unlimited for accounts with a **Linked Identity** listed in `whitelist.json`. Each tier limits the **Clip Count**, the length of each clip and the clips added in 30 days. It is worked out when needed, never stored.
+_Avoid_: Treating the whitelist as an access gate (it no longer blocks sign-in), or calling Unlimited "Admin", which is a **Role**.
 
-**Storage Usage**:
-The sum of a user's clip sizes, counted from the client-declared file size at upload time (falling back to Bunny's reported storage size for older clips).
+**Clip Count**:
+How many clips an **Account** owns, in any state, including uploads still reserved. A byte total is kept only as a hidden backstop.
 
 **Watch Room**:
 One launch of the Reelshelf Discord Activity in a voice channel, keyed by Discord's instance id, where everyone connected watches the same clips in sync. It lasts only while someone is connected.
@@ -84,8 +84,9 @@ The clips waiting to play in a **Watch Room**, played in turn by who added them.
 
 - A **Bulk Upload Queue** contains one or more local files that may become **Clips**.
 - A **Clip** belongs to the **Library**.
-- A **Clip** counts toward its owner's **Storage Usage** as soon as the clip row is created, before the video finishes uploading.
-- Creating a **Clip** is refused when it would push **Storage Usage** past the owner's **Storage Tier** limit; deleting a **Clip** frees its space.
+- A **Clip** counts toward its owner's **Clip Count** as soon as the clip row is created, before the video finishes uploading.
+- Creating a **Clip** is refused when the owner is at their **Tier**'s clip limit or has added their limit of clips in 30 days; deleting a **Clip** frees its place but doesn't undo the 30-day count.
+- A **Clip** longer than the owner's **Tier** keeps is refused when its upload completes, and its file deleted.
 - A **Clip** may belong to zero or more **Playlists**.
 - A **Bunny Collection** stores uploaded video assets but is not the same as a **Playlist**.
 - A **Gaming Session** is represented as an auto-generated **Playlist** after queued clips are saved.
@@ -96,7 +97,7 @@ The clips waiting to play in a **Watch Room**, played in turn by who added them.
 - Duplicate upload detection is based on owner, game assignment, and file fingerprint.
 - A **Twitch Clip Import** is refused when the owner already holds that **Clip Source**; the Twitch list marks such clips as already in the library.
 - A **Twitch Clip Import** needs a Twitch **Linked Identity** whose stored token carries the clips scope; otherwise the add-clips page asks the user to link or reconnect Twitch instead of listing clips.
-- An imported **Clip** reserves storage for the file size Twitch reports before the copy starts, and the reservation is released if the copy fails.
+- An imported **Clip** reserves its place for the file size Twitch reports before the copy starts, and the reservation is released if the copy fails.
 - The game for a **Twitch Clip Import** is suggested from the IGDB id Twitch reports for the clip's game; the user confirms or changes it before importing.
 - A **Clip** enters a **Room Queue** only from its owner; **Room Guests** see it only while it is queued or playing in their **Watch Room**.
 - Tags selected during bulk upload are queue metadata until the corresponding **Clip** is successfully saved.
@@ -143,7 +144,7 @@ The clips waiting to play in a **Watch Room**, played in turn by who added them.
 > **Domain expert:** "Yes, where the browser supports it; normal multi-file selection remains the fallback."
 >
 > **Dev:** "Does a user need to be on the whitelist to use Reelshelf?"
-> **Domain expert:** "No. Anyone can sign in and gets the free **Storage Tier**. The whitelist only marks who has unlimited storage (and optional role overrides)."
+> **Domain expert:** "No. Anyone can sign in and starts on the Free **Tier**. The whitelist only marks Unlimited accounts (and optional role overrides)."
 >
 > **Dev:** "If someone signs in with Twitch after using Discord, do they get a second library?"
 > **Domain expert:** "Only if they never linked the two. Linking from Settings attaches the Twitch login to the existing **Account**; a fresh Twitch sign-in with nothing linked creates a new **Account**."

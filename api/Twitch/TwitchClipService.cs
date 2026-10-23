@@ -145,7 +145,8 @@ public sealed class TwitchClipService(
             : Math.Max(1, (long)Math.Ceiling(clip.Duration) * FallbackBytesPerSecond);
 
         CreateClipResponse? created = await clipService.CreateClip(
-            request.CategoryId, title, userId, clip.CreatedAt, reservedSize, md5Hash: null, source: source);
+            request.CategoryId, title, userId, clip.CreatedAt, reservedSize, md5Hash: null, source: source,
+            durationSeconds: clip.Duration);
         if (created is null)
         {
             return null;

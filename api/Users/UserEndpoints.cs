@@ -2,7 +2,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
-using Reelshelf.Storage;
+using Reelshelf.Billing;
+using Reelshelf.Plans;
 
 namespace Reelshelf.Users;
 
@@ -16,7 +17,7 @@ public static class UserEndpoints
 
         meGroup.MapGet("/", GetMe).WithName("GetMe");
         meGroup.MapPut("/email", SetEmail).WithName("SetMyEmail");
-        meGroup.MapGet("/storage", GetStorageUsage).WithName("GetMyStorageUsage");
+        meGroup.MapGet("/plan", GetPlan).WithName("GetMyPlan");
         meGroup.MapGet("/identities", GetLinkedIdentities).WithName("GetMyLinkedIdentities");
         meGroup.MapDelete("/identities/{provider}", UnlinkIdentity).WithName("UnlinkMyIdentity");
         meGroup.MapPost("/deletion", DeleteAccount).WithName("DeleteMyAccount");
@@ -61,12 +62,18 @@ public static class UserEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Ok<StorageUsageResponse>> GetStorageUsage(
+    /// <summary>The caller's tier, its limits and usage, and its Stripe subscription (ADR-0007).</summary>
+    private static async Task<Ok<AccountPlanResponse>> GetPlan(
         AuthenticatedUser user,
-        StorageQuotaService storageQuotaService)
+        AccountPlanService planService,
+        IBillingStore billingStore,
+        HttpContext context)
     {
-        StorageQuota quota = await storageQuotaService.GetQuota(user);
-        return TypedResults.Ok(new StorageUsageResponse(quota.UsedBytes, quota.LimitBytes, quota.IsUnlimited));
+        AccountPlan plan = await planService.GetPlan(user);
+        List<BillingSubscription> subscriptions = await billingStore.GetSubscriptions(user.Id);
+        bool billingEnabled = context.RequestServices.GetService<BillingService>() is not null;
+        bool hasCustomer = await billingStore.GetCustomerId(user.Id) is not null;
+        return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, hasCustomer));
     }
 
     private static async Task<Ok<List<LinkedIdentity>>> GetLinkedIdentities(

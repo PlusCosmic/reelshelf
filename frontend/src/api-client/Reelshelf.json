@@ -841,6 +841,29 @@
         }
       }
     },
+    "/api/plans": {
+      "get": {
+        "tags": [
+          "PlanEndpoints"
+        ],
+        "operationId": "GetPlans",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanOffer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/playlists": {
       "post": {
         "tags": [
@@ -2545,19 +2568,19 @@
         }
       }
     },
-    "/api/me/storage": {
+    "/api/me/plan": {
       "get": {
         "tags": [
           "UserEndpoints"
         ],
-        "operationId": "GetMyStorageUsage",
+        "operationId": "GetMyPlan",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StorageUsageResponse"
+                  "$ref": "#/components/schemas/AccountPlanResponse"
                 }
               }
             }
@@ -2970,6 +2993,79 @@
   },
   "components": {
     "schemas": {
+      "AccountPlanResponse": {
+        "required": [
+          "tier",
+          "clip_count",
+          "clip_limit",
+          "new_clips_last30_days",
+          "new_clip_limit",
+          "max_clip_seconds",
+          "storage_used_bytes",
+          "has_transcripts",
+          "billing_enabled",
+          "can_manage_billing",
+          "subscription"
+        ],
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "string"
+          },
+          "clip_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "clip_limit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "new_clips_last30_days": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "new_clip_limit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "max_clip_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "storage_used_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "has_transcripts": {
+            "type": "boolean"
+          },
+          "billing_enabled": {
+            "type": "boolean"
+          },
+          "can_manage_billing": {
+            "type": "boolean"
+          },
+          "subscription": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PlanSubscription"
+              }
+            ]
+          }
+        }
+      },
       "ActivityClip": {
         "required": [
           "clip_id",
@@ -5520,6 +5616,129 @@
           }
         }
       },
+      "PlanOffer": {
+        "required": [
+          "tier",
+          "clip_limit",
+          "max_clip_seconds",
+          "new_clip_limit",
+          "has_transcripts",
+          "prices"
+        ],
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "string"
+          },
+          "clip_limit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "max_clip_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "new_clip_limit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "has_transcripts": {
+            "type": "boolean"
+          },
+          "prices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanOfferPrice"
+            }
+          }
+        }
+      },
+      "PlanOfferPrice": {
+        "required": [
+          "lookup_key",
+          "interval",
+          "unit_amount",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "lookup_key": {
+            "type": "string"
+          },
+          "interval": {
+            "type": "string"
+          },
+          "unit_amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          }
+        }
+      },
+      "PlanSubscription": {
+        "required": [
+          "status",
+          "tier",
+          "interval",
+          "current_period_end",
+          "cancel_at_period_end",
+          "cancel_at",
+          "ended_at"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "tier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "interval": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "current_period_end": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "cancel_at_period_end": {
+            "type": "boolean"
+          },
+          "cancel_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "ended_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "PlaybackSource": {
         "required": [
           "url",
@@ -6117,30 +6336,6 @@
           }
         }
       },
-      "StorageUsageResponse": {
-        "required": [
-          "used_bytes",
-          "limit_bytes",
-          "is_unlimited"
-        ],
-        "type": "object",
-        "properties": {
-          "used_bytes": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "limit_bytes": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int64"
-          },
-          "is_unlimited": {
-            "type": "boolean"
-          }
-        }
-      },
       "TopTag": {
         "required": [
           "name",
@@ -6447,6 +6642,9 @@
     },
     {
       "name": "UserEndpoints"
+    },
+    {
+      "name": "PlanEndpoints"
     },
     {
       "name": "PlaylistEndpoints"

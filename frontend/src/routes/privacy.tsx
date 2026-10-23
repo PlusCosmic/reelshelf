@@ -41,7 +41,9 @@ function PrivacyRoute() {
         </li>
         <li>
           <strong>Usage within Reelshelf:</strong> which clips you've watched,
-          so we can mark them as seen.
+          so we can mark them as seen, and when you added each clip in the last
+          30 days, for your plan's limit on new clips (kept even if you delete
+          the clip, and forgotten after 30 days).
         </li>
         <li>
           <strong>Server logs:</strong> our hosting keeps standard request logs
@@ -66,11 +68,12 @@ function PrivacyRoute() {
           model providers behind it.
         </li>
         <li>
-          <strong>Speech transcription:</strong> for some accounts, a clip's
-          audio is sent through OpenRouter to a speech-to-text provider (such as
-          Google or Deepgram) to make clips searchable. Transcripts are used for
-          search and may be reviewed by us to check their quality. Email us if
-          you'd like your clips left out of transcription.
+          <strong>Speech transcription:</strong> for accounts on the Pro plan
+          (and a few others), a clip's audio is sent through OpenRouter to a
+          speech-to-text provider (such as Google or Deepgram) to make clips
+          searchable. Transcripts are used for search and may be reviewed by us
+          to check their quality. Email us if you'd like your clips left out of
+          transcription.
         </li>
         <li>
           <strong>Clip summaries:</strong> a transcript, with the clip's title,
@@ -111,7 +114,7 @@ function PrivacyRoute() {
         </li>
         <li>
           <strong>Resend</strong> delivers account emails, such as a new sign-in
-          being linked or your storage being nearly full.
+          being linked or your library being nearly full.
         </li>
         <li>
           <strong>OpenAI, Anthropic and OpenRouter</strong> (and the providers

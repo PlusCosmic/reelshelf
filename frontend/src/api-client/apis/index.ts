@@ -11,6 +11,7 @@ export * from "./FFmpegEndpointsApi";
 export * from "./GameCategoryEndpointsApi";
 export * from "./LegendDetectionEndpointsApi";
 export * from "./MultipartUploadEndpointsApi";
+export * from "./PlanEndpointsApi";
 export * from "./PlaylistEndpointsApi";
 export * from "./SharedClipsEndpointsApi";
 export * from "./TwitchClipsEndpointsApi";

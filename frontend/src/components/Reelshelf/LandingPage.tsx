@@ -223,7 +223,7 @@ export function LandingPage({
             <IconArrowRight size={18} aria-hidden="true" />
           </Link>
           <p className="rs-landing-fineprint">
-            Free, with 25 GB of clip storage. Sign in with Discord or Twitch.
+            Free for up to 100 clips. Sign in with Discord or Twitch.
           </p>
         </section>
 

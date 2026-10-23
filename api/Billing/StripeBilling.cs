@@ -92,6 +92,22 @@ public sealed class StripeBilling(StripeClient client) : IStripeBilling
             userId);
     }
 
+    public async Task<List<StripePlanPrice>> ListPricesAsync(IReadOnlyList<string> lookupKeys,
+        CancellationToken cancellationToken)
+    {
+        StripeList<Price> prices = await client.V1.Prices.ListAsync(new PriceListOptions
+        {
+            LookupKeys = lookupKeys.ToList(),
+            Active = true,
+            Limit = 100
+        }, cancellationToken: cancellationToken);
+
+        return prices.Data
+            .Where(price => price.LookupKey is not null && price.UnitAmount is not null)
+            .Select(price => new StripePlanPrice(price.LookupKey, price.UnitAmount!.Value, price.Currency))
+            .ToList();
+    }
+
     public async Task CancelSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken)
     {
         StripeSubscriptionState? state = await GetSubscriptionAsync(subscriptionId, cancellationToken);

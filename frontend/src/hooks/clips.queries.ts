@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import type { Clip, PagedClipsResponse } from "@/api-client";
 import { clipStillArriving } from "@/components/AddClips/addClipsModel";
-import { storageUsageQueryKey } from "@/hooks/auth.queries";
+import { planQueryKey } from "@/hooks/auth.queries";
 import { gamingSessionBounds } from "@/shared/utils/gamingSession";
 import {
   deleteClip,
@@ -255,7 +255,7 @@ export function useDeleteClip() {
       invalidateClipCollections(queryClient);
       // Playlist summaries and details embed clips; drop the deleted one from them too.
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
-      queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
+      queryClient.invalidateQueries({ queryKey: planQueryKey });
     },
   });
 }

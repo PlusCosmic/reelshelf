@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using Reelshelf.Auth;
+using Reelshelf.Billing;
 using Reelshelf.ClipSummary;
 using Reelshelf.Core;
 using Reelshelf.Exceptions;
+using Reelshelf.Plans;
 using Reelshelf.Users;
 using Reelshelf.Video;
 
@@ -12,8 +14,7 @@ namespace Reelshelf.ClipTranscription;
 public class ClipTranscriptionService(
     ClipTranscriptionStatements statements,
     ClipsStatements clipsStatements,
-    UserStatements userStatements,
-    WhitelistService whitelistService,
+    AccountTierService tiers,
     IClipTranscriber transcriber,
     ClipSummaryService summaryService,
     IOptionsMonitor<ClipTranscriptionOptions> options,
@@ -31,30 +32,29 @@ public class ClipTranscriptionService(
 
     /// <summary>
     /// Whether a clip that just finished encoding gets its automatic run: automatic queueing is on, transcription
-    /// is configured, the video is encoded and the owner is whitelisted.
+    /// is configured, the video is encoded and the owner's plan has transcripts (Pro or Unlimited, ADR-0007).
     /// </summary>
-    public static bool ShouldAutoQueue(ClipTranscriptionOptions options, ClipVideoStatus videoStatus, bool ownerWhitelisted)
+    public static bool ShouldAutoQueue(ClipTranscriptionOptions options, ClipVideoStatus videoStatus, bool ownerHasTranscripts)
     {
         return options.AutoQueue
                && options.IsConfigured
                && videoStatus.IsPlayable()
-               && ownerWhitelisted;
+               && ownerHasTranscripts;
     }
 
     /// <summary>
-    /// Queues the automatic run for a clip whose video has finished encoding, when its owner is whitelisted. Safe
+    /// Queues the automatic run for a clip whose video has finished encoding, when its owner's plan has transcripts. Safe
     /// to call on every webhook: a clip only ever gets one automatic run.
     /// </summary>
     public async Task QueueForEncodedClipAsync(ClipsStatements.ClipRow clip, ClipVideoStatus videoStatus)
     {
         ClipTranscriptionOptions current = options.CurrentValue;
-        if (!ShouldAutoQueue(current, videoStatus, ownerWhitelisted: true))
+        if (!ShouldAutoQueue(current, videoStatus, ownerHasTranscripts: true))
         {
             return;
         }
 
-        List<UserStatements.UserIdentityRow> identities = await userStatements.GetIdentitiesForUser(clip.OwnerId);
-        if (!ShouldAutoQueue(current, videoStatus, whitelistService.IsWhitelisted(identities.Select(i => i.ToRef()))))
+        if (!ShouldAutoQueue(current, videoStatus, TierLimits.HasTranscripts(await tiers.GetTier(clip.OwnerId))))
         {
             return;
         }
@@ -65,13 +65,13 @@ public class ClipTranscriptionService(
         }
     }
 
-    /// <summary>Queues the automatic run for every encoded clip of a whitelisted owner that has never had one.</summary>
+    /// <summary>Queues the automatic run for every encoded clip, never run before, of an owner whose plan has transcripts.</summary>
     public async Task<int> BackfillAsync()
     {
         string model = ConfiguredModel();
-        List<Guid> owners = await GetWhitelistedOwnersAsync();
+        List<Guid> owners = await GetTranscribedOwnersAsync();
         int queued = await statements.QueueAutoRunsForOwnersAsync(owners, model);
-        logger.LogInformation("Backfill queued transcription for {Count} clips from {Owners} whitelisted owners",
+        logger.LogInformation("Backfill queued transcription for {Count} clips from {Owners} owners with transcripts",
             queued, owners.Count);
         return queued;
     }
@@ -104,11 +104,11 @@ public class ClipTranscriptionService(
         return await statements.GetRunsForClipAsync(clipId);
     }
 
-    /// <summary>Whitelisted owners' clips and any other transcribed clip, each with its latest run.</summary>
+    /// <summary>Clips of owners whose plan has transcripts and any other transcribed clip, each with its latest run.</summary>
     public async Task<List<ClipTranscriptionReviewClip>> GetClipsForReviewAsync()
     {
         List<ClipTranscriptionStatements.ReviewClipRow> clips =
-            await statements.GetClipsForReviewAsync(await GetWhitelistedOwnersAsync());
+            await statements.GetClipsForReviewAsync(await GetTranscribedOwnersAsync());
         Dictionary<Guid, ClipTranscriptionStatements.LatestRunRow> latestRuns =
             (await statements.GetLatestRunsAsync(clips.Select(clip => clip.Id).ToList())).ToDictionary(run => run.ClipId);
 
@@ -289,14 +289,13 @@ public class ClipTranscriptionService(
         }
     }
 
-    private async Task<List<Guid>> GetWhitelistedOwnersAsync()
+    /// <summary>Owners of clips whose plan has transcripts: whitelisted ones (Unlimited) and Pro subscribers.</summary>
+    private async Task<List<Guid>> GetTranscribedOwnersAsync()
     {
-        return (await statements.GetClipOwnerIdentitiesAsync())
-            .GroupBy(identity => identity.UserId)
-            .Where(owner => whitelistService.IsWhitelisted(
-                owner.Select(identity => new UserIdentityRef(identity.Provider, identity.ProviderUserId))))
-            .Select(owner => owner.Key)
-            .ToList();
+        IEnumerable<IGrouping<Guid, UserIdentityRef>> owners = (await statements.GetClipOwnerIdentitiesAsync())
+            .GroupBy(identity => identity.UserId,
+                identity => new UserIdentityRef(identity.Provider, identity.ProviderUserId));
+        return await tiers.FilterAtLeast(AccountTier.Pro, owners);
     }
 
     private string ConfiguredModel()

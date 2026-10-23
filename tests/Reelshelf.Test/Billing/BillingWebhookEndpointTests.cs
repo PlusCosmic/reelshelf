@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
@@ -112,7 +113,8 @@ public class BillingWebhookEndpointTests
             {
                 BillingOptions options = new() { SecretKey = "rk_test", WebhookSecret = WebhookSecret };
                 builder.Services.AddSingleton(options);
-                builder.Services.AddSingleton(new BillingService(stripe, store, options, NullLogger<BillingService>.Instance));
+                builder.Services.AddSingleton(new BillingService(stripe, store, options,
+                    new MemoryCache(new MemoryCacheOptions()), NullLogger<BillingService>.Instance));
             }
 
             WebApplication app = builder.Build();

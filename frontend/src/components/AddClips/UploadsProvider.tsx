@@ -14,7 +14,9 @@ import {
   type BulkUploadFileInput,
   type BulkUploadRejectedFile,
 } from "@/hooks/bulkUploadQueue";
-import { storageUsageQueryKey } from "@/hooks/auth.queries";
+import { planQueryKey } from "@/hooks/auth.queries";
+import { fetchPlan } from "@/shared/services/plans";
+import { clipLengthProblem, readVideoDuration } from "@/utils/clipLength";
 import { invalidateClipCollections } from "@/hooks/clips.queries";
 import { ApiError } from "@/shared/services/api-error";
 import { deleteClip } from "@/shared/services/clips";
@@ -108,7 +110,7 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
       }
       preparedClipIds.current.delete(id);
       freshIds.current.add(id);
-      void queryClient.invalidateQueries({ queryKey: storageUsageQueryKey });
+      void queryClient.invalidateQueries({ queryKey: planQueryKey });
       invalidateClipCollections(queryClient);
     },
     [queryClient],
@@ -120,6 +122,21 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
 
       void (async () => {
         try {
+          // Refuse a clip longer than the plan keeps before uploading it; the API checks the file again.
+          const plan = await queryClient.fetchQuery({
+            queryKey: planQueryKey,
+            queryFn: fetchPlan,
+            staleTime: 30_000,
+          });
+          const lengthProblem = clipLengthProblem(
+            await readVideoDuration(item.file),
+            plan.maxClipSeconds,
+          );
+          if (lengthProblem) {
+            patch(item.id, { status: "error", error: lengthProblem });
+            return;
+          }
+
           const md5Hash = await calculateClipUploadMd5(item.file);
           const duplicateKey = `${item.categoryId}:${md5Hash}`;
           const existing = duplicateKeys.current.get(duplicateKey);
@@ -152,7 +169,7 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
           // The clip is in the book from here on, so it shows in the list while it uploads.
           patch(item.id, { clipId: response.clipId });
           void queryClient.invalidateQueries({
-            queryKey: storageUsageQueryKey,
+            queryKey: planQueryKey,
           });
           invalidateClipCollections(queryClient);
 

@@ -64,7 +64,12 @@ public class BillingStatementsTests
         Assert.True(await statements.UpsertSubscription(cancelled));
         Assert.Equal(cancelled, Assert.Single(await statements.GetSubscriptions(harry)));
 
-        // An unknown plan is recorded without a tier.
+        Assert.Empty(await statements.GetUserIdsWithTierAtLeast(AccountTier.Plus));
+        Assert.True(await statements.UpsertSubscription(subscription with { Id = "sub_live", Status = "past_due" }));
+        Assert.Equal([harry], await statements.GetUserIdsWithTierAtLeast(AccountTier.Pro));
+        Assert.Equal([harry], await statements.GetUserIdsWithTierAtLeast(AccountTier.Plus));
+
+                // An unknown plan is recorded without a tier.
         BillingSubscription legacy = new("sub_2", harry, "active", "legacy", null, null, false, null, null);
         Assert.True(await statements.UpsertSubscription(legacy));
         Assert.Contains(legacy, await statements.GetSubscriptions(harry));

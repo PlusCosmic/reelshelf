@@ -1,5 +1,5 @@
 using System.Net;
-using Reelshelf.Storage;
+using Reelshelf.Plans;
 
 namespace Reelshelf.Email;
 
@@ -18,19 +18,19 @@ public static class AccountEmails
             $"<p>If this was you, there's nothing to do. If it wasn't, <a href=\"{Encode(settingsUrl)}\">unlink it now</a>.</p>"));
     }
 
-    public static EmailMessage StorageNearlyFull(string to, StorageQuota quota, string libraryUrl)
+    public static EmailMessage ClipLimitNearlyReached(string to, AccountPlan plan, string libraryUrl)
     {
-        string used = StorageQuotaService.FormatBytes(quota.UsedBytes);
-        string limit = StorageQuotaService.FormatBytes(quota.LimitBytes ?? 0);
-        string remaining = StorageQuotaService.FormatBytes(quota.RemainingBytes ?? 0);
-        string subject = "Your Reelshelf storage is nearly full";
+        int limit = plan.Limits.MaxClips ?? 0;
+        string kept = $"{plan.ClipCount:N0} of the {limit:N0} clips";
+        int remaining = Math.Max(0, limit - plan.ClipCount);
+        string subject = "Your Reelshelf library is nearly full";
         string text =
-            $"You've used {used} of your {limit} of clip storage; {remaining} remain.\n\n" +
-            $"Once it's full, new uploads are refused until you delete some clips: {libraryUrl}\n";
+            $"You're keeping {kept} your plan allows; {remaining:N0} more will fit.\n\n" +
+            $"Once it's full, new uploads are refused until you delete some clips or upgrade: {libraryUrl}\n";
 
         return new EmailMessage(to, subject, text, Wrap(subject,
-            $"<p>You've used <strong>{Encode(used)}</strong> of your {Encode(limit)} of clip storage; {Encode(remaining)} remain.</p>" +
-            $"<p>Once it's full, new uploads are refused until you <a href=\"{Encode(libraryUrl)}\">delete some clips</a>.</p>"));
+            $"<p>You're keeping <strong>{Encode(kept)}</strong> your plan allows; {remaining:N0} more will fit.</p>" +
+            $"<p>Once it's full, new uploads are refused until you <a href=\"{Encode(libraryUrl)}\">delete some clips</a> or upgrade.</p>"));
     }
 
     public static EmailMessage AccountDeletionStarted(string to)
