@@ -47,6 +47,8 @@ jobs:
   api:
     name: API
     runs-on: ubuntu-latest
+    # A run takes about three minutes; anything much longer is stuck.
+    timeout-minutes: 30
     services:
       # Tests marked [PostgresFact] run against this; they need the pgvector extension.
       postgres:
@@ -70,8 +72,14 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Install ffmpeg
-        # Legend detection crops frames with ffmpeg, and its tests run the real binary.
-        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
+        # Legend detection crops frames with ffmpeg, and its tests run the real binary. apt waits for ever
+        # on a mirror that stops answering, so give up on a slow connection, retry, and cap the step.
+        timeout-minutes: 10
+        run: |
+          command -v ffmpeg && exit 0
+          apt_options="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
+          sudo apt-get $apt_options update
+          sudo apt-get $apt_options install -y --no-install-recommends ffmpeg
 
       - name: Restore
         run: dotnet restore Reelshelf.sln
