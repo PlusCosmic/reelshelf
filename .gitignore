@@ -73,3 +73,5 @@ project.nuget.cache
 CLAUDE-DOCS/
 
 docs/UI Design
+# Claude Code worktrees
+.claude/worktrees/
