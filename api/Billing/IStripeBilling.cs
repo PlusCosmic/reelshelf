@@ -12,9 +12,15 @@ public interface IStripeBilling
     /// <summary>The subscription as Stripe has it now, or null when Stripe has no such subscription.</summary>
     Task<StripeSubscriptionState?> GetSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken);
 
+    /// <summary>The active prices carrying these lookup keys.</summary>
+    Task<List<StripePlanPrice>> ListPricesAsync(IReadOnlyList<string> lookupKeys, CancellationToken cancellationToken);
+
     /// <summary>Cancels the subscription at once. Does nothing when it is already over or Stripe has no such subscription.</summary>
     Task CancelSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken);
 }
+
+/// <summary>A price in its default currency, in the currency's minor unit (pence, cents).</summary>
+public sealed record StripePlanPrice(string LookupKey, long UnitAmount, string Currency);
 
 public sealed record CheckoutSessionRequest(
     BillingPlan Plan,

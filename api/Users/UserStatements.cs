@@ -4,7 +4,7 @@ using Npgsql;
 namespace Reelshelf.Users;
 
 public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector tokenProtector)
-    : IUserIdentityStore, IProviderTokenStore, Storage.IStorageWarningStore
+    : IUserIdentityStore, IProviderTokenStore, Plans.IClipLimitWarningStore
 {
     private const string UserColumns = "id, username, global_name, avatar_url, email, onboarding_completed_at, role, role_from_whitelist";
 
@@ -302,37 +302,37 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         await connection.ExecuteAsync(sql, new { userId, username, globalName, avatarUrl });
     }
 
-    public async Task<Storage.StorageWarningState> GetState(Guid userId)
+    // storage_warned_at marks the clip-limit notice; it kept its name from when plans limited bytes.
+    public async Task<Plans.ClipLimitWarningState> GetState(Guid userId)
     {
         const string sql = "SELECT email, storage_warned_at AS warned_at FROM app_user WHERE id = @userId";
-        return await connection.QuerySingleOrDefaultAsync<Storage.StorageWarningState>(sql, new { userId })
-               ?? new Storage.StorageWarningState(null, null);
+        return await connection.QuerySingleOrDefaultAsync<Plans.ClipLimitWarningState>(sql, new { userId })
+               ?? new Plans.ClipLimitWarningState(null, null);
     }
 
-    // Same usage expression as ClipsStatements.GetStorageUsedBytesByOwner, evaluated in the update itself.
-    private const string LiveUsageSql =
-        $"(SELECT COALESCE(SUM({Core.ClipsStatements.StorageBytesExpression}), 0) FROM clip WHERE owner_id = @userId)";
+    // The same count as ClipsStatements.GetOwnerClipUsage, evaluated in the update itself.
+    private const string LiveClipCountSql = "(SELECT COUNT(*) FROM clip WHERE owner_id = @userId)";
 
-    public async Task<bool> MarkWarned(Guid userId, long thresholdBytes)
+    public async Task<bool> MarkWarned(Guid userId, int thresholdClips)
     {
         string sql = $@"
             UPDATE app_user
             SET storage_warned_at = now()
             WHERE id = @userId
               AND storage_warned_at IS NULL
-              AND {LiveUsageSql} >= @thresholdBytes";
-        return await connection.ExecuteAsync(sql, new { userId, thresholdBytes }) == 1;
+              AND {LiveClipCountSql} >= @thresholdClips";
+        return await connection.ExecuteAsync(sql, new { userId, thresholdClips }) == 1;
     }
 
-    public async Task ClearWarned(Guid userId, long thresholdBytes)
+    public async Task ClearWarned(Guid userId, int thresholdClips)
     {
         string sql = $@"
             UPDATE app_user
             SET storage_warned_at = NULL
             WHERE id = @userId
               AND storage_warned_at IS NOT NULL
-              AND {LiveUsageSql} < @thresholdBytes";
-        await connection.ExecuteAsync(sql, new { userId, thresholdBytes });
+              AND {LiveClipCountSql} < @thresholdClips";
+        await connection.ExecuteAsync(sql, new { userId, thresholdClips });
     }
 
     /// <summary>Records the address the user chose for account mail (null when they skipped) and marks onboarding done.</summary>

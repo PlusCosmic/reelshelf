@@ -15,14 +15,14 @@ public class ClipTranscriptionQueueTests
     public void ShouldAutoQueue_EncodedClipsOfWhitelistedOwners()
     {
         Assert.True(ClipTranscriptionService.ShouldAutoQueue(
-            Enabled, ClipVideoStatus.Ready, ownerWhitelisted: true));
+            Enabled, ClipVideoStatus.Ready, ownerHasTranscripts: true));
     }
 
     [Fact]
     public void ShouldAutoQueue_SkipsOwnersOffTheWhitelist()
     {
         Assert.False(ClipTranscriptionService.ShouldAutoQueue(
-            Enabled, ClipVideoStatus.Ready, ownerWhitelisted: false));
+            Enabled, ClipVideoStatus.Ready, ownerHasTranscripts: false));
     }
 
     [Theory]
@@ -33,7 +33,7 @@ public class ClipTranscriptionQueueTests
     [InlineData(ClipVideoStatus.UploadFailed)]
     public void ShouldAutoQueue_SkipsClipsThatAreNotEncoded(ClipVideoStatus status)
     {
-        Assert.False(ClipTranscriptionService.ShouldAutoQueue(Enabled, status, ownerWhitelisted: true));
+        Assert.False(ClipTranscriptionService.ShouldAutoQueue(Enabled, status, ownerHasTranscripts: true));
     }
 
     [Fact]

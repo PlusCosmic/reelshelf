@@ -34,6 +34,15 @@ internal sealed class FakeStripe : IStripeBilling
         return Task.FromResult(Subscriptions.GetValueOrDefault(subscriptionId));
     }
 
+    public List<StripePlanPrice> Prices { get; } = [];
+    public int PriceReads { get; private set; }
+
+    public Task<List<StripePlanPrice>> ListPricesAsync(IReadOnlyList<string> lookupKeys, CancellationToken cancellationToken)
+    {
+        PriceReads++;
+        return Task.FromResult(Prices.Where(price => lookupKeys.Contains(price.LookupKey)).ToList());
+    }
+
     public Task CancelSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken)
     {
         Cancelled.Add(subscriptionId);
@@ -67,6 +76,13 @@ internal sealed class FakeStore : IBillingStore
 
     public Task<List<BillingSubscription>> GetSubscriptions(Guid userId) =>
         Task.FromResult(Subscriptions.Where(subscription => subscription.UserId == userId).ToList());
+
+    public Task<List<Guid>> GetUserIdsWithTierAtLeast(AccountTier minimum) =>
+        Task.FromResult(Subscriptions
+            .Where(subscription => subscription.Tier >= minimum && SubscriptionStatuses.GrantsTier(subscription.Status))
+            .Select(subscription => subscription.UserId)
+            .Distinct()
+            .ToList());
 
     public Task<bool> UpsertSubscription(BillingSubscription subscription)
     {

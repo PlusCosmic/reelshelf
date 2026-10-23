@@ -130,12 +130,13 @@ public sealed class R2VideoHost(
     /// <summary>
     /// Joins the parts, then checks the object before anything is queued: its size must be the one the clip
     /// reserved (so the quota holds), and a quick ffprobe over a presigned GET must find a video with a size and a
-    /// length. A file that fails is deleted and the clip marked <c>upload_failed</c> (422). HDR and variable frame
+    /// length no longer than the owner's plan keeps. A file that fails is deleted and the clip marked
+    /// <c>upload_failed</c> (422). HDR and variable frame
     /// rate are the worker's to handle. A probe that couldn't finish fails with 503 and leaves the clip waiting, and
     /// completing again picks up the joined object rather than the upload, which is gone by then.
     /// </summary>
     public async Task<CompletedUpload> CompleteUploadAsync(ClipsStatements.ClipRow clip, string uploadId,
-        IReadOnlyList<CompletedUploadPart> parts, CancellationToken cancellationToken)
+        IReadOnlyList<CompletedUploadPart> parts, Plans.TierLimits limits, CancellationToken cancellationToken)
     {
         RequireUploadId(uploadId);
         if (clip.VideoStatus.IsUploaded())
@@ -168,7 +169,7 @@ public sealed class R2VideoHost(
             {
                 UploadProbeResult result = await probe.ProbeAsync(
                     new Uri(storage.PresignGet(key, ProbeUrlLifetime)), cancellationToken);
-                problem = UploadValidation.Problem(result);
+                problem = UploadValidation.Problem(result) ?? limits.LengthProblem(result.DurationSeconds);
             }
             catch (UnreadableUploadException error)
             {

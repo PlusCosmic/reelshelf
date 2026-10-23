@@ -66,7 +66,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             ConflictException => "Conflict",
             UnauthorizedException => "Unauthorized",
             ForbiddenException => "Forbidden",
-            StorageQuotaExceededException => "Storage Limit Reached",
+            PlanLimitExceededException => "Plan Limit Reached",
             ServiceUnavailableException => "Service Unavailable",
             UnprocessableContentException => "Unprocessable Content",
             _ => "An error occurred"

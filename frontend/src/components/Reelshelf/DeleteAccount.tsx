@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog } from "@/components/Reelshelf/Dialog";
-import { useDeleteAccount, useStorageUsage } from "@/hooks/queries";
+import { useDeleteAccount, usePlan } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 import { deleteAccountPhrase } from "@/shared/services/user";
 import { formatFileSize } from "@/shared/utils/format";
@@ -30,7 +30,7 @@ export function DeleteAccount() {
 function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { data: storage } = useStorageUsage();
+  const { data: plan } = usePlan();
   const deleteAccount = useDeleteAccount();
   const navigate = useNavigate();
   const confirmed = confirmation.trim().toLowerCase() === deleteAccountPhrase;
@@ -71,8 +71,10 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
             <ul className="rs-delete-account-list">
               <li>
                 every clip you've uploaded or imported
-                {storage && storage.usedBytes > 0
-                  ? ` (${formatFileSize(storage.usedBytes)})`
+                {plan && plan.clipCount > 0
+                  ? ` (${plan.clipCount.toLocaleString()} ${
+                      plan.clipCount === 1 ? "clip" : "clips"
+                    }, ${formatFileSize(plan.storageUsedBytes)})`
                   : ""}
                 , with its tags, detections and transcripts
               </li>
@@ -80,6 +82,12 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
                 your share links, and the collections you made, including for
                 their collaborators
               </li>
+              {plan?.subscription &&
+              !["canceled", "incomplete_expired"].includes(
+                plan.subscription.status,
+              ) ? (
+                <li>your paid plan, which is cancelled straight away</li>
+              ) : null}
               <li>your linked Discord and Twitch sign-ins</li>
             </ul>
           </div>

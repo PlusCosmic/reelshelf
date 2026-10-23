@@ -47,7 +47,7 @@ public static class Permissions
             LinksRead,
             ClipsCreate,
             ClipsEdit,
-            ClipsDelete, // Editors own their storage tier and must be able to free space.
+            ClipsDelete, // Editors must be able to free room in their plan.
             PlaylistsManage,
             LinksManage
         ],

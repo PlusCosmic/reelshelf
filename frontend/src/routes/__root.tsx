@@ -20,8 +20,8 @@ import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
-import { StorageMeter } from "@/components/Reelshelf/StorageMeter";
-import { useCurrentUser, useLogout, useStorageUsage } from "@/hooks/queries";
+import { PlanMeter } from "@/components/Reelshelf/PlanMeter";
+import { useCurrentUser, useLogout, usePlan } from "@/hooks/queries";
 
 type ReelshelfTheme = "light" | "dark";
 
@@ -103,7 +103,7 @@ function AuthenticatedShell({
     select: (state) => state.location.pathname,
   });
   const { data: user, isLoading, isError } = useCurrentUser();
-  const storage = useStorageUsage(!!user && profileMenuOpen);
+  const plan = usePlan(!!user && profileMenuOpen);
   const logout = useLogout();
 
   const active = (path: string) =>
@@ -165,9 +165,9 @@ function AuthenticatedShell({
             </button>
             {profileMenuOpen ? (
               <div className="rs-profile-popover" role="menu">
-                {storage.data ? (
+                {plan.data ? (
                   <div className="rs-menu-storage">
-                    <StorageMeter usage={storage.data} compact />
+                    <PlanMeter plan={plan.data} compact />
                   </div>
                 ) : null}
                 <Link

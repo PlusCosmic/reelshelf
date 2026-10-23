@@ -44,8 +44,8 @@ function SignInRoute() {
           </h1>
           <p className="rs-signin-copy">
             Continue with any provider below. If you're new, this creates your
-            account. It's free, with 25 GB of clip storage. Link the others
-            later from Settings and any of them will open the same shelf.
+            account. It's free for up to 100 clips. Link the others later from
+            Settings and any of them will open the same shelf.
           </p>
         </div>
 

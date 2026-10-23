@@ -4,9 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using Reelshelf.Billing;
 using Reelshelf.Core;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
+using Reelshelf.Plans;
 using Reelshelf.Video;
 using Reelshelf.Video.R2;
 using Reelshelf.Video.Transcoding;
@@ -27,6 +29,7 @@ public class R2MultipartUploadTests
     private const long FileSize = 20 * MiB;
 
     private static readonly UploadProbeResult Video = new(HasVideo: true, DurationSeconds: 31.5, Width: 1920, Height: 1080);
+    private static readonly TierLimits NoLimits = TierLimits.For(AccountTier.Unlimited);
 
     [Theory]
     [InlineData(1, 8 * MiB, 1)]
@@ -45,7 +48,7 @@ public class R2MultipartUploadTests
     [Fact]
     public void TheLargestDeclarableFile_FitsInTheMostParts()
     {
-        long largest = Reelshelf.Storage.StorageQuota.MaxDeclaredFileSizeBytes;
+        long largest = AccountPlanService.MaxDeclaredFileSizeBytes;
 
         Assert.True(MultipartUploadParts.PartCountFor(largest) <= MultipartUploadParts.MaxParts);
         Assert.True(MultipartUploadParts.PartSizeFor(largest) % MiB == 0);
@@ -139,11 +142,11 @@ public class R2MultipartUploadTests
         await using TestUploads test = await TestUploads.CreateAsync();
         (ClipsStatements.ClipRow clip, string uploadId) = await test.AddUploadedPartsAsync(8 * MiB, 8 * MiB, 4 * MiB);
 
-        CompletedUpload completed = await test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), CancellationToken.None);
+        CompletedUpload completed = await test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), NoLimits, CancellationToken.None);
         CompletedUpload again = await test.Host.CompleteUploadAsync(await test.ClipAsync(clip.Id), uploadId, Parts(3),
-            CancellationToken.None);
+            NoLimits, CancellationToken.None);
         // A completion repeated before the clip row moved on finds the joined object rather than the upload.
-        CompletedUpload raced = await test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), CancellationToken.None);
+        CompletedUpload raced = await test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), NoLimits, CancellationToken.None);
 
         Assert.Equal(ClipVideoStatus.Uploaded, completed.Status);
         Assert.Equal(ClipVideoStatus.Uploaded, again.Status);
@@ -165,9 +168,26 @@ public class R2MultipartUploadTests
         test.Probe.Next = Video with { HasVideo = false };
 
         UnprocessableContentException refused = await Assert.ThrowsAsync<UnprocessableContentException>(() =>
-            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), CancellationToken.None));
+            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), NoLimits, CancellationToken.None));
 
         Assert.Equal("The file has no video in it.", refused.Message);
+        Assert.Equal("upload_failed", (await test.ClipAsync(clip.Id)).VideoState);
+        Assert.Empty(await test.RunsAsync(clip.Id));
+        Assert.Empty(test.R2.Objects);
+    }
+
+    [PostgresFact]
+    public async Task Complete_RefusesAClipLongerThanThePlanKeeps()
+    {
+        await using TestUploads test = await TestUploads.CreateAsync();
+        (ClipsStatements.ClipRow clip, string uploadId) = await test.AddUploadedPartsAsync(8 * MiB, 8 * MiB, 4 * MiB);
+        test.Probe.Next = Video with { DurationSeconds = 75 };
+
+        UnprocessableContentException refused = await Assert.ThrowsAsync<UnprocessableContentException>(() =>
+            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), TierLimits.For(AccountTier.Free),
+                CancellationToken.None));
+
+        Assert.StartsWith("This clip is 75 s long, and your plan keeps clips of up to 1 min.", refused.Message);
         Assert.Equal("upload_failed", (await test.ClipAsync(clip.Id)).VideoState);
         Assert.Empty(await test.RunsAsync(clip.Id));
         Assert.Empty(test.R2.Objects);
@@ -181,7 +201,7 @@ public class R2MultipartUploadTests
         test.Probe.Throw = new UnreadableUploadException("moov atom not found");
 
         await Assert.ThrowsAsync<UnprocessableContentException>(() =>
-            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), CancellationToken.None));
+            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), NoLimits, CancellationToken.None));
 
         Assert.Equal("upload_failed", (await test.ClipAsync(clip.Id)).VideoState);
         Assert.Empty(await test.RunsAsync(clip.Id));
@@ -195,7 +215,7 @@ public class R2MultipartUploadTests
         (ClipsStatements.ClipRow clip, string uploadId) = await test.AddUploadedPartsAsync(8 * MiB, 8 * MiB, 4 * MiB + 1);
 
         await Assert.ThrowsAsync<UnprocessableContentException>(() =>
-            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), CancellationToken.None));
+            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), NoLimits, CancellationToken.None));
 
         Assert.Equal("upload_failed", (await test.ClipAsync(clip.Id)).VideoState);
         Assert.Empty(test.Probe.Probed);
@@ -210,12 +230,12 @@ public class R2MultipartUploadTests
         test.Probe.Throw = new TimeoutException("slow");
 
         await Assert.ThrowsAsync<ServiceUnavailableException>(() =>
-            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), CancellationToken.None));
+            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), NoLimits, CancellationToken.None));
         Assert.Equal("awaiting_upload", (await test.ClipAsync(clip.Id)).VideoState);
 
         test.Probe.Throw = null;
         CompletedUpload completed = await test.Host.CompleteUploadAsync(await test.ClipAsync(clip.Id), uploadId,
-            Parts(3), CancellationToken.None);
+            Parts(3), NoLimits, CancellationToken.None);
 
         Assert.Equal(ClipVideoStatus.Uploaded, completed.Status);
         Assert.Single(await test.RunsAsync(clip.Id));
@@ -230,11 +250,11 @@ public class R2MultipartUploadTests
         // Part 3 was never uploaded: naming only two parts is refused before R2 is asked, and naming the third makes
         // R2 refuse it. Neither fails the clip, which can still be finished.
         await Assert.ThrowsAsync<BadRequestException>(() =>
-            test.Host.CompleteUploadAsync(clip, uploadId, Parts(2), CancellationToken.None));
+            test.Host.CompleteUploadAsync(clip, uploadId, Parts(2), NoLimits, CancellationToken.None));
         await Assert.ThrowsAsync<BadRequestException>(() =>
-            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), CancellationToken.None));
+            test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), NoLimits, CancellationToken.None));
         await Assert.ThrowsAsync<BadRequestException>(() => test.Host.CompleteUploadAsync(clip, uploadId,
-            [new(1, "\"etag-1\""), new(1, "\"etag-1\""), new(3, "\"etag-3\"")], CancellationToken.None));
+            [new(1, "\"etag-1\""), new(1, "\"etag-1\""), new(3, "\"etag-3\"")], NoLimits, CancellationToken.None));
 
         Assert.Equal("awaiting_upload", (await test.ClipAsync(clip.Id)).VideoState);
         Assert.Equal(2, test.R2.Uploads[uploadId].Parts.Count);
@@ -247,7 +267,7 @@ public class R2MultipartUploadTests
         ClipsStatements.ClipRow clip = await test.AddClipAsync();
 
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            test.Host.CompleteUploadAsync(clip, "upload-gone", Parts(3), CancellationToken.None));
+            test.Host.CompleteUploadAsync(clip, "upload-gone", Parts(3), NoLimits, CancellationToken.None));
         await Assert.ThrowsAsync<NotFoundException>(() =>
             test.Host.ListPartsAsync(clip, "upload-gone", CancellationToken.None));
     }
@@ -290,7 +310,7 @@ public class R2MultipartUploadTests
         ClipsStatements.ClipRow clip = await test.AddClipAsync("upload_failed");
 
         await Assert.ThrowsAsync<ConflictException>(() =>
-            test.Host.CompleteUploadAsync(clip, "upload-1", Parts(3), CancellationToken.None));
+            test.Host.CompleteUploadAsync(clip, "upload-1", Parts(3), NoLimits, CancellationToken.None));
         Assert.Throws<ConflictException>(() => test.Host.PresignParts(clip, "upload-1", [1]));
         await Assert.ThrowsAsync<ConflictException>(() =>
             test.Host.ListPartsAsync(clip, "upload-1", CancellationToken.None));

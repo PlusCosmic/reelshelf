@@ -1,30 +1,34 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Reelshelf.Billing;
 using Reelshelf.Email;
-using Reelshelf.Storage;
+using Reelshelf.Plans;
 using Xunit;
 
-namespace Reelshelf.Test.Storage;
+namespace Reelshelf.Test.Plans;
 
-public class StorageWarningServiceTests
+public class ClipLimitWarningServiceTests
 {
-    private const long Limit = StorageQuota.DefaultLimitBytes;
+    private const int Limit = 1_000;
     private static readonly Guid UserId = Guid.NewGuid();
 
-    private static Task Evaluate(StorageWarningService service, FakeStore store, StorageQuota quota)
+    private static AccountPlan Plan(int clipCount, AccountTier tier = AccountTier.Plus) =>
+        new(tier, TierLimits.For(tier), clipCount, 0, 0);
+
+    private static Task Evaluate(ClipLimitWarningService service, FakeStore store, AccountPlan plan)
     {
-        store.LiveUsageBytes = quota.UsedBytes;
-        return service.Evaluate(UserId, quota);
+        store.LiveClipCount = plan.ClipCount;
+        return service.Evaluate(UserId, plan);
     }
 
-    private static (StorageWarningService Service, FakeStore Store, FakeSender Sender) Build(string? email = "harry@example.com")
+    private static (ClipLimitWarningService Service, FakeStore Store, FakeSender Sender) Build(string? email = "harry@example.com")
     {
         FakeStore store = new(email);
         FakeSender sender = new();
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["FrontendOrigin"] = "https://clips.example" })
             .Build();
-        StorageWarningService service = new(store, sender, configuration, NullLogger<StorageWarningService>.Instance);
+        ClipLimitWarningService service = new(store, sender, configuration, NullLogger<ClipLimitWarningService>.Instance);
         return (service, store, sender);
     }
 
@@ -33,17 +37,18 @@ public class StorageWarningServiceTests
     {
         var (service, store, sender) = Build();
 
-        await Evaluate(service, store, new StorageQuota(Limit * 89 / 100, Limit));
+        await Evaluate(service, store, Plan(899));
         Assert.Empty(sender.Sent);
         Assert.Null(store.WarnedAt);
 
-        await Evaluate(service, store, new StorageQuota(Limit * 90 / 100, Limit));
+        await Evaluate(service, store, Plan(900));
         EmailMessage message = Assert.Single(sender.Sent);
         Assert.Equal("harry@example.com", message.To);
         Assert.Contains("nearly full", message.Subject);
+        Assert.Contains("900 of the 1,000 clips", message.Text);
         Assert.NotNull(store.WarnedAt);
 
-        await Evaluate(service, store, new StorageQuota(Limit * 95 / 100, Limit));
+        await Evaluate(service, store, Plan(950));
         Assert.Single(sender.Sent);
     }
 
@@ -52,11 +57,11 @@ public class StorageWarningServiceTests
     {
         var (service, store, sender) = Build();
 
-        await Evaluate(service, store, new StorageQuota(Limit, Limit));
-        await Evaluate(service, store, new StorageQuota(Limit / 2, Limit));
+        await Evaluate(service, store, Plan(Limit));
+        await Evaluate(service, store, Plan(Limit / 2));
         Assert.Null(store.WarnedAt);
 
-        await Evaluate(service, store, new StorageQuota(Limit * 91 / 100, Limit));
+        await Evaluate(service, store, Plan(910));
         Assert.Equal(2, sender.Sent.Count);
     }
 
@@ -64,10 +69,10 @@ public class StorageWarningServiceTests
     public async Task ConcurrentCrossing_SendsOnlyForTheClaimant()
     {
         var (service, store, sender) = Build();
-        StorageQuota over = new(Limit * 92 / 100, Limit);
+        AccountPlan over = Plan(920);
 
         // Both requests read a clean state before either claims the marker.
-        store.LiveUsageBytes = over.UsedBytes;
+        store.LiveClipCount = over.ClipCount;
         await Task.WhenAll(service.Evaluate(UserId, over), service.Evaluate(UserId, over));
 
         Assert.Single(sender.Sent);
@@ -78,23 +83,23 @@ public class StorageWarningServiceTests
     {
         var (service, store, sender) = Build();
 
-        // An upload observed 95% but a concurrent deletion has since brought live usage down to 50%.
-        store.LiveUsageBytes = Limit / 2;
-        await service.Evaluate(UserId, new StorageQuota(Limit * 95 / 100, Limit));
+        // An upload observed 95% but a concurrent deletion has since brought the live count down to 50%.
+        store.LiveClipCount = Limit / 2;
+        await service.Evaluate(UserId, Plan(950));
 
         Assert.Empty(sender.Sent);
         Assert.Null(store.WarnedAt);
 
-        await Evaluate(service, store, new StorageQuota(Limit * 95 / 100, Limit));
+        await Evaluate(service, store, Plan(950));
         Assert.Single(sender.Sent);
     }
 
     [Fact]
-    public async Task UnlimitedTier_NeverWarns()
+    public async Task Unlimited_NeverWarns()
     {
         var (service, store, sender) = Build();
 
-        await Evaluate(service, store, new StorageQuota(500L * 1024 * 1024 * 1024, null));
+        await Evaluate(service, store, Plan(50_000, AccountTier.Unlimited));
 
         Assert.Empty(sender.Sent);
         Assert.Null(store.WarnedAt);
@@ -105,25 +110,25 @@ public class StorageWarningServiceTests
     {
         var (service, store, sender) = Build(email: null);
 
-        await Evaluate(service, store, new StorageQuota(Limit, Limit));
+        await Evaluate(service, store, Plan(Limit));
 
         Assert.Empty(sender.Sent);
         Assert.NotNull(store.WarnedAt);
     }
 
-    private sealed class FakeStore(string? email) : IStorageWarningStore
+    private sealed class FakeStore(string? email) : IClipLimitWarningStore
     {
         public DateTimeOffset? WarnedAt { get; private set; }
 
-        public Task<StorageWarningState> GetState(Guid userId) =>
-            Task.FromResult(new StorageWarningState(email, WarnedAt));
+        public Task<ClipLimitWarningState> GetState(Guid userId) =>
+            Task.FromResult(new ClipLimitWarningState(email, WarnedAt));
 
         /// <summary>What the database would see at the moment the marker statement runs.</summary>
-        public long LiveUsageBytes { get; set; }
+        public int LiveClipCount { get; set; }
 
-        public Task<bool> MarkWarned(Guid userId, long thresholdBytes)
+        public Task<bool> MarkWarned(Guid userId, int thresholdClips)
         {
-            if (WarnedAt is not null || LiveUsageBytes < thresholdBytes)
+            if (WarnedAt is not null || LiveClipCount < thresholdClips)
             {
                 return Task.FromResult(false);
             }
@@ -132,9 +137,9 @@ public class StorageWarningServiceTests
             return Task.FromResult(true);
         }
 
-        public Task ClearWarned(Guid userId, long thresholdBytes)
+        public Task ClearWarned(Guid userId, int thresholdClips)
         {
-            if (LiveUsageBytes < thresholdBytes)
+            if (LiveClipCount < thresholdClips)
             {
                 WarnedAt = null;
             }

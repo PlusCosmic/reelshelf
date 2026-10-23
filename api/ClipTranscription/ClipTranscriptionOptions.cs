@@ -5,8 +5,8 @@ public sealed class ClipTranscriptionOptions
     public const string SectionName = "ClipTranscription";
 
     /// <summary>
-    /// Queue a run when a clip owned by a whitelisted account finishes encoding. Dev and prod share the queue, so
-    /// set it on the instances that should add work, not all of them.
+    /// Queue a run when a clip owned by an account whose plan has transcripts (Pro or Unlimited) finishes encoding.
+    /// Dev and prod share the queue, so set it on the instances that should add work, not all of them.
     /// </summary>
     public bool AutoQueue { get; set; }
 

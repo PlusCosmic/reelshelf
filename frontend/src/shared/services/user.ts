@@ -1,8 +1,4 @@
-import type {
-  CurrentUserResponse,
-  LinkedIdentity,
-  StorageUsageResponse,
-} from "@/api-client";
+import type { CurrentUserResponse, LinkedIdentity } from "@/api-client";
 import { createUserApi } from "./apiClients";
 
 export interface CurrentUser {
@@ -19,12 +15,6 @@ export interface CurrentUser {
 export async function fetchMe(): Promise<CurrentUser | null> {
   const user = await createUserApi().getMe();
   return user ? fromCurrentUserResponse(user) : null;
-}
-
-export type StorageUsage = StorageUsageResponse;
-
-export async function fetchStorageUsage(): Promise<StorageUsage> {
-  return createUserApi().getMyStorageUsage();
 }
 
 export type { LinkedIdentity };

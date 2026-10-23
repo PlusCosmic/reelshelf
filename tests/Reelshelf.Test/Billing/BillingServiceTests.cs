@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Reelshelf.Auth;
 using Reelshelf.Billing;
@@ -16,7 +17,9 @@ public class BillingServiceTests
         FakeStore store = new();
         store.Users.Add(User.Id);
         BillingOptions options = new() { SecretKey = "rk_test", WebhookSecret = "whsec_test", FrontendOrigin = "https://reelshelf.test" };
-        return (new BillingService(stripe, store, options, NullLogger<BillingService>.Instance), stripe, store);
+        BillingService service = new(stripe, store, options, new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<BillingService>.Instance);
+        return (service, stripe, store);
     }
 
     private static StripeSubscriptionState State(string id, string customerId, string status = "active",
@@ -259,6 +262,22 @@ public class BillingServiceTests
 
         Assert.Equal(0, stripe.SubscriptionReads);
         Assert.Empty(store.Subscriptions);
+    }
+
+    [Fact]
+    public async Task Prices_AreReadFromStripeOnceAndKeyedByLookupKey()
+    {
+        var (service, stripe, _) = Build();
+        stripe.Prices.Add(new StripePlanPrice("plus_monthly", 300, "gbp"));
+        stripe.Prices.Add(new StripePlanPrice("pro_yearly", 8_000, "gbp"));
+
+        IReadOnlyDictionary<string, StripePlanPrice> first = await service.GetPrices(CancellationToken.None);
+        IReadOnlyDictionary<string, StripePlanPrice> second = await service.GetPrices(CancellationToken.None);
+
+        Assert.Equal(300, first["plus_monthly"].UnitAmount);
+        Assert.False(first.ContainsKey("plus_yearly"));
+        Assert.Same(first, second);
+        Assert.Equal(1, stripe.PriceReads);
     }
 
     [Fact]
