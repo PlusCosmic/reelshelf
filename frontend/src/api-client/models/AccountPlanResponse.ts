@@ -93,6 +93,18 @@ export interface AccountPlanResponse {
    * @memberof AccountPlanResponse
    */
   subscription: PlanSubscription | null;
+  /**
+   *
+   * @type {number}
+   * @memberof AccountPlanResponse
+   */
+  clipsOverLimit: number;
+  /**
+   *
+   * @type {Date}
+   * @memberof AccountPlanResponse
+   */
+  overLimitDeletesAt: Date | null;
 }
 
 /**
@@ -123,6 +135,13 @@ export function instanceOfAccountPlanResponse(
     return false;
   if (!("subscription" in value) || value["subscription"] === undefined)
     return false;
+  if (!("clipsOverLimit" in value) || value["clipsOverLimit"] === undefined)
+    return false;
+  if (
+    !("overLimitDeletesAt" in value) ||
+    value["overLimitDeletesAt"] === undefined
+  )
+    return false;
   return true;
 }
 
@@ -149,6 +168,11 @@ export function AccountPlanResponseFromJSONTyped(
     billingEnabled: json["billing_enabled"],
     canManageBilling: json["can_manage_billing"],
     subscription: PlanSubscriptionFromJSON(json["subscription"]),
+    clipsOverLimit: json["clips_over_limit"],
+    overLimitDeletesAt:
+      json["over_limit_deletes_at"] == null
+        ? null
+        : new Date(json["over_limit_deletes_at"]),
   };
 }
 
@@ -176,5 +200,10 @@ export function AccountPlanResponseToJSONTyped(
     billing_enabled: value["billingEnabled"],
     can_manage_billing: value["canManageBilling"],
     subscription: PlanSubscriptionToJSON(value["subscription"]),
+    clips_over_limit: value["clipsOverLimit"],
+    over_limit_deletes_at:
+      value["overLimitDeletesAt"] == null
+        ? value["overLimitDeletesAt"]
+        : value["overLimitDeletesAt"].toISOString(),
   };
 }

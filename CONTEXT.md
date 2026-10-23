@@ -61,6 +61,12 @@ Where an imported **Clip** came from (provider and the clip's id there). Locally
 What an **Account** may keep and add (ADR-0007): Free by default, Plus or Pro from a Stripe subscription, Unlimited for accounts with a **Linked Identity** listed in `whitelist.json`. Each tier limits the **Clip Count**, the length of each clip and the clips added in 30 days. It is worked out when needed, never stored.
 _Avoid_: Treating the whitelist as an access gate (it no longer blocks sign-in), or calling Unlimited "Admin", which is a **Role**.
 
+**Grace**:
+The 14 days an **Account** over its **Tier**'s clip limit keeps the clips over it, from when it went over. When it ends those clips are put in an **Export** and deleted. Picked clips are kept first, then the newest.
+
+**Export**:
+A download of an **Account**'s clips as zip files, kept 28 days: asked for by the owner, or made when a **Grace** ends, before its clips are deleted.
+
 **Clip Count**:
 How many clips an **Account** owns, in any state, including uploads still reserved. A byte total is kept only as a hidden backstop.
 

@@ -87,6 +87,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapUserEndpoints();
         apiGroup.MapBillingEndpoints();
         apiGroup.MapPlanEndpoints();
+        apiGroup.MapOverLimitEndpoints();
         apiGroup.MapTwitchClipsEndpoints();
         apiGroup.MapDiscordActivityEndpoints();
         apiGroup.MapWorkerEndpoints();
@@ -230,6 +231,7 @@ internal static class ReelshelfApiConfiguration
         // whitelist.json no longer gates access; it marks Unlimited accounts and role overrides.
         builder.Services.AddSingleton<WhitelistService>();
         builder.Services.AddScoped<AccountPlanService>();
+        builder.AddPlanEnforcement();
         builder.Services.AddSingleton<DiscordRoleMapping>();
         builder.Services.AddSingleton<ProviderTokenProtector>();
         builder.Services.AddScoped<UserStatements>();

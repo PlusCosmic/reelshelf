@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { ReactNode } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AccountPlanResponse, PlanOffer } from "@/api-client";
@@ -9,6 +10,10 @@ const mocks = vi.hoisted(() => ({
   offers: undefined as unknown,
   checkout: vi.fn(),
   portal: vi.fn(),
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
 }));
 
 vi.mock("@/hooks/queries", () => ({
@@ -38,6 +43,8 @@ const free: AccountPlanResponse = {
   billingEnabled: true,
   canManageBilling: false,
   subscription: null,
+  clipsOverLimit: 0,
+  overLimitDeletesAt: null,
 };
 
 const offers: PlanOffer[] = [
@@ -122,6 +129,26 @@ describe("PlanSettings", () => {
     expect(screen.queryByRole("button", { name: /Upgrade/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Manage billing" }));
     expect(mocks.portal).toHaveBeenCalled();
+  });
+
+  it("says how many clips are over the limit and when they go", () => {
+    mocks.plan = {
+      ...free,
+      clipCount: 130,
+      clipsOverLimit: 30,
+      overLimitDeletesAt: new Date("2026-11-06T12:00:00Z"),
+    };
+    mocks.offers = offers;
+    render(<PlanSettings billingReturn={undefined} />);
+
+    expect(
+      screen.getByText(
+        /30 clips are over your plan's limit and will be deleted on/,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("Download them or pick which to keep"),
+    ).toBeTruthy();
   });
 
   it("warns when a payment failed", () => {

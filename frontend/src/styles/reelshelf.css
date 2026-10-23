@@ -7836,3 +7836,45 @@ html:has(.rs-library-route) {
   color: var(--fg-soft);
   font-size: 12px;
 }
+
+/* The plan page: clips over the limit, picked clips and downloads. */
+.rs-plan-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-plan-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rs-plan-list-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rs-plan-list-main > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-plan-list-sub {
+  color: var(--fg-soft);
+  font-size: 12px;
+}
+
+.rs-plan-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}

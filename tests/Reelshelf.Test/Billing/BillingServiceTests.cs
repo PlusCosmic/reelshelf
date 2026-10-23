@@ -11,13 +11,15 @@ public class BillingServiceTests
     private static readonly AuthenticatedUser User = new(Guid.NewGuid(), "harry", null, null, "harry@example.com", true,
         UserRole.Editor, [], []);
 
-    private static (BillingService Service, FakeStripe Stripe, FakeStore Store) Build()
+    private static (BillingService Service, FakeStripe Stripe, FakeStore Store) Build() => Build(new NoPlanEndingNotifier());
+
+    private static (BillingService Service, FakeStripe Stripe, FakeStore Store) Build(IPlanEndingNotifier planEnding)
     {
         FakeStripe stripe = new();
         FakeStore store = new();
         store.Users.Add(User.Id);
         BillingOptions options = new() { SecretKey = "rk_test", WebhookSecret = "whsec_test", FrontendOrigin = "https://reelshelf.test" };
-        BillingService service = new(stripe, store, options, new MemoryCache(new MemoryCacheOptions()),
+        BillingService service = new(stripe, store, options, new MemoryCache(new MemoryCacheOptions()), planEnding,
             NullLogger<BillingService>.Instance);
         return (service, stripe, store);
     }
@@ -265,6 +267,26 @@ public class BillingServiceTests
     }
 
     [Fact]
+    public async Task ASubscriptionNewlySetToEnd_TellsTheOwnerOnce()
+    {
+        RecordingPlanEnding planEnding = new();
+        var (service, stripe, store) = Build(planEnding);
+        store.Customers[User.Id] = "cus_1";
+        stripe.Subscriptions["sub_1"] = State("sub_1", "cus_1");
+        BillingWebhookEvent updated = new("evt_1", "customer.subscription.updated", "sub_1", "cus_1", null);
+        await service.HandleWebhook(updated, CancellationToken.None);
+        Assert.Empty(planEnding.Ends);
+
+        stripe.Subscriptions["sub_1"] = State("sub_1", "cus_1") with { CancelAtPeriodEnd = true };
+        await service.HandleWebhook(updated, CancellationToken.None);
+        await service.HandleWebhook(updated, CancellationToken.None);
+
+        (Guid userId, DateTimeOffset endsAt) = Assert.Single(planEnding.Ends);
+        Assert.Equal(User.Id, userId);
+        Assert.Equal(DateTimeOffset.Parse("2026-11-23T00:00:00Z"), endsAt);
+    }
+
+    [Fact]
     public async Task Prices_AreReadFromStripeOnceAndKeyedByLookupKey()
     {
         var (service, stripe, _) = Build();
@@ -293,5 +315,17 @@ public class BillingServiceTests
         await service.CancelAllAsync(User.Id, CancellationToken.None);
 
         Assert.Equal(["sub_active", "sub_past_due", "sub_unpaid", "sub_incomplete"], stripe.Cancelled);
+    }
+
+    private sealed class RecordingPlanEnding : IPlanEndingNotifier
+    {
+        public List<(Guid UserId, DateTimeOffset EndsAt)> Ends { get; } = [];
+
+        public Task SubscriptionEndingAsync(Guid userId, BillingSubscription subscription, DateTimeOffset endsAt,
+            CancellationToken cancellationToken)
+        {
+            Ends.Add((userId, endsAt));
+            return Task.CompletedTask;
+        }
     }
 }

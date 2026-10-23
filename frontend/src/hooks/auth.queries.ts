@@ -1,10 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { logout } from "@/shared/services/auth";
 import {
+  fetchExports,
+  fetchOverLimit,
   fetchPlan,
   fetchPlanOffers,
   openBillingPortal,
+  setClipKept,
   startCheckout,
+  startExport,
 } from "@/shared/services/plans";
 import {
   deleteAccount,
@@ -17,6 +21,8 @@ import {
 export const currentUserQueryKey = ["user", "me"] as const;
 export const planQueryKey = ["user", "me", "plan"] as const;
 export const planOffersQueryKey = ["plans"] as const;
+export const overLimitQueryKey = ["user", "me", "over-limit"] as const;
+export const exportsQueryKey = ["user", "me", "exports"] as const;
 export const linkedIdentitiesQueryKey = ["user", "me", "identities"] as const;
 
 export function useCurrentUser() {
@@ -45,6 +51,51 @@ export function usePlanOffers(enabled = true) {
     enabled,
     retry: false,
     staleTime: 10 * 60_000,
+  });
+}
+
+export function useOverLimit() {
+  return useQuery({
+    queryKey: overLimitQueryKey,
+    queryFn: fetchOverLimit,
+    retry: false,
+  });
+}
+
+/** Picks or unpicks a clip to keep; the lists and the plan follow. */
+export function useSetClipKept() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ clipId, keep }: { clipId: string; keep: boolean }) =>
+      setClipKept(clipId, keep),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: overLimitQueryKey });
+    },
+  });
+}
+
+/** The account's exports; refetched every 5 s while one is being made. */
+export function useExports() {
+  return useQuery({
+    queryKey: exportsQueryKey,
+    queryFn: fetchExports,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.some(
+        (e) => e.status === "pending" || e.status === "running",
+      )
+        ? 5_000
+        : false,
+  });
+}
+
+export function useStartExport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: startExport,
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: exportsQueryKey });
+    },
   });
 }
 

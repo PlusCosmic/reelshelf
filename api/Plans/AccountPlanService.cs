@@ -14,7 +14,7 @@ public sealed class AccountPlanService(
     AccountTierService tiers,
     ClipsStatements clips,
     TimeProvider timeProvider,
-    IConfiguration configuration)
+    IConfiguration configuration) : IAccountPlans
 {
     /// <summary>Largest file size a client may declare. Bounds bogus reservations so per-owner sums stay well inside int64.</summary>
     public const long MaxDeclaredFileSizeBytes = 1024L * 1024 * 1024 * 1024;

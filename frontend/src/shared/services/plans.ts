@@ -1,11 +1,21 @@
 import type {
   AccountPlanResponse,
+  ClipExportResponse,
+  OverLimitResponse,
   PlanOffer,
   PlanOfferPrice,
 } from "@/api-client";
-import { createBillingApi, createPlanApi, createUserApi } from "./apiClients";
+import { apiConfig } from "../config/apiConfig";
+import {
+  createBillingApi,
+  createOverLimitApi,
+  createPlanApi,
+  createUserApi,
+} from "./apiClients";
 
 export type AccountPlan = AccountPlanResponse;
+export type OverLimit = OverLimitResponse;
+export type ClipExport = ClipExportResponse;
 export type { PlanOffer, PlanOfferPrice };
 
 export type Tier = "free" | "plus" | "pro" | "unlimited";
@@ -39,6 +49,40 @@ export async function startCheckout(lookupKey: string): Promise<string> {
 export async function openBillingPortal(): Promise<string> {
   const redirect = await createBillingApi().openBillingPortal();
   return redirect.url;
+}
+
+/** The clips over the account's limit, and the ones the owner picked to keep. */
+export async function fetchOverLimit(): Promise<OverLimit> {
+  return createOverLimitApi().getMyOverLimit();
+}
+
+/** Picks a clip to keep when over the limit, or unpicks it. */
+export async function setClipKept(
+  clipId: string,
+  keep: boolean,
+): Promise<void> {
+  await createOverLimitApi().setClipKept({
+    clipId,
+    setClipKeptRequest: { keep },
+  });
+}
+
+/** The account's exports, newest first. */
+export async function fetchExports(): Promise<ClipExport[]> {
+  return createOverLimitApi().getMyExports();
+}
+
+/** Starts a download of the clips over the limit. */
+export async function startExport(): Promise<ClipExport> {
+  return createOverLimitApi().startMyExport();
+}
+
+/**
+ * Where one zip of an export downloads from: a plain link, so the browser follows the API's redirect to storage
+ * itself.
+ */
+export function exportPartUrl(exportId: string, index: number): string {
+  return `${apiConfig.baseUrl}/api/me/exports/${exportId}/parts/${index}`;
 }
 
 /** "£3", "$4.50": a price in its minor unit, in the browser's locale. */

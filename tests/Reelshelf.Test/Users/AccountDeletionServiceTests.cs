@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Reelshelf.Billing;
 using Reelshelf.Email;
+using Reelshelf.Plans;
+using Reelshelf.Test.Plans;
 using Reelshelf.Games;
 using Reelshelf.Users;
 using Reelshelf.Video;
@@ -15,15 +17,15 @@ public class AccountDeletionServiceTests
     private static readonly Guid UserId = Guid.NewGuid();
 
     private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Host, FakeSender Sender, AccountDeletionSignal Signal) Build(
-        string? email = "harry@example.com", IAccountSubscriptions? subscriptions = null)
+        string? email = "harry@example.com", IAccountSubscriptions? subscriptions = null, IExportStorage? exports = null)
     {
-        var (service, store, host, _, sender, signal, _) = BuildWithTwoHosts(email, subscriptions);
+        var (service, store, host, _, sender, signal, _) = BuildWithTwoHosts(email, subscriptions, exports);
         return (service, store, host, sender, signal);
     }
 
     /// <summary>Bunny (the default for clips and collections the tests add) and a second host without containers.</summary>
     private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Bunny, FakeVideoHost Other, FakeSender Sender, AccountDeletionSignal Signal, FakeTranscodeStorage Storage) BuildWithTwoHosts(
-        string? email = "harry@example.com", IAccountSubscriptions? subscriptions = null)
+        string? email = "harry@example.com", IAccountSubscriptions? subscriptions = null, IExportStorage? exports = null)
     {
         FakeStore store = new() { Email = email };
         FakeVideoHost bunny = new();
@@ -36,7 +38,7 @@ public class AccountDeletionServiceTests
         AccountDeletionSignal signal = new();
         FakeTranscodeStorage storage = new();
         AccountDeletionService service = new(store, hosts, storage, sender, signal, subscriptions ?? new NoAccountSubscriptions(),
-            NullLogger<AccountDeletionService>.Instance);
+            exports ?? new UnconfiguredExportStorage(), NullLogger<AccountDeletionService>.Instance);
         return (service, store, bunny, other, sender, signal, storage);
     }
 
@@ -116,6 +118,22 @@ public class AccountDeletionServiceTests
         Assert.True(await service.Process(UserId, CancellationToken.None));
 
         Assert.Equal([UserId], subscriptions.Cancelled);
+        Assert.True(store.AccountDeleted);
+    }
+
+    [Fact]
+    public async Task Process_DeletesTheAccountsExports()
+    {
+        ClipExportBuilderTests.FakeStorage exports = new();
+        exports.Objects[ExportParts.Key(UserId, Guid.NewGuid(), 1)] = [1];
+        exports.Objects[ExportParts.Key(Guid.NewGuid(), Guid.NewGuid(), 1)] = [2];
+        var (service, store, _, _, _) = Build(exports: exports);
+        await service.Request(UserId);
+
+        Assert.True(await service.Process(UserId, CancellationToken.None));
+
+        Assert.DoesNotContain(exports.Objects.Keys, key => key.StartsWith(ExportParts.AccountPrefix(UserId)));
+        Assert.Single(exports.Objects);
         Assert.True(store.AccountDeleted);
     }
 
