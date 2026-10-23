@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LibraryRouteImport } from './routes/_library'
 import { Route as ClipTranscriptionRouteImport } from './routes/clip-transcription'
 import { Route as LegendDetectionRouteImport } from './routes/legend-detection'
+import { Route as PlanRouteImport } from './routes/plan'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignInRouteImport } from './routes/sign-in'
@@ -40,6 +41,11 @@ const ClipTranscriptionRoute = ClipTranscriptionRouteImport.update({
 const LegendDetectionRoute = LegendDetectionRouteImport.update({
   id: '/legend-detection',
   path: '/legend-detection',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanRoute = PlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/': typeof LibraryIndexRoute
   '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
+  '/plan': typeof PlanRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
+  '/plan': typeof PlanRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/_library': typeof LibraryRouteWithChildren
   '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
+  '/plan': typeof PlanRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/'
     | '/clip-transcription'
     | '/legend-detection'
+    | '/plan'
     | '/privacy'
     | '/settings'
     | '/sign-in'
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
   to:
     | '/clip-transcription'
     | '/legend-detection'
+    | '/plan'
     | '/privacy'
     | '/settings'
     | '/sign-in'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/_library'
     | '/clip-transcription'
     | '/legend-detection'
+    | '/plan'
     | '/privacy'
     | '/settings'
     | '/sign-in'
@@ -242,6 +254,7 @@ export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRouteWithChildren
   ClipTranscriptionRoute: typeof ClipTranscriptionRoute
   LegendDetectionRoute: typeof LegendDetectionRoute
+  PlanRoute: typeof PlanRoute
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   SignInRoute: typeof SignInRoute
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       path: '/legend-detection'
       fullPath: '/legend-detection'
       preLoaderRoute: typeof LegendDetectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan': {
+      id: '/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -405,6 +425,7 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRouteWithChildren,
   ClipTranscriptionRoute: ClipTranscriptionRoute,
   LegendDetectionRoute: LegendDetectionRoute,
+  PlanRoute: PlanRoute,
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   SignInRoute: SignInRoute,

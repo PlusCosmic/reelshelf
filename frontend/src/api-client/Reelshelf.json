@@ -864,6 +864,53 @@
         }
       }
     },
+    "/api/clips/{clipId}/keep": {
+      "put": {
+        "tags": [
+          "OverLimitEndpoints"
+        ],
+        "operationId": "SetClipKept",
+        "parameters": [
+          {
+            "name": "clipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetClipKeptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/playlists": {
       "post": {
         "tags": [
@@ -2756,6 +2803,123 @@
         }
       }
     },
+    "/api/me/over-limit": {
+      "get": {
+        "tags": [
+          "OverLimitEndpoints"
+        ],
+        "operationId": "GetMyOverLimit",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverLimitResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/exports": {
+      "get": {
+        "tags": [
+          "OverLimitEndpoints"
+        ],
+        "operationId": "GetMyExports",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClipExportResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "OverLimitEndpoints"
+        ],
+        "operationId": "StartMyExport",
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipExportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/exports/{exportId}/parts/{index}": {
+      "get": {
+        "tags": [
+          "OverLimitEndpoints"
+        ],
+        "operationId": "DownloadMyExportPart",
+        "parameters": [
+          {
+            "name": "exportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/twitch/clips": {
       "get": {
         "tags": [
@@ -3005,7 +3169,9 @@
           "has_transcripts",
           "billing_enabled",
           "can_manage_billing",
-          "subscription"
+          "subscription",
+          "clips_over_limit",
+          "over_limit_deletes_at"
         ],
         "type": "object",
         "properties": {
@@ -3063,6 +3229,17 @@
                 "$ref": "#/components/schemas/PlanSubscription"
               }
             ]
+          },
+          "clips_over_limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "over_limit_deletes_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -3498,6 +3675,73 @@
           "storage_bytes": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "ClipExportPartResponse": {
+        "required": [
+          "index",
+          "size_bytes",
+          "clip_count"
+        ],
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clip_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ClipExportResponse": {
+        "required": [
+          "id",
+          "reason",
+          "status",
+          "clip_count",
+          "created_at",
+          "expires_at",
+          "parts"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "clip_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClipExportPartResponse"
+            }
           }
         }
       },
@@ -5592,6 +5836,86 @@
           }
         }
       },
+      "OverLimitClip": {
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "game_name",
+          "picked"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "game_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "picked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "OverLimitResponse": {
+        "required": [
+          "clip_limit",
+          "over_limit_since",
+          "deletes_at",
+          "over",
+          "picked"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_limit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "over_limit_since": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "deletes_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "over": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverLimitClip"
+            }
+          },
+          "picked": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverLimitClip"
+            }
+          }
+        }
+      },
       "PagedClipsResponse": {
         "required": [
           "clips",
@@ -6237,6 +6561,17 @@
           }
         }
       },
+      "SetClipKeptRequest": {
+        "required": [
+          "keep"
+        ],
+        "type": "object",
+        "properties": {
+          "keep": {
+            "type": "boolean"
+          }
+        }
+      },
       "SetEmailRequest": {
         "required": [
           "email"
@@ -6645,6 +6980,9 @@
     },
     {
       "name": "PlanEndpoints"
+    },
+    {
+      "name": "OverLimitEndpoints"
     },
     {
       "name": "PlaylistEndpoints"

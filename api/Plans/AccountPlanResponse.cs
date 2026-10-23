@@ -17,10 +17,12 @@ public sealed record AccountPlanResponse(
     bool HasTranscripts,
     bool BillingEnabled,
     bool CanManageBilling,
-    PlanSubscription? Subscription)
+    PlanSubscription? Subscription,
+    int ClipsOverLimit,
+    DateTimeOffset? OverLimitDeletesAt)
 {
     public static AccountPlanResponse From(AccountPlan plan, IReadOnlyList<BillingSubscription> subscriptions,
-        bool billingEnabled, bool hasCustomer)
+        bool billingEnabled, bool hasCustomer, DateTimeOffset? overLimitDeletesAt = null)
     {
         // The subscription that grants the tier, else the latest one that could still bill (unpaid, paused), else
         // the latest of any kind, so a lapsed plan still shows when it ended.
@@ -42,7 +44,9 @@ public sealed record AccountPlanResponse(
             TierLimits.HasTranscripts(plan.Tier),
             billingEnabled,
             billingEnabled && hasCustomer,
-            shown is null ? null : PlanSubscription.From(shown));
+            shown is null ? null : PlanSubscription.From(shown),
+            plan.Limits.MaxClips is { } limit ? Math.Max(0, plan.ClipCount - limit) : 0,
+            overLimitDeletesAt);
     }
 }
 

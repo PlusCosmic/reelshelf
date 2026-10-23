@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
+using Microsoft.Extensions.Options;
 using Reelshelf.Billing;
 using Reelshelf.Plans;
 
@@ -67,13 +68,17 @@ public static class UserEndpoints
         AuthenticatedUser user,
         AccountPlanService planService,
         IBillingStore billingStore,
+        IPlanEnforcementStore accounts,
+        IOptionsMonitor<PlanOptions> planOptions,
         HttpContext context)
     {
         AccountPlan plan = await planService.GetPlan(user);
+        OverLimitState overLimit = await accounts.GetState(user.Id);
         List<BillingSubscription> subscriptions = await billingStore.GetSubscriptions(user.Id);
         bool billingEnabled = context.RequestServices.GetService<BillingService>() is not null;
         bool hasCustomer = await billingStore.GetCustomerId(user.Id) is not null;
-        return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, hasCustomer));
+        return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, hasCustomer,
+            overLimit.OverLimitSince + planOptions.CurrentValue.GracePeriod));
     }
 
     private static async Task<Ok<List<LinkedIdentity>>> GetLinkedIdentities(

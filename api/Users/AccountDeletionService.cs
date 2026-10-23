@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Reelshelf.Billing;
 using Reelshelf.Email;
+using Reelshelf.Plans;
 using Reelshelf.Video;
 using Reelshelf.Video.Transcoding;
 
@@ -20,6 +21,7 @@ public class AccountDeletionService(
     IEmailSender emailSender,
     AccountDeletionSignal signal,
     IAccountSubscriptions subscriptions,
+    IExportStorage exports,
     ILogger<AccountDeletionService> logger)
 {
     /// <summary>What the user types to confirm; checked here as well as in the UI so a stray request can't delete an account.</summary>
@@ -113,6 +115,17 @@ public class AccountDeletionService(
                     container.VideoHost, container.ContainerId, userId);
                 return false;
             }
+        }
+
+        // Exports are copies of the clips, so they go with them rather than waiting for their expiry.
+        try
+        {
+            await exports.DeletePrefixAsync(ExportParts.AccountPrefix(userId));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to delete the exports of deleted account {UserId}", userId);
+            return false;
         }
 
         // Refused while any clip remains, e.g. one reserved by an upload already in flight when deletion was

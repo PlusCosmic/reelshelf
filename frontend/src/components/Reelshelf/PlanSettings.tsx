@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   useOpenBillingPortal,
@@ -92,6 +93,7 @@ export function PlanSettings({
       <PlanMeter plan={current} />
       <p className="rs-plan-limits">{describeLimits(current)}</p>
       <SubscriptionStatus plan={current} />
+      <OverLimitNotice plan={current} />
 
       {current.canManageBilling ? (
         <div className="rs-email-actions">
@@ -115,6 +117,23 @@ export function PlanSettings({
         <PlanOffers offers={offers.data} currentTier={current.tier} />
       ) : null}
     </div>
+  );
+}
+
+/** Clips over the limit, and when they go; the plan page lists them, picks which to keep and downloads them. */
+function OverLimitNotice({ plan }: { plan: AccountPlan }) {
+  if (plan.clipsOverLimit <= 0) return null;
+  const clips =
+    plan.clipsOverLimit === 1
+      ? "1 clip is"
+      : `${plan.clipsOverLimit.toLocaleString()} clips are`;
+  const deletesOn = formatDate(plan.overLimitDeletesAt);
+  return (
+    <p className="rs-linked-notice" data-tone="error">
+      {clips} over your plan's limit
+      {deletesOn ? ` and will be deleted on ${deletesOn}` : ""}.{" "}
+      <Link to="/plan">Download them or pick which to keep</Link>.
+    </p>
   );
 }
 

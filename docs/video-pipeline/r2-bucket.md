@@ -32,6 +32,7 @@ An R2 clip's video id is its clip id (`R2ObjectKeys`):
 | `clips/{clipId}/v{n}/av1.mp4`                                              | Version `n`'s AV1 MP4. Its size is the clip's `storage_size`, which the quota counts |
 | `clips/{clipId}/v{n}/thumbnail.jpg`, `thumbnail_1.jpg` … `thumbnail_5.jpg` | The thumbnail and the five more detection frames                                     |
 | `clips/{clipId}/v{n}/preview.mp4`                                          | The animated preview (no consumer yet)                                               |
+| `exports/{userId}/{exportId}/reelshelf-clips-{n}.zip`                      | An export's zips (ADR-0007), each under 4 GiB, downloadable for 28 days              |
 
 The clip records its current version in `clip.video_version` (V42), with that version's codecs and height in
 `video_codecs` and `video_height` for its playback source (`video/mp4; codecs="..."`). A trim writes version
@@ -48,6 +49,9 @@ containers, so the account deletion's container step does nothing for R2.
   a clip aborts its open browser upload; this catches a process that died mid-upload and a browser upload whose
   clip was never deleted. The browser forgets a saved upload after 23 hours for the same reason.
 - **`clips/` to Infrequent Access after about 7 days.** Most views happen in a clip's first few days.
+- **Delete `exports/` after 29 days.** The API deletes an export's zips when it expires after 28 days; this is the
+  backstop. Leave `exports/` out of the Infrequent Access rule: its read fee and 30-day minimum cost more than they
+  save on files kept 28 days and read once.
 
 Nothing expires `uploads/` on its own: a source whose transcode never succeeds stays until the clip is deleted or
 purged. A rule expiring `uploads/` after a week or two would also be safe, since a transcode never runs that late.

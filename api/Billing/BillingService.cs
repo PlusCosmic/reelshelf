@@ -20,6 +20,19 @@ public interface IAccountSubscriptions
     Task CancelAllAsync(Guid userId, CancellationToken cancellationToken);
 }
 
+/// <summary>Told when a subscription is newly set to end, so the owner hears what happens to clips over the limit.</summary>
+public interface IPlanEndingNotifier
+{
+    Task SubscriptionEndingAsync(Guid userId, BillingSubscription subscription, DateTimeOffset endsAt,
+        CancellationToken cancellationToken);
+}
+
+public sealed class NoPlanEndingNotifier : IPlanEndingNotifier
+{
+    public Task SubscriptionEndingAsync(Guid userId, BillingSubscription subscription, DateTimeOffset endsAt,
+        CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
 public sealed class NoAccountSubscriptions : IAccountSubscriptions
 {
     public Task CancelAllAsync(Guid userId, CancellationToken cancellationToken)
@@ -37,6 +50,7 @@ public sealed class BillingService(
     IBillingStore store,
     BillingOptions options,
     IMemoryCache cache,
+    IPlanEndingNotifier planEnding,
     ILogger<BillingService> logger) : IAccountSubscriptions
 {
     private const string PricesCacheKey = "billing:prices";
@@ -180,10 +194,25 @@ public sealed class BillingService(
             state.CancelAt,
             state.EndedAt);
 
+        BillingSubscription? before = (await store.GetSubscriptions(userId.Value))
+            .FirstOrDefault(existing => existing.Id == subscription.Id);
         if (!await store.UpsertSubscription(subscription))
         {
             await CancelOrphan(state, userId.Value, cancellationToken);
             return;
+        }
+
+        if (EndsAt(subscription) is { } endsAt && (before is null || EndsAt(before) is null) &&
+            SubscriptionStatuses.GrantsTier(subscription.Status))
+        {
+            try
+            {
+                await planEnding.SubscriptionEndingAsync(userId.Value, subscription, endsAt, cancellationToken);
+            }
+            catch (Exception error) when (error is not OperationCanceledException)
+            {
+                logger.LogWarning(error, "Could not tell account {UserId} its plan ends", userId);
+            }
         }
 
         logger.LogInformation("Stripe subscription {SubscriptionId} of account {UserId} is {Status} on {LookupKey}",
@@ -197,6 +226,10 @@ public sealed class BillingService(
             logger.LogWarning("Account {UserId} has more than one open Stripe subscription", userId);
         }
     }
+
+    /// <summary>When a subscription that is set to end does, or null while it renews.</summary>
+    private static DateTimeOffset? EndsAt(BillingSubscription subscription) =>
+        subscription.CancelAt ?? (subscription.CancelAtPeriodEnd ? subscription.CurrentPeriodEnd : null);
 
     private async Task CancelOrphan(StripeSubscriptionState state, Guid userId, CancellationToken cancellationToken)
     {

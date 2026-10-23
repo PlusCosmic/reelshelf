@@ -33,6 +33,79 @@ public static class AccountEmails
             $"<p>Once it's full, new uploads are refused until you <a href=\"{Encode(libraryUrl)}\">delete some clips</a> or upgrade.</p>"));
     }
 
+    /// <summary>The account went over its plan's limit: the clips over it go after the grace.</summary>
+    public static EmailMessage OverLimitStarted(string to, int overCount, DateTimeOffset deletesAt, string planUrl)
+    {
+        string clips = Clips(overCount);
+        string date = Date(deletesAt);
+        string subject = "Some of your Reelshelf clips are over your plan's limit";
+        string text =
+            $"Your plan now keeps fewer clips than you have, so {clips} {Are(overCount)} over its limit. They'll be deleted on {date}.\n\n" +
+            $"Before then you can download them, pick which clips to keep, or upgrade to keep them all: {planUrl}\n";
+
+        return new EmailMessage(to, subject, text, Wrap(subject,
+            $"<p>Your plan now keeps fewer clips than you have, so <strong>{Encode(clips)}</strong> {Are(overCount)} over its limit. " +
+            $"They'll be deleted on <strong>{Encode(date)}</strong>.</p>" +
+            $"<p>Before then you can <a href=\"{Encode(planUrl)}\">download them, pick which clips to keep, or upgrade</a> to keep them all.</p>"));
+    }
+
+    /// <summary>A few days of the grace are left.</summary>
+    public static EmailMessage OverLimitEndingSoon(string to, int overCount, DateTimeOffset deletesAt, string planUrl)
+    {
+        string clips = Clips(overCount);
+        string date = Date(deletesAt);
+        string subject = $"{char.ToUpperInvariant(clips[0])}{clips[1..]} will be deleted on {date}";
+        string text =
+            $"{clips} {Are(overCount)} still over your plan's limit and will be deleted on {date}. We'll email you a download of them " +
+            $"then, kept for 28 days.\n\nTo keep them, upgrade or download them now: {planUrl}\n";
+
+        return new EmailMessage(to, subject, text, Wrap(subject,
+            $"<p>{Encode(clips)} {Are(overCount)} still over your plan's limit and will be deleted on <strong>{Encode(date)}</strong>. " +
+            "We'll email you a download of them then, kept for 28 days.</p>" +
+            $"<p>To keep them, <a href=\"{Encode(planUrl)}\">upgrade or download them now</a>.</p>"));
+    }
+
+    /// <summary>An export's zips are ready; for a grace that ended, its clips have been deleted.</summary>
+    public static EmailMessage ExportReady(string to, int clipCount, bool clipsDeleted, DateTimeOffset expiresAt,
+        string planUrl)
+    {
+        string clips = Clips(clipCount);
+        string date = Date(expiresAt);
+        string subject = clipsDeleted ? "Your deleted Reelshelf clips are ready to download" : "Your Reelshelf download is ready";
+        string lead = clipsDeleted
+            ? $"{clips} over your plan's limit {(clipCount == 1 ? "has" : "have")} been deleted from Reelshelf. A copy of them is ready to download."
+            : $"The download of {clips} you asked for is ready.";
+        string text = $"{lead}\n\nDownload it by {date}, when it's deleted: {planUrl}\n";
+
+        return new EmailMessage(to, subject, text, Wrap(subject,
+            $"<p>{Encode(lead)}</p><p><a href=\"{Encode(planUrl)}\">Download it</a> by <strong>{Encode(date)}</strong>, when it's deleted.</p>"));
+    }
+
+    /// <summary>A paid plan was set to end, and the account has more clips than it keeps afterwards.</summary>
+    public static EmailMessage PlanEnding(string to, string tierName, DateTimeOffset endsAt, int overCount,
+        TimeSpan gracePeriod, string planUrl)
+    {
+        string clips = Clips(overCount);
+        string date = Date(endsAt);
+        string subject = $"Your Reelshelf {tierName} plan ends on {date}";
+        string text =
+            $"Your {tierName} plan ends on {date}. After that your account keeps fewer clips, so {clips} will be over the " +
+            $"limit; they're kept for {gracePeriod.TotalDays:0} more days, then deleted.\n\n" +
+            $"Download them, pick which to keep, or keep your plan: {planUrl}\n";
+
+        return new EmailMessage(to, subject, text, Wrap(subject,
+            $"<p>Your {Encode(tierName)} plan ends on <strong>{Encode(date)}</strong>. After that your account keeps fewer clips, " +
+            $"so {Encode(clips)} will be over the limit; they're kept for {gracePeriod.TotalDays:0} more days, then deleted.</p>" +
+            $"<p><a href=\"{Encode(planUrl)}\">Download them, pick which to keep, or keep your plan</a>.</p>"));
+    }
+
+    private static string Clips(int count) => count == 1 ? "1 clip" : $"{count:N0} clips";
+
+    private static string Are(int count) => count == 1 ? "is" : "are";
+
+    private static string Date(DateTimeOffset value) =>
+        value.UtcDateTime.ToString("d MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB"));
+
     public static EmailMessage AccountDeletionStarted(string to)
     {
         string subject = "Your Reelshelf account is being deleted";

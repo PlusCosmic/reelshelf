@@ -95,9 +95,12 @@ function TermsRoute() {
           be taken, the plan ends.
         </li>
         <li>
-          When a paid plan ends, your account goes back to the free plan. Clips
-          you already have are kept, but you can't add more while you have more
-          than the free plan keeps.
+          When a paid plan ends, your account goes back to the free plan, and
+          you can't add clips while you have more than it keeps. The clips over
+          its limit are kept for 14 days, so you can download them, pick which
+          clips to keep, or subscribe again. After that they're deleted, and we
+          email you a download of them that lasts 28 days. The clips kept are
+          the ones you picked, then your newest.
         </li>
       </ul>
 

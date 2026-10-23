@@ -163,8 +163,12 @@ function PrivacyRoute() {
         removed from storage and the rest of its data deleted shortly after,
         usually within minutes. Any paid plan is cancelled first, though Stripe
         keeps its records of past payments for as long as the law requires.
-        Collections you made go with it, including for their collaborators.
-        Backups and logs age out on their own schedule.
+        Collections you made go with it, including for their collaborators. If
+        your account has more clips than its plan keeps, for example after a
+        paid plan ends, the clips over the limit are deleted 14 days later, and
+        a download of them is kept for 28 days after that, then deleted.
+        Downloads you ask for are kept for 28 days too. Backups and logs age out
+        on their own schedule.
       </p>
 
       <h2>Your rights</h2>

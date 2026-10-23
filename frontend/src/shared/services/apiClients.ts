@@ -9,6 +9,7 @@ import {
   GameCategoryEndpointsApi,
   LegendDetectionEndpointsApi,
   MultipartUploadEndpointsApi,
+  OverLimitEndpointsApi,
   PlanEndpointsApi,
   PlaylistEndpointsApi,
   SharedClipsEndpointsApi,
@@ -41,6 +42,10 @@ export function createUserApi() {
 
 export function createPlanApi() {
   return new PlanEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createOverLimitApi() {
+  return new OverLimitEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
 export function createBillingApi() {
