@@ -80,7 +80,6 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapFFmpegEndpoints();
         apiGroup.MapBunnyWebhookEndpoints();
         apiGroup.MapGameCategoryEndpoints();
-        apiGroup.MapApexEndpoints();
         apiGroup.MapLegendDetectionEndpoints();
         apiGroup.MapClipTranscriptionEndpoints();
         apiGroup.MapClipSummaryEndpoints();
@@ -289,9 +288,6 @@ internal static class ReelshelfApiConfiguration
             client => client.Timeout = TimeSpan.FromSeconds(15));
         builder.Services.AddScoped<GameCoverColors>();
 
-        builder.Services.AddScoped<MapService>();
-        builder.Services.AddScoped<IApexMapCacheService, ApexMapCacheService>();
-
         // Legend detection stays idle until a provider API key and model are configured.
         builder.Services.Configure<LegendDetectionOptions>(
             builder.Configuration.GetSection(LegendDetectionOptions.SectionName));
@@ -336,7 +332,6 @@ internal static class ReelshelfApiConfiguration
         if (!builder.Environment.IsEnvironment("OpenApi"))
         {
             builder.Services.AddHostedService<ClipStatusRefreshService>();
-            builder.Services.AddHostedService<MapRefreshService>();
             builder.Services.AddHostedService<GameCategoryAssetRefreshService>();
             builder.Services.AddHostedService<GameCategoryClothColorService>();
             builder.Services.AddHostedService<LegendDetectionBackgroundService>();
