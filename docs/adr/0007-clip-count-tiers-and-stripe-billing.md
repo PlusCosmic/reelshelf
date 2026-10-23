@@ -38,6 +38,7 @@ So a tier's storage is bounded by clips × maximum size × $0.01/GB-month, and e
 | Clips kept                            | 100                 | 1,000                | 5,000                | No limit         |
 | Longest clip                          | 60 s                | 120 s                | 120 s                | No limit         |
 | New clips per 30 days                 | 100                 | 1,000                | 5,000                | No limit         |
+| Apex legend detection                 | Yes                 | Yes                  | Yes                  | Yes              |
 | Ads (later)                           | Yes                 | No                   | No                   | No               |
 | Transcript search and summaries       | No                  | No                   | Yes                  | Yes              |
 | Worst-case monthly storage at the cap | ~$0.05              | ~$0.92               | ~$4.60               | —                |
@@ -45,9 +46,28 @@ So a tier's storage is bounded by clips × maximum size × $0.01/GB-month, and e
 - **The tier counts clips, not bytes.** A clip count with a length cap bounds cost just as well and is easier to explain than gigabytes. The byte quota stays as a hidden backstop (`Storage:BackstopBytes`, well above any tier's worst case) so a pathological file or a bug can't run up the bill.
 - **Clip Count is every clip the account owns, in any state.** A reserved upload counts from the moment its row is created, as storage does today, so in-flight uploads can't overshoot the cap. Deleting a clip frees its slot.
 - **New clips per 30 days is counted separately.** Each upload costs an encode, so deleting and re-uploading must not be free for ever. It counts clip creations in a rolling 30 days, recorded in a small per-account log that survives deleting the clip, and sits at the tier's clip limit so no ordinary user meets it.
-- **The length cap is enforced when the upload completes.** R2's completion already runs ffprobe (`FfprobeUploadProbe`); a duration over the owner's cap marks the clip `upload_failed`, deletes the object and answers 422 with the reason, like any other probe failure. The uploader reads the duration locally first so it can refuse before uploading, and offers to trim. Twitch imports are capped at 60 s by Twitch but go through the same check. Clips that already exist are never re-checked, so lowering a cap or changing tier never removes anything.
+- **The length cap is enforced when the upload completes.** R2's completion already runs ffprobe (`FfprobeUploadProbe`); a duration over the owner's cap marks the clip `upload_failed`, deletes the object and answers 422 with the reason, like any other probe failure. The uploader reads the duration locally first so it can refuse before uploading, and offers to trim. Twitch imports are capped at 60 s by Twitch but go through the same check. Clips that already exist are never re-checked against the length cap, so a lower cap never removes anything.
 - **The "admin/whitelisted" tier is called Unlimited**, so it doesn't collide with the `Admin` **Role**. It still comes from `whitelist.json`; the file keeps its role overrides. Roles and tiers stay independent.
-- **The prices are placeholders** and can change in Stripe without a deploy (below).
+- **Legend detection runs on every tier**, as it does now, escalation included. It is the most distinctive feature for Apex players, and its cost is watched on the evals page rather than gated.
+- **The prices are placeholders** and can change in Stripe without a deploy (below). Each price carries currency options for USD, EUR and CAD besides GBP (placeholders: Plus $4/$40, €3.50/€35, C$5/C$50; Pro $10/$100, €9/€90, C$13/C$130), and Checkout shows the one for the customer's location, sparing overseas customers conversion fees.
+
+### Going over the limit: 14 days, then an export and deletion
+
+An account goes over its tier's limit when its tier drops: a subscription ends, a downgrade takes effect, or a `whitelist.json` entry is removed. Clips over the limit are kept for 14 days, then exported and deleted.
+
+- **Fourteen days, not longer.** A grace period as long as a billing period would let someone keep a paid library by paying one month in two. Fourteen days is enough to download what matters; resubscribing within it cancels everything below.
+- **The grace starts when the tier drops**, recorded as `app_user.over_limit_since` by an hourly sweep (`TierEnforcementService`, never in `OpenApi`), which also clears it once the account is back under its limit by any route. `past_due` still counts as paid, so a failing card doesn't start it while Stripe is retrying. A cancellation scheduled for the period's end warns as soon as it is scheduled, so the download can happen before the paid period ends.
+- **The newest clips are kept by default.** The library marks which clips are over the limit, and the owner can swap any of them for a kept one during the grace. Clips over 60 s that end up on Free are kept if they fall within the limit; the length cap only applies to new uploads.
+- **Downloading them is one button.** "Download clips over the limit" starts an export of exactly those clips (below), whenever the owner likes during the grace; single clips download as they do today.
+- **After 14 days the clips over the limit are exported, then deleted.** The sweep queues the export; only once it has succeeded are the clips deleted through `ClipVideoDeletion`, as the owner deleting them would. A failed export is retried and nothing is deleted meanwhile.
+- **Emails** go out when the grace starts, three days before it ends, and when the export is ready, with a link to it.
+
+### Exports
+
+- **An export is a new `export` job on the transcode queue**, so a worker builds it and the API never streams gigabytes. Its input lists the clips; the claim hands out a presigned GET for each clip's current `av1.mp4` and presigned PUTs for the parts. The worker writes stored (uncompressed, Zip64) zips, since AV1 doesn't compress, split into parts of at most 4 GB so each part is one PUT under R2's 5 GB single-upload limit. Files are named from the clip's title and date, made unique within the export. Exports have the lowest priority, below `migrate`.
+- **Parts live under `exports/{userId}/{exportId}/` for 28 days**, deleted by a bucket lifecycle rule on that prefix, which also never moves them to Infrequent Access (its read fee and 30-day minimum would cost more than it saves). An `export` row records the clips, the parts and the expiry.
+- **The email links to a Reelshelf page, not to R2.** Presigned URLs can't outlive 7 days, so `/exports/{exportId}` is owner-only and hands out a 10-minute presigned GET per part on click, the way clip downloads work.
+- **Worst case** is a lapsed Pro account's 4,900 clips over the Free limit, about 450 GB held for 28 days in R2 Standard: roughly $6, once.
 
 ### Billing through Stripe Managed Payments
 
@@ -72,16 +92,11 @@ So a tier's storage is bounded by clips × maximum size × $0.01/GB-month, and e
 
 - Nobody loses anything: every current user is whitelisted, so they are Unlimited. The 25 GiB default disappears without anyone having been on it.
 - Users can no longer judge their usage in bytes; the UI shows clips used and the longest clip allowed instead.
-- A downgrade or a lapsed subscription never deletes clips. An account over its new limit keeps every clip but can't add more until it's under. What happens to clips kept for a long time after a subscription lapses is an open question below; until it's answered, they stay.
+- Clips over a lapsed account's limit are deleted after 14 days, so nobody keeps a paid library without paying for it, and the export means nobody loses their clips without a copy. Someone who resubscribes after the deletion starts from what they kept; the export is the way back.
+- An account over its limit can't add clips until it's under, from the moment its tier drops.
+- Deleted clips leave the playlists and share links they were in, exactly as when the owner deletes them.
 - The free tier's worst case is a few cents a month, so the ads only need to cover that. They are a separate decision: an ad network is a new third party, needs a consent banner and a privacy policy change, and would be left out of the Discord Activity.
 - Stripe processing, Billing's 0.7% and Managed Payments' 3.5% take about 12% of a £3 monthly charge but about 6% of a £30 yearly one, so the UI leads with yearly prices.
 - Stripe sends receipts, renewal reminders and failed-payment emails from Link; Reelshelf sends none about billing.
-- The privacy policy names Stripe (as Link) as the seller handling payment data under its own policy, and the terms cover subscriptions, renewal, cancellation and the UK's 14-day cancellation right for digital services, which a subscriber gives up by agreeing to start at once. Both change in the PR that adds billing.
+- The privacy policy names Stripe (as Link) as the seller handling payment data under its own policy, and the policy states the 14-day grace and the 28-day export retention. The terms cover subscriptions, renewal, cancellation, what happens to clips over the limit, and the UK's 14-day cancellation right for digital services, which a subscriber gives up by agreeing to start at once. Both change in the PR that adds billing.
 - CONTEXT.md replaces **Storage Tier** and **Storage Usage** with **Tier** and **Clip Count** when this is implemented.
-
-## Open questions
-
-1. **Lapsed subscriptions.** Keep everything for ever, or after a long notice (say 90 days) delete the oldest clips down to the Free limit? A lapsed Pro account's 5,000 clips cost up to $4.60 a month. Deleting needs a privacy policy change and warning emails.
-2. **Legend detection on Free.** It is the most distinctive feature for Apex players and a vision model call per clip. Options: Free gets automatic detection on the base model without escalation, or detection is paid only. The evals page has the per-run costs to decide with.
-3. **Free's 60 s cap.** It halves Free's worst case and is an easy line to explain, but it means trimming before upload has to be good.
-4. **Prices and other currencies.** Prices in USD, EUR and CAD as currency options on each price, to spare overseas customers conversion fees.
