@@ -11,7 +11,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyRoute() {
   return (
-    <LegalPage title="Privacy policy" updated="18 October 2026">
+    <LegalPage title="Privacy policy" updated="23 October 2026">
       <p>
         This explains what Reelshelf, run by {legalOperator}, collects, why, and
         who else handles it. We don't sell your data, show ads or use tracking
@@ -32,6 +32,12 @@ function PrivacyRoute() {
         <li>
           <strong>What you add:</strong> clips and their titles, tags, games,
           collections, collaborators and share links.
+        </li>
+        <li>
+          <strong>If you subscribe to a paid plan:</strong> your plan, whether
+          it's active, when it renews or ends, and the IDs Stripe gives your
+          customer record and subscription. Your card or other payment details
+          go to Stripe and never reach us.
         </li>
         <li>
           <strong>Usage within Reelshelf:</strong> which clips you've watched,
@@ -97,6 +103,13 @@ function PrivacyRoute() {
           and the Discord Activity.
         </li>
         <li>
+          <strong>Stripe</strong>, through its Link service, sells paid plans as
+          the merchant of record: it takes payment and handles tax, receipts and
+          billing support, under its own privacy policy. When you check out we
+          send it your Reelshelf account ID and, the first time, your email
+          address.
+        </li>
+        <li>
           <strong>Resend</strong> delivers account emails, such as a new sign-in
           being linked or your storage being nearly full.
         </li>
@@ -116,10 +129,10 @@ function PrivacyRoute() {
       <p>
         Reelshelf is run from the UK. Our servers, database and clip storage are
         in Germany, and clips that Amazon Web Services encodes are processed in
-        the EU. Discord, Twitch, OpenAI, Anthropic, OpenRouter and Resend are
-        based in the US, so data they handle leaves the UK and EU. We rely on
-        their standard data protection terms, such as standard contractual
-        clauses or the UK–US data bridge, to protect it.
+        the EU. Discord, Twitch, Stripe, OpenAI, Anthropic, OpenRouter and
+        Resend are based in the US, so data they handle leaves the UK and EU. We
+        rely on their standard data protection terms, such as standard
+        contractual clauses or the UK–US data bridge, to protect it.
       </p>
 
       <h2>Sharing and visibility</h2>
@@ -144,8 +157,10 @@ function PrivacyRoute() {
         sign-in method deletes its stored tokens. You can delete your whole
         account in Settings: it stops working straight away, and its clips are
         removed from storage and the rest of its data deleted shortly after,
-        usually within minutes. Collections you made go with it, including for
-        their collaborators. Backups and logs age out on their own schedule.
+        usually within minutes. Any paid plan is cancelled first, though Stripe
+        keeps its records of past payments for as long as the law requires.
+        Collections you made go with it, including for their collaborators.
+        Backups and logs age out on their own schedule.
       </p>
 
       <h2>Your rights</h2>

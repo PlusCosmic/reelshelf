@@ -2,6 +2,7 @@
 /* eslint-disable */
 export * from "./ApexEndpointsApi";
 export * from "./AuthEndpointsApi";
+export * from "./BillingEndpointsApi";
 export * from "./BunnyWebhookEndpointsApi";
 export * from "./ClipSummaryEndpointsApi";
 export * from "./ClipTranscriptionEndpointsApi";
