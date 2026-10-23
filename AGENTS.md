@@ -61,6 +61,7 @@
 - Every endpoint must carry its own `RequireAuthorization()`; there is no global auth middleware after the whitelist gate was removed.
 - OpenAPI is only mapped in Development, `OpenApi`, or when `OpenApi:Public` is true; background services are disabled in `OpenApi` environment.
 - Production image builds the frontend first, publishes the API, installs `ffmpeg`, and serves `frontend/dist` from API `wwwroot`.
+- The signed-out front page is the PageSpeed target, so keep it off the signed-in app's critical path: the root route shows `LandingPage` without waiting for `/api/me` unless local storage's `reelshelf-signed-in` says the browser has signed in before, the signed-in chrome (`components/Reelshelf/AppShell.tsx`, uploads, profile menu) is a lazy chunk, and upload clients (tus, MD5) load on the first upload. `frontend/vite.config.ts` modulepreloads the `_library` route's chunks and then preloads the first screen's Latin fonts (Fraunces roman and italic, Instrument Sans), in that order so the fonts don't hold up the JavaScript. The API serves `/assets/*` as `immutable` for a year.
 
 ## CI / Release
 

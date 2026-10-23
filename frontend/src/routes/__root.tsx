@@ -1,27 +1,13 @@
 import {
-  Link,
   Navigate,
   Outlet,
   createRootRoute,
   useRouterState,
 } from "@tanstack/react-router";
-import {
-  IconLogout,
-  IconMoon,
-  IconScan,
-  IconMicrophone,
-  IconSettings,
-  IconSun,
-} from "@tabler/icons-react";
-import { useEffect, useState } from "react";
-import { UploadsProvider } from "@/components/AddClips/UploadsProvider";
-import { UploadTray } from "@/components/AddClips/UploadTray";
-import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
-import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
-import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
+import { IconMoon, IconSun } from "@tabler/icons-react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
-import { StorageMeter } from "@/components/Reelshelf/StorageMeter";
-import { useCurrentUser, useLogout, useStorageUsage } from "@/hooks/queries";
+import { useCurrentUser } from "@/hooks/auth.queries";
 
 type ReelshelfTheme = "light" | "dark";
 
@@ -39,18 +25,34 @@ function getSystemTheme(): ReelshelfTheme {
   return window.matchMedia(darkSchemeQuery).matches ? "dark" : "light";
 }
 
-// Sticky bars further down the page sit beneath the topbar, whose height changes with the layout.
-function trackTopbarHeight(topbar: HTMLElement | null) {
-  if (!topbar) return;
-  const observer = new ResizeObserver(() => {
-    document.documentElement.style.setProperty(
-      "--rs-topbar-height",
-      `${topbar.offsetHeight}px`,
-    );
-  });
-  observer.observe(topbar);
-  return () => observer.disconnect();
+// Set once this browser has seen a signed-in session, so a first visit can show the front page
+// without waiting for the session check.
+const signedInStorageKey = "reelshelf-signed-in";
+
+function wasSignedIn() {
+  try {
+    return window.localStorage.getItem(signedInStorageKey) === "1";
+  } catch {
+    return false;
+  }
 }
+
+function rememberSignedIn(signedIn: boolean) {
+  try {
+    if (signedIn) window.localStorage.setItem(signedInStorageKey, "1");
+    else window.localStorage.removeItem(signedInStorageKey);
+  } catch {
+    // Storage may be unavailable (private mode); the session check still decides what is shown.
+  }
+}
+
+// The signed-in app is its own chunk. Someone who was signed in last time starts fetching it now,
+// alongside the session check, rather than once the check returns.
+const loadAppShell = () => import("@/components/Reelshelf/AppShell");
+const AppShell = lazy(() =>
+  loadAppShell().then((module) => ({ default: module.AppShell })),
+);
+if (wasSignedIn()) void loadAppShell();
 
 function RootComponent() {
   const [theme, setTheme] = useState<ReelshelfTheme>(
@@ -98,24 +100,27 @@ function AuthenticatedShell({
   theme: ReelshelfTheme;
   onToggleTheme: () => void;
 }) {
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
   const { data: user, isLoading, isError } = useCurrentUser();
-  const storage = useStorageUsage(!!user && profileMenuOpen);
-  const logout = useLogout();
+  const signedIn = !!user && !isError;
 
-  const active = (path: string) =>
-    path === "/" ? pathname === "/" : pathname.startsWith(path);
+  useEffect(() => {
+    if (!isLoading) rememberSignedIn(signedIn);
+  }, [isLoading, signedIn]);
 
   if (isLoading) {
-    // The landing page is a full marketing page now, so don't flash it at a signed-in user
-    // while their session is still being checked.
-    return <div className="rs-landing rs-landing-pending" aria-busy="true" />;
+    // Someone who has never signed in on this browser gets the front page straight away, rather
+    // than a blank page while their session is checked. Anyone who has signed in before waits, so
+    // they aren't shown the marketing page on the way to their library.
+    if (pathname === "/" && !wasSignedIn()) {
+      return <LandingPage theme={theme} onToggleTheme={onToggleTheme} />;
+    }
+    return <ShellPending />;
   }
 
-  if (!user || isError) {
+  if (!signedIn) {
     // Signed out, every address is the front page; send deeper links there so the address bar
     // matches what is shown.
     if (pathname !== "/") return <Navigate to="/" replace />;
@@ -123,125 +128,14 @@ function AuthenticatedShell({
   }
 
   return (
-    <div className="rs-app">
-      <header className="rs-topbar" ref={trackTopbarHeight}>
-        <Link to="/" className="rs-brand" aria-label="Reelshelf library">
-          <BrandLogo />
-        </Link>
-
-        <nav className="rs-nav" aria-label="Primary">
-          <Link to="/" className={active("/") ? "active" : undefined}>
-            Library
-          </Link>
-          <Link
-            to="/collections"
-            className={active("/collections") ? "active" : undefined}
-          >
-            Collections
-          </Link>
-        </nav>
-
-        <div className="rs-user">
-          <div
-            className="rs-profile-menu"
-            onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget)) {
-                setProfileMenuOpen(false);
-              }
-            }}
-          >
-            <button
-              className="rs-profile-trigger"
-              type="button"
-              onClick={() => setProfileMenuOpen((open) => !open)}
-              aria-label="Open profile menu"
-              aria-haspopup="menu"
-              aria-expanded={profileMenuOpen}
-            >
-              <Avatar
-                name={user.globalName ?? user.username}
-                src={user.avatar}
-              />
-            </button>
-            {profileMenuOpen ? (
-              <div className="rs-profile-popover" role="menu">
-                {storage.data ? (
-                  <div className="rs-menu-storage">
-                    <StorageMeter usage={storage.data} compact />
-                  </div>
-                ) : null}
-                <Link
-                  to="/settings"
-                  className="rs-menu-item"
-                  role="menuitem"
-                  onClick={() => setProfileMenuOpen(false)}
-                >
-                  <IconSettings size={16} />
-                  Settings
-                </Link>
-                {user.isAdmin ? (
-                  <Link
-                    to="/legend-detection"
-                    className="rs-menu-item"
-                    role="menuitem"
-                    onClick={() => setProfileMenuOpen(false)}
-                  >
-                    <IconScan size={16} />
-                    Legend detection
-                  </Link>
-                ) : null}
-                {user.isAdmin ? (
-                  <Link
-                    to="/clip-transcription"
-                    className="rs-menu-item"
-                    role="menuitem"
-                    onClick={() => setProfileMenuOpen(false)}
-                  >
-                    <IconMicrophone size={16} />
-                    Transcription
-                  </Link>
-                ) : null}
-                <button
-                  className="rs-menu-item"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onToggleTheme();
-                    setProfileMenuOpen(false);
-                  }}
-                >
-                  {theme === "dark" ? (
-                    <IconSun size={16} />
-                  ) : (
-                    <IconMoon size={16} />
-                  )}
-                  {theme === "dark" ? "Light mode" : "Dark mode"}
-                </button>
-                <button
-                  className="rs-menu-item"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    logout.mutate();
-                  }}
-                >
-                  <IconLogout size={16} />
-                  Log out
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </header>
-      <UploadsProvider>
-        <main>
-          {user.needsOnboarding ? <EmailOnboarding user={user} /> : <Outlet />}
-        </main>
-        <UploadTray />
-      </UploadsProvider>
-    </div>
+    <Suspense fallback={<ShellPending />}>
+      <AppShell user={user} theme={theme} onToggleTheme={onToggleTheme} />
+    </Suspense>
   );
+}
+
+function ShellPending() {
+  return <div className="rs-landing rs-landing-pending" aria-busy="true" />;
 }
 
 function PublicShell({
