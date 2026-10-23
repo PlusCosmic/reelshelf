@@ -72,14 +72,19 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Install ffmpeg
-        # Legend detection crops frames with ffmpeg, and its tests run the real binary. apt waits for ever
-        # on a mirror that stops answering, so give up on a slow connection, retry, and cap the step.
-        timeout-minutes: 10
+        # Legend detection crops frames with ffmpeg, and its tests and the worker's run the real binary. BtbN's static
+        # 8.1 build comes from GitHub's own release storage, so it doesn't depend on the Ubuntu mirror, which once took
+        # over ten minutes to serve apt's ffmpeg packages, and it carries everything the worker needs.
+        timeout-minutes: 5
         run: |
-          command -v ffmpeg && exit 0
-          apt_options="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
-          sudo apt-get $apt_options update
-          sudo apt-get $apt_options install -y --no-install-recommends ffmpeg
+          curl --fail --silent --show-error --location --retry 3 --output "$RUNNER_TEMP/ffmpeg.tar.xz" \
+            https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-linux64-gpl-8.1.tar.xz
+          mkdir "$RUNNER_TEMP/ffmpeg"
+          tar -xJf "$RUNNER_TEMP/ffmpeg.tar.xz" -C "$RUNNER_TEMP/ffmpeg" --strip-components=1
+          echo "$RUNNER_TEMP/ffmpeg/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/ffmpeg/bin/ffmpeg" -hide_banner -version | head -n 1
+          "$RUNNER_TEMP/ffmpeg/bin/ffmpeg" -hide_banner -encoders | grep -q libsvtav1
+          "$RUNNER_TEMP/ffmpeg/bin/ffmpeg" -hide_banner -filters | grep -q zscale
 
       - name: Restore
         run: dotnet restore Reelshelf.sln
