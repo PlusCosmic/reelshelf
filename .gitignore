@@ -73,3 +73,9 @@ project.nuget.cache
 CLAUDE-DOCS/
 
 docs/UI Design
+# Claude Code worktrees
+.claude/worktrees/
+
+# OpenAPI Generator metadata
+frontend/src/api-client/.openapi-generator/
+frontend/src/api-client/.openapi-generator-ignore

@@ -94,9 +94,9 @@ function PrivacyRoute() {
           (R2 storage and its CDN) and encoded on servers we run.
         </li>
         <li>
-          <strong>Amazon Web Services</strong> encodes some of those clips when
-          our own servers are busy. The video is processed on servers we rent in
-          the EU just for that encode, and nothing is kept there afterwards.
+          <strong>Google Cloud</strong> encodes some of those clips when our own
+          servers are busy. The video is processed on servers we rent in the EU
+          just for that encode, and nothing is kept there afterwards.
         </li>
         <li>
           <strong>Discord and Twitch</strong> handle sign-in, Twitch clip import
@@ -128,11 +128,11 @@ function PrivacyRoute() {
       <h2>Where your data is stored</h2>
       <p>
         Reelshelf is run from the UK. Our servers, database and clip storage are
-        in Germany, and clips that Amazon Web Services encodes are processed in
-        the EU. Discord, Twitch, Stripe, OpenAI, Anthropic, OpenRouter and
-        Resend are based in the US, so data they handle leaves the UK and EU. We
-        rely on their standard data protection terms, such as standard
-        contractual clauses or the UK–US data bridge, to protect it.
+        in Germany, and clips that Google Cloud encodes are processed in the EU.
+        Discord, Twitch, Stripe, OpenAI, Anthropic, OpenRouter and Resend are
+        based in the US, so data they handle leaves the UK and EU. We rely on
+        their standard data protection terms, such as standard contractual
+        clauses or the UK–US data bridge, to protect it.
       </p>
 
       <h2>Sharing and visibility</h2>

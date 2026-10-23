@@ -785,26 +785,6 @@
         }
       }
     },
-    "/api/apex-legends/map-rotation": {
-      "get": {
-        "tags": [
-          "Reelshelf"
-        ],
-        "operationId": "GetApexMapRotation",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CurrentMapRotation"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/user/{userId}": {
       "get": {
         "tags": [
@@ -1640,40 +1620,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/apex-legends/assign-account": {
-      "post": {
-        "tags": [
-          "ApexEndpoints"
-        ],
-        "operationId": "AssignAccount",
-        "parameters": [
-          {
-            "name": "username",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "platform",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
           }
         }
       }
@@ -4270,34 +4216,6 @@
           }
         }
       },
-      "CurrentMapRotation": {
-        "required": [
-          "standard_map",
-          "standard_map_next",
-          "ranked_map",
-          "ranked_map_next",
-          "correct_as_of"
-        ],
-        "type": "object",
-        "properties": {
-          "standard_map": {
-            "$ref": "#/components/schemas/MapInfo"
-          },
-          "standard_map_next": {
-            "$ref": "#/components/schemas/MapInfo"
-          },
-          "ranked_map": {
-            "$ref": "#/components/schemas/MapInfo"
-          },
-          "ranked_map_next": {
-            "$ref": "#/components/schemas/MapInfo"
-          },
-          "correct_as_of": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "CurrentUserResponse": {
         "required": [
           "id",
@@ -5557,32 +5475,6 @@
           }
         }
       },
-      "MapInfo": {
-        "required": [
-          "name",
-          "map_start",
-          "map_end",
-          "asset_uri"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "map_start": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "map_end": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "asset_uri": {
-            "type": "string",
-            "format": "uri"
-          }
-        }
-      },
       "MultipartUploadInfo": {
         "required": [
           "upload_id",
@@ -6554,9 +6446,6 @@
       "name": "SharedClipsEndpoints"
     },
     {
-      "name": "Reelshelf"
-    },
-    {
       "name": "UserEndpoints"
     },
     {
@@ -6570,9 +6459,6 @@
     },
     {
       "name": "GameCategoryEndpoints"
-    },
-    {
-      "name": "ApexEndpoints"
     },
     {
       "name": "LegendDetectionEndpoints"
