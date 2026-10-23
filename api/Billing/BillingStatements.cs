@@ -1,0 +1,137 @@
+using Dapper;
+using Npgsql;
+
+namespace Reelshelf.Billing;
+
+/// <summary>
+/// A Stripe subscription as billing last read it. <see cref="Tier"/> is null when its price carries a lookup key
+/// that isn't one of <see cref="BillingPlans"/>, so it grants nothing.
+/// </summary>
+public sealed record BillingSubscription(
+    string Id,
+    Guid UserId,
+    string Status,
+    string? LookupKey,
+    AccountTier? Tier,
+    DateTimeOffset? CurrentPeriodEnd,
+    bool CancelAtPeriodEnd,
+    DateTimeOffset? CancelAt,
+    DateTimeOffset? EndedAt);
+
+public interface IBillingStore
+{
+    Task<string?> GetCustomerId(Guid userId);
+
+    Task<Guid?> GetUserIdByCustomer(string customerId);
+
+    /// <summary>
+    /// Links the Stripe customer to the account when the account has none and no other account has it. Never
+    /// replaces a customer already linked.
+    /// </summary>
+    Task LinkCustomer(Guid userId, string customerId);
+
+    Task<List<BillingSubscription>> GetSubscriptions(Guid userId);
+
+    /// <summary>Inserts or replaces the subscription. False when the account is gone or being deleted.</summary>
+    Task<bool> UpsertSubscription(BillingSubscription subscription);
+}
+
+public sealed class BillingStatements(NpgsqlConnection connection) : IBillingStore
+{
+    public async Task<string?> GetCustomerId(Guid userId)
+    {
+        return await connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT stripe_customer_id FROM app_user WHERE id = @userId", new { userId });
+    }
+
+    public async Task<Guid?> GetUserIdByCustomer(string customerId)
+    {
+        return await connection.QuerySingleOrDefaultAsync<Guid?>(
+            "SELECT id FROM app_user WHERE stripe_customer_id = @customerId", new { customerId });
+    }
+
+    public async Task LinkCustomer(Guid userId, string customerId)
+    {
+        const string sql = """
+            UPDATE app_user
+            SET stripe_customer_id = @customerId
+            WHERE id = @userId
+              AND stripe_customer_id IS NULL
+              AND NOT EXISTS (SELECT 1 FROM app_user WHERE stripe_customer_id = @customerId)
+            """;
+        await connection.ExecuteAsync(sql, new { userId, customerId });
+    }
+
+    public async Task<List<BillingSubscription>> GetSubscriptions(Guid userId)
+    {
+        const string sql = """
+            SELECT id, user_id, status, lookup_key, tier, current_period_end, cancel_at_period_end, cancel_at, ended_at
+            FROM billing_subscription
+            WHERE user_id = @userId
+            ORDER BY updated_at DESC
+            """;
+        return (await connection.QueryAsync<SubscriptionRow>(sql, new { userId }))
+            .Select(row => row.ToSubscription())
+            .ToList();
+    }
+
+    public async Task<bool> UpsertSubscription(BillingSubscription subscription)
+    {
+        // The account may have been deleted, or marked for deletion, meanwhile: its deletion may already have
+        // cancelled what it knew of, so the caller cancels this one instead of recording it.
+        const string sql = """
+            INSERT INTO billing_subscription (
+                id, user_id, status, lookup_key, tier, current_period_end, cancel_at_period_end, cancel_at, ended_at)
+            SELECT @Id, @UserId, @Status, @LookupKey, @Tier, @CurrentPeriodEnd, @CancelAtPeriodEnd, @CancelAt, @EndedAt
+            WHERE EXISTS (SELECT 1 FROM app_user WHERE id = @UserId AND deletion_requested_at IS NULL)
+            ON CONFLICT (id) DO UPDATE SET
+                user_id = EXCLUDED.user_id,
+                status = EXCLUDED.status,
+                lookup_key = EXCLUDED.lookup_key,
+                tier = EXCLUDED.tier,
+                current_period_end = EXCLUDED.current_period_end,
+                cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+                cancel_at = EXCLUDED.cancel_at,
+                ended_at = EXCLUDED.ended_at,
+                updated_at = now()
+            """;
+        int rows = await connection.ExecuteAsync(sql, new
+        {
+            subscription.Id,
+            subscription.UserId,
+            subscription.Status,
+            subscription.LookupKey,
+            Tier = subscription.Tier is { } tier ? TierName(tier) : null,
+            subscription.CurrentPeriodEnd,
+            subscription.CancelAtPeriodEnd,
+            subscription.CancelAt,
+            subscription.EndedAt
+        });
+        return rows > 0;
+    }
+
+    internal static string TierName(AccountTier tier)
+    {
+        return tier.ToString().ToLowerInvariant();
+    }
+
+    private sealed class SubscriptionRow
+    {
+        public string Id { get; set; } = "";
+        public Guid UserId { get; set; }
+        public string Status { get; set; } = "";
+        public string? LookupKey { get; set; }
+        public string? Tier { get; set; }
+        public DateTimeOffset? CurrentPeriodEnd { get; set; }
+        public bool CancelAtPeriodEnd { get; set; }
+        public DateTimeOffset? CancelAt { get; set; }
+        public DateTimeOffset? EndedAt { get; set; }
+
+        public BillingSubscription ToSubscription()
+        {
+            AccountTier? tier = Enum.TryParse(Tier, ignoreCase: true, out AccountTier parsed) ? parsed : null;
+            return new BillingSubscription(Id, UserId, Status, LookupKey, tier, CurrentPeriodEnd, CancelAtPeriodEnd,
+                CancelAt, EndedAt);
+        }
+    }
+}

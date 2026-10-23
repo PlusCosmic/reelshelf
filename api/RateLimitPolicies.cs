@@ -30,6 +30,9 @@ public static class RateLimitPolicies
     /// </summary>
     public const string Worker = "worker";
 
+    /// <summary>Starting Stripe Checkout and opening the Customer Portal, each of which calls Stripe.</summary>
+    public const string Billing = "billing";
+
     private const int DefaultIgdbRequestsPerMinute = 30;
 
     // The uploader runs at most three uploads at once, so a legitimate client prepares clips no faster than
@@ -37,6 +40,8 @@ public static class RateLimitPolicies
     private const int DefaultClipPreparationsPerMinute = 60;
 
     private const int DefaultActivityTokensPerMinute = 120;
+
+    private const int DefaultBillingSessionsPerMinute = 10;
 
     public static void AddReelshelfRateLimiting(this WebApplicationBuilder builder)
     {
@@ -69,6 +74,8 @@ public static class RateLimitPolicies
                 builder.Configuration.GetValue<int?>("DiscordActivity:TokensPerMinute") ?? DefaultActivityTokensPerMinute);
             options.AddPerUserSlidingWindow(Worker,
                 builder.Configuration.GetValue<int?>("Worker:RequestsPerMinute") ?? new Video.Transcoding.WorkerOptions().RequestsPerMinute);
+            options.AddPerUserSlidingWindow(Billing,
+                builder.Configuration.GetValue<int?>("Billing:SessionsPerMinute") ?? DefaultBillingSessionsPerMinute);
         });
     }
 

@@ -11,6 +11,7 @@ using Npgsql;
 using Reelshelf.ApexLegends;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Auth;
+using Reelshelf.Billing;
 using Reelshelf.Bunny;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
@@ -84,6 +85,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapClipTranscriptionEndpoints();
         apiGroup.MapClipSummaryEndpoints();
         apiGroup.MapUserEndpoints();
+        apiGroup.MapBillingEndpoints();
         apiGroup.MapTwitchClipsEndpoints();
         apiGroup.MapDiscordActivityEndpoints();
         apiGroup.MapWorkerEndpoints();
@@ -235,6 +237,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<AccountLinkingService>();
         builder.Services.AddScoped<IStorageWarningStore>(sp => sp.GetRequiredService<UserStatements>());
         builder.Services.AddScoped<StorageWarningService>();
+        builder.AddBilling();
         builder.Services.AddSingleton<AccountDeletionSignal>();
         builder.Services.AddScoped<IAccountDeletionStore, AccountDeletionStatements>();
         builder.Services.AddScoped<AccountDeletionService>();

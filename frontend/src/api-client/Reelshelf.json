@@ -2657,6 +2657,82 @@
         }
       }
     },
+    "/api/billing/checkout": {
+      "post": {
+        "tags": [
+          "BillingEndpoints"
+        ],
+        "operationId": "StartCheckout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartCheckoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRedirect"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing/portal": {
+      "post": {
+        "tags": [
+          "BillingEndpoints"
+        ],
+        "operationId": "OpenBillingPortal",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRedirect"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/twitch/clips": {
       "get": {
         "tags": [
@@ -3211,6 +3287,17 @@
           "failure_count": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "BillingRedirect": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
           }
         }
       },
@@ -6019,6 +6106,17 @@
           }
         }
       },
+      "StartCheckoutRequest": {
+        "required": [
+          "lookup_key"
+        ],
+        "type": "object",
+        "properties": {
+          "lookup_key": {
+            "type": "string"
+          }
+        }
+      },
       "StorageUsageResponse": {
         "required": [
           "used_bytes",
@@ -6370,6 +6468,9 @@
     },
     {
       "name": "ClipSummaryEndpoints"
+    },
+    {
+      "name": "BillingEndpoints"
     },
     {
       "name": "TwitchClipsEndpoints"
