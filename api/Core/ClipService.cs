@@ -6,7 +6,7 @@ using Reelshelf.Core.Models;
 using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
-using Reelshelf.Storage;
+using Reelshelf.Plans;
 using Reelshelf.Video;
 using Reelshelf.Video.Transcoding;
 
@@ -18,8 +18,9 @@ public class ClipService(
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection,
-    StorageQuotaService storageQuotaService,
-    StorageWarningService storageWarningService,
+    AccountPlanService planService,
+    ClipLimitWarningService clipLimitWarningService,
+    TimeProvider timeProvider,
     ClipMediaUrls mediaUrls,
     ITranscodeStorage transcodeStorage,
     ILogger<ClipService> logger)
@@ -39,13 +40,16 @@ public class ClipService(
     }
 
     /// <summary>
-    /// Reserves storage and creates the hosted video a clip's bytes will be uploaded into. Returns null when the
-    /// owner already has this video (same MD5 for the game, or the same <paramref name="source"/> clip).
+    /// Reserves a place in the owner's plan and creates the hosted video a clip's bytes will be uploaded into. Returns
+    /// null when the owner already has this video (same MD5 for the game, or the same <paramref name="source"/> clip).
+    /// <paramref name="durationSeconds"/> is checked against the plan's length cap when it is known up front (a
+    /// Twitch import); a browser upload's length is checked when the upload completes.
     /// </summary>
     public async Task<CreateClipResponse?> CreateClip(Guid gameCategoryId, string videoTitle,
-        Guid userId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null, ClipSource? source = null)
+        Guid userId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null, ClipSource? source = null,
+        double? durationSeconds = null)
     {
-        if (fileSize <= 0 || fileSize > StorageQuota.MaxDeclaredFileSizeBytes)
+        if (fileSize <= 0 || fileSize > AccountPlanService.MaxDeclaredFileSizeBytes)
         {
             throw new BadRequestException("File size must be between 1 byte and 1 TiB");
         }
@@ -82,7 +86,7 @@ public class ClipService(
         IClipVideoHost videoHost = videoHosts.For(videoHostName);
 
         // Cheap unlocked check first so a plainly over-limit request fails before taking the lock.
-        await storageQuotaService.EnsureCanStore(userId, fileSize);
+        await planService.EnsureCanCreateClip(userId, fileSize, durationSeconds);
 
         // Reserve quota before anything is created at the video host. The clip row is inserted with a placeholder
         // video id under a per-owner lock so concurrent requests cannot all pass the check on the same stale
@@ -93,7 +97,7 @@ public class ClipService(
         ClipsStatements.ClipRow reserved;
         await using (ClipsStatements.OwnerStorageLock reservation = await clipsStatements.BeginOwnerStorageLock(userId))
         {
-            await storageQuotaService.EnsureCanStore(userId, fileSize);
+            await planService.EnsureCanCreateClip(userId, fileSize, durationSeconds);
 
             try
             {
@@ -114,6 +118,8 @@ public class ClipService(
                 return null;
             }
 
+            await clipsStatements.RecordClipCreation(userId, reserved.Id,
+                forgetBefore: timeProvider.GetUtcNow() - TierLimits.NewClipWindow);
             await reservation.CommitAsync();
         }
 
@@ -153,8 +159,8 @@ public class ClipService(
             throw;
         }
 
-        // The clip now counts toward usage; warn the owner once if this pushed them near their limit.
-        await storageWarningService.Evaluate(userId, await storageQuotaService.GetQuota(userId));
+        // The clip now counts toward the plan; warn the owner once if this took them near its limit.
+        await clipLimitWarningService.Evaluate(userId, await planService.GetPlan(userId));
 
         return new CreateClipResponse(clip.Id, video.VideoId, upload);
     }
@@ -203,6 +209,8 @@ public class ClipService(
     {
         try
         {
+            // Nothing was created at the host, so the attempt doesn't count toward the plan's new clips either.
+            await clipsStatements.ForgetClipCreation(clipId);
             await clipsStatements.DeleteClip(clipId);
         }
         catch (Exception cleanupError)
@@ -423,8 +431,8 @@ public class ClipService(
             clip.BunnyVideoId);
         await clipsStatements.DeleteClip(clipId);
 
-        // Usage went down; clear the "nearly full" marker if the owner is back under the threshold.
-        await storageWarningService.Evaluate(userId, await storageQuotaService.GetQuota(userId));
+        // The count went down; clear the "nearly full" marker if the owner is back under the threshold.
+        await clipLimitWarningService.Evaluate(userId, await planService.GetPlan(userId));
         return true;
     }
 

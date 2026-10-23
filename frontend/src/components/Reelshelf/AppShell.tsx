@@ -13,8 +13,8 @@ import { UploadTray } from "@/components/AddClips/UploadTray";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
-import { StorageMeter } from "@/components/Reelshelf/StorageMeter";
-import { useLogout, useStorageUsage } from "@/hooks/queries";
+import { PlanMeter } from "@/components/Reelshelf/PlanMeter";
+import { useLogout, usePlan } from "@/hooks/queries";
 import type { CurrentUser } from "@/shared/services/user";
 
 // Sticky bars further down the page sit beneath the topbar, whose height changes with the layout.
@@ -47,7 +47,7 @@ export function AppShell({
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const storage = useStorageUsage(profileMenuOpen);
+  const plan = usePlan(profileMenuOpen);
   const logout = useLogout();
 
   const active = (path: string) =>
@@ -96,9 +96,9 @@ export function AppShell({
             </button>
             {profileMenuOpen ? (
               <div className="rs-profile-popover" role="menu">
-                {storage.data ? (
+                {plan.data ? (
                   <div className="rs-menu-storage">
-                    <StorageMeter usage={storage.data} compact />
+                    <PlanMeter plan={plan.data} compact />
                   </div>
                 ) : null}
                 <Link

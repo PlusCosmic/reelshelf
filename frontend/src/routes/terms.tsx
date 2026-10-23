@@ -12,7 +12,7 @@ export const Route = createFileRoute("/terms")({
 
 function TermsRoute() {
   return (
-    <LegalPage title="Terms of service" updated="2 October 2026">
+    <LegalPage title="Terms of service" updated="23 October 2026">
       <p>
         Reelshelf is a place to keep, sort and share your gaming clips. It is
         run by {legalOperator} as a small, independent project. By signing in or
@@ -49,8 +49,8 @@ function TermsRoute() {
           illegal, hateful, sexually explicit or meant to harass someone.
         </li>
         <li>
-          Use Reelshelf as general file hosting, or try to get around storage
-          limits.
+          Use Reelshelf as general file hosting, or try to get around your
+          plan's limits.
         </li>
         <li>
           Interfere with the service, other people's accounts, or our providers'
@@ -59,13 +59,47 @@ function TermsRoute() {
       </ul>
       <p>We may remove content or suspend accounts that break these rules.</p>
 
-      <h2>Storage</h2>
+      <h2>Plans and limits</h2>
       <p>
-        Accounts get a free storage allowance, currently 25 GB. Some accounts
-        get more at our discretion. We may change these limits. If we lower one,
-        we'll give you notice before anything you've already uploaded is
-        affected.
+        Every account starts on the free plan, which keeps up to 100 clips of up
+        to a minute each. The paid plans keep more and longer clips: Plus up to
+        1,000 clips and Pro up to 5,000, each up to two minutes. Every plan also
+        limits how many new clips you can add in 30 days, to twice the clips it
+        keeps. Settings shows your plan and how much of it you use. Some
+        accounts get more at our discretion. We may change these limits. If we
+        lower one, we'll give you notice before anything you've already uploaded
+        is affected.
       </p>
+
+      <h2>Paid plans</h2>
+      <p>
+        Paid plans are sold to you by Stripe, through its Link service, as the
+        merchant of record. Link takes your payment, charges any tax, sends your
+        receipts and handles billing questions, under its own terms of sale,
+        which also cover refunds and your right to cancel. Charges show on your
+        statement as LINK.COM* REELSHELF. Nothing here takes away rights you
+        have under consumer law.
+      </p>
+      <ul>
+        <li>
+          A plan renews automatically every month or year, at the price shown
+          when you subscribed, until you cancel. We'll tell you before a price
+          change applies to you.
+        </li>
+        <li>
+          Cancel or change your plan any time in Settings, under Manage billing.
+          A cancelled plan lasts until the end of the period you've paid for.
+        </li>
+        <li>
+          If a payment fails, Stripe tries again for a while. If it still can't
+          be taken, the plan ends.
+        </li>
+        <li>
+          When a paid plan ends, your account goes back to the free plan. Clips
+          you already have are kept, but you can't add more while you have more
+          than the free plan keeps.
+        </li>
+      </ul>
 
       <h2>No guarantees</h2>
       <p>

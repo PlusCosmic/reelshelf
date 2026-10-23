@@ -671,7 +671,7 @@ public class TranscodeQueueTests
                 new LegendDetectionService(null!, null!, null!, null!, null!,
                     new FixedOptions<LegendDetectionOptions>(new LegendDetectionOptions { AutoDetect = false }),
                     null!, NullLogger<LegendDetectionService>.Instance),
-                new ClipTranscriptionService(null!, null!, null!, null!, null!, null!,
+                new ClipTranscriptionService(null!, null!, null!, null!, null!,
                     new FixedOptions<ClipTranscriptionOptions>(new ClipTranscriptionOptions { AutoQueue = false }),
                     null!, NullLogger<ClipTranscriptionService>.Instance),
                 NullLogger<ClipVideoUpdateHandler>.Instance);

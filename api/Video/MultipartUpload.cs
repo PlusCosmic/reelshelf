@@ -80,9 +80,10 @@ public interface IMultipartUploadHost
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Joins the parts, checks the file and queues its transcode. A file that is clearly not a usable video marks
-    /// the clip <c>upload_failed</c> and fails with 422. Repeating a completion that went through is accepted.
+    /// Joins the parts, checks the file and queues its transcode. A file that is clearly not a usable video, or is
+    /// longer than the owner's plan keeps (<paramref name="limits"/>), marks the clip <c>upload_failed</c> and fails
+    /// with 422. Repeating a completion that went through is accepted.
     /// </summary>
     Task<CompletedUpload> CompleteUploadAsync(ClipsStatements.ClipRow clip, string uploadId,
-        IReadOnlyList<CompletedUploadPart> parts, CancellationToken cancellationToken);
+        IReadOnlyList<CompletedUploadPart> parts, Plans.TierLimits limits, CancellationToken cancellationToken);
 }

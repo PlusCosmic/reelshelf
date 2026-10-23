@@ -11,6 +11,7 @@ using Npgsql;
 using Reelshelf.ApexLegends;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Auth;
+using Reelshelf.Billing;
 using Reelshelf.Bunny;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
@@ -24,7 +25,7 @@ using Reelshelf.FFmpeg;
 using Reelshelf.Games;
 using Reelshelf.Playlists;
 using Reelshelf.QueueMetrics;
-using Reelshelf.Storage;
+using Reelshelf.Plans;
 using Reelshelf.Twitch;
 using Reelshelf.Video;
 using Reelshelf.Video.Migration;
@@ -94,6 +95,8 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapClipTranscriptionEndpoints();
         apiGroup.MapClipSummaryEndpoints();
         apiGroup.MapUserEndpoints();
+        apiGroup.MapBillingEndpoints();
+        apiGroup.MapPlanEndpoints();
         apiGroup.MapTwitchClipsEndpoints();
         apiGroup.MapDiscordActivityEndpoints();
         apiGroup.MapWorkerEndpoints();
@@ -234,17 +237,18 @@ internal static class ReelshelfApiConfiguration
 
     private static void AddApplicationModules(this WebApplicationBuilder builder)
     {
-        // whitelist.json no longer gates access; it marks users with unlimited storage and role overrides.
+        // whitelist.json no longer gates access; it marks Unlimited accounts and role overrides.
         builder.Services.AddSingleton<WhitelistService>();
-        builder.Services.AddScoped<StorageQuotaService>();
+        builder.Services.AddScoped<AccountPlanService>();
         builder.Services.AddSingleton<DiscordRoleMapping>();
         builder.Services.AddSingleton<ProviderTokenProtector>();
         builder.Services.AddScoped<UserStatements>();
         builder.Services.AddScoped<IUserIdentityStore>(sp => sp.GetRequiredService<UserStatements>());
         builder.Services.AddScoped<IProviderTokenStore>(sp => sp.GetRequiredService<UserStatements>());
         builder.Services.AddScoped<AccountLinkingService>();
-        builder.Services.AddScoped<IStorageWarningStore>(sp => sp.GetRequiredService<UserStatements>());
-        builder.Services.AddScoped<StorageWarningService>();
+        builder.Services.AddScoped<IClipLimitWarningStore>(sp => sp.GetRequiredService<UserStatements>());
+        builder.Services.AddScoped<ClipLimitWarningService>();
+        builder.AddBilling();
         builder.Services.AddSingleton<AccountDeletionSignal>();
         builder.Services.AddScoped<IAccountDeletionStore, AccountDeletionStatements>();
         builder.Services.AddScoped<AccountDeletionService>();

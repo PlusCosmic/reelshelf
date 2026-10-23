@@ -1,0 +1,33 @@
+using Reelshelf.Billing;
+
+namespace Reelshelf.Plans;
+
+/// <summary>An account's tier, its limits and how much of them it uses.</summary>
+public sealed record AccountPlan(
+    AccountTier Tier,
+    TierLimits Limits,
+    int ClipCount,
+    int NewClipsLast30Days,
+    long StorageUsedBytes)
+{
+    /// <summary>
+    /// Why a new clip can't be added, or null when it can. Clips over the limit (after a downgrade) are kept, but
+    /// nothing is added until the account is back under it.
+    /// </summary>
+    public string? NewClipProblem()
+    {
+        if (Limits.MaxClips is { } maxClips && ClipCount >= maxClips)
+        {
+            return $"Your plan keeps up to {maxClips:N0} clips and you have {ClipCount:N0}. Delete some clips, or " +
+                   "upgrade to keep more.";
+        }
+
+        if (Limits.MaxNewClipsPer30Days is { } maxNew && NewClipsLast30Days >= maxNew)
+        {
+            return $"You've added {NewClipsLast30Days:N0} clips in the last 30 days, the most your plan allows. " +
+                   "Try again later, or upgrade.";
+        }
+
+        return null;
+    }
+}

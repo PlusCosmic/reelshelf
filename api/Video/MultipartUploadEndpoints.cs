@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Reelshelf.Auth;
+using Reelshelf.Billing;
 using Reelshelf.Core;
 using Reelshelf.Exceptions;
+using Reelshelf.Plans;
 
 namespace Reelshelf.Video;
 
@@ -63,13 +65,17 @@ public static class MultipartUploadEndpoints
     private static async Task<Ok<CompletedUpload>> CompleteUpload(
         ClipsStatements clipsStatements,
         ClipVideoHosts videoHosts,
+        AccountTierService tiers,
         AuthenticatedUser user,
         Guid clipId,
         CompleteUploadRequest request,
         CancellationToken cancellationToken)
     {
         (ClipsStatements.ClipRow clip, IMultipartUploadHost host) = await FindAsync(clipsStatements, videoHosts, clipId, user.Id);
-        return TypedResults.Ok(await host.CompleteUploadAsync(clip, request.UploadId, request.Parts ?? [], cancellationToken));
+        // The caller is the owner, so the clip is checked against their plan as it is now.
+        TierLimits limits = TierLimits.For(await tiers.GetTier(user));
+        return TypedResults.Ok(await host.CompleteUploadAsync(clip, request.UploadId, request.Parts ?? [], limits,
+            cancellationToken));
     }
 
     /// <summary>The caller's clip and its host, when that host takes multipart uploads; otherwise 404.</summary>

@@ -15,7 +15,7 @@ export function EmailOnboarding({ user }: { user: CurrentUser }) {
         </h1>
         <p className="rs-sidebar-copy">
           We email you when a new sign-in method is linked to your account and
-          when your clip storage is nearly full. Nothing else.
+          when your library is nearly full. Nothing else.
         </p>
         <EmailField
           initialEmail={user.suggestedEmail}

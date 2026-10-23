@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Reelshelf.Billing;
 using Reelshelf.Email;
 using Reelshelf.Games;
 using Reelshelf.Users;
@@ -14,15 +15,15 @@ public class AccountDeletionServiceTests
     private static readonly Guid UserId = Guid.NewGuid();
 
     private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Host, FakeSender Sender, AccountDeletionSignal Signal) Build(
-        string? email = "harry@example.com")
+        string? email = "harry@example.com", IAccountSubscriptions? subscriptions = null)
     {
-        var (service, store, host, _, sender, signal, _) = BuildWithTwoHosts(email);
+        var (service, store, host, _, sender, signal, _) = BuildWithTwoHosts(email, subscriptions);
         return (service, store, host, sender, signal);
     }
 
     /// <summary>Bunny (the default for clips and collections the tests add) and a second host without containers.</summary>
     private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Bunny, FakeVideoHost Other, FakeSender Sender, AccountDeletionSignal Signal, FakeTranscodeStorage Storage) BuildWithTwoHosts(
-        string? email = "harry@example.com")
+        string? email = "harry@example.com", IAccountSubscriptions? subscriptions = null)
     {
         FakeStore store = new() { Email = email };
         FakeVideoHost bunny = new();
@@ -34,7 +35,8 @@ public class AccountDeletionServiceTests
         FakeSender sender = new();
         AccountDeletionSignal signal = new();
         FakeTranscodeStorage storage = new();
-        AccountDeletionService service = new(store, hosts, storage, sender, signal, NullLogger<AccountDeletionService>.Instance);
+        AccountDeletionService service = new(store, hosts, storage, sender, signal, subscriptions ?? new NoAccountSubscriptions(),
+            NullLogger<AccountDeletionService>.Instance);
         return (service, store, bunny, other, sender, signal, storage);
     }
 
@@ -101,6 +103,38 @@ public class AccountDeletionServiceTests
         Assert.True(store.AccountDeleted);
         Assert.Equal(5, host.DeletedVideos.Count);
         Assert.Equal(store.Collections.Order(), host.DeletedCollections.Order());
+    }
+
+    [Fact]
+    public async Task Process_CancelsTheSubscriptionsBeforeDeletingAnything()
+    {
+        FakeSubscriptions subscriptions = new();
+        var (service, store, host, _, _) = Build(subscriptions: subscriptions);
+        store.AddClips(2);
+        await service.Request(UserId);
+
+        Assert.True(await service.Process(UserId, CancellationToken.None));
+
+        Assert.Equal([UserId], subscriptions.Cancelled);
+        Assert.True(store.AccountDeleted);
+    }
+
+    [Fact]
+    public async Task Process_WhenCancellingFails_DeletesNothingAndTriesAgainNextPass()
+    {
+        FakeSubscriptions subscriptions = new() { Fail = true };
+        var (service, store, host, _, _) = Build(subscriptions: subscriptions);
+        store.AddClips(2);
+        await service.Request(UserId);
+
+        Assert.False(await service.Process(UserId, CancellationToken.None));
+        Assert.Equal(2, store.Clips.Count);
+        Assert.Empty(host.DeletedVideos);
+        Assert.False(store.AccountDeleted);
+
+        subscriptions.Fail = false;
+        Assert.True(await service.Process(UserId, CancellationToken.None));
+        Assert.True(store.AccountDeleted);
     }
 
     [Fact]
@@ -225,6 +259,23 @@ public class AccountDeletionServiceTests
         bunny.FailingVideos.Clear();
         Assert.True(await service.Process(UserId, CancellationToken.None));
         Assert.Equal([bunnyCopy], bunny.DeletedVideos);
+    }
+
+    private sealed class FakeSubscriptions : IAccountSubscriptions
+    {
+        public bool Fail { get; set; }
+        public List<Guid> Cancelled { get; } = [];
+
+        public Task CancelAllAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            if (Fail)
+            {
+                throw new InvalidOperationException("Stripe is down");
+            }
+
+            Cancelled.Add(userId);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeTranscodeStorage : ITranscodeStorage

@@ -7765,3 +7765,74 @@ html:has(.rs-library-route) {
     bottom: 16px;
   }
 }
+
+/* Settings → Plan: the account's usage, its subscription, and the plans to upgrade to. */
+.rs-plan {
+  display: grid;
+  gap: 12px;
+}
+
+.rs-plan-limits {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-plan-offers {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.rs-plan-interval {
+  display: flex;
+  gap: 6px;
+}
+
+.rs-plan-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.rs-plan-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+}
+
+.rs-plan-card[data-current] {
+  border-color: var(--accent);
+}
+
+.rs-plan-card-name {
+  font-weight: 700;
+}
+
+.rs-plan-card-price {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.rs-plan-card-features {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-plan-card-current {
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rs-plan-footnote {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 12px;
+}

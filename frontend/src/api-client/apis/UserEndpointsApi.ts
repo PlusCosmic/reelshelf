@@ -14,14 +14,16 @@
 
 import * as runtime from "../runtime";
 import type {
+  AccountPlanResponse,
   CurrentUserResponse,
   DeleteAccountRequest,
   LinkedIdentity,
   SetEmailRequest,
-  StorageUsageResponse,
   UserProfile,
 } from "../models/index";
 import {
+  AccountPlanResponseFromJSON,
+  AccountPlanResponseToJSON,
   CurrentUserResponseFromJSON,
   CurrentUserResponseToJSON,
   DeleteAccountRequestFromJSON,
@@ -30,8 +32,6 @@ import {
   LinkedIdentityToJSON,
   SetEmailRequestFromJSON,
   SetEmailRequestToJSON,
-  StorageUsageResponseFromJSON,
-  StorageUsageResponseToJSON,
   UserProfileFromJSON,
   UserProfileToJSON,
 } from "../models/index";
@@ -225,14 +225,14 @@ export class UserEndpointsApi extends runtime.BaseAPI {
 
   /**
    */
-  async getMyStorageUsageRaw(
+  async getMyPlanRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<StorageUsageResponse>> {
+  ): Promise<runtime.ApiResponse<AccountPlanResponse>> {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/me/storage`;
+    let urlPath = `/api/me/plan`;
 
     const response = await this.request(
       {
@@ -245,16 +245,16 @@ export class UserEndpointsApi extends runtime.BaseAPI {
     );
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
-      StorageUsageResponseFromJSON(jsonValue),
+      AccountPlanResponseFromJSON(jsonValue),
     );
   }
 
   /**
    */
-  async getMyStorageUsage(
+  async getMyPlan(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<StorageUsageResponse> {
-    const response = await this.getMyStorageUsageRaw(initOverrides);
+  ): Promise<AccountPlanResponse> {
+    const response = await this.getMyPlanRaw(initOverrides);
     return await response.value();
   }
 

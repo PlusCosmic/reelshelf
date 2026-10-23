@@ -7,7 +7,7 @@ import {
   useCategories,
   useTwitchClips,
 } from "@/hooks/queries";
-import { storageUsageQueryKey } from "@/hooks/auth.queries";
+import { planQueryKey } from "@/hooks/auth.queries";
 import { invalidateClipCollections } from "@/hooks/clips.queries";
 import { twitchClipsQueryKey } from "@/hooks/twitch.queries";
 import {
@@ -143,7 +143,7 @@ export function useTwitchClipsImport() {
           activeImportsRef.current.delete(row.clip.id);
           requestedImportsRef.current.delete(row.clip.id);
           void queryClient.invalidateQueries({
-            queryKey: storageUsageQueryKey,
+            queryKey: planQueryKey,
           });
         }
       })();

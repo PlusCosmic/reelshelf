@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Reelshelf.Billing;
 using Reelshelf.Email;
 using Reelshelf.Video;
 using Reelshelf.Video.Transcoding;
@@ -7,7 +8,8 @@ namespace Reelshelf.Users;
 
 /// <summary>
 /// Deletes an account and everything in it. A request marks the account and removes its sign-in identities at
-/// once, so it can't be used again; <see cref="AccountDeletionBackgroundService"/> then deletes its videos and
+/// once, so it can't be used again; <see cref="AccountDeletionBackgroundService"/> then cancels its Stripe
+/// subscriptions, deletes its videos and
 /// their containers (Bunny's collections), each at its own host, and finally the account row, which cascades to the
 /// rest of its data. Every step is idempotent, so a pass that fails part-way is simply repeated.
 /// </summary>
@@ -17,6 +19,7 @@ public class AccountDeletionService(
     ITranscodeStorage transcodeStorage,
     IEmailSender emailSender,
     AccountDeletionSignal signal,
+    IAccountSubscriptions subscriptions,
     ILogger<AccountDeletionService> logger)
 {
     /// <summary>What the user types to confirm; checked here as well as in the UI so a stray request can't delete an account.</summary>
@@ -50,6 +53,17 @@ public class AccountDeletionService(
     /// <summary>Removes what it can of one marked account. Returns true once the account row itself is gone.</summary>
     public async Task<bool> Process(Guid userId, CancellationToken cancellationToken)
     {
+        // First, so a deleted account stops being billed even while its videos take a while to go.
+        try
+        {
+            await subscriptions.CancelAllAsync(userId, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to cancel the Stripe subscriptions of deleted account {UserId}", userId);
+            return false;
+        }
+
         List<OwnedClipVideo> clips = await store.GetClipVideos(userId);
         ConcurrentBag<Guid> deletedClipIds = [];
         bool videosFailed = false;

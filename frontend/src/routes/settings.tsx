@@ -6,11 +6,16 @@ import {
 } from "@/components/Reelshelf/LinkedAccounts";
 import { DeleteAccount } from "@/components/Reelshelf/DeleteAccount";
 import { EmailField } from "@/components/Reelshelf/EmailField";
+import {
+  type BillingReturn,
+  PlanSettings,
+} from "@/components/Reelshelf/PlanSettings";
 import { useCurrentUser } from "@/hooks/queries";
 
 type SettingsSearch = {
   linked?: string;
   link_error?: string;
+  billing?: BillingReturn;
 };
 
 export const Route = createFileRoute("/settings")({
@@ -19,6 +24,11 @@ export const Route = createFileRoute("/settings")({
     linked: typeof search.linked === "string" ? search.linked : undefined,
     link_error:
       typeof search.link_error === "string" ? search.link_error : undefined,
+    // Where Stripe Checkout sends the browser back to.
+    billing:
+      search.billing === "success" || search.billing === "cancelled"
+        ? search.billing
+        : undefined,
   }),
 });
 
@@ -29,12 +39,13 @@ function SettingsRoute() {
   // The link result arrives as query parameters. Keep it in state so it survives cleaning the URL,
   // which happens right away so a refresh doesn't repeat the message.
   const [notice] = useState(() => describeLinkResult(search));
+  const [billingReturn] = useState(() => search.billing);
 
   useEffect(() => {
-    if (search.linked || search.link_error) {
+    if (search.linked || search.link_error || search.billing) {
       void navigate({ to: "/settings", search: {}, replace: true });
     }
-  }, [navigate, search.linked, search.link_error]);
+  }, [navigate, search.linked, search.link_error, search.billing]);
 
   return (
     <>
@@ -47,10 +58,14 @@ function SettingsRoute() {
       </section>
       <section className="rs-section rs-settings">
         <div className="rs-settings-section">
+          <h2 className="rs-eyebrow">Plan</h2>
+          <PlanSettings billingReturn={billingReturn} />
+        </div>
+        <div className="rs-settings-section">
           <h2 className="rs-eyebrow">Account email</h2>
           <p className="rs-sidebar-copy">
             Used for notices about newly linked sign-in methods and when your
-            storage is nearly full. Leave it empty to receive nothing.
+            library is nearly full. Leave it empty to receive nothing.
           </p>
           <EmailField initialEmail={user?.email ?? null} />
         </div>

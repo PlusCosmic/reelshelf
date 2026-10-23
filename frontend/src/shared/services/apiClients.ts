@@ -1,4 +1,5 @@
 import {
+  BillingEndpointsApi,
   ClipsEndpointsApi,
   ClipSummaryEndpointsApi,
   ClipTranscriptionEndpointsApi,
@@ -8,6 +9,7 @@ import {
   GameCategoryEndpointsApi,
   LegendDetectionEndpointsApi,
   MultipartUploadEndpointsApi,
+  PlanEndpointsApi,
   PlaylistEndpointsApi,
   SharedClipsEndpointsApi,
   TwitchClipsEndpointsApi,
@@ -35,6 +37,14 @@ export function createGameCategoryApi() {
 
 export function createUserApi() {
   return new UserEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createPlanApi() {
+  return new PlanEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createBillingApi() {
+  return new BillingEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
 export function createPlaylistApi() {

@@ -1,0 +1,62 @@
+import type {
+  AccountPlanResponse,
+  PlanOffer,
+  PlanOfferPrice,
+} from "@/api-client";
+import { createBillingApi, createPlanApi, createUserApi } from "./apiClients";
+
+export type AccountPlan = AccountPlanResponse;
+export type { PlanOffer, PlanOfferPrice };
+
+export type Tier = "free" | "plus" | "pro" | "unlimited";
+
+export const tierNames: Record<string, string> = {
+  free: "Free",
+  plus: "Plus",
+  pro: "Pro",
+  unlimited: "Unlimited",
+};
+
+/** The signed-in account's tier, limits, usage and subscription. */
+export async function fetchPlan(): Promise<AccountPlan> {
+  return createUserApi().getMyPlan();
+}
+
+/** Every tier's limits, with the paid ones' prices while billing is on. */
+export async function fetchPlanOffers(): Promise<PlanOffer[]> {
+  return createPlanApi().getPlans();
+}
+
+/** Starts Stripe Checkout for a price and returns the page to send the browser to. */
+export async function startCheckout(lookupKey: string): Promise<string> {
+  const redirect = await createBillingApi().startCheckout({
+    startCheckoutRequest: { lookupKey },
+  });
+  return redirect.url;
+}
+
+/** Opens Stripe's Customer Portal and returns the page to send the browser to. */
+export async function openBillingPortal(): Promise<string> {
+  const redirect = await createBillingApi().openBillingPortal();
+  return redirect.url;
+}
+
+/** "£3", "$4.50": a price in its minor unit, in the browser's locale. */
+export function formatPrice(price: PlanOfferPrice): string {
+  const amount = price.unitAmount / 100;
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: price.currency.toUpperCase(),
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+  }).format(amount);
+}
+
+/** "1 min", "2 min", "90 s". */
+export function formatClipLength(seconds: number): string {
+  return seconds >= 60 && seconds % 60 === 0
+    ? `${seconds / 60} min`
+    : `${seconds} s`;
+}
+
+/** How far past the length cap a clip may run before the API refuses it, as containers round. */
+export const clipLengthToleranceSeconds = 1;

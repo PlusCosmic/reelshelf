@@ -8,8 +8,8 @@ namespace Reelshelf.Auth;
 /// Registered as a singleton and loaded once at startup.
 /// Provides O(1) lookups by linked identity (provider + provider user id).
 ///
-/// The whitelist does not gate access: any Discord or Twitch account can sign in and use the default storage tier.
-/// Listed users get unlimited storage, and an entry may also pin a role override.
+/// The whitelist does not gate access: any Discord or Twitch account can sign in, on the Free tier unless it subscribes.
+/// Listed users are on the Unlimited tier (ADR-0007), and an entry may also pin a role override.
 /// </summary>
 public class WhitelistService
 {
@@ -26,7 +26,7 @@ public class WhitelistService
     }
 
     /// <summary>
-    /// Checks if any of the identities is in the whitelist (unlimited storage tier).
+    /// Checks if any of the identities is in the whitelist (the Unlimited tier).
     /// </summary>
     public bool IsWhitelisted(IEnumerable<UserIdentityRef> identities)
     {
@@ -77,7 +77,7 @@ public class WhitelistService
 
         if (!File.Exists(whitelistPath))
         {
-            logger.LogWarning("whitelist.json not found at {Path}; every user gets the default storage tier", whitelistPath);
+            logger.LogWarning("whitelist.json not found at {Path}; no account is Unlimited", whitelistPath);
             return new Dictionary<UserIdentityRef, WhitelistEntry>();
         }
 
