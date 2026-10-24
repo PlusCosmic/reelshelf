@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/shared/services/apiError";
 import { logout } from "@/shared/services/auth";
 import {
   fetchExports,
@@ -101,10 +102,17 @@ export function useStartExport() {
 
 /** Starts Stripe Checkout for a price and sends the browser there. */
 export function useStartCheckout() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: startCheckout,
     onSuccess: (url) => {
       window.location.assign(url);
+    },
+    onError: (error) => {
+      // Refused because the account already has a plan (perhaps one just paid for in another tab): show it.
+      if (error instanceof ApiError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: planQueryKey });
+      }
     },
   });
 }

@@ -96,6 +96,21 @@ const offers: PlanOffer[] = [
       },
     ],
   },
+  {
+    tier: "pro",
+    clipLimit: 5000,
+    maxClipSeconds: 120,
+    newClipLimit: 10000,
+    hasTranscripts: true,
+    prices: [
+      {
+        lookupKey: "pro_yearly",
+        interval: "year",
+        unitAmount: 8000,
+        currency: "gbp",
+      },
+    ],
+  },
 ];
 
 afterEach(() => {
@@ -119,6 +134,7 @@ describe("PlanSettings", () => {
     expect(screen.getByText("£0")).toBeTruthy();
     expect(screen.getByText("£2.50/mo · 2 months free")).toBeTruthy();
     expect(screen.getByText("Current plan")).toBeTruthy();
+    expect(screen.getByText("Best value")).toBeTruthy();
     expect(alerts()).toHaveLength(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Upgrade to Plus" }));

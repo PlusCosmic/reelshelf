@@ -35,6 +35,9 @@ const paymentProblemStatuses = new Set(["past_due", "unpaid", "paused"]);
 /** Statuses whose subscription is the account's current plan. */
 const currentStatuses = new Set(["active", "trialing", "past_due"]);
 
+/** The plan the cards point people to: Pro is the best value per clip. */
+const recommendedTier = "pro";
+
 /** After Checkout or the portal, Stripe's webhook updates the plan within seconds; poll for that long. */
 const pollAfterReturnMs = 30_000;
 
@@ -557,6 +560,7 @@ function PlanOffers({
           const name = tierNames[offer.tier] ?? offer.tier;
           const price = offer.prices.find((p) => p.interval === interval);
           const isCurrent = offer.tier === currentTier;
+          const recommended = offer.tier === recommendedTier && !isCurrent;
           const note =
             offer.tier === "free"
               ? "No card needed"
@@ -573,8 +577,14 @@ function PlanOffers({
               key={offer.tier}
               className="rs-plan-card"
               data-current={isCurrent || undefined}
+              data-recommended={recommended || undefined}
             >
-              <div className="rs-plan-card-name">{name}</div>
+              <div className="rs-plan-card-name">
+                {name}
+                {recommended ? (
+                  <span className="rs-plan-card-badge">Best value</span>
+                ) : null}
+              </div>
               <div className="rs-plan-card-price">
                 {offer.tier === "free"
                   ? formatPrice({

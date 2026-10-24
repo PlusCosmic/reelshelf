@@ -7986,8 +7986,32 @@ html:has(.rs-library-route) {
   border-color: var(--accent);
 }
 
+/* The plan we point people to: raised out of the row, with its badge. */
+.rs-plan-card[data-recommended] {
+  /* The thicker border comes out of the padding, so its contents line up with the other cards'. */
+  padding: 13px;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  box-shadow: 0 2px 10px color-mix(in oklab, var(--shadow) 10%, transparent);
+}
+
 .rs-plan-card-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-weight: 700;
+}
+
+.rs-plan-card-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--fill-ink);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
 }
 
 .rs-plan-card-price {

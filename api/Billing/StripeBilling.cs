@@ -15,7 +15,8 @@ public sealed class StripeBilling(StripeClient client) : IStripeBilling
 
     internal const string UserIdMetadataKey = "reelshelf_user_id";
 
-    public async Task<string?> CreateCheckoutSessionAsync(CheckoutSessionRequest request, CancellationToken cancellationToken)
+    public async Task<StripeCheckoutSession?> CreateCheckoutSessionAsync(CheckoutSessionRequest request,
+        CancellationToken cancellationToken)
     {
         StripeList<Price> prices = await client.V1.Prices.ListAsync(new PriceListOptions
         {
@@ -49,8 +50,38 @@ public sealed class StripeBilling(StripeClient client) : IStripeBilling
         };
 
         Session session = await client.V1.Checkout.Sessions.CreateAsync(options, cancellationToken: cancellationToken);
-        return session.Url;
+        return ToCheckoutSession(session);
     }
+
+    public async Task<StripeCheckoutSession?> GetCheckoutSessionAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return ToCheckoutSession(
+                await client.V1.Checkout.Sessions.GetAsync(sessionId, cancellationToken: cancellationToken));
+        }
+        catch (StripeException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> ExpireCheckoutSessionAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.V1.Checkout.Sessions.ExpireAsync(sessionId, cancellationToken: cancellationToken);
+            return true;
+        }
+        catch (StripeException ex) when (ex.HttpStatusCode is HttpStatusCode.BadRequest or HttpStatusCode.NotFound)
+        {
+            // Completed or expired meanwhile, or gone: it can't be paid through this session either way.
+            return false;
+        }
+    }
+
+    private static StripeCheckoutSession ToCheckoutSession(Session session) =>
+        new(session.Id, session.Status, session.Url, session.SubscriptionId);
 
     public async Task<string> CreatePortalSessionAsync(string customerId, string returnUrl, CancellationToken cancellationToken)
     {
