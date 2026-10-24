@@ -116,7 +116,9 @@ public sealed class BillingService(
             return null;
         }
 
-        return await stripe.CreatePortalSessionAsync(customerId, $"{options.FrontendOrigin}/settings", cancellationToken);
+        // Settings refetches the plan for a while after ?billing=portal, since changes made there arrive by webhook.
+        return await stripe.CreatePortalSessionAsync(customerId, $"{options.FrontendOrigin}/settings?billing=portal",
+            cancellationToken);
     }
 
     public async Task HandleWebhook(BillingWebhookEvent stripeEvent, CancellationToken cancellationToken)

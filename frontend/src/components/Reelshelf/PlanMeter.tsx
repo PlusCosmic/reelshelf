@@ -1,12 +1,20 @@
 import { type AccountPlan, tierNames } from "@/shared/services/plans";
 
-/** How many clips the account keeps against its plan's limit; the CSS is the old storage meter's. */
+/** At this share of the limit the meter turns amber and the account is "nearly full". */
+export const nearLimitFraction = 0.9;
+
+/**
+ * How many clips the account keeps against its plan's limit; the CSS is the old storage meter's. Settings names the
+ * plan above it (`showTier` false); the compact one in the profile menu names it in the label.
+ */
 export function PlanMeter({
   plan,
   compact = false,
+  showTier = true,
 }: {
   plan: AccountPlan | undefined;
   compact?: boolean;
+  showTier?: boolean;
 }) {
   if (!plan) return null;
 
@@ -14,15 +22,28 @@ export function PlanMeter({
   const limit = plan.clipLimit ?? null;
   const fraction =
     limit !== null && limit > 0 ? Math.min(1, plan.clipCount / limit) : 0;
-  // Over the limit (clips will be deleted) and nearly full (new clips soon refused) are told apart.
+  // Over the limit (clips will be deleted) and nearly full (new clips soon refused) are told apart, in words as
+  // well as colour.
   const overLimit = limit !== null && plan.clipCount > limit;
   const nearLimit =
-    limit !== null && !overLimit && (limit === 0 || fraction >= 0.9);
+    limit !== null &&
+    !overLimit &&
+    (limit === 0 || fraction >= nearLimitFraction);
   const clips = plan.clipCount.toLocaleString();
-  const label =
-    limit !== null
-      ? `${clips} of ${limit.toLocaleString()} clips · ${tier}`
-      : `${clips} ${plan.clipCount === 1 ? "clip" : "clips"} · ${tier}`;
+
+  let label: string;
+  if (limit === null) {
+    label = `${clips} ${plan.clipCount === 1 ? "clip" : "clips"}`;
+  } else if (overLimit) {
+    const over = (plan.clipCount - limit).toLocaleString();
+    label = compact
+      ? `${clips} clips · ${over} over the limit`
+      : `${clips} clips, ${over} over ${tier}'s limit of ${limit.toLocaleString()}`;
+  } else {
+    label = `${clips} of ${limit.toLocaleString()} clips`;
+    if (nearLimit && compact) label += " · nearly full";
+  }
+  if (showTier && !(overLimit && !compact)) label += ` · ${tier}`;
 
   return (
     <div

@@ -2,7 +2,11 @@
 import type { ReactNode } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AccountPlanResponse, PlanOffer } from "@/api-client";
+import type {
+  AccountPlanResponse,
+  PlanOffer,
+  PlanSubscription,
+} from "@/api-client";
 import { PlanSettings } from "./PlanSettings";
 
 const mocks = vi.hoisted(() => ({
@@ -45,7 +49,22 @@ const free: AccountPlanResponse = {
   subscription: null,
   clipsOverLimit: 0,
   overLimitDeletesAt: null,
+  freeClipLimit: 100,
+  overLimitGraceDays: 14,
 };
+
+const subscription = (
+  overrides: Partial<PlanSubscription>,
+): PlanSubscription => ({
+  status: "active",
+  tier: "plus",
+  interval: "month",
+  currentPeriodEnd: new Date("2026-11-24T12:00:00Z"),
+  cancelAtPeriodEnd: false,
+  cancelAt: null,
+  endedAt: null,
+  ...overrides,
+});
 
 const offers: PlanOffer[] = [
   {
@@ -84,18 +103,23 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+function alerts() {
+  return document.querySelectorAll(".rs-plan-alert");
+}
+
 describe("PlanSettings", () => {
   it("shows a free account its usage and the plans to upgrade to, yearly first", () => {
     mocks.plan = free;
     mocks.offers = offers;
     render(<PlanSettings billingReturn={undefined} />);
 
-    expect(screen.getByText("37 of 100 clips · Free")).toBeTruthy();
-    expect(
-      screen.getByText("Clips up to 1 min", { selector: ".rs-plan-limits" }),
-    ).toBeTruthy();
-    expect(screen.getByText("£0 / year")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Free" })).toBeTruthy();
+    expect(screen.getByText("37 of 100 clips")).toBeTruthy();
+    expect(screen.getByText("Clips up to 1 min long")).toBeTruthy();
+    expect(screen.getByText("£0")).toBeTruthy();
+    expect(screen.getByText("£2.50/mo · 2 months free")).toBeTruthy();
     expect(screen.getByText("Current plan")).toBeTruthy();
+    expect(alerts()).toHaveLength(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Upgrade to Plus" }));
     expect(mocks.checkout).toHaveBeenCalledWith("plus_yearly");
@@ -105,102 +129,135 @@ describe("PlanSettings", () => {
     expect(mocks.checkout).toHaveBeenLastCalledWith("plus_monthly");
   });
 
-  it("sends a subscriber to Manage billing instead of offering plans", () => {
+  it("says in words when the library is nearly full", () => {
+    mocks.plan = { ...free, clipCount: 93 };
+    mocks.offers = offers;
+    render(<PlanSettings billingReturn={undefined} />);
+
+    expect(screen.getByText("Your library is nearly full.")).toBeTruthy();
+    expect(
+      screen.getByText(
+        /At 100 you can't add more until you delete some or upgrade/,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("names a subscriber's plan and sends them to Manage billing instead of offering plans", () => {
     mocks.plan = {
       ...free,
       tier: "plus",
       clipLimit: 1000,
       canManageBilling: true,
-      subscription: {
-        status: "active",
-        tier: "plus",
-        interval: "year",
-        currentPeriodEnd: new Date("2027-10-23T00:00:00Z"),
-        cancelAtPeriodEnd: false,
-        cancelAt: null,
-        endedAt: null,
-      },
+      subscription: subscription({ interval: "year" }),
     };
     mocks.offers = offers;
     render(<PlanSettings billingReturn={undefined} />);
 
-    expect(screen.getByText(/Plus \(yearly\) renews on/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Plus, yearly" })).toBeTruthy();
+    expect(screen.getByText(/Renews on/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Upgrade/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Manage billing" }));
     expect(mocks.portal).toHaveBeenCalled();
   });
 
-  it("says how many clips are over the limit and when they go", () => {
+  it("warns a plan set to end what it will cost, and offers to keep it", () => {
+    mocks.plan = {
+      ...free,
+      tier: "pro",
+      clipCount: 1820,
+      clipLimit: 5000,
+      canManageBilling: true,
+      subscription: subscription({
+        tier: "pro",
+        cancelAtPeriodEnd: true,
+        currentPeriodEnd: new Date("2027-03-02T12:00:00Z"),
+      }),
+    };
+    render(<PlanSettings billingReturn={undefined} />);
+
+    expect(
+      screen.getByText(
+        /When Pro ends on .*, 1,720 clips will be over Free's limit of 100\./,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText(/deleted 14 days later/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Keep Pro" }));
+    expect(mocks.portal).toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Manage billing" })).toBeNull();
+  });
+
+  it("leads with the clips over the limit and when they go", () => {
     mocks.plan = {
       ...free,
       clipCount: 130,
       clipsOverLimit: 30,
       overLimitDeletesAt: new Date("2026-11-06T12:00:00Z"),
+      canManageBilling: true,
+      subscription: subscription({
+        status: "canceled",
+        endedAt: new Date("2026-10-23T12:00:00Z"),
+      }),
     };
     mocks.offers = offers;
     render(<PlanSettings billingReturn={undefined} />);
 
+    expect(screen.getByText(/30 clips will be deleted on/)).toBeTruthy();
+    expect(screen.getByText("Choose clips to keep")).toBeTruthy();
     expect(
-      screen.getByText(
-        /30 clips are over your plan's limit and will be deleted on/,
-      ),
-    ).toBeTruthy();
-    expect(
-      screen.getByText("Download them or pick which to keep"),
+      screen.getByRole("button", { name: "Resubscribe to Plus" }),
     ).toBeTruthy();
   });
 
-  it("warns when a payment failed", () => {
+  it("tells a failing payment what the last retry costs", () => {
     mocks.plan = {
       ...free,
       tier: "plus",
+      clipCount: 412,
+      clipLimit: 1000,
       canManageBilling: true,
-      subscription: {
-        status: "past_due",
-        tier: "plus",
-        interval: "month",
-        currentPeriodEnd: null,
-        cancelAtPeriodEnd: false,
-        cancelAt: null,
-        endedAt: null,
-      },
+      subscription: subscription({ status: "past_due" }),
     };
     render(<PlanSettings billingReturn={undefined} />);
 
     expect(screen.getByText(/didn't go through/)).toBeTruthy();
+    expect(
+      screen.getByText(/the 312 clips over them will be deleted 14 days later/),
+    ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Update payment method" }),
     );
     expect(mocks.portal).toHaveBeenCalled();
   });
 
-  it("puts a plan on hold and the clips it will cost in one notice", () => {
+  it("puts a plan on hold and the clips it will cost in one alert", () => {
     mocks.plan = {
       ...free,
       clipCount: 412,
       canManageBilling: true,
       clipsOverLimit: 312,
       overLimitDeletesAt: new Date("2026-11-07T12:00:00Z"),
-      subscription: {
-        status: "unpaid",
-        tier: "plus",
-        interval: "month",
-        currentPeriodEnd: null,
-        cancelAtPeriodEnd: false,
-        cancelAt: null,
-        endedAt: null,
-      },
+      subscription: subscription({ status: "unpaid", currentPeriodEnd: null }),
     };
     render(<PlanSettings billingReturn={undefined} />);
 
-    const notices = document.querySelectorAll(".rs-linked-notice");
-    expect(notices).toHaveLength(1);
-    expect(notices[0].textContent).toMatch(
-      /Plus is on hold .* the 312 clips over them will be deleted on .*Update your payment method to get Plus back and keep them, or download them or pick which to keep\./,
-    );
+    expect(alerts()).toHaveLength(1);
+    expect(screen.getByText(/312 clips will be deleted on/)).toBeTruthy();
+    expect(
+      screen.getByText(/Plus is on hold because a payment failed/),
+    ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Update payment method" }),
     ).toBeTruthy();
+    expect(screen.getByText("Choose clips to keep")).toBeTruthy();
+  });
+
+  it("hides the plans while a payment just made is confirmed, so it can't be made twice", () => {
+    mocks.plan = free;
+    mocks.offers = offers;
+    render(<PlanSettings billingReturn="success" />);
+
+    expect(screen.getByText("Confirming your payment…")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Upgrade/ })).toBeNull();
   });
 
   it("offers nothing to an unlimited account or while billing is off", () => {
@@ -213,7 +270,7 @@ describe("PlanSettings", () => {
     };
     mocks.offers = offers;
     const { unmount } = render(<PlanSettings billingReturn={undefined} />);
-    expect(screen.getByText("37 clips · Unlimited")).toBeTruthy();
+    expect(screen.getByText("37 clips")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Upgrade/ })).toBeNull();
     unmount();
 

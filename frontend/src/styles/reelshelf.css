@@ -394,6 +394,14 @@ a {
   color: var(--danger);
 }
 
+.rs-linked-notice[data-tone="success"] {
+  color: var(--accent-ink);
+}
+
+.rs-linked-notice[data-tone="warning"] {
+  border-color: color-mix(in oklab, var(--warning) 55%, var(--line));
+}
+
 /* Links in a notice take its colour, so underline them to show they're links. */
 .rs-linked-notice a {
   text-decoration: underline;
@@ -7783,13 +7791,27 @@ html:has(.rs-library-route) {
   }
 }
 
-/* Settings → Plan: the account's usage, its subscription, and the plans to upgrade to. */
+/* Settings → Plan: the account's plan and usage, the one alert that matters most, and the plans to move to. */
 .rs-plan {
+  display: grid;
+  gap: 14px;
+}
+
+.rs-plan-summary {
   display: grid;
   gap: 8px;
 }
 
-/* Under the section's eyebrow, every line is Settings copy size; the clip count leads in the main colour. */
+.rs-plan-name {
+  margin: 0;
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Under the plan's name, every line is Settings copy size; the clip count leads in the main colour. */
 .rs-plan .rs-storage-meter {
   color: var(--fg);
   font-size: 14px;
@@ -7805,15 +7827,143 @@ html:has(.rs-library-route) {
   font-size: 14px;
 }
 
+/* One banner style for every plan message, in four tones: an icon and a tinted edge carry the tone as well as colour. */
+.rs-plan-alert {
+  --tone: var(--fg-soft);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in oklab, var(--tone) 40%, var(--line));
+  border-left: 4px solid var(--tone);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--tone) 8%, var(--bg));
+  color: var(--fg);
+  font-size: 14px;
+}
+
+.rs-plan-alert[data-tone="success"] {
+  --tone: var(--accent);
+}
+
+.rs-plan-alert[data-tone="warning"] {
+  --tone: var(--warning);
+}
+
+.rs-plan-alert[data-tone="error"] {
+  --tone: var(--danger);
+}
+
+.rs-plan-alert-icon {
+  margin-top: 1px;
+  color: var(--tone);
+}
+
+.rs-plan-alert[data-tone="warning"] .rs-plan-alert-icon {
+  color: color-mix(in oklab, var(--warning) 70%, var(--fg));
+}
+
+.rs-plan-alert-spinner {
+  width: 16px;
+  height: 16px;
+  margin: 2px 1px 0;
+  border: 2px solid color-mix(in oklab, var(--fg-soft) 30%, transparent);
+  border-top-color: var(--fg-soft);
+  border-radius: 50%;
+  animation: rs-plan-spin 0.8s linear infinite;
+}
+
+@keyframes rs-plan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-plan-alert-spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+.rs-plan-alert-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rs-plan-alert-body p {
+  margin: 0;
+  color: var(--fg-soft);
+}
+
+.rs-plan-alert-body .rs-plan-alert-title {
+  color: var(--fg);
+  font-weight: 650;
+}
+
+.rs-plan-alert .rs-plan-actions {
+  margin-top: 4px;
+}
+
+.rs-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.rs-plan-link-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rs-plan-hint {
+  color: var(--fg-soft);
+  font-size: 12px;
+}
+
 .rs-plan-offers {
   display: grid;
   gap: 12px;
   margin-top: 8px;
 }
 
+/* A segmented control: one outlined track, the chosen period raised out of it. */
 .rs-plan-interval {
-  display: flex;
-  gap: 6px;
+  display: inline-flex;
+  justify-self: start;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+}
+
+.rs-plan-segment {
+  padding: 6px 16px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-soft);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rs-plan-segment[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 1px 2px color-mix(in oklab, var(--shadow) 14%, transparent);
+}
+
+.rs-plan-segment:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .rs-plan-cards {
@@ -7823,9 +7973,9 @@ html:has(.rs-library-route) {
 }
 
 .rs-plan-card {
-  display: grid;
-  gap: 8px;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -7840,28 +7990,45 @@ html:has(.rs-library-route) {
   font-weight: 700;
 }
 
-/* The clips a plan keeps is what sets the plans apart, so it leads the card. */
-.rs-plan-card-clips {
-  font-size: 15px;
-  font-weight: 600;
-}
-
 .rs-plan-card-price {
   font-size: 18px;
   font-weight: 600;
 }
 
-.rs-plan-card-features {
-  margin: 0;
-  padding-left: 18px;
+.rs-plan-card-note,
+.rs-plan-card-length {
   color: var(--fg-soft);
   font-size: 13px;
 }
 
+/* The clips a plan keeps is what sets the plans apart, so it leads the card's details. */
+.rs-plan-card-clips {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* The action sits at the foot of every card, so buttons and "Current plan" line up across them. */
+.rs-plan-card-action {
+  display: grid;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
 .rs-plan-card-current {
+  padding: 7px 12px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
   color: var(--accent-ink);
   font-size: 13px;
   font-weight: 600;
+  text-align: center;
+}
+
+.rs-plan-included {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 13px;
 }
 
 .rs-plan-footnote {

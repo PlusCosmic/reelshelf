@@ -127,7 +127,7 @@ public class BillingServiceTests
         string? url = await service.OpenPortal(User, CancellationToken.None);
 
         Assert.Equal("https://portal.stripe.test/cus_1", url);
-        Assert.Equal("https://reelshelf.test/settings", stripe.PortalReturnUrl);
+        Assert.Equal("https://reelshelf.test/settings?billing=portal", stripe.PortalReturnUrl);
     }
 
     [Fact]
