@@ -14,6 +14,30 @@ public enum CheckoutOutcome
 
 public sealed record CheckoutResult(CheckoutOutcome Outcome, string? Url = null);
 
+public enum PlanChangeOutcome
+{
+    /// <summary>An upgrade: <see cref="PlanChangeResult.Url"/> is Stripe's page confirming it.</summary>
+    Confirm,
+
+    /// <summary>A downgrade, scheduled for <see cref="PlanChangeResult.At"/>, the end of the paid period.</summary>
+    Scheduled,
+
+    /// <summary>Already on that plan.</summary>
+    SamePlan,
+    UnknownPlan,
+
+    /// <summary>No active subscription to change; Checkout starts one.</summary>
+    NotSubscribed,
+
+    /// <summary>A payment is failing or the plan is set to end; that is dealt with first, in the Customer Portal.</summary>
+    NotChangeable,
+
+    /// <summary>Changing plan isn't configured, or the plan has no active price.</summary>
+    Unavailable
+}
+
+public sealed record PlanChangeResult(PlanChangeOutcome Outcome, string? Url = null, DateTimeOffset? At = null);
+
 /// <summary>Cancels an account's subscriptions when the account is deleted; does nothing while billing is off.</summary>
 public interface IAccountSubscriptions
 {
@@ -163,6 +187,119 @@ public sealed class BillingService(
             cancellationToken);
     }
 
+    /// <summary>
+    /// Changes the account's plan (ADR-0007). Moving to a better plan (a higher tier, or yearly from monthly) opens
+    /// Stripe's page confirming it, which charges the prorated difference at once; moving down waits for the end of
+    /// what is already paid for, through a subscription schedule, and any downgrade already scheduled is replaced.
+    /// </summary>
+    public async Task<PlanChangeResult> ChangePlan(AuthenticatedUser user, string? lookupKey,
+        CancellationToken cancellationToken)
+    {
+        BillingPlan? target = BillingPlans.Find(lookupKey);
+        if (target is null)
+        {
+            return new PlanChangeResult(PlanChangeOutcome.UnknownPlan);
+        }
+
+        if (!options.CanChangePlan)
+        {
+            return new PlanChangeResult(PlanChangeOutcome.Unavailable);
+        }
+
+        BillingSubscription? subscription = await ChangeableSubscription(user.Id);
+        if (subscription is null)
+        {
+            return new PlanChangeResult(await HasOpenSubscription(user.Id)
+                ? PlanChangeOutcome.NotChangeable
+                : PlanChangeOutcome.NotSubscribed);
+        }
+
+        // Stripe's current state: the item to change and the schedule to rewrite aren't kept locally.
+        StripeSubscriptionState? state = await stripe.GetSubscriptionAsync(subscription.Id, cancellationToken);
+        BillingPlan? current = BillingPlans.Find(state?.LookupKey);
+        if (state is null || current is null || state.ItemId is null ||
+            await store.GetCustomerId(user.Id) is not { } customerId)
+        {
+            return new PlanChangeResult(PlanChangeOutcome.NotChangeable);
+        }
+
+        if (current.LookupKey == target.LookupKey)
+        {
+            if (state.ScheduleId is null)
+            {
+                return new PlanChangeResult(PlanChangeOutcome.SamePlan);
+            }
+
+            // Staying put: drop the downgrade waiting at the end of the period.
+            await KeepPlan(user, cancellationToken);
+            return new PlanChangeResult(PlanChangeOutcome.SamePlan);
+        }
+
+        if ((await GetPrices(cancellationToken)).GetValueOrDefault(target.LookupKey)?.Id is not { } priceId)
+        {
+            return new PlanChangeResult(PlanChangeOutcome.Unavailable);
+        }
+
+        if (!IsUpgrade(current, target))
+        {
+            await stripe.ScheduleDowngradeAsync(state, priceId, target.Interval, cancellationToken);
+            await SyncSubscription(state.Id, user.Id, cancellationToken);
+            logger.LogInformation("Scheduled account {UserId}'s move from {From} to {To} for {At}",
+                user.Id, current.LookupKey, target.LookupKey, state.CurrentPeriodEnd);
+            return new PlanChangeResult(PlanChangeOutcome.Scheduled, At: state.CurrentPeriodEnd);
+        }
+
+        // A subscription under a schedule can't be changed directly, and the upgrade replaces any downgrade.
+        if (state.ScheduleId is { } scheduleId)
+        {
+            await stripe.ReleaseScheduleAsync(scheduleId, cancellationToken);
+            await SyncSubscription(state.Id, user.Id, cancellationToken);
+        }
+
+        string url = await stripe.CreatePlanChangeSessionAsync(new PlanChangeSessionRequest(
+            customerId,
+            state.Id,
+            state.ItemId,
+            priceId,
+            options.PlanChangePortalConfiguration,
+            $"{options.FrontendOrigin}/settings?billing=portal"), cancellationToken);
+        return new PlanChangeResult(PlanChangeOutcome.Confirm, url);
+    }
+
+    /// <summary>Drops a downgrade waiting for the end of the paid period. False when there was none.</summary>
+    public async Task<bool> KeepPlan(AuthenticatedUser user, CancellationToken cancellationToken)
+    {
+        BillingSubscription? subscription = (await store.GetSubscriptions(user.Id))
+            .FirstOrDefault(candidate => SubscriptionStatuses.IsOpen(candidate.Status));
+        if (subscription is null)
+        {
+            return false;
+        }
+
+        StripeSubscriptionState? state = await stripe.GetSubscriptionAsync(subscription.Id, cancellationToken);
+        if (state?.ScheduleId is not { } scheduleId)
+        {
+            return false;
+        }
+
+        await stripe.ReleaseScheduleAsync(scheduleId, cancellationToken);
+        await SyncSubscription(state.Id, user.Id, cancellationToken);
+        logger.LogInformation("Account {UserId} kept {LookupKey}; its scheduled change is dropped", user.Id,
+            state.LookupKey);
+        return true;
+    }
+
+    /// <summary>A higher tier, or the same one paid yearly instead of monthly: charged now rather than waited for.</summary>
+    internal static bool IsUpgrade(BillingPlan current, BillingPlan target) =>
+        target.Tier > current.Tier ||
+        (target.Tier == current.Tier && target.Interval == BillingPlans.Yearly && current.Interval == BillingPlans.Monthly);
+
+    /// <summary>The subscription a plan change applies to: active, paying, and not set to end.</summary>
+    private async Task<BillingSubscription?> ChangeableSubscription(Guid userId) =>
+        (await store.GetSubscriptions(userId)).FirstOrDefault(subscription =>
+            subscription.Status is "active" or "trialing" && !subscription.CancelAtPeriodEnd &&
+            subscription.CancelAt is null);
+
     public async Task HandleWebhook(BillingWebhookEvent stripeEvent, CancellationToken cancellationToken)
     {
         if (!BillingWebhookEvent.HandledTypes.Contains(stripeEvent.Type))
@@ -236,7 +373,9 @@ public sealed class BillingService(
             state.CurrentPeriodEnd,
             state.CancelAtPeriodEnd,
             state.CancelAt,
-            state.EndedAt);
+            state.EndedAt,
+            state.ScheduledLookupKey,
+            state.ScheduledAt);
 
         BillingSubscription? before = (await store.GetSubscriptions(userId.Value))
             .FirstOrDefault(existing => existing.Id == subscription.Id);

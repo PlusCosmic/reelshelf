@@ -13,13 +13,23 @@
  */
 
 import * as runtime from "../runtime";
-import type { BillingRedirect, StartCheckoutRequest } from "../models/index";
+import type {
+  BillingRedirect,
+  PlanChangeResponse,
+  StartCheckoutRequest,
+} from "../models/index";
 import {
   BillingRedirectFromJSON,
   BillingRedirectToJSON,
+  PlanChangeResponseFromJSON,
+  PlanChangeResponseToJSON,
   StartCheckoutRequestFromJSON,
   StartCheckoutRequestToJSON,
 } from "../models/index";
+
+export interface ChangePlanRequest {
+  startCheckoutRequest: StartCheckoutRequest;
+}
 
 export interface StartCheckoutOperationRequest {
   startCheckoutRequest: StartCheckoutRequest;
@@ -29,6 +39,87 @@ export interface StartCheckoutOperationRequest {
  *
  */
 export class BillingEndpointsApi extends runtime.BaseAPI {
+  /**
+   */
+  async changePlanRaw(
+    requestParameters: ChangePlanRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<PlanChangeResponse>> {
+    if (requestParameters["startCheckoutRequest"] == null) {
+      throw new runtime.RequiredError(
+        "startCheckoutRequest",
+        'Required parameter "startCheckoutRequest" was null or undefined when calling changePlan().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/billing/plan`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: StartCheckoutRequestToJSON(
+          requestParameters["startCheckoutRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      PlanChangeResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async changePlan(
+    requestParameters: ChangePlanRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<PlanChangeResponse> {
+    const response = await this.changePlanRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async keepPlanRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/billing/plan/scheduled`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "DELETE",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async keepPlan(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.keepPlanRaw(initOverrides);
+  }
+
   /**
    */
   async openBillingPortalRaw(

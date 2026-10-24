@@ -21,6 +21,14 @@ public static class BillingEndpoints
             .WithName("OpenBillingPortal")
             .RequireAuthorization()
             .RequireRateLimiting(RateLimitPolicies.Billing);
+        group.MapPost("/plan", ChangePlan)
+            .WithName("ChangePlan")
+            .RequireAuthorization()
+            .RequireRateLimiting(RateLimitPolicies.Billing);
+        group.MapDelete("/plan/scheduled", KeepPlan)
+            .WithName("KeepPlan")
+            .RequireAuthorization()
+            .RequireRateLimiting(RateLimitPolicies.Billing);
 
         // Stripe signs each delivery; the signature is the only authentication, so the endpoint stays out of the
         // OpenAPI document and the generated client.
@@ -71,6 +79,53 @@ public static class BillingEndpoints
         return TypedResults.Ok(new BillingRedirect(url));
     }
 
+    /// <summary>
+    /// Changes a subscriber's plan, by its price's lookup key. An upgrade answers Stripe's page confirming it (and
+    /// charging the prorated difference); a downgrade is scheduled for the end of the paid period and answers when.
+    /// 404 when billing is off or the account has no subscription, 409 while a payment is failing or the plan is set
+    /// to end, 503 when changing plan isn't set up.
+    /// </summary>
+    private static async Task<Results<Ok<PlanChangeResponse>, NotFound, BadRequest<string>, Conflict<string>, ProblemHttpResult>> ChangePlan(
+        StartCheckoutRequest request,
+        AuthenticatedUser user,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        if (context.RequestServices.GetService<BillingService>() is not { } billing)
+        {
+            return TypedResults.NotFound();
+        }
+
+        PlanChangeResult result = await billing.ChangePlan(user, request.LookupKey, cancellationToken);
+        return result.Outcome switch
+        {
+            PlanChangeOutcome.Confirm => TypedResults.Ok(new PlanChangeResponse(result.Url, null)),
+            PlanChangeOutcome.Scheduled => TypedResults.Ok(new PlanChangeResponse(null, result.At)),
+            PlanChangeOutcome.SamePlan => TypedResults.Ok(new PlanChangeResponse(null, null)),
+            PlanChangeOutcome.UnknownPlan => TypedResults.BadRequest("That plan doesn't exist."),
+            PlanChangeOutcome.NotSubscribed => TypedResults.NotFound(),
+            PlanChangeOutcome.NotChangeable => TypedResults.Conflict(
+                "Your plan can't be changed while a payment is failing or it's set to end. Sort that out in Manage billing first."),
+            _ => TypedResults.Problem("Changing plan isn't available right now. Try again later.",
+                statusCode: StatusCodes.Status503ServiceUnavailable)
+        };
+    }
+
+    /// <summary>Drops a downgrade waiting for the end of the paid period. 404 when there is none.</summary>
+    private static async Task<Results<NoContent, NotFound>> KeepPlan(
+        AuthenticatedUser user,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        if (context.RequestServices.GetService<BillingService>() is not { } billing ||
+            !await billing.KeepPlan(user, cancellationToken))
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.NoContent();
+    }
+
     private static async Task<Results<Ok, NotFound, BadRequest>> ReceiveWebhook(
         HttpContext context,
         ILoggerFactory loggerFactory,
@@ -113,3 +168,9 @@ public sealed record StartCheckoutRequest(string LookupKey);
 
 /// <summary>A Stripe-hosted page (Checkout or the Customer Portal) to send the browser to.</summary>
 public sealed record BillingRedirect(string Url);
+
+/// <summary>
+/// A plan change: <see cref="Url"/> is Stripe's page confirming an upgrade; <see cref="ScheduledAt"/> is when a
+/// downgrade takes effect. Both null when nothing changed.
+/// </summary>
+public sealed record PlanChangeResponse(string? Url, DateTimeOffset? ScheduledAt);

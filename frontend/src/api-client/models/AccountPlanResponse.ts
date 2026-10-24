@@ -117,6 +117,12 @@ export interface AccountPlanResponse {
    * @memberof AccountPlanResponse
    */
   overLimitGraceDays: number | null;
+  /**
+   *
+   * @type {boolean}
+   * @memberof AccountPlanResponse
+   */
+  canChangePlan: boolean;
 }
 
 /**
@@ -161,6 +167,8 @@ export function instanceOfAccountPlanResponse(
     value["overLimitGraceDays"] === undefined
   )
     return false;
+  if (!("canChangePlan" in value) || value["canChangePlan"] === undefined)
+    return false;
   return true;
 }
 
@@ -194,6 +202,7 @@ export function AccountPlanResponseFromJSONTyped(
         : new Date(json["over_limit_deletes_at"]),
     freeClipLimit: json["free_clip_limit"],
     overLimitGraceDays: json["over_limit_grace_days"],
+    canChangePlan: json["can_change_plan"],
   };
 }
 
@@ -228,5 +237,6 @@ export function AccountPlanResponseToJSONTyped(
         : value["overLimitDeletesAt"].toISOString(),
     free_clip_limit: value["freeClipLimit"],
     over_limit_grace_days: value["overLimitGraceDays"],
+    can_change_plan: value["canChangePlan"],
   };
 }

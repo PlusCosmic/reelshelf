@@ -16,6 +16,22 @@ public interface IStripeBilling
     /// <summary>A Customer Portal session's URL for the customer.</summary>
     Task<string> CreatePortalSessionAsync(string customerId, string returnUrl, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// A Customer Portal session that opens straight on confirming one change of plan (an upgrade: Stripe shows the
+    /// prorated charge and takes the payment), under the portal configuration that allows changing plans.
+    /// </summary>
+    Task<string> CreatePlanChangeSessionAsync(PlanChangeSessionRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Moves the subscription to the price at the end of its current period, through a subscription schedule
+    /// (creating one, or rewriting the one it has), released once the change is made.
+    /// </summary>
+    Task ScheduleDowngradeAsync(StripeSubscriptionState subscription, string priceId, string interval,
+        CancellationToken cancellationToken);
+
+    /// <summary>Releases the subscription's schedule, so it renews on its current plan. Nothing when it's already gone.</summary>
+    Task ReleaseScheduleAsync(string scheduleId, CancellationToken cancellationToken);
+
     /// <summary>The subscription as Stripe has it now, or null when Stripe has no such subscription.</summary>
     Task<StripeSubscriptionState?> GetSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken);
 
@@ -33,7 +49,15 @@ public interface IStripeBilling
 public sealed record StripeCheckoutSession(string Id, string Status, string? Url, string? SubscriptionId);
 
 /// <summary>A price in its default currency, in the currency's minor unit (pence, cents).</summary>
-public sealed record StripePlanPrice(string LookupKey, long UnitAmount, string Currency);
+public sealed record StripePlanPrice(string LookupKey, long UnitAmount, string Currency, string? Id = null);
+
+public sealed record PlanChangeSessionRequest(
+    string CustomerId,
+    string SubscriptionId,
+    string SubscriptionItemId,
+    string PriceId,
+    string ConfigurationId,
+    string ReturnUrl);
 
 public sealed record CheckoutSessionRequest(
     BillingPlan Plan,
@@ -45,7 +69,9 @@ public sealed record CheckoutSessionRequest(
 
 /// <summary>
 /// The parts of a Stripe subscription billing keeps. <see cref="UserId"/> is the account id Checkout wrote to the
-/// subscription's metadata, used only when the customer isn't linked to an account yet.
+/// subscription's metadata, used only when the customer isn't linked to an account yet. <see cref="ItemId"/> is its
+/// one item (a plan is one item), and <see cref="ScheduleId"/> its schedule, whose next phase, when it has one,
+/// moves it to <see cref="ScheduledLookupKey"/> at <see cref="ScheduledAt"/>.
 /// </summary>
 public sealed record StripeSubscriptionState(
     string Id,
@@ -56,4 +82,8 @@ public sealed record StripeSubscriptionState(
     bool CancelAtPeriodEnd,
     DateTimeOffset? CancelAt,
     DateTimeOffset? EndedAt,
-    Guid? UserId);
+    Guid? UserId,
+    string? ItemId = null,
+    string? ScheduleId = null,
+    string? ScheduledLookupKey = null,
+    DateTimeOffset? ScheduledAt = null);

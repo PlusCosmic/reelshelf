@@ -23,11 +23,12 @@ public sealed record AccountPlanResponse(
     int ClipsOverLimit,
     DateTimeOffset? OverLimitDeletesAt,
     int? FreeClipLimit,
-    int? OverLimitGraceDays)
+    int? OverLimitGraceDays,
+    bool CanChangePlan)
 {
     public static AccountPlanResponse From(AccountPlan plan, IReadOnlyList<BillingSubscription> subscriptions,
         bool billingEnabled, bool hasCustomer, DateTimeOffset? overLimitDeletesAt = null,
-        TimeSpan? overLimitGrace = null)
+        TimeSpan? overLimitGrace = null, bool canChangePlan = false)
     {
         // The subscription that grants the tier, else the latest one that could still bill (unpaid, paused), else
         // the latest of any kind, so a lapsed plan still shows when it ended.
@@ -53,11 +54,15 @@ public sealed record AccountPlanResponse(
             plan.Limits.MaxClips is { } limit ? Math.Max(0, plan.ClipCount - limit) : 0,
             overLimitDeletesAt,
             TierLimits.For(AccountTier.Free).MaxClips,
-            overLimitGrace is { } grace ? (int)Math.Ceiling(grace.TotalDays) : null);
+            overLimitGrace is { } grace ? (int)Math.Ceiling(grace.TotalDays) : null,
+            billingEnabled && canChangePlan);
     }
 }
 
-/// <summary>A Stripe subscription as the account sees it.</summary>
+/// <summary>
+/// A Stripe subscription as the account sees it. <see cref="ScheduledTier"/> and <see cref="ScheduledInterval"/>
+/// are the plan a downgrade moves it to at <see cref="ScheduledAt"/>.
+/// </summary>
 public sealed record PlanSubscription(
     string Status,
     string? Tier,
@@ -65,17 +70,27 @@ public sealed record PlanSubscription(
     DateTimeOffset? CurrentPeriodEnd,
     bool CancelAtPeriodEnd,
     DateTimeOffset? CancelAt,
-    DateTimeOffset? EndedAt)
+    DateTimeOffset? EndedAt,
+    string? LookupKey,
+    string? ScheduledTier,
+    string? ScheduledInterval,
+    DateTimeOffset? ScheduledAt)
 {
     public static PlanSubscription From(BillingSubscription subscription)
     {
+        BillingPlan? plan = BillingPlans.Find(subscription.LookupKey);
+        BillingPlan? scheduled = BillingPlans.Find(subscription.ScheduledLookupKey);
         return new PlanSubscription(
             subscription.Status,
             subscription.Tier is { } tier ? BillingStatements.TierName(tier) : null,
-            BillingPlans.Find(subscription.LookupKey)?.Interval,
+            plan?.Interval,
             subscription.CurrentPeriodEnd,
             subscription.CancelAtPeriodEnd,
             subscription.CancelAt,
-            subscription.EndedAt);
+            subscription.EndedAt,
+            plan?.LookupKey,
+            scheduled is null ? null : BillingStatements.TierName(scheduled.Tier),
+            scheduled?.Interval,
+            scheduled is null ? null : subscription.ScheduledAt);
     }
 }

@@ -5,7 +5,8 @@ namespace Reelshelf.Billing;
 
 /// <summary>
 /// A Stripe subscription as billing last read it. <see cref="Tier"/> is null when its price carries a lookup key
-/// that isn't one of <see cref="BillingPlans"/>, so it grants nothing.
+/// that isn't one of <see cref="BillingPlans"/>, so it grants nothing. <see cref="ScheduledLookupKey"/> is the plan a
+/// downgrade moves it to at <see cref="ScheduledAt"/>, the end of the paid period.
 /// </summary>
 public sealed record BillingSubscription(
     string Id,
@@ -16,7 +17,9 @@ public sealed record BillingSubscription(
     DateTimeOffset? CurrentPeriodEnd,
     bool CancelAtPeriodEnd,
     DateTimeOffset? CancelAt,
-    DateTimeOffset? EndedAt);
+    DateTimeOffset? EndedAt,
+    string? ScheduledLookupKey = null,
+    DateTimeOffset? ScheduledAt = null);
 
 public interface IBillingStore
 {
@@ -79,7 +82,8 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
     public async Task<List<BillingSubscription>> GetSubscriptions(Guid userId)
     {
         const string sql = """
-            SELECT id, user_id, status, lookup_key, tier, current_period_end, cancel_at_period_end, cancel_at, ended_at
+            SELECT id, user_id, status, lookup_key, tier, current_period_end, cancel_at_period_end, cancel_at, ended_at,
+                   scheduled_lookup_key, scheduled_at
             FROM billing_subscription
             WHERE user_id = @userId
             ORDER BY updated_at DESC
@@ -111,8 +115,10 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
         // cancelled what it knew of, so the caller cancels this one instead of recording it.
         const string sql = """
             INSERT INTO billing_subscription (
-                id, user_id, status, lookup_key, tier, current_period_end, cancel_at_period_end, cancel_at, ended_at)
-            SELECT @Id, @UserId, @Status, @LookupKey, @Tier, @CurrentPeriodEnd, @CancelAtPeriodEnd, @CancelAt, @EndedAt
+                id, user_id, status, lookup_key, tier, current_period_end, cancel_at_period_end, cancel_at, ended_at,
+                scheduled_lookup_key, scheduled_at)
+            SELECT @Id, @UserId, @Status, @LookupKey, @Tier, @CurrentPeriodEnd, @CancelAtPeriodEnd, @CancelAt, @EndedAt,
+                   @ScheduledLookupKey, @ScheduledAt
             WHERE EXISTS (SELECT 1 FROM app_user WHERE id = @UserId AND deletion_requested_at IS NULL)
             ON CONFLICT (id) DO UPDATE SET
                 user_id = EXCLUDED.user_id,
@@ -123,6 +129,8 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
                 cancel_at_period_end = EXCLUDED.cancel_at_period_end,
                 cancel_at = EXCLUDED.cancel_at,
                 ended_at = EXCLUDED.ended_at,
+                scheduled_lookup_key = EXCLUDED.scheduled_lookup_key,
+                scheduled_at = EXCLUDED.scheduled_at,
                 updated_at = now()
             """;
         int rows = await connection.ExecuteAsync(sql, new
@@ -135,7 +143,9 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
             subscription.CurrentPeriodEnd,
             subscription.CancelAtPeriodEnd,
             subscription.CancelAt,
-            subscription.EndedAt
+            subscription.EndedAt,
+            subscription.ScheduledLookupKey,
+            subscription.ScheduledAt
         });
         return rows > 0;
     }
@@ -203,12 +213,14 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
         public bool CancelAtPeriodEnd { get; set; }
         public DateTimeOffset? CancelAt { get; set; }
         public DateTimeOffset? EndedAt { get; set; }
+        public string? ScheduledLookupKey { get; set; }
+        public DateTimeOffset? ScheduledAt { get; set; }
 
         public BillingSubscription ToSubscription()
         {
             AccountTier? tier = Enum.TryParse(Tier, ignoreCase: true, out AccountTier parsed) ? parsed : null;
             return new BillingSubscription(Id, UserId, Status, LookupKey, tier, CurrentPeriodEnd, CancelAtPeriodEnd,
-                CancelAt, EndedAt);
+                CancelAt, EndedAt, ScheduledLookupKey, ScheduledAt);
         }
     }
 }

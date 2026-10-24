@@ -25,7 +25,12 @@ public sealed record BillingWebhookEvent(
         "customer.subscription.paused",
         "customer.subscription.resumed",
         "invoice.paid",
-        "invoice.payment_failed"
+        "invoice.payment_failed",
+        "subscription_schedule.created",
+        "subscription_schedule.updated",
+        "subscription_schedule.released",
+        "subscription_schedule.canceled",
+        "subscription_schedule.completed"
     };
 
     public static BillingWebhookEvent Parse(string payload)
@@ -48,6 +53,14 @@ public sealed record BillingWebhookEvent(
         if (type.StartsWith("customer.subscription.", StringComparison.Ordinal))
         {
             return new BillingWebhookEvent(id, type, StringProperty(obj, "id"), ReferenceId(obj, "customer"), null);
+        }
+
+        if (type.StartsWith("subscription_schedule.", StringComparison.Ordinal))
+        {
+            // A released schedule names its subscription under released_subscription instead.
+            return new BillingWebhookEvent(id, type,
+                ReferenceId(obj, "subscription") ?? ReferenceId(obj, "released_subscription"),
+                ReferenceId(obj, "customer"), null);
         }
 
         if (type.StartsWith("invoice.", StringComparison.Ordinal))

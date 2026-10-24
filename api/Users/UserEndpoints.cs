@@ -79,7 +79,8 @@ public static class UserEndpoints
         bool hasCustomer = await billingStore.GetCustomerId(user.Id) is not null;
         PlanOptions options = planOptions.CurrentValue;
         return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, hasCustomer,
-            overLimit.OverLimitSince + options.GracePeriod, options.Enforce ? options.GracePeriod : null));
+            overLimit.OverLimitSince + options.GracePeriod, options.Enforce ? options.GracePeriod : null,
+            context.RequestServices.GetService<BillingOptions>()?.CanChangePlan ?? false));
     }
 
     private static async Task<Ok<List<LinkedIdentity>>> GetLinkedIdentities(

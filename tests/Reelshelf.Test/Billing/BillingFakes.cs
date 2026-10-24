@@ -59,6 +59,45 @@ internal sealed class FakeStripe : IStripeBilling
         return Task.FromResult($"https://portal.stripe.test/{customerId}");
     }
 
+    public List<PlanChangeSessionRequest> PlanChanges { get; } = [];
+    public List<(string SubscriptionId, string PriceId, string Interval)> Downgrades { get; } = [];
+    public List<string> Released { get; } = [];
+
+    public Task<string> CreatePlanChangeSessionAsync(PlanChangeSessionRequest request, CancellationToken cancellationToken)
+    {
+        PlanChanges.Add(request);
+        return Task.FromResult($"https://portal.stripe.test/confirm/{PlanChanges.Count}");
+    }
+
+    /// <summary>Attaches a schedule moving the subscription to the price's plan when its period ends.</summary>
+    public Task ScheduleDowngradeAsync(StripeSubscriptionState subscription, string priceId, string interval,
+        CancellationToken cancellationToken)
+    {
+        Downgrades.Add((subscription.Id, priceId, interval));
+        string lookupKey = Prices.Single(price => price.Id == priceId).LookupKey;
+        Subscriptions[subscription.Id] = Subscriptions[subscription.Id] with
+        {
+            ScheduleId = subscription.ScheduleId ?? $"sub_sched_{Downgrades.Count}",
+            ScheduledLookupKey = lookupKey,
+            ScheduledAt = subscription.CurrentPeriodEnd
+        };
+        return Task.CompletedTask;
+    }
+
+    public Task ReleaseScheduleAsync(string scheduleId, CancellationToken cancellationToken)
+    {
+        Released.Add(scheduleId);
+        foreach ((string id, StripeSubscriptionState state) in Subscriptions.ToList())
+        {
+            if (state.ScheduleId == scheduleId)
+            {
+                Subscriptions[id] = state with { ScheduleId = null, ScheduledLookupKey = null, ScheduledAt = null };
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task<StripeSubscriptionState?> GetSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken)
     {
         SubscriptionReads++;

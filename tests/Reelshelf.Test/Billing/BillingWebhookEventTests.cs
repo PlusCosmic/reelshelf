@@ -81,4 +81,19 @@ public class BillingWebhookEventTests
 
         Assert.Equal(new BillingWebhookEvent("evt_6", "charge.refunded", null, null, null), parsed);
     }
+
+    [Theory]
+    [InlineData("subscription_schedule.updated", "\"subscription\": \"sub_1\"")]
+    [InlineData("subscription_schedule.released", "\"subscription\": null, \"released_subscription\": \"sub_1\"")]
+    public void Parse_AScheduleEvent_NamesItsSubscription(string type, string reference)
+    {
+        string payload = $$$$"""
+            {"id": "evt_1", "type": "{{{{type}}}}", "data": {"object": {"id": "sub_sched_1", "customer": "cus_1", {{{{reference}}}}}}}
+            """;
+
+        BillingWebhookEvent parsed = BillingWebhookEvent.Parse(payload);
+
+        Assert.Equal(("sub_1", "cus_1"), (parsed.SubscriptionId, parsed.CustomerId));
+        Assert.Contains(type, BillingWebhookEvent.HandledTypes);
+    }
 }

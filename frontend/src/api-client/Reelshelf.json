@@ -2803,6 +2803,75 @@
         }
       }
     },
+    "/api/billing/plan": {
+      "post": {
+        "tags": [
+          "BillingEndpoints"
+        ],
+        "operationId": "ChangePlan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartCheckoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanChangeResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing/plan/scheduled": {
+      "delete": {
+        "tags": [
+          "BillingEndpoints"
+        ],
+        "operationId": "KeepPlan",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/me/over-limit": {
       "get": {
         "tags": [
@@ -3173,7 +3242,8 @@
           "clips_over_limit",
           "over_limit_deletes_at",
           "free_clip_limit",
-          "over_limit_grace_days"
+          "over_limit_grace_days",
+          "can_change_plan"
         ],
         "type": "object",
         "properties": {
@@ -3256,6 +3326,9 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "can_change_plan": {
+            "type": "boolean"
           }
         }
       },
@@ -5956,6 +6029,28 @@
           }
         }
       },
+      "PlanChangeResponse": {
+        "required": [
+          "url",
+          "scheduled_at"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scheduled_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "PlanOffer": {
         "required": [
           "tier",
@@ -6034,7 +6129,11 @@
           "current_period_end",
           "cancel_at_period_end",
           "cancel_at",
-          "ended_at"
+          "ended_at",
+          "lookup_key",
+          "scheduled_tier",
+          "scheduled_interval",
+          "scheduled_at"
         ],
         "type": "object",
         "properties": {
@@ -6071,6 +6170,31 @@
             "format": "date-time"
           },
           "ended_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lookup_key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scheduled_tier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scheduled_interval": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scheduled_at": {
             "type": [
               "null",
               "string"

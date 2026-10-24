@@ -61,6 +61,30 @@ export interface PlanSubscription {
    * @memberof PlanSubscription
    */
   endedAt: Date | null;
+  /**
+   *
+   * @type {string}
+   * @memberof PlanSubscription
+   */
+  lookupKey: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof PlanSubscription
+   */
+  scheduledTier: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof PlanSubscription
+   */
+  scheduledInterval: string | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof PlanSubscription
+   */
+  scheduledAt: Date | null;
 }
 
 /**
@@ -81,6 +105,16 @@ export function instanceOfPlanSubscription(
     return false;
   if (!("cancelAt" in value) || value["cancelAt"] === undefined) return false;
   if (!("endedAt" in value) || value["endedAt"] === undefined) return false;
+  if (!("lookupKey" in value) || value["lookupKey"] === undefined) return false;
+  if (!("scheduledTier" in value) || value["scheduledTier"] === undefined)
+    return false;
+  if (
+    !("scheduledInterval" in value) ||
+    value["scheduledInterval"] === undefined
+  )
+    return false;
+  if (!("scheduledAt" in value) || value["scheduledAt"] === undefined)
+    return false;
   return true;
 }
 
@@ -106,6 +140,11 @@ export function PlanSubscriptionFromJSONTyped(
     cancelAtPeriodEnd: json["cancel_at_period_end"],
     cancelAt: json["cancel_at"] == null ? null : new Date(json["cancel_at"]),
     endedAt: json["ended_at"] == null ? null : new Date(json["ended_at"]),
+    lookupKey: json["lookup_key"],
+    scheduledTier: json["scheduled_tier"],
+    scheduledInterval: json["scheduled_interval"],
+    scheduledAt:
+      json["scheduled_at"] == null ? null : new Date(json["scheduled_at"]),
   };
 }
 
@@ -138,5 +177,12 @@ export function PlanSubscriptionToJSONTyped(
       value["endedAt"] == null
         ? value["endedAt"]
         : value["endedAt"].toISOString(),
+    lookup_key: value["lookupKey"],
+    scheduled_tier: value["scheduledTier"],
+    scheduled_interval: value["scheduledInterval"],
+    scheduled_at:
+      value["scheduledAt"] == null
+        ? value["scheduledAt"]
+        : value["scheduledAt"].toISOString(),
   };
 }
