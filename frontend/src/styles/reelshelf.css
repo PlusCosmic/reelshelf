@@ -7769,13 +7769,23 @@ html:has(.rs-library-route) {
 /* Settings → Plan: the account's usage, its subscription, and the plans to upgrade to. */
 .rs-plan {
   display: grid;
-  gap: 12px;
+  gap: 8px;
+}
+
+/* Under the section's eyebrow, every line is Settings copy size; the clip count leads in the main colour. */
+.rs-plan .rs-storage-meter {
+  color: var(--fg);
+  font-size: 14px;
+}
+
+.rs-plan .rs-sidebar-copy {
+  margin: 0;
 }
 
 .rs-plan-limits {
   margin: 0;
   color: var(--fg-soft);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .rs-plan-offers {
