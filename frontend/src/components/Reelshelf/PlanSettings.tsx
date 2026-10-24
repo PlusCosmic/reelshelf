@@ -104,7 +104,8 @@ export function PlanSettings({
         </p>
       ) : null}
       <SubscriptionStatus plan={current} />
-      <OverLimitNotice plan={current} />
+      {/* A failed payment's notice already says what happens to the clips over the limit. */}
+      {paymentProblem ? null : <OverLimitNotice plan={current} />}
 
       {current.canManageBilling ? (
         <div className="rs-email-actions">
@@ -152,6 +153,65 @@ function OverLimitNotice({ plan }: { plan: AccountPlan }) {
   );
 }
 
+/**
+ * A failed payment and what it costs, in one notice: the clips over the limit follow from the payment, and
+ * updating the card (the button below it) fixes both.
+ */
+function PaymentProblemNotice({
+  plan,
+  tier,
+}: {
+  plan: AccountPlan;
+  tier: string;
+}) {
+  const over = plan.clipsOverLimit;
+  const deletesOn = formatDate(plan.overLimitDeletesAt);
+  const clips =
+    over === 1 ? "the 1 clip" : `the ${over.toLocaleString()} clips`;
+  const fallback = (
+    <>
+      , or <Link to="/plan">download them or pick which to keep</Link>
+    </>
+  );
+
+  if (plan.subscription?.status === "past_due") {
+    return (
+      <p className="rs-linked-notice" data-tone="error">
+        Your last payment for {tier} didn't go through. Update your payment
+        method to keep it.
+        {over > 0 ? (
+          <>
+            {" "}
+            {over === 1
+              ? "1 clip is"
+              : `${over.toLocaleString()} clips are`}{" "}
+            over your plan's limit
+            {deletesOn ? ` and will be deleted on ${deletesOn}` : ""}
+            {fallback}.
+          </>
+        ) : null}
+      </p>
+    );
+  }
+
+  return (
+    <p className="rs-linked-notice" data-tone="error">
+      {tier} is on hold because a payment failed, so your account has Free's
+      limits for now
+      {over > 0 ? (
+        <>
+          {" "}
+          and {clips} over them will be deleted
+          {deletesOn ? ` on ${deletesOn}` : ""}. Update your payment method to
+          get {tier} back and keep them{fallback}.
+        </>
+      ) : (
+        <>. Update your payment method to get {tier} back.</>
+      )}
+    </p>
+  );
+}
+
 function formatDate(value: Date | null | undefined): string | null {
   if (!value) return null;
   return new Date(value).toLocaleDateString(undefined, {
@@ -192,20 +252,9 @@ function SubscriptionStatus({ plan }: { plan: AccountPlan }) {
         </p>
       );
     case "past_due":
-      return (
-        <p className="rs-linked-notice" data-tone="error">
-          Your last payment for {tier} didn't go through. Update your payment
-          method to keep it.
-        </p>
-      );
     case "unpaid":
     case "paused":
-      return (
-        <p className="rs-linked-notice" data-tone="error">
-          {tier} is on hold because a payment failed, so your account has Free's
-          limits for now. Update your payment method to get {tier} back.
-        </p>
-      );
+      return <PaymentProblemNotice plan={plan} tier={tier} />;
     default: {
       const ended = formatDate(subscription.endedAt);
       return ended ? (

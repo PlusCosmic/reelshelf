@@ -174,6 +174,35 @@ describe("PlanSettings", () => {
     expect(mocks.portal).toHaveBeenCalled();
   });
 
+  it("puts a plan on hold and the clips it will cost in one notice", () => {
+    mocks.plan = {
+      ...free,
+      clipCount: 412,
+      canManageBilling: true,
+      clipsOverLimit: 312,
+      overLimitDeletesAt: new Date("2026-11-07T12:00:00Z"),
+      subscription: {
+        status: "unpaid",
+        tier: "plus",
+        interval: "month",
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+        cancelAt: null,
+        endedAt: null,
+      },
+    };
+    render(<PlanSettings billingReturn={undefined} />);
+
+    const notices = document.querySelectorAll(".rs-linked-notice");
+    expect(notices).toHaveLength(1);
+    expect(notices[0].textContent).toMatch(
+      /Plus is on hold .* the 312 clips over them will be deleted on .*Update your payment method to get Plus back and keep them, or download them or pick which to keep\./,
+    );
+    expect(
+      screen.getByRole("button", { name: "Update payment method" }),
+    ).toBeTruthy();
+  });
+
   it("offers nothing to an unlimited account or while billing is off", () => {
     mocks.plan = {
       ...free,

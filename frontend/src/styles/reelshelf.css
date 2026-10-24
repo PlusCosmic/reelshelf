@@ -394,6 +394,12 @@ a {
   color: var(--danger);
 }
 
+/* Links in a notice take its colour, so underline them to show they're links. */
+.rs-linked-notice a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .rs-landing-footer {
   position: relative;
   z-index: 2;
