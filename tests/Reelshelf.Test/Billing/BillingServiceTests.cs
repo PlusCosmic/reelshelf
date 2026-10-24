@@ -84,6 +84,72 @@ public class BillingServiceTests
         Assert.Empty(stripe.Checkouts);
     }
 
+    [Fact]
+    public async Task StartCheckout_RemembersTheSessionUnderTheAccountsLock()
+    {
+        var (service, _, store) = Build();
+
+        await service.StartCheckout(User, "plus_monthly", CancellationToken.None);
+
+        Assert.Equal("cs_1", store.CheckoutSessions[User.Id]);
+        Assert.Equal(1, store.CheckoutLocks);
+    }
+
+    [Fact]
+    public async Task StartCheckout_AfterAPaymentTheWebhookHasntBroughtYet_RecordsItAndRefusesASecond()
+    {
+        var (service, stripe, store) = Build();
+        await service.StartCheckout(User, "plus_monthly", CancellationToken.None);
+        stripe.Sessions["cs_1"] = stripe.Sessions["cs_1"] with { Status = "complete", SubscriptionId = "sub_1" };
+        stripe.Subscriptions["sub_1"] = State("sub_1", "cus_1", userId: User.Id);
+
+        CheckoutResult result = await service.StartCheckout(User, "pro_monthly", CancellationToken.None);
+
+        Assert.Equal(CheckoutOutcome.AlreadySubscribed, result.Outcome);
+        Assert.Single(stripe.Checkouts);
+        Assert.Equal("active", Assert.Single(store.Subscriptions).Status);
+        Assert.Equal("cus_1", store.Customers[User.Id]);
+    }
+
+    [Fact]
+    public async Task StartCheckout_WhileAnotherIsOpen_ExpiresItSoOnlyTheNewOneCanBePaid()
+    {
+        var (service, stripe, _) = Build();
+        await service.StartCheckout(User, "plus_monthly", CancellationToken.None);
+
+        CheckoutResult result = await service.StartCheckout(User, "pro_yearly", CancellationToken.None);
+
+        Assert.Equal(new CheckoutResult(CheckoutOutcome.Created, "https://checkout.stripe.test/2"), result);
+        Assert.Equal(["cs_1"], stripe.Expired);
+    }
+
+    [Fact]
+    public async Task StartCheckout_WhenTheOpenOneIsPaidAsItIsExpired_RefusesASecond()
+    {
+        var (service, stripe, _) = Build();
+        await service.StartCheckout(User, "plus_monthly", CancellationToken.None);
+        stripe.Subscriptions["sub_1"] = State("sub_1", "cus_1", userId: User.Id);
+        stripe.CompleteOnExpire = id => stripe.Sessions[id] with { Status = "complete", SubscriptionId = "sub_1" };
+
+        CheckoutResult result = await service.StartCheckout(User, "plus_monthly", CancellationToken.None);
+
+        Assert.Equal(CheckoutOutcome.AlreadySubscribed, result.Outcome);
+        Assert.Single(stripe.Checkouts);
+    }
+
+    [Fact]
+    public async Task StartCheckout_AfterACompletedCheckoutWhosePaymentFailed_IsAllowed()
+    {
+        var (service, stripe, _) = Build();
+        await service.StartCheckout(User, "plus_monthly", CancellationToken.None);
+        stripe.Sessions["cs_1"] = stripe.Sessions["cs_1"] with { Status = "complete", SubscriptionId = "sub_1" };
+        stripe.Subscriptions["sub_1"] = State("sub_1", "cus_1", status: "incomplete", userId: User.Id);
+
+        CheckoutResult result = await service.StartCheckout(User, "plus_monthly", CancellationToken.None);
+
+        Assert.Equal(CheckoutOutcome.Created, result.Outcome);
+    }
+
     [Theory]
     [InlineData("canceled")]
     [InlineData("incomplete")]
@@ -127,7 +193,7 @@ public class BillingServiceTests
         string? url = await service.OpenPortal(User, CancellationToken.None);
 
         Assert.Equal("https://portal.stripe.test/cus_1", url);
-        Assert.Equal("https://reelshelf.test/settings", stripe.PortalReturnUrl);
+        Assert.Equal("https://reelshelf.test/settings?billing=portal", stripe.PortalReturnUrl);
     }
 
     [Fact]

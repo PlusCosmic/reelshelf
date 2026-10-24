@@ -27,7 +27,9 @@ public class BillingStatementsTests
         {
             await connection.ExecuteAsync("CREATE TABLE app_user (id uuid PRIMARY KEY, deletion_requested_at timestamptz)");
             await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V45__billing.sql")));
+            await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V48__checkout_session.sql")));
             await RunAsync(connection, new BillingStatements(dataSource.CreateConnection()));
+            await CheckoutLockAsync(connection, dataSource);
         }
         finally
         {
@@ -80,6 +82,34 @@ public class BillingStatementsTests
         Assert.False(await statements.UpsertSubscription(subscription with { Id = "sub_3", UserId = Guid.NewGuid() }));
         await connection.ExecuteAsync("DELETE FROM app_user WHERE id = @harry", new { harry });
         Assert.Empty(await statements.GetSubscriptions(harry));
+    }
+
+    private static async Task CheckoutLockAsync(NpgsqlConnection connection, NpgsqlDataSource dataSource)
+    {
+        Guid harry = Guid.NewGuid();
+        await connection.ExecuteAsync("INSERT INTO app_user (id) VALUES (@harry)", new { harry });
+        BillingStatements first = new(dataSource.CreateConnection());
+        BillingStatements second = new(dataSource.CreateConnection());
+
+        // What is written under the lock is committed when it is released, and a second request for the same
+        // account waits for the first to finish.
+        Task<IAsyncDisposable> waiting;
+        await using (await first.LockCheckouts(harry))
+        {
+            Assert.Null(await first.GetCheckoutSessionId(harry));
+            await first.SetCheckoutSessionId(harry, "cs_1");
+
+            waiting = second.LockCheckouts(harry);
+            await Task.Delay(200);
+            Assert.False(waiting.IsCompleted);
+        }
+
+        await using (await waiting)
+        {
+            Assert.Equal("cs_1", await second.GetCheckoutSessionId(harry));
+        }
+
+        Assert.Equal("cs_1", await first.GetCheckoutSessionId(harry));
     }
 
     private static string MigrationPath(string name)

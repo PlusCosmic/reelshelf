@@ -3171,7 +3171,9 @@
           "can_manage_billing",
           "subscription",
           "clips_over_limit",
-          "over_limit_deletes_at"
+          "over_limit_deletes_at",
+          "free_clip_limit",
+          "over_limit_grace_days"
         ],
         "type": "object",
         "properties": {
@@ -3240,6 +3242,20 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "free_clip_limit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "over_limit_grace_days": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },

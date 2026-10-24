@@ -12,7 +12,7 @@ export const Route = createFileRoute("/terms")({
 
 function TermsRoute() {
   return (
-    <LegalPage title="Terms of service" updated="23 October 2026">
+    <LegalPage title="Terms of service" updated="24 October 2026">
       <p>
         Reelshelf is a place to keep, sort and share your gaming clips. It is
         run by {legalOperator} as a small, independent project. By signing in or
@@ -63,12 +63,12 @@ function TermsRoute() {
       <p>
         Every account starts on the free plan, which keeps up to 100 clips of up
         to a minute each. The paid plans keep more and longer clips: Plus up to
-        1,000 clips and Pro up to 5,000, each up to two minutes. Every plan also
-        limits how many new clips you can add in 30 days, to twice the clips it
-        keeps. Settings shows your plan and how much of it you use. Some
-        accounts get more at our discretion. We may change these limits. If we
-        lower one, we'll give you notice before anything you've already uploaded
-        is affected.
+        1,000 clips and Pro up to 5,000, each up to two minutes. Uploads are
+        under a fair use limit: in any 30 days you can add up to twice the clips
+        your plan keeps, even if you delete some along the way. Settings shows
+        your plan and how much of it you use. Some accounts get more at our
+        discretion. We may change these limits. If we lower one, we'll give you
+        notice before anything you've already uploaded is affected.
       </p>
 
       <h2>Paid plans</h2>

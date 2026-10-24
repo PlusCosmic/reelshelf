@@ -84,13 +84,21 @@ public sealed class BillingService(
         }
 
         // One subscription per account: changing plan, or fixing a failing card, happens in the Customer Portal.
-        List<BillingSubscription> subscriptions = await store.GetSubscriptions(user.Id);
-        if (subscriptions.Any(subscription => SubscriptionStatuses.IsOpen(subscription.Status)))
+        // Under the account's lock, so two tabs can't each start one.
+        await using IAsyncDisposable checkoutLock = await store.LockCheckouts(user.Id);
+        if (await HasOpenSubscription(user.Id))
         {
             return new CheckoutResult(CheckoutOutcome.AlreadySubscribed);
         }
 
-        string? url = await stripe.CreateCheckoutSessionAsync(new CheckoutSessionRequest(
+        // The webhook can lag the payment by seconds, so the account's last checkout is asked about directly.
+        if (await store.GetCheckoutSessionId(user.Id) is { } previous &&
+            await SettlePreviousCheckout(user.Id, previous, cancellationToken))
+        {
+            return new CheckoutResult(CheckoutOutcome.AlreadySubscribed);
+        }
+
+        StripeCheckoutSession? session = await stripe.CreateCheckoutSessionAsync(new CheckoutSessionRequest(
             plan,
             user.Id,
             await store.GetCustomerId(user.Id),
@@ -98,13 +106,47 @@ public sealed class BillingService(
             SuccessUrl: $"{options.FrontendOrigin}/settings?billing=success",
             CancelUrl: $"{options.FrontendOrigin}/settings?billing=cancelled"), cancellationToken);
 
-        if (url is null)
+        if (session?.Url is null)
         {
             logger.LogError("No active Stripe price has the lookup key {LookupKey}", plan.LookupKey);
             return new CheckoutResult(CheckoutOutcome.PlanUnavailable);
         }
 
-        return new CheckoutResult(CheckoutOutcome.Created, url);
+        await store.SetCheckoutSessionId(user.Id, session.Id);
+        return new CheckoutResult(CheckoutOutcome.Created, session.Url);
+    }
+
+    private async Task<bool> HasOpenSubscription(Guid userId) =>
+        (await store.GetSubscriptions(userId)).Any(subscription => SubscriptionStatuses.IsOpen(subscription.Status));
+
+    /// <summary>
+    /// Makes sure the account's previous Checkout Session can't lead to a second subscription: an open one is
+    /// expired, and a completed one's subscription is recorded now rather than when its webhook arrives. True when
+    /// the account turns out to have an open subscription.
+    /// </summary>
+    private async Task<bool> SettlePreviousCheckout(Guid userId, string sessionId, CancellationToken cancellationToken)
+    {
+        StripeCheckoutSession? previous = await stripe.GetCheckoutSessionAsync(sessionId, cancellationToken);
+        if (previous?.Status == "open" && !await stripe.ExpireCheckoutSessionAsync(sessionId, cancellationToken))
+        {
+            // Paid between the read and the expiry.
+            previous = await stripe.GetCheckoutSessionAsync(sessionId, cancellationToken);
+        }
+
+        if (previous is not { Status: "complete", SubscriptionId: { } subscriptionId })
+        {
+            return false;
+        }
+
+        await SyncSubscription(subscriptionId, userId, cancellationToken);
+        if (!await HasOpenSubscription(userId))
+        {
+            return false;
+        }
+
+        logger.LogInformation("Refused a second checkout for account {UserId}: session {SessionId} already paid",
+            userId, sessionId);
+        return true;
     }
 
     /// <summary>The Customer Portal's URL, or null when the account has never checked out.</summary>
@@ -116,7 +158,9 @@ public sealed class BillingService(
             return null;
         }
 
-        return await stripe.CreatePortalSessionAsync(customerId, $"{options.FrontendOrigin}/settings", cancellationToken);
+        // Settings refetches the plan for a while after ?billing=portal, since changes made there arrive by webhook.
+        return await stripe.CreatePortalSessionAsync(customerId, $"{options.FrontendOrigin}/settings?billing=portal",
+            cancellationToken);
     }
 
     public async Task HandleWebhook(BillingWebhookEvent stripeEvent, CancellationToken cancellationToken)

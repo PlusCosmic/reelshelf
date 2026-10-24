@@ -37,6 +37,17 @@ public interface IBillingStore
 
     /// <summary>Inserts or replaces the subscription. False when the account is gone or being deleted.</summary>
     Task<bool> UpsertSubscription(BillingSubscription subscription);
+
+    /// <summary>
+    /// Holds the account's checkout lock until disposed, so two requests can't each start a Checkout. Store calls
+    /// made meanwhile run inside it and are committed when it is disposed.
+    /// </summary>
+    Task<IAsyncDisposable> LockCheckouts(Guid userId);
+
+    /// <summary>The account's latest Checkout Session, if it started one.</summary>
+    Task<string?> GetCheckoutSessionId(Guid userId);
+
+    Task SetCheckoutSessionId(Guid userId, string sessionId);
 }
 
 public sealed class BillingStatements(NpgsqlConnection connection) : IBillingStore
@@ -127,6 +138,53 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
             subscription.EndedAt
         });
         return rows > 0;
+    }
+
+    public async Task<IAsyncDisposable> LockCheckouts(Guid userId)
+    {
+        // A transaction-level lock on a connection kept open until disposed; the other statements share it.
+        bool openedConnection = connection.State != System.Data.ConnectionState.Open;
+        if (openedConnection)
+        {
+            await connection.OpenAsync();
+        }
+
+        NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync("SELECT pg_advisory_xact_lock(hashtext(@key))",
+            new { key = $"billing-checkout:{userId}" }, transaction);
+        return new CheckoutLock(connection, transaction, openedConnection);
+    }
+
+    public async Task<string?> GetCheckoutSessionId(Guid userId)
+    {
+        return await connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT stripe_checkout_session_id FROM app_user WHERE id = @userId", new { userId });
+    }
+
+    public async Task SetCheckoutSessionId(Guid userId, string sessionId)
+    {
+        await connection.ExecuteAsync(
+            "UPDATE app_user SET stripe_checkout_session_id = @sessionId WHERE id = @userId", new { userId, sessionId });
+    }
+
+    private sealed class CheckoutLock(NpgsqlConnection connection, NpgsqlTransaction transaction, bool openedConnection)
+        : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                await transaction.CommitAsync();
+            }
+            finally
+            {
+                await transaction.DisposeAsync();
+                if (openedConnection)
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
     }
 
     internal static string TierName(AccountTier tier)

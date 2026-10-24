@@ -11,15 +11,46 @@ internal sealed class FakeStripe : IStripeBilling
     public string? PortalReturnUrl { get; private set; }
     public int SubscriptionReads { get; private set; }
 
-    public Task<string?> CreateCheckoutSessionAsync(CheckoutSessionRequest request, CancellationToken cancellationToken)
+    /// <summary>Every session created, by id, as Stripe would answer for it now; tests complete or expire them.</summary>
+    public Dictionary<string, StripeCheckoutSession> Sessions { get; } = [];
+    public List<string> Expired { get; } = [];
+
+    /// <summary>Completes the session before an expiry lands, as a payment finishing at that moment would.</summary>
+    public Func<string, StripeCheckoutSession>? CompleteOnExpire { get; set; }
+
+    public Task<StripeCheckoutSession?> CreateCheckoutSessionAsync(CheckoutSessionRequest request,
+        CancellationToken cancellationToken)
     {
         if (MissingPrices)
         {
-            return Task.FromResult<string?>(null);
+            return Task.FromResult<StripeCheckoutSession?>(null);
         }
 
         Checkouts.Add(request);
-        return Task.FromResult<string?>($"https://checkout.stripe.test/{Checkouts.Count}");
+        StripeCheckoutSession session = new($"cs_{Checkouts.Count}", "open",
+            $"https://checkout.stripe.test/{Checkouts.Count}", null);
+        Sessions[session.Id] = session;
+        return Task.FromResult<StripeCheckoutSession?>(session);
+    }
+
+    public Task<StripeCheckoutSession?> GetCheckoutSessionAsync(string sessionId, CancellationToken cancellationToken) =>
+        Task.FromResult(Sessions.GetValueOrDefault(sessionId));
+
+    public Task<bool> ExpireCheckoutSessionAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        if (CompleteOnExpire is not null)
+        {
+            Sessions[sessionId] = CompleteOnExpire(sessionId);
+        }
+
+        if (Sessions.GetValueOrDefault(sessionId) is not { Status: "open" } session)
+        {
+            return Task.FromResult(false);
+        }
+
+        Expired.Add(sessionId);
+        Sessions[sessionId] = session with { Status = "expired", Url = null };
+        return Task.FromResult(true);
     }
 
     public Task<string> CreatePortalSessionAsync(string customerId, string returnUrl, CancellationToken cancellationToken)
@@ -83,6 +114,28 @@ internal sealed class FakeStore : IBillingStore
             .Select(subscription => subscription.UserId)
             .Distinct()
             .ToList());
+
+    public Dictionary<Guid, string> CheckoutSessions { get; } = [];
+    public int CheckoutLocks { get; private set; }
+
+    public Task<IAsyncDisposable> LockCheckouts(Guid userId)
+    {
+        CheckoutLocks++;
+        return Task.FromResult<IAsyncDisposable>(new NoLock());
+    }
+
+    public Task<string?> GetCheckoutSessionId(Guid userId) => Task.FromResult(CheckoutSessions.GetValueOrDefault(userId));
+
+    public Task SetCheckoutSessionId(Guid userId, string sessionId)
+    {
+        CheckoutSessions[userId] = sessionId;
+        return Task.CompletedTask;
+    }
+
+    private sealed class NoLock : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
 
     public Task<bool> UpsertSubscription(BillingSubscription subscription)
     {

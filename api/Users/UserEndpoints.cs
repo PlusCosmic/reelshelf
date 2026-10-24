@@ -77,8 +77,9 @@ public static class UserEndpoints
         List<BillingSubscription> subscriptions = await billingStore.GetSubscriptions(user.Id);
         bool billingEnabled = context.RequestServices.GetService<BillingService>() is not null;
         bool hasCustomer = await billingStore.GetCustomerId(user.Id) is not null;
+        PlanOptions options = planOptions.CurrentValue;
         return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, hasCustomer,
-            overLimit.OverLimitSince + planOptions.CurrentValue.GracePeriod));
+            overLimit.OverLimitSince + options.GracePeriod, options.Enforce ? options.GracePeriod : null));
     }
 
     private static async Task<Ok<List<LinkedIdentity>>> GetLinkedIdentities(

@@ -24,9 +24,11 @@ export const Route = createFileRoute("/settings")({
     linked: typeof search.linked === "string" ? search.linked : undefined,
     link_error:
       typeof search.link_error === "string" ? search.link_error : undefined,
-    // Where Stripe Checkout sends the browser back to.
+    // Where Stripe Checkout and the Customer Portal send the browser back to.
     billing:
-      search.billing === "success" || search.billing === "cancelled"
+      search.billing === "success" ||
+      search.billing === "cancelled" ||
+      search.billing === "portal"
         ? search.billing
         : undefined,
   }),

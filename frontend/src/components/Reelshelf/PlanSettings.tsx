@@ -1,22 +1,24 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   useOpenBillingPortal,
   usePlan,
   usePlanOffers,
   useStartCheckout,
 } from "@/hooks/queries";
-import { PlanMeter } from "@/components/Reelshelf/PlanMeter";
+import { PlanMeter, nearLimitFraction } from "@/components/Reelshelf/PlanMeter";
 import {
   type AccountPlan,
   type PlanOffer,
+  type PlanOfferPrice,
   formatClipLength,
   formatPrice,
   tierNames,
 } from "@/shared/services/plans";
 import { ApiError } from "@/shared/services/apiError";
 
-export type BillingReturn = "success" | "cancelled" | undefined;
+/** Where the browser came back from: Checkout (`success`, `cancelled`) or the Customer Portal (`portal`). */
+export type BillingReturn = "success" | "cancelled" | "portal" | undefined;
 
 /** Statuses of a subscription that could still bill, so changes go through the Customer Portal instead of Checkout. */
 const openStatuses = new Set([
@@ -27,15 +29,39 @@ const openStatuses = new Set([
   "paused",
 ]);
 
-/** After Checkout, Stripe's webhook updates the plan within seconds; poll for that long. */
-const pollAfterCheckoutMs = 30_000;
+/** Statuses where a payment failed, so the way back is updating the card in the Customer Portal. */
+const paymentProblemStatuses = new Set(["past_due", "unpaid", "paused"]);
+
+/** Statuses whose subscription is the account's current plan. */
+const currentStatuses = new Set(["active", "trialing", "past_due"]);
+
+/** The plan the cards point people to: Pro is the best value per clip. */
+const recommendedTier = "pro";
+
+/** After Checkout or the portal, Stripe's webhook updates the plan within seconds; poll for that long. */
+const pollAfterReturnMs = 30_000;
+
+type Tone = "info" | "success" | "warning" | "error";
+
+/** The one thing the account most needs to know, if anything, with the actions that deal with it. */
+type Alert = {
+  tone: Tone;
+  title: string;
+  body?: ReactNode;
+  /** The billing portal button, when it's the way out; the plain billing button below is then left out. */
+  portal?: string;
+  /** The plan page, to download or pick clips to keep. */
+  planPage?: boolean;
+};
 
 export function PlanSettings({
   billingReturn,
 }: {
   billingReturn: BillingReturn;
 }) {
-  const [polling, setPolling] = useState(billingReturn === "success");
+  const [polling, setPolling] = useState(
+    billingReturn === "success" || billingReturn === "portal",
+  );
   const plan = usePlan();
   const { refetch } = plan;
   const offers = usePlanOffers();
@@ -45,18 +71,19 @@ export function PlanSettings({
   const upgraded = plan.data
     ? plan.data.tier !== "free" || plan.data.subscription !== null
     : false;
+  const waitingForCheckout = billingReturn === "success" && !upgraded;
   useEffect(() => {
-    if (!polling || upgraded) return;
+    if (!polling || (billingReturn === "success" && upgraded)) return;
     const interval = window.setInterval(() => void refetch(), 2_000);
     const timeout = window.setTimeout(
       () => setPolling(false),
-      pollAfterCheckoutMs,
+      pollAfterReturnMs,
     );
     return () => {
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [polling, upgraded, refetch]);
+  }, [polling, billingReturn, upgraded, refetch]);
 
   if (!plan.data) {
     return plan.isError ? (
@@ -67,6 +94,7 @@ export function PlanSettings({
   }
 
   const current = plan.data;
+  const tier = tierNames[current.tier] ?? current.tier;
   const subscription = current.subscription;
   const hasOpenSubscription =
     subscription !== null && openStatuses.has(subscription.status);
@@ -74,37 +102,71 @@ export function PlanSettings({
     current.billingEnabled &&
     current.tier !== "unlimited" &&
     !hasOpenSubscription;
+  const alert = planAlert(current, canUpgrade);
+  // A plan that ended can be taken up again; its card says so.
+  const lapsedTier =
+    subscription !== null && !hasOpenSubscription ? subscription.tier : null;
+
+  const openPortal = () => portal.mutate();
 
   return (
     <div className="rs-plan">
-      {billingReturn === "success" ? (
-        <p className="rs-linked-notice" data-tone="success" role="status">
-          {upgraded
-            ? `Thanks! You're on ${tierNames[current.tier] ?? current.tier} now.`
-            : "Thanks! Your plan updates as soon as Stripe confirms the payment."}
-        </p>
-      ) : null}
-      {billingReturn === "cancelled" ? (
-        <p className="rs-linked-notice" role="status">
-          Checkout was cancelled; nothing was charged.
-        </p>
+      <ReturnBanner
+        billingReturn={billingReturn}
+        upgradedTo={upgraded ? tier : null}
+        stillWaiting={waitingForCheckout && !polling}
+      />
+
+      <div className="rs-plan-summary">
+        <h3 className="rs-plan-name">{planTitle(current)}</h3>
+        <PlanMeter plan={current} showTier={false} />
+        {current.tier !== "unlimited" ? (
+          <p className="rs-plan-limits">
+            {current.maxClipSeconds !== null
+              ? `Clips up to ${formatClipLength(current.maxClipSeconds)} long`
+              : "Clips of any length"}
+          </p>
+        ) : null}
+        <SubscriptionLine plan={current} />
+      </div>
+
+      {alert ? (
+        <PlanAlert tone={alert.tone} title={alert.title}>
+          {alert.body ? <p>{alert.body}</p> : null}
+          {alert.portal || alert.planPage ? (
+            <div className="rs-plan-actions">
+              {alert.portal ? (
+                <button
+                  className="rs-primary"
+                  type="button"
+                  disabled={portal.isPending}
+                  onClick={openPortal}
+                >
+                  {alert.portal}
+                </button>
+              ) : null}
+              {alert.planPage ? (
+                <Link to="/plan" className="rs-secondary rs-plan-link-button">
+                  Choose clips to keep
+                </Link>
+              ) : null}
+              {alert.portal ? <PortalHint /> : null}
+            </div>
+          ) : null}
+        </PlanAlert>
       ) : null}
 
-      <PlanMeter plan={current} />
-      <p className="rs-plan-limits">{describeLimits(current)}</p>
-      <SubscriptionStatus plan={current} />
-      <OverLimitNotice plan={current} />
-
-      {current.canManageBilling ? (
-        <div className="rs-email-actions">
+      {current.canManageBilling && !alert?.portal ? (
+        <div className="rs-plan-actions">
           <button
             className="rs-secondary"
             type="button"
             disabled={portal.isPending}
-            onClick={() => portal.mutate()}
+            onClick={openPortal}
           >
             {hasOpenSubscription ? "Manage billing" : "Billing history"}
           </button>
+          <PortalHint />
         </div>
       ) : null}
       {portal.isError ? (
@@ -113,99 +175,64 @@ export function PlanSettings({
         </p>
       ) : null}
 
-      {canUpgrade && offers.data ? (
-        <PlanOffers offers={offers.data} currentTier={current.tier} />
+      {/* Hidden until a payment just made shows up, so it can't be made twice. */}
+      {canUpgrade && offers.data && !waitingForCheckout ? (
+        <PlanOffers
+          offers={offers.data}
+          currentTier={current.tier}
+          lapsedTier={lapsedTier}
+        />
       ) : null}
     </div>
   );
 }
 
-/** Clips over the limit, and when they go; the plan page lists them, picks which to keep and downloads them. */
-function OverLimitNotice({ plan }: { plan: AccountPlan }) {
-  if (plan.clipsOverLimit <= 0) return null;
-  const clips =
-    plan.clipsOverLimit === 1
-      ? "1 clip is"
-      : `${plan.clipsOverLimit.toLocaleString()} clips are`;
-  const deletesOn = formatDate(plan.overLimitDeletesAt);
-  return (
-    <p className="rs-linked-notice" data-tone="error">
-      {clips} over your plan's limit
-      {deletesOn ? ` and will be deleted on ${deletesOn}` : ""}.{" "}
-      <Link to="/plan">Download them or pick which to keep</Link>.
-    </p>
-  );
+function PortalHint() {
+  return <span className="rs-plan-hint">Opens Stripe's billing portal</span>;
 }
 
-function describeLimits(plan: AccountPlan): string {
-  const parts: string[] = [];
-  parts.push(
-    plan.maxClipSeconds !== null
-      ? `Clips up to ${formatClipLength(plan.maxClipSeconds)}`
-      : "Clips of any length",
-  );
-  if (plan.newClipLimit !== null) {
-    parts.push(
-      `${plan.newClipsLast30Days.toLocaleString()} of ${plan.newClipLimit.toLocaleString()} new clips in the last 30 days`,
-    );
-  }
-  return parts.join(" · ");
-}
-
-function formatDate(value: Date | null | undefined): string | null {
-  if (!value) return null;
-  return new Date(value).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function SubscriptionStatus({ plan }: { plan: AccountPlan }) {
+/** "Plus, monthly" for a paid plan, else the tier. */
+function planTitle(plan: AccountPlan): string {
+  const tier = tierNames[plan.tier] ?? plan.tier;
   const subscription = plan.subscription;
-  if (plan.tier === "unlimited") {
-    return (
-      <p className="rs-sidebar-copy">
-        Your account keeps unlimited clips of any length.
-      </p>
-    );
+  if (
+    subscription !== null &&
+    subscription.tier === plan.tier &&
+    currentStatuses.has(subscription.status) &&
+    subscription.interval
+  ) {
+    return `${tier}, ${subscription.interval === "year" ? "yearly" : "monthly"}`;
   }
+  return tier;
+}
+
+/** When the plan renews or ends; payment problems are the alert's. */
+function SubscriptionLine({ plan }: { plan: AccountPlan }) {
+  if (plan.tier === "unlimited") {
+    return <p className="rs-sidebar-copy">Unlimited clips of any length.</p>;
+  }
+  const subscription = plan.subscription;
   if (!subscription) return null;
 
-  const tier = subscription.tier
-    ? (tierNames[subscription.tier] ?? subscription.tier)
-    : "your plan";
-  const interval = subscription.interval === "year" ? "yearly" : "monthly";
+  const tier = subscriptionTierName(plan);
   const periodEnd = formatDate(subscription.currentPeriodEnd);
-  const endsOn =
-    formatDate(subscription.cancelAt) ??
-    (subscription.cancelAtPeriodEnd ? periodEnd : null);
-
+  const endsOn = formatDate(planEnd(plan));
   switch (subscription.status) {
     case "active":
     case "trialing":
       return (
         <p className="rs-sidebar-copy">
           {endsOn
-            ? `${tier} (${interval}) ends on ${endsOn}. You keep it until then.`
-            : `${tier} (${interval})${periodEnd ? ` renews on ${periodEnd}` : ""}.`}
+            ? `Ends on ${endsOn}. You keep ${tier} until then.`
+            : periodEnd
+              ? `Renews on ${periodEnd}.`
+              : null}
         </p>
       );
     case "past_due":
-      return (
-        <p className="rs-linked-notice" data-tone="error">
-          Your last payment for {tier} didn't go through. Update your card in
-          Manage billing to keep it.
-        </p>
-      );
     case "unpaid":
     case "paused":
-      return (
-        <p className="rs-linked-notice" data-tone="error">
-          {tier} is on hold because payment failed. Update your card in Manage
-          billing to get it back.
-        </p>
-      );
+      return null;
     default: {
       const ended = formatDate(subscription.endedAt);
       return ended ? (
@@ -217,17 +244,290 @@ function SubscriptionStatus({ plan }: { plan: AccountPlan }) {
   }
 }
 
+function subscriptionTierName(plan: AccountPlan): string {
+  const tier = plan.subscription?.tier;
+  return tier ? (tierNames[tier] ?? tier) : "your plan";
+}
+
+/** When an active plan set to end will end, if it is. */
+function planEnd(plan: AccountPlan): Date | null {
+  const subscription = plan.subscription;
+  if (!subscription) return null;
+  return (
+    subscription.cancelAt ??
+    (subscription.cancelAtPeriodEnd ? subscription.currentPeriodEnd : null)
+  );
+}
+
+/**
+ * The most pressing of: a failed payment, clips over the limit, a plan ending with more clips than Free keeps, a
+ * nearly full library. Clips being deleted is an error; anything that can still be headed off is a warning.
+ */
+function planAlert(plan: AccountPlan, canUpgrade: boolean): Alert | null {
+  const subscription = plan.subscription;
+  const over = plan.clipsOverLimit;
+  const deletesOn = formatDate(plan.overLimitDeletesAt);
+  const limit = plan.clipLimit;
+  const freeLimit = plan.freeClipLimit ?? null;
+  const graceDays = plan.overLimitGraceDays ?? null;
+  const tier = subscriptionTierName(plan);
+
+  const overTitle = deletesOn
+    ? `${clipCount(over)} will be deleted on ${deletesOn}.`
+    : `${clipCount(over)} ${over === 1 ? "is" : "are"} over your plan's limit.`;
+
+  if (subscription && paymentProblemStatuses.has(subscription.status)) {
+    const pastDue = subscription.status === "past_due";
+    if (over > 0) {
+      return {
+        tone: deletesOn ? "error" : "warning",
+        title: overTitle,
+        body: `${
+          pastDue
+            ? `Your last payment for ${tier} didn't go through.`
+            : `${tier} is on hold because a payment failed, so your account has Free's limits.`
+        } Update your payment method to keep them, or choose which clips to keep.`,
+        portal: "Update payment method",
+        planPage: true,
+      };
+    }
+    if (pastDue) {
+      // What the last retry costs: the plan, and the clips over Free's limit with it.
+      const overFree =
+        freeLimit !== null ? Math.max(0, plan.clipCount - freeLimit) : 0;
+      const clipsCost =
+        overFree === 0
+          ? ""
+          : graceDays !== null
+            ? `, and the ${clipCount(overFree)} over them will be deleted ${graceDays} days later`
+            : `, and you can't add clips while ${clipCount(overFree)} are over them`;
+      return {
+        tone: "warning",
+        title: `Your last payment for ${tier} didn't go through.`,
+        body: `We'll try it again. Update your payment method to keep ${tier}: if the last try fails, ${tier} ends and your account moves to Free's limits${clipsCost}.`,
+        portal: "Update payment method",
+      };
+    }
+    return {
+      tone: "warning",
+      title: `${tier} is on hold because a payment failed.`,
+      body: "Your account has Free's limits until you update your payment method.",
+      portal: "Update payment method",
+    };
+  }
+
+  if (over > 0 && limit !== null) {
+    return {
+      tone: deletesOn ? "error" : "warning",
+      title: overTitle,
+      body: deletesOn
+        ? `Your plan keeps ${limit.toLocaleString()}. Choose which clips to keep and download the rest${
+            canUpgrade ? ", or pick a plan below to keep them all" : ""
+          }.`
+        : `Your plan keeps ${limit.toLocaleString()}, so you can't add clips until you're back within it.`,
+      planPage: true,
+    };
+  }
+
+  const end = planEnd(plan);
+  if (end && freeLimit !== null && plan.clipCount > freeLimit) {
+    const overFree = plan.clipCount - freeLimit;
+    const deletes =
+      graceDays !== null
+        ? formatDate(new Date(end.getTime() + graceDays * 86_400_000))
+        : null;
+    return {
+      tone: "warning",
+      title: `When ${tier} ends on ${formatDate(end)}, ${clipCount(overFree)} will be over Free's limit of ${freeLimit.toLocaleString()}.`,
+      body: deletes
+        ? `They'll be deleted ${graceDays} days later, on ${deletes}, unless you keep ${tier}.`
+        : `You won't be able to add clips until you're back within it, unless you keep ${tier}.`,
+      portal: `Keep ${tier}`,
+    };
+  }
+
+  if (limit !== null && plan.clipCount >= limit * nearLimitFraction) {
+    const full = plan.clipCount >= limit;
+    const way = canUpgrade ? "delete some or upgrade" : "delete some";
+    return {
+      tone: "warning",
+      title: full ? "Your library is full." : "Your library is nearly full.",
+      body: full
+        ? `You can't add clips until you ${way}.`
+        : `You've used ${plan.clipCount.toLocaleString()} of ${limit.toLocaleString()} clips. At ${limit.toLocaleString()} you can't add more until you ${way}.`,
+    };
+  }
+
+  return null;
+}
+
+/** Coming back from Checkout: what happened, and whether the payment has shown up yet. */
+function ReturnBanner({
+  billingReturn,
+  upgradedTo,
+  stillWaiting,
+}: {
+  billingReturn: BillingReturn;
+  upgradedTo: string | null;
+  stillWaiting: boolean;
+}) {
+  if (billingReturn === "cancelled") {
+    return (
+      <PlanAlert tone="info" title="Checkout was cancelled.">
+        <p>Nothing was charged.</p>
+      </PlanAlert>
+    );
+  }
+  if (billingReturn !== "success") return null;
+  if (upgradedTo) {
+    return (
+      <PlanAlert tone="success" title={`You're on ${upgradedTo} now.`}>
+        <p>Thanks for subscribing.</p>
+      </PlanAlert>
+    );
+  }
+  if (stillWaiting) {
+    return (
+      <PlanAlert
+        tone="warning"
+        title="Your payment is taking longer than usual to confirm."
+      >
+        <p>
+          Refresh in a minute. If your plan still hasn't changed, email us
+          before trying again.
+        </p>
+      </PlanAlert>
+    );
+  }
+  return (
+    <PlanAlert tone="info" title="Confirming your payment…" busy>
+      <p>This usually takes a few seconds.</p>
+    </PlanAlert>
+  );
+}
+
+function PlanAlert({
+  tone,
+  title,
+  busy = false,
+  children,
+}: {
+  tone: Tone;
+  title: string;
+  busy?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      className="rs-plan-alert"
+      data-tone={tone}
+      role={tone === "error" ? "alert" : "status"}
+    >
+      {busy ? (
+        <span className="rs-plan-alert-spinner" aria-hidden="true" />
+      ) : (
+        <AlertIcon tone={tone} />
+      )}
+      <div className="rs-plan-alert-body">
+        <p className="rs-plan-alert-title">{title}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function AlertIcon({ tone }: { tone: Tone }) {
+  return (
+    <svg
+      className="rs-plan-alert-icon"
+      viewBox="0 0 20 20"
+      width="18"
+      height="18"
+      aria-hidden="true"
+    >
+      <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" />
+      {tone === "success" ? (
+        <path
+          d="M6.5 10.2l2.4 2.4 4.6-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : tone === "info" ? (
+        <>
+          <circle cx="10" cy="6.4" r="1.05" fill="currentColor" />
+          <path
+            d="M10 9v5"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+        </>
+      ) : (
+        <>
+          <path
+            d="M10 5.6v5.2"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+          <circle cx="10" cy="13.9" r="1.05" fill="currentColor" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function clipCount(count: number): string {
+  return count === 1 ? "1 clip" : `${count.toLocaleString()} clips`;
+}
+
+function formatDate(value: Date | null | undefined): string | null {
+  if (!value) return null;
+  return new Date(value).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** What paying yearly comes to a month, and how many months it saves against paying monthly. */
+function yearlyNote(
+  yearly: PlanOfferPrice,
+  monthly: PlanOfferPrice | undefined,
+): string {
+  const perMonth = formatPrice({
+    ...yearly,
+    unitAmount: Math.round(yearly.unitAmount / 12),
+  });
+  const monthsFree =
+    monthly && monthly.currency === yearly.currency && monthly.unitAmount > 0
+      ? Math.round(
+          (monthly.unitAmount * 12 - yearly.unitAmount) / monthly.unitAmount,
+        )
+      : 0;
+  return monthsFree > 0
+    ? `${perMonth}/mo · ${monthsFree === 1 ? "1 month" : `${monthsFree} months`} free`
+    : `${perMonth}/mo`;
+}
+
 function PlanOffers({
   offers,
   currentTier,
+  lapsedTier,
 }: {
   offers: PlanOffer[];
   currentTier: string;
+  lapsedTier: string | null;
 }) {
   const [interval, setBillingInterval] = useState<"month" | "year">("year");
   const checkout = useStartCheckout();
   const paid = offers.filter((offer) => offer.prices.length > 0);
   if (paid.length === 0) return null;
+  // Free is priced in the same currency as the paid plans beside it.
+  const currency = paid[0].prices[0].currency;
 
   const error =
     checkout.error instanceof ApiError
@@ -243,76 +543,99 @@ function PlanOffers({
         role="group"
         aria-label="Billing period"
       >
-        <button
-          type="button"
-          className={`rs-chip${interval === "year" ? " active" : ""}`}
-          aria-pressed={interval === "year"}
-          onClick={() => setBillingInterval("year")}
-        >
-          Yearly
-        </button>
-        <button
-          type="button"
-          className={`rs-chip${interval === "month" ? " active" : ""}`}
-          aria-pressed={interval === "month"}
-          onClick={() => setBillingInterval("month")}
-        >
-          Monthly
-        </button>
+        {(["year", "month"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            className="rs-plan-segment"
+            aria-pressed={interval === value}
+            onClick={() => setBillingInterval(value)}
+          >
+            {value === "year" ? "Yearly" : "Monthly"}
+          </button>
+        ))}
       </div>
       <div className="rs-plan-cards">
         {offers.map((offer) => {
+          const name = tierNames[offer.tier] ?? offer.tier;
           const price = offer.prices.find((p) => p.interval === interval);
           const isCurrent = offer.tier === currentTier;
+          const recommended = offer.tier === recommendedTier && !isCurrent;
+          const note =
+            offer.tier === "free"
+              ? "No card needed"
+              : price && interval === "year"
+                ? yearlyNote(
+                    price,
+                    offer.prices.find((p) => p.interval === "month"),
+                  )
+                : price
+                  ? "Billed monthly"
+                  : "";
           return (
             <div
               key={offer.tier}
               className="rs-plan-card"
               data-current={isCurrent || undefined}
+              data-recommended={recommended || undefined}
             >
               <div className="rs-plan-card-name">
-                {tierNames[offer.tier] ?? offer.tier}
+                {name}
+                {recommended ? (
+                  <span className="rs-plan-card-badge">Best value</span>
+                ) : null}
               </div>
               <div className="rs-plan-card-price">
                 {offer.tier === "free"
-                  ? "Free"
+                  ? formatPrice({
+                      lookupKey: "",
+                      interval,
+                      unitAmount: 0,
+                      currency,
+                    })
                   : price
                     ? `${formatPrice(price)} / ${interval}`
                     : "Not available"}
               </div>
-              <ul className="rs-plan-card-features">
-                <li>
-                  {offer.clipLimit !== null
-                    ? `Keep up to ${offer.clipLimit.toLocaleString()} clips`
-                    : "Unlimited clips"}
-                </li>
-                <li>
-                  {offer.maxClipSeconds !== null
-                    ? `Clips up to ${formatClipLength(offer.maxClipSeconds)}`
-                    : "Clips of any length"}
-                </li>
-                <li>Apex legend detection</li>
-              </ul>
-              {isCurrent ? (
-                <span className="rs-plan-card-current">Current plan</span>
-              ) : price ? (
-                <button
-                  className="rs-primary"
-                  type="button"
-                  disabled={checkout.isPending}
-                  onClick={() => checkout.mutate(price.lookupKey)}
-                >
-                  Upgrade to {tierNames[offer.tier] ?? offer.tier}
-                </button>
-              ) : null}
+              <div className="rs-plan-card-note">{note || " "}</div>
+              <div className="rs-plan-card-clips">
+                {offer.clipLimit !== null
+                  ? `${offer.clipLimit.toLocaleString()} clips`
+                  : "Unlimited clips"}
+              </div>
+              <div className="rs-plan-card-length">
+                {offer.maxClipSeconds !== null
+                  ? `Up to ${formatClipLength(offer.maxClipSeconds)} each`
+                  : "Any length"}
+              </div>
+              <div className="rs-plan-card-action">
+                {isCurrent ? (
+                  <span className="rs-plan-card-current">Current plan</span>
+                ) : price ? (
+                  <button
+                    className="rs-primary"
+                    type="button"
+                    disabled={checkout.isPending}
+                    onClick={() => checkout.mutate(price.lookupKey)}
+                  >
+                    {offer.tier === lapsedTier
+                      ? "Resubscribe to"
+                      : "Upgrade to"}{" "}
+                    {name}
+                  </button>
+                ) : null}
+              </div>
             </div>
           );
         })}
       </div>
+      <p className="rs-plan-included">
+        Every plan includes legend detection for Apex Legends clips.
+      </p>
       <p className="rs-plan-footnote">
-        Checkout charges in your own currency where it can. Subscriptions are
-        sold by Stripe through Link and show on your statement as LINK.COM*
-        REELSHELF.
+        Prices are in {currency.toUpperCase()}; Checkout shows your own currency
+        where it can. Plans are sold by Stripe through Link, so charges show as
+        LINK.COM* REELSHELF.
       </p>
       {error ? (
         <p className="rs-linked-notice" data-tone="error">
