@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/shared/services/apiError";
 import { logout } from "@/shared/services/auth";
 import {
+  changePlan,
+  keepPlan,
   fetchExports,
   fetchOverLimit,
   fetchPlan,
@@ -113,6 +115,32 @@ export function useStartCheckout() {
       if (error instanceof ApiError && error.status === 409) {
         void queryClient.invalidateQueries({ queryKey: planQueryKey });
       }
+    },
+  });
+}
+
+/** Changes plan: off to Stripe to confirm an upgrade, or a downgrade scheduled here and shown at once. */
+export function useChangePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: changePlan,
+    onSuccess: (change) => {
+      if (change.url) {
+        window.location.assign(change.url);
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: planQueryKey });
+    },
+  });
+}
+
+/** Drops a downgrade waiting for the end of the paid period. */
+export function useKeepPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: keepPlan,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: planQueryKey });
     },
   });
 }

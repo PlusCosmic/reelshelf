@@ -13,12 +13,19 @@ public class BillingServiceTests
 
     private static (BillingService Service, FakeStripe Stripe, FakeStore Store) Build() => Build(new NoPlanEndingNotifier());
 
-    private static (BillingService Service, FakeStripe Stripe, FakeStore Store) Build(IPlanEndingNotifier planEnding)
+    private static (BillingService Service, FakeStripe Stripe, FakeStore Store) Build(IPlanEndingNotifier planEnding,
+        string planChangeConfiguration = "bpc_change")
     {
         FakeStripe stripe = new();
         FakeStore store = new();
         store.Users.Add(User.Id);
-        BillingOptions options = new() { SecretKey = "rk_test", WebhookSecret = "whsec_test", FrontendOrigin = "https://reelshelf.test" };
+        BillingOptions options = new()
+        {
+            SecretKey = "rk_test",
+            WebhookSecret = "whsec_test",
+            FrontendOrigin = "https://reelshelf.test",
+            PlanChangePortalConfiguration = planChangeConfiguration
+        };
         BillingService service = new(stripe, store, options, new MemoryCache(new MemoryCacheOptions()), planEnding,
             NullLogger<BillingService>.Instance);
         return (service, stripe, store);
@@ -393,5 +400,134 @@ public class BillingServiceTests
             Ends.Add((userId, endsAt));
             return Task.CompletedTask;
         }
+    }
+
+    /// <summary>An account on <paramref name="lookupKey"/>, recorded locally and at Stripe, with every plan's price.</summary>
+    private static (BillingService Service, FakeStripe Stripe, FakeStore Store) Subscribed(string lookupKey,
+        string planChangeConfiguration = "bpc_change")
+    {
+        var (service, stripe, store) = Build(new NoPlanEndingNotifier(), planChangeConfiguration);
+        foreach (BillingPlan plan in BillingPlans.All)
+        {
+            stripe.Prices.Add(new StripePlanPrice(plan.LookupKey, 100, "gbp", $"price_{plan.LookupKey}"));
+        }
+
+        store.Customers[User.Id] = "cus_1";
+        StripeSubscriptionState state = State("sub_1", "cus_1", lookupKey: lookupKey, userId: User.Id) with
+        {
+            ItemId = "si_1"
+        };
+        stripe.Subscriptions["sub_1"] = state;
+        store.Subscriptions.Add(new BillingSubscription("sub_1", User.Id, "active", lookupKey,
+            BillingPlans.Find(lookupKey)!.Tier, state.CurrentPeriodEnd, false, null, null));
+        return (service, stripe, store);
+    }
+
+    [Theory]
+    [InlineData("plus_monthly", "pro_monthly", true)]
+    [InlineData("plus_yearly", "pro_monthly", true)]
+    [InlineData("plus_monthly", "plus_yearly", true)]
+    [InlineData("pro_monthly", "plus_yearly", false)]
+    [InlineData("pro_yearly", "pro_monthly", false)]
+    [InlineData("pro_yearly", "plus_monthly", false)]
+    public void IsUpgrade_IsAHigherTierOrYearlyInsteadOfMonthly(string from, string to, bool upgrade)
+    {
+        Assert.Equal(upgrade, BillingService.IsUpgrade(BillingPlans.Find(from)!, BillingPlans.Find(to)!));
+    }
+
+    [Fact]
+    public async Task ChangePlan_ToABetterPlan_OpensStripesConfirmationForIt()
+    {
+        var (service, stripe, _) = Subscribed("plus_monthly");
+
+        PlanChangeResult result = await service.ChangePlan(User, "pro_yearly", CancellationToken.None);
+
+        Assert.Equal(new PlanChangeResult(PlanChangeOutcome.Confirm, "https://portal.stripe.test/confirm/1"), result);
+        Assert.Equal(new PlanChangeSessionRequest("cus_1", "sub_1", "si_1", "price_pro_yearly", "bpc_change",
+            "https://reelshelf.test/settings?billing=portal"), Assert.Single(stripe.PlanChanges));
+        Assert.Empty(stripe.Downgrades);
+    }
+
+    [Fact]
+    public async Task ChangePlan_ToALesserPlan_WaitsForTheEndOfThePaidPeriod()
+    {
+        var (service, stripe, store) = Subscribed("pro_yearly");
+
+        PlanChangeResult result = await service.ChangePlan(User, "plus_monthly", CancellationToken.None);
+
+        DateTimeOffset periodEnd = stripe.Subscriptions["sub_1"].CurrentPeriodEnd!.Value;
+        Assert.Equal(new PlanChangeResult(PlanChangeOutcome.Scheduled, At: periodEnd), result);
+        Assert.Equal(("sub_1", "price_plus_monthly", "month"), Assert.Single(stripe.Downgrades));
+        Assert.Empty(stripe.PlanChanges);
+
+        // Recorded at once, without waiting for the webhook; the account keeps Pro until then.
+        BillingSubscription recorded = Assert.Single(store.Subscriptions);
+        Assert.Equal(("plus_monthly", periodEnd), (recorded.ScheduledLookupKey, recorded.ScheduledAt));
+        Assert.Equal(AccountTier.Pro, recorded.Tier);
+    }
+
+    [Fact]
+    public async Task ChangePlan_UpwardsWithADowngradeWaiting_DropsItFirst()
+    {
+        var (service, stripe, store) = Subscribed("pro_monthly");
+        await service.ChangePlan(User, "plus_monthly", CancellationToken.None);
+
+        PlanChangeResult result = await service.ChangePlan(User, "pro_yearly", CancellationToken.None);
+
+        Assert.Equal(PlanChangeOutcome.Confirm, result.Outcome);
+        Assert.Equal(["sub_sched_1"], stripe.Released);
+        Assert.Null(Assert.Single(store.Subscriptions).ScheduledLookupKey);
+    }
+
+    [Fact]
+    public async Task ChangePlan_BackToTheCurrentPlan_DropsTheWaitingDowngrade()
+    {
+        var (service, stripe, store) = Subscribed("pro_monthly");
+        await service.ChangePlan(User, "plus_monthly", CancellationToken.None);
+
+        PlanChangeResult result = await service.ChangePlan(User, "pro_monthly", CancellationToken.None);
+
+        Assert.Equal(PlanChangeOutcome.SamePlan, result.Outcome);
+        Assert.Equal(["sub_sched_1"], stripe.Released);
+        Assert.Null(Assert.Single(store.Subscriptions).ScheduledLookupKey);
+    }
+
+    [Fact]
+    public async Task KeepPlan_DropsTheWaitingDowngrade_AndIsFalseWithoutOne()
+    {
+        var (service, stripe, store) = Subscribed("pro_monthly");
+        Assert.False(await service.KeepPlan(User, CancellationToken.None));
+        await service.ChangePlan(User, "plus_yearly", CancellationToken.None);
+
+        Assert.True(await service.KeepPlan(User, CancellationToken.None));
+
+        Assert.Equal(["sub_sched_1"], stripe.Released);
+        Assert.Null(Assert.Single(store.Subscriptions).ScheduledLookupKey);
+    }
+
+    [Fact]
+    public async Task ChangePlan_IsRefusedWhenItCantApply()
+    {
+        var (unconfigured, _, _) = Subscribed("plus_monthly", planChangeConfiguration: "");
+        Assert.Equal(PlanChangeOutcome.Unavailable,
+            (await unconfigured.ChangePlan(User, "pro_monthly", CancellationToken.None)).Outcome);
+
+        var (service, _, store) = Subscribed("plus_monthly");
+        Assert.Equal(PlanChangeOutcome.UnknownPlan,
+            (await service.ChangePlan(User, "free", CancellationToken.None)).Outcome);
+        Assert.Equal(PlanChangeOutcome.SamePlan,
+            (await service.ChangePlan(User, "plus_monthly", CancellationToken.None)).Outcome);
+
+        // Set to end, or a payment failing: that is sorted out in the portal first.
+        store.Subscriptions[0] = store.Subscriptions[0] with { CancelAtPeriodEnd = true };
+        Assert.Equal(PlanChangeOutcome.NotChangeable,
+            (await service.ChangePlan(User, "pro_monthly", CancellationToken.None)).Outcome);
+        store.Subscriptions[0] = store.Subscriptions[0] with { CancelAtPeriodEnd = false, Status = "past_due" };
+        Assert.Equal(PlanChangeOutcome.NotChangeable,
+            (await service.ChangePlan(User, "pro_monthly", CancellationToken.None)).Outcome);
+
+        store.Subscriptions.Clear();
+        Assert.Equal(PlanChangeOutcome.NotSubscribed,
+            (await service.ChangePlan(User, "pro_monthly", CancellationToken.None)).Outcome);
     }
 }

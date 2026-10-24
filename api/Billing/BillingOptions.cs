@@ -15,6 +15,15 @@ public sealed class BillingOptions
     /// <summary>The signing secret of the webhook endpoint (<c>whsec_</c>).</summary>
     public string WebhookSecret { get; set; } = "";
 
+    /// <summary>
+    /// The Customer Portal configuration (<c>bpc_</c>) that allows changing plan, used only to confirm an upgrade
+    /// chosen in Settings. The default configuration doesn't, so a downgrade can't skip the wait for the end of the
+    /// paid period. Empty turns changing plan in Settings off.
+    /// </summary>
+    public string PlanChangePortalConfiguration { get; set; } = "";
+
+    public bool CanChangePlan => !string.IsNullOrWhiteSpace(PlanChangePortalConfiguration);
+
     /// <summary>Where Checkout and the Customer Portal send people back to; the API's <c>FrontendOrigin</c>.</summary>
     public string FrontendOrigin { get; set; } = "http://localhost:5173";
 

@@ -91,12 +91,105 @@ public sealed class StripeBilling(StripeClient client) : IStripeBilling
         return session.Url;
     }
 
+    public async Task<string> CreatePlanChangeSessionAsync(PlanChangeSessionRequest request,
+        CancellationToken cancellationToken)
+    {
+        Stripe.BillingPortal.Session session = await client.V1.BillingPortal.Sessions.CreateAsync(
+            new Stripe.BillingPortal.SessionCreateOptions
+            {
+                Customer = request.CustomerId,
+                Configuration = request.ConfigurationId,
+                ReturnUrl = request.ReturnUrl,
+                FlowData = new Stripe.BillingPortal.SessionFlowDataOptions
+                {
+                    Type = "subscription_update_confirm",
+                    SubscriptionUpdateConfirm = new Stripe.BillingPortal.SessionFlowDataSubscriptionUpdateConfirmOptions
+                    {
+                        Subscription = request.SubscriptionId,
+                        Items =
+                        [
+                            new Stripe.BillingPortal.SessionFlowDataSubscriptionUpdateConfirmItemOptions
+                            {
+                                Id = request.SubscriptionItemId, Price = request.PriceId, Quantity = 1
+                            }
+                        ]
+                    },
+                    AfterCompletion = new Stripe.BillingPortal.SessionFlowDataAfterCompletionOptions
+                    {
+                        Type = "redirect",
+                        Redirect = new Stripe.BillingPortal.SessionFlowDataAfterCompletionRedirectOptions
+                        {
+                            ReturnUrl = request.ReturnUrl
+                        }
+                    }
+                }
+            },
+            cancellationToken: cancellationToken);
+        return session.Url;
+    }
+
+    public async Task ScheduleDowngradeAsync(StripeSubscriptionState subscription, string priceId, string interval,
+        CancellationToken cancellationToken)
+    {
+        SubscriptionSchedule schedule = subscription.ScheduleId is { } scheduleId
+            ? await client.V1.SubscriptionSchedules.GetAsync(scheduleId, cancellationToken: cancellationToken)
+            : await client.V1.SubscriptionSchedules.CreateAsync(
+                new SubscriptionScheduleCreateOptions { FromSubscription = subscription.Id },
+                cancellationToken: cancellationToken);
+
+        // The phase being paid for now is kept as it is; the plan changes when it ends, and the schedule then lets
+        // the subscription go on renewing by itself.
+        SubscriptionSchedulePhase current = schedule.Phases.First(phase =>
+            schedule.CurrentPhase is null || phase.StartDate == schedule.CurrentPhase.StartDate);
+        await client.V1.SubscriptionSchedules.UpdateAsync(schedule.Id, new SubscriptionScheduleUpdateOptions
+        {
+            EndBehavior = "release",
+            ProrationBehavior = "none",
+            Phases =
+            [
+                new SubscriptionSchedulePhaseOptions
+                {
+                    Items = current.Items
+                        .Select(item => new SubscriptionSchedulePhaseItemOptions
+                        {
+                            Price = item.PriceId, Quantity = item.Quantity
+                        })
+                        .ToList(),
+                    StartDate = current.StartDate,
+                    EndDate = current.EndDate
+                },
+                new SubscriptionSchedulePhaseOptions
+                {
+                    Items = [new SubscriptionSchedulePhaseItemOptions { Price = priceId, Quantity = 1 }],
+                    Duration = new SubscriptionSchedulePhaseDurationOptions { Interval = interval, IntervalCount = 1 }
+                }
+            ]
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task ReleaseScheduleAsync(string scheduleId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.V1.SubscriptionSchedules.ReleaseAsync(scheduleId,
+                new SubscriptionScheduleReleaseOptions { PreserveCancelDate = true },
+                cancellationToken: cancellationToken);
+        }
+        catch (StripeException ex) when (ex.HttpStatusCode is HttpStatusCode.BadRequest or HttpStatusCode.NotFound)
+        {
+            // Already released, completed or cancelled.
+        }
+    }
+
     public async Task<StripeSubscriptionState?> GetSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken)
     {
         Subscription subscription;
         try
         {
-            subscription = await client.V1.Subscriptions.GetAsync(subscriptionId, cancellationToken: cancellationToken);
+            // The schedule's phases name the plan a downgrade moves to, by their prices' lookup keys.
+            subscription = await client.V1.Subscriptions.GetAsync(subscriptionId,
+                new SubscriptionGetOptions { Expand = ["schedule.phases.items.price"] },
+                cancellationToken: cancellationToken);
         }
         catch (StripeException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
         {
@@ -111,6 +204,7 @@ public sealed class StripeBilling(StripeClient client) : IStripeBilling
             ? parsed
             : null;
 
+        (string? scheduledLookupKey, DateTimeOffset? scheduledAt) = NextPhase(subscription.Schedule, item?.Price?.LookupKey);
         return new StripeSubscriptionState(
             subscription.Id,
             subscription.CustomerId,
@@ -120,7 +214,29 @@ public sealed class StripeBilling(StripeClient client) : IStripeBilling
             subscription.CancelAtPeriodEnd,
             ToOffset(subscription.CancelAt),
             ToOffset(subscription.EndedAt),
-            userId);
+            userId,
+            item?.Id,
+            subscription.ScheduleId,
+            scheduledLookupKey,
+            scheduledAt);
+    }
+
+    /// <summary>The plan the schedule moves the subscription to when the current phase ends, if it changes plan.</summary>
+    private static (string? LookupKey, DateTimeOffset? At) NextPhase(SubscriptionSchedule? schedule, string? currentLookupKey)
+    {
+        if (schedule?.CurrentPhase is null || schedule.Status is not ("active" or "not_started"))
+        {
+            return (null, null);
+        }
+
+        SubscriptionSchedulePhase? next = schedule.Phases?
+            .Where(phase => phase.StartDate >= schedule.CurrentPhase.EndDate)
+            .OrderBy(phase => phase.StartDate)
+            .FirstOrDefault();
+        string? lookupKey = next?.Items?.FirstOrDefault()?.Price?.LookupKey;
+        return lookupKey is null || lookupKey == currentLookupKey
+            ? (null, null)
+            : (lookupKey, ToOffset(next!.StartDate));
     }
 
     public async Task<List<StripePlanPrice>> ListPricesAsync(IReadOnlyList<string> lookupKeys,
@@ -135,7 +251,7 @@ public sealed class StripeBilling(StripeClient client) : IStripeBilling
 
         return prices.Data
             .Where(price => price.LookupKey is not null && price.UnitAmount is not null)
-            .Select(price => new StripePlanPrice(price.LookupKey, price.UnitAmount!.Value, price.Currency))
+            .Select(price => new StripePlanPrice(price.LookupKey, price.UnitAmount!.Value, price.Currency, price.Id))
             .ToList();
     }
 

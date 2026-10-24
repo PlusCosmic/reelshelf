@@ -2,6 +2,7 @@ import type {
   AccountPlanResponse,
   ClipExportResponse,
   OverLimitResponse,
+  PlanChangeResponse,
   PlanOffer,
   PlanOfferPrice,
 } from "@/api-client";
@@ -43,6 +44,23 @@ export async function startCheckout(lookupKey: string): Promise<string> {
     startCheckoutRequest: { lookupKey },
   });
   return redirect.url;
+}
+
+/**
+ * Changes a subscriber's plan: an upgrade answers Stripe's page confirming it (`url`), a downgrade when it takes
+ * effect (`scheduledAt`, the end of the paid period).
+ */
+export async function changePlan(
+  lookupKey: string,
+): Promise<PlanChangeResponse> {
+  return createBillingApi().changePlan({
+    startCheckoutRequest: { lookupKey },
+  });
+}
+
+/** Drops a downgrade waiting for the end of the paid period. */
+export async function keepPlan(): Promise<void> {
+  await createBillingApi().keepPlan();
 }
 
 /** Opens Stripe's Customer Portal and returns the page to send the browser to. */

@@ -28,6 +28,7 @@ public class BillingStatementsTests
             await connection.ExecuteAsync("CREATE TABLE app_user (id uuid PRIMARY KEY, deletion_requested_at timestamptz)");
             await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V45__billing.sql")));
             await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V48__checkout_session.sql")));
+            await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V49__scheduled_plan_change.sql")));
             await RunAsync(connection, new BillingStatements(dataSource.CreateConnection()));
             await CheckoutLockAsync(connection, dataSource);
         }
@@ -57,6 +58,14 @@ public class BillingStatementsTests
             false, null, null);
         Assert.True(await statements.UpsertSubscription(subscription));
         Assert.Equal(subscription, Assert.Single(await statements.GetSubscriptions(harry)));
+
+        // A downgrade waiting for the end of the period is kept with it.
+        BillingSubscription downgrading = subscription with
+        {
+            ScheduledLookupKey = "plus_monthly", ScheduledAt = periodEnd
+        };
+        Assert.True(await statements.UpsertSubscription(downgrading));
+        Assert.Equal(downgrading, Assert.Single(await statements.GetSubscriptions(harry)));
 
         // An upsert replaces the row.
         BillingSubscription cancelled = subscription with

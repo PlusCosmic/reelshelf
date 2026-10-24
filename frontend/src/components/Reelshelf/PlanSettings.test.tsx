@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   offers: undefined as unknown,
   checkout: vi.fn(),
   portal: vi.fn(),
+  changePlan: vi.fn(),
+  keep: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -27,6 +29,16 @@ vi.mock("@/hooks/queries", () => ({
     mutate: mocks.checkout,
     isPending: false,
     error: null,
+  }),
+  useChangePlan: () => ({
+    mutate: mocks.changePlan,
+    isPending: false,
+    error: null,
+  }),
+  useKeepPlan: () => ({
+    mutate: mocks.keep,
+    isPending: false,
+    isError: false,
   }),
   useOpenBillingPortal: () => ({
     mutate: mocks.portal,
@@ -51,6 +63,7 @@ const free: AccountPlanResponse = {
   overLimitDeletesAt: null,
   freeClipLimit: 100,
   overLimitGraceDays: 14,
+  canChangePlan: false,
 };
 
 const subscription = (
@@ -63,6 +76,10 @@ const subscription = (
   cancelAtPeriodEnd: false,
   cancelAt: null,
   endedAt: null,
+  lookupKey: "plus_monthly",
+  scheduledTier: null,
+  scheduledInterval: null,
+  scheduledAt: null,
   ...overrides,
 });
 
@@ -103,6 +120,12 @@ const offers: PlanOffer[] = [
     newClipLimit: 10000,
     hasTranscripts: true,
     prices: [
+      {
+        lookupKey: "pro_monthly",
+        interval: "month",
+        unitAmount: 800,
+        currency: "gbp",
+      },
       {
         lookupKey: "pro_yearly",
         interval: "year",
@@ -293,5 +316,89 @@ describe("PlanSettings", () => {
     mocks.plan = { ...free, billingEnabled: false };
     render(<PlanSettings billingReturn={undefined} />);
     expect(screen.queryByRole("button", { name: /Upgrade/ })).toBeNull();
+  });
+
+  it("lets a subscriber upgrade from the cards, confirmed at Stripe", () => {
+    mocks.plan = {
+      ...free,
+      tier: "plus",
+      clipLimit: 1000,
+      canManageBilling: true,
+      canChangePlan: true,
+      subscription: subscription({}),
+    };
+    mocks.offers = offers;
+    render(<PlanSettings billingReturn={undefined} />);
+
+    // Their own period is shown first, with their plan marked.
+    expect(screen.getByText("Current plan")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Upgrade to Pro" }));
+    expect(mocks.changePlan).toHaveBeenCalledWith("pro_monthly");
+    fireEvent.click(screen.getByRole("button", { name: "Yearly" }));
+    fireEvent.click(screen.getByRole("button", { name: "Switch to yearly" }));
+    expect(mocks.changePlan).toHaveBeenLastCalledWith("plus_yearly");
+    expect(mocks.checkout).not.toHaveBeenCalled();
+  });
+
+  it("confirms a downgrade first, with when it happens and the clips it costs", () => {
+    mocks.plan = {
+      ...free,
+      tier: "pro",
+      clipCount: 1820,
+      clipLimit: 5000,
+      canManageBilling: true,
+      canChangePlan: true,
+      subscription: subscription({
+        tier: "pro",
+        interval: "year",
+        lookupKey: "pro_yearly",
+        currentPeriodEnd: new Date("2027-03-02T12:00:00Z"),
+      }),
+    };
+    mocks.offers = offers;
+    render(<PlanSettings billingReturn={undefined} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Plus" }));
+    expect(mocks.changePlan).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/Switch to Plus \(yearly\) on .*2027\?/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/820 clips will then be over its limit of 1,000/),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Switch on / }));
+    expect(mocks.changePlan.mock.calls[0][0]).toBe("plus_yearly");
+  });
+
+  it("shows a downgrade waiting for the period's end, and lets them keep their plan", () => {
+    mocks.plan = {
+      ...free,
+      tier: "pro",
+      clipCount: 1820,
+      clipLimit: 5000,
+      canManageBilling: true,
+      canChangePlan: true,
+      subscription: subscription({
+        tier: "pro",
+        lookupKey: "pro_monthly",
+        scheduledTier: "plus",
+        scheduledInterval: "month",
+        scheduledAt: new Date("2026-11-24T12:00:00Z"),
+      }),
+    };
+    mocks.offers = offers;
+    render(<PlanSettings billingReturn={undefined} />);
+
+    expect(
+      screen.getByText(
+        /Switches to Plus \(monthly\) on .*You keep Pro until then\./,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/820 clips will be over its limit of 1,000\./),
+    ).toBeTruthy();
+    expect(screen.getByText(/^From /)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Keep Pro" }));
+    expect(mocks.keep).toHaveBeenCalled();
   });
 });

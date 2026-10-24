@@ -74,6 +74,7 @@ export * from "./MultipartUploadInfo";
 export * from "./OverLimitClip";
 export * from "./OverLimitResponse";
 export * from "./PagedClipsResponse";
+export * from "./PlanChangeResponse";
 export * from "./PlanOffer";
 export * from "./PlanOfferPrice";
 export * from "./PlanSubscription";
