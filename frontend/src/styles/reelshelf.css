@@ -14,6 +14,8 @@
   --fill: #1f6b45;
   --fill-ink: #ffffff;
   --danger: oklch(0.52 0.17 25);
+  /* Nearly full, as opposed to --danger's over the limit. */
+  --warning: oklch(0.7 0.15 70);
   /* Base for shadows and image scrims, mixed with transparent at the point of use. */
   --shadow: #14301f;
   --scrim: #06100b;
@@ -57,6 +59,7 @@
   --fill: #2f7d52;
   --fill-ink: #ffffff;
   --danger: oklch(0.72 0.15 25);
+  --warning: oklch(0.8 0.14 75);
   --shadow: #000000;
   --scrim: #06100b;
   --case-back: #0c1813;
@@ -4493,7 +4496,15 @@ html:has(.rs-library-route) {
 }
 
 .rs-storage-meter.near-limit .rs-storage-meter-fill {
+  background: var(--warning);
+}
+
+.rs-storage-meter.over-limit .rs-storage-meter-fill {
   background: var(--danger);
+}
+
+.rs-storage-meter.over-limit .rs-storage-meter-label {
+  color: var(--danger);
 }
 
 .rs-storage-meter.compact {
@@ -7821,6 +7832,12 @@ html:has(.rs-library-route) {
 
 .rs-plan-card-name {
   font-weight: 700;
+}
+
+/* The clips a plan keeps is what sets the plans apart, so it leads the card. */
+.rs-plan-card-clips {
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .rs-plan-card-price {

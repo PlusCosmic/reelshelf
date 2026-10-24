@@ -92,10 +92,9 @@ describe("PlanSettings", () => {
 
     expect(screen.getByText("37 of 100 clips · Free")).toBeTruthy();
     expect(
-      screen.getByText(
-        "Clips up to 1 min · 12 of 200 new clips in the last 30 days",
-      ),
+      screen.getByText("Clips up to 1 min", { selector: ".rs-plan-limits" }),
     ).toBeTruthy();
+    expect(screen.getByText("£0 / year")).toBeTruthy();
     expect(screen.getByText("Current plan")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Upgrade to Plus" }));
@@ -169,6 +168,10 @@ describe("PlanSettings", () => {
     render(<PlanSettings billingReturn={undefined} />);
 
     expect(screen.getByText(/didn't go through/)).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Update payment method" }),
+    );
+    expect(mocks.portal).toHaveBeenCalled();
   });
 
   it("offers nothing to an unlimited account or while billing is off", () => {

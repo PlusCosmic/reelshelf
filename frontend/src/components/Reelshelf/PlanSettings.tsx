@@ -27,6 +27,9 @@ const openStatuses = new Set([
   "paused",
 ]);
 
+/** Statuses where a payment failed, so the way back is updating the card in the Customer Portal. */
+const paymentProblemStatuses = new Set(["past_due", "unpaid", "paused"]);
+
 /** After Checkout, Stripe's webhook updates the plan within seconds; poll for that long. */
 const pollAfterCheckoutMs = 30_000;
 
@@ -70,6 +73,8 @@ export function PlanSettings({
   const subscription = current.subscription;
   const hasOpenSubscription =
     subscription !== null && openStatuses.has(subscription.status);
+  const paymentProblem =
+    subscription !== null && paymentProblemStatuses.has(subscription.status);
   const canUpgrade =
     current.billingEnabled &&
     current.tier !== "unlimited" &&
@@ -91,19 +96,29 @@ export function PlanSettings({
       ) : null}
 
       <PlanMeter plan={current} />
-      <p className="rs-plan-limits">{describeLimits(current)}</p>
+      {current.tier !== "unlimited" ? (
+        <p className="rs-plan-limits">
+          {current.maxClipSeconds !== null
+            ? `Clips up to ${formatClipLength(current.maxClipSeconds)}`
+            : "Clips of any length"}
+        </p>
+      ) : null}
       <SubscriptionStatus plan={current} />
       <OverLimitNotice plan={current} />
 
       {current.canManageBilling ? (
         <div className="rs-email-actions">
           <button
-            className="rs-secondary"
+            className={paymentProblem ? "rs-primary" : "rs-secondary"}
             type="button"
             disabled={portal.isPending}
             onClick={() => portal.mutate()}
           >
-            {hasOpenSubscription ? "Manage billing" : "Billing history"}
+            {paymentProblem
+              ? "Update payment method"
+              : hasOpenSubscription
+                ? "Manage billing"
+                : "Billing history"}
           </button>
         </div>
       ) : null}
@@ -135,21 +150,6 @@ function OverLimitNotice({ plan }: { plan: AccountPlan }) {
       <Link to="/plan">Download them or pick which to keep</Link>.
     </p>
   );
-}
-
-function describeLimits(plan: AccountPlan): string {
-  const parts: string[] = [];
-  parts.push(
-    plan.maxClipSeconds !== null
-      ? `Clips up to ${formatClipLength(plan.maxClipSeconds)}`
-      : "Clips of any length",
-  );
-  if (plan.newClipLimit !== null) {
-    parts.push(
-      `${plan.newClipsLast30Days.toLocaleString()} of ${plan.newClipLimit.toLocaleString()} new clips in the last 30 days`,
-    );
-  }
-  return parts.join(" · ");
 }
 
 function formatDate(value: Date | null | undefined): string | null {
@@ -194,16 +194,16 @@ function SubscriptionStatus({ plan }: { plan: AccountPlan }) {
     case "past_due":
       return (
         <p className="rs-linked-notice" data-tone="error">
-          Your last payment for {tier} didn't go through. Update your card in
-          Manage billing to keep it.
+          Your last payment for {tier} didn't go through. Update your payment
+          method to keep it.
         </p>
       );
     case "unpaid":
     case "paused":
       return (
         <p className="rs-linked-notice" data-tone="error">
-          {tier} is on hold because payment failed. Update your card in Manage
-          billing to get it back.
+          {tier} is on hold because a payment failed, so your account has Free's
+          limits for now. Update your payment method to get {tier} back.
         </p>
       );
     default: {
@@ -228,6 +228,8 @@ function PlanOffers({
   const checkout = useStartCheckout();
   const paid = offers.filter((offer) => offer.prices.length > 0);
   if (paid.length === 0) return null;
+  // Free is priced in the same currency as the paid plans beside it.
+  const currency = paid[0].prices[0].currency;
 
   const error =
     checkout.error instanceof ApiError
@@ -275,17 +277,17 @@ function PlanOffers({
               </div>
               <div className="rs-plan-card-price">
                 {offer.tier === "free"
-                  ? "Free"
+                  ? `${formatPrice({ lookupKey: "", interval, unitAmount: 0, currency })} / ${interval}`
                   : price
                     ? `${formatPrice(price)} / ${interval}`
                     : "Not available"}
               </div>
+              <div className="rs-plan-card-clips">
+                {offer.clipLimit !== null
+                  ? `${offer.clipLimit.toLocaleString()} clips`
+                  : "Unlimited clips"}
+              </div>
               <ul className="rs-plan-card-features">
-                <li>
-                  {offer.clipLimit !== null
-                    ? `Keep up to ${offer.clipLimit.toLocaleString()} clips`
-                    : "Unlimited clips"}
-                </li>
                 <li>
                   {offer.maxClipSeconds !== null
                     ? `Clips up to ${formatClipLength(offer.maxClipSeconds)}`

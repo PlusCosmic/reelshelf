@@ -14,7 +14,10 @@ export function PlanMeter({
   const limit = plan.clipLimit ?? null;
   const fraction =
     limit !== null && limit > 0 ? Math.min(1, plan.clipCount / limit) : 0;
-  const nearLimit = limit !== null && (limit === 0 || fraction >= 0.9);
+  // Over the limit (clips will be deleted) and nearly full (new clips soon refused) are told apart.
+  const overLimit = limit !== null && plan.clipCount > limit;
+  const nearLimit =
+    limit !== null && !overLimit && (limit === 0 || fraction >= 0.9);
   const clips = plan.clipCount.toLocaleString();
   const label =
     limit !== null
@@ -25,7 +28,7 @@ export function PlanMeter({
     <div
       className={`rs-storage-meter${compact ? " compact" : ""}${
         nearLimit ? " near-limit" : ""
-      }`}
+      }${overLimit ? " over-limit" : ""}`}
       role="meter"
       aria-label="Clips kept"
       aria-valuemin={0}
