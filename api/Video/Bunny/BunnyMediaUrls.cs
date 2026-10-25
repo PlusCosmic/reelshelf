@@ -1,8 +1,7 @@
 using Reelshelf.Core;
 using Reelshelf.Core.Models;
-using Reelshelf.Video;
 
-namespace Reelshelf.Bunny;
+namespace Reelshelf.Video.Bunny;
 
 /// <summary>
 /// Media URLs for a video on Bunny Stream, served from its pull zone (<c>BunnyCdnBaseUrl</c>). Bunny keeps one

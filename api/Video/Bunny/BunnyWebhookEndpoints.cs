@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using Reelshelf.Bunny.Models;
-using Reelshelf.Video;
+using Reelshelf.Video.Bunny.Models;
 
-namespace Reelshelf.Bunny;
+namespace Reelshelf.Video.Bunny;
 
 public static class BunnyWebhookEndpoints
 {

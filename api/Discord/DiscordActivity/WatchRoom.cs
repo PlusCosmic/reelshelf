@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Reelshelf.Core;
 using Reelshelf.Video;
 
-namespace Reelshelf.DiscordActivity;
+namespace Reelshelf.Discord.DiscordActivity;
 
 /// <summary>One hub connection in a room. A person with the Activity open twice (desktop and phone) has two.</summary>
 public sealed record RoomConnection(

@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Reelshelf.Bunny;
 using Reelshelf.Core;
 using Reelshelf.Core.Models;
 using Reelshelf.Video;
+using Reelshelf.Video.Bunny;
 using Reelshelf.Video.R2;
 using Xunit;
 

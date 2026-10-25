@@ -5,10 +5,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Reelshelf.ApexLegends.LegendDetection;
-using Reelshelf.Bunny;
 using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
 using Reelshelf.Video;
+using Reelshelf.Video.Bunny;
 using Reelshelf.Video.Transcoding;
 using Xunit;
 

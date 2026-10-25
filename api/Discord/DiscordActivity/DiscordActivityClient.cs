@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-namespace Reelshelf.DiscordActivity;
+namespace Reelshelf.Discord.DiscordActivity;
 
 /// <summary>
 /// The Discord calls the Activity needs: exchanging the Embedded App SDK's authorization code, reading who the

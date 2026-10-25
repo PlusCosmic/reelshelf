@@ -1,9 +1,8 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Reelshelf.Video;
 
-namespace Reelshelf.Bunny;
+namespace Reelshelf.Video.Bunny;
 
 /// <summary>
 /// Bunny Stream's presigned TUS upload: the browser uploads straight to Bunny, authorised by a short-lived signature
