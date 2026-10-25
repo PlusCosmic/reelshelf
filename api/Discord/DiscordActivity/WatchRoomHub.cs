@@ -4,7 +4,7 @@ using Reelshelf.Core;
 using Reelshelf.Games;
 using Reelshelf.Video;
 
-namespace Reelshelf.DiscordActivity;
+namespace Reelshelf.Discord.DiscordActivity;
 
 /// <summary>
 /// The watch room's live connection (ADR-0006). A connection joins the room named in its room token, never one

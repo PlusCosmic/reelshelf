@@ -1,4 +1,4 @@
-namespace Reelshelf.Bunny.Models;
+namespace Reelshelf.Video.Bunny.Models;
 
 /// <summary>
 /// Status codes in the body of Bunny's video progress webhook. Not the status on Bunny's video object, which is

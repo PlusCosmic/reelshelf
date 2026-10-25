@@ -3,7 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
-using Reelshelf.DiscordActivity;
+using Reelshelf.Discord.DiscordActivity;
 using Reelshelf.Users;
 using Xunit;
 

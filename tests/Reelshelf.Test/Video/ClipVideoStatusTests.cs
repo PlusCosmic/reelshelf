@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Dapper;
 using Npgsql;
-using Reelshelf.Bunny;
 using Reelshelf.Core;
 using Reelshelf.Video;
+using Reelshelf.Video.Bunny;
 using Xunit;
 
 namespace Reelshelf.Test.Video;

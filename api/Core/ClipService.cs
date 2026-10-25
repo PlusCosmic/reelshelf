@@ -1,7 +1,6 @@
 using Npgsql;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.WebUtilities;
-using Reelshelf.Bunny.Models;
 using Reelshelf.Core.Models;
 using Reelshelf.Users;
 using Reelshelf.Exceptions;

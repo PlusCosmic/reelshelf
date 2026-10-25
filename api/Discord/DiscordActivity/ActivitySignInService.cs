@@ -1,6 +1,6 @@
 using Reelshelf.Users;
 
-namespace Reelshelf.DiscordActivity;
+namespace Reelshelf.Discord.DiscordActivity;
 
 public enum ActivitySignInOutcome
 {

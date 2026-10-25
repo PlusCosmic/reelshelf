@@ -1,6 +1,6 @@
-using Reelshelf.Bunny;
-using Reelshelf.Bunny.Models;
 using Reelshelf.Video;
+using Reelshelf.Video.Bunny;
+using Reelshelf.Video.Bunny.Models;
 using Xunit;
 
 namespace Reelshelf.Test.Bunny;

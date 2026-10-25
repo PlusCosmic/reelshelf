@@ -1,9 +1,8 @@
-using Reelshelf.Bunny.Models;
 using Reelshelf.Core;
 using Reelshelf.Games;
-using Reelshelf.Video;
+using Reelshelf.Video.Bunny.Models;
 
-namespace Reelshelf.Bunny;
+namespace Reelshelf.Video.Bunny;
 
 /// <summary>
 /// Bunny Stream as the clip video host. Videos are filed in one Bunny collection per owner and game category, kept

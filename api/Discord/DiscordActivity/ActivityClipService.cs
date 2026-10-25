@@ -2,7 +2,7 @@ using Reelshelf.Core;
 using Reelshelf.Games;
 using Reelshelf.Video;
 
-namespace Reelshelf.DiscordActivity;
+namespace Reelshelf.Discord.DiscordActivity;
 
 /// <summary>
 /// One of a room member's own clips, as the Activity's picker shows it. The Activity builds the thumbnail URL from

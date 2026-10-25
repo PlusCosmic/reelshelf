@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Reelshelf.Bunny;
 using Reelshelf.Video;
+using Reelshelf.Video.Bunny;
 using Xunit;
 
 namespace Reelshelf.Test.Bunny;

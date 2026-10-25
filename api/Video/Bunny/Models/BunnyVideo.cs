@@ -1,4 +1,4 @@
-namespace Reelshelf.Bunny.Models;
+namespace Reelshelf.Video.Bunny.Models;
 
 public record BunnyVideo(
     int VideoLibraryId,

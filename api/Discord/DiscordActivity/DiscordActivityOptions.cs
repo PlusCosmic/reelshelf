@@ -1,4 +1,4 @@
-namespace Reelshelf.DiscordActivity;
+namespace Reelshelf.Discord.DiscordActivity;
 
 public static class DiscordActivityOptions
 {

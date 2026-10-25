@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 
-namespace Reelshelf.DiscordActivity;
+namespace Reelshelf.Discord.DiscordActivity;
 
 /// <summary>Who a room token was issued to: one Discord user in one Activity instance, with how Discord names them.</summary>
 public sealed record RoomParticipant(string DiscordUserId, string InstanceId, string Name, string? AvatarUrl);

@@ -1,4 +1,4 @@
-using Reelshelf.DiscordActivity;
+using Reelshelf.Discord.DiscordActivity;
 using Xunit;
 
 namespace Reelshelf.Test.DiscordActivity;

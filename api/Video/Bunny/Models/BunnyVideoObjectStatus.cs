@@ -1,4 +1,4 @@
-namespace Reelshelf.Bunny.Models;
+namespace Reelshelf.Video.Bunny.Models;
 
 /// <summary>
 /// The <c>status</c> on Bunny's video object, which is what <see cref="BunnyVideo.Status"/> carries and what is
