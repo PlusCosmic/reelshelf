@@ -50,35 +50,6 @@ public record AuthenticatedUser(
     }
 
     /// <summary>
-    /// Checks if the user has any of the specified permissions.
-    /// </summary>
-    public bool HasAnyPermission(params string[] permissions)
-    {
-        return permissions.Any(HasPermission);
-    }
-
-    /// <summary>
-    /// Checks if the user has all of the specified permissions.
-    /// </summary>
-    public bool HasAllPermissions(params string[] permissions)
-    {
-        return permissions.All(HasPermission);
-    }
-
-    /// <summary>
-    /// Gets all effective permissions for this user (role defaults + additional).
-    /// </summary>
-    public HashSet<string> GetEffectivePermissions()
-    {
-        HashSet<string> effective = Permissions.GetRolePermissions(Role);
-        foreach (string permission in AdditionalPermissions)
-        {
-            effective.Add(permission);
-        }
-        return effective;
-    }
-
-    /// <summary>
     /// Binds the AuthenticatedUser from HttpContext.Items.
     /// This is called automatically by minimal APIs when AuthenticatedUser is used as a parameter.
     /// The AuthenticatedUserMiddleware populates this before binding occurs.
