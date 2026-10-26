@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Reelshelf.Users;
 
 namespace Reelshelf.Auth;
@@ -37,8 +39,15 @@ public class AuthenticatedUserMiddleware(RequestDelegate next)
         UserStatements userStatements = context.RequestServices.GetRequiredService<UserStatements>();
         UserStatements.UserRow? dbUser = await userStatements.GetUserById(userId);
 
-        // A suspended account is treated as signed out, so a session from before the suspension stops working at once.
-        if (dbUser is not null && dbUser.SuspendedAt is null)
+        // A suspended account is treated as signed out, so a session from before the suspension stops working at once,
+        // and its cookie is dropped so the browser is plainly signed out from the next request.
+        if (dbUser?.SuspendedAt is not null)
+        {
+            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            dbUser = null;
+        }
+
+        if (dbUser is not null)
         {
             List<UserIdentityRef> identities = (await userStatements.GetIdentitiesForUser(dbUser.Id))
                 .Select(identity => identity.ToRef())
