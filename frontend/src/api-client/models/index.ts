@@ -51,6 +51,7 @@ export * from "./DetectedTeammate";
 export * from "./DevLoginRequest";
 export * from "./DevLoginResponse";
 export * from "./EnsureGamingSessionPlaylistRequest";
+export * from "./FeatureFlagsResponse";
 export * from "./GameCategoryResponse";
 export * from "./GameSearchResult";
 export * from "./ImportTwitchClipRequest";

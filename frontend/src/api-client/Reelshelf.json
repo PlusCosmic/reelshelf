@@ -2635,6 +2635,26 @@
         }
       }
     },
+    "/api/me/features": {
+      "get": {
+        "tags": [
+          "UserEndpoints"
+        ],
+        "operationId": "GetMyFeatures",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/me/identities": {
       "get": {
         "tags": [
@@ -5100,6 +5120,20 @@
           },
           "timezone": {
             "type": "string"
+          }
+        }
+      },
+      "FeatureFlagsResponse": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
