@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
 using Microsoft.Extensions.Options;
 using Reelshelf.Billing;
+using Reelshelf.FeatureFlags;
 using Reelshelf.Plans;
 
 namespace Reelshelf.Users;
@@ -19,6 +20,7 @@ public static class UserEndpoints
         meGroup.MapGet("/", GetMe).WithName("GetMe");
         meGroup.MapPut("/email", SetEmail).WithName("SetMyEmail");
         meGroup.MapGet("/plan", GetPlan).WithName("GetMyPlan");
+        meGroup.MapGet("/features", GetFeatures).WithName("GetMyFeatures");
         meGroup.MapGet("/identities", GetLinkedIdentities).WithName("GetMyLinkedIdentities");
         meGroup.MapDelete("/identities/{provider}", UnlinkIdentity).WithName("UnlinkMyIdentity");
         meGroup.MapPost("/deletion", DeleteAccount).WithName("DeleteMyAccount");
@@ -81,6 +83,15 @@ public static class UserEndpoints
         return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, hasCustomer,
             overLimit.OverLimitSince + options.GracePeriod, options.Enforce ? options.GracePeriod : null,
             context.RequestServices.GetService<BillingOptions>()?.CanChangePlan ?? false, user.GrantedTier));
+    }
+
+    /// <summary>The feature flags on for the caller (ADR-0009), which the frontend reads to show what is being rolled out.</summary>
+    private static async Task<Ok<FeatureFlagsResponse>> GetFeatures(
+        AuthenticatedUser user,
+        FeatureFlagService featureFlags,
+        CancellationToken cancellationToken)
+    {
+        return TypedResults.Ok(new FeatureFlagsResponse(await featureFlags.GetEnabledAsync(user, cancellationToken)));
     }
 
     private static async Task<Ok<List<LinkedIdentity>>> GetLinkedIdentities(
