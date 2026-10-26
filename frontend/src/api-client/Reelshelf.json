@@ -785,6 +785,42 @@
         }
       }
     },
+    "/api/shared-clips/{token}/reports": {
+      "post": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "ReportSharedClip",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/user/{userId}": {
       "get": {
         "tags": [
@@ -904,6 +940,120 @@
               "application/json": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports": {
+      "get": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "ListContentReports",
+        "parameters": [
+          {
+            "name": "resolved",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminContentReport"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports/{reportId}/take-down": {
+      "post": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "TakeDownContentReport",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveContentReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports/{reportId}/dismiss": {
+      "post": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "DismissContentReport",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveContentReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentReport"
                 }
               }
             }
@@ -3898,6 +4048,110 @@
           }
         }
       },
+      "AdminContentReport": {
+        "required": [
+          "id",
+          "reason",
+          "details",
+          "reporter_email",
+          "status",
+          "created_at",
+          "resolved_at",
+          "resolved_by_name",
+          "resolution_note",
+          "clip_id",
+          "clip_title",
+          "owner_id",
+          "owner_name",
+          "share_url",
+          "sharing_blocked",
+          "open_reports_on_clip"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "reporter_email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolved_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "resolved_by_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "resolution_note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clip_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "clip_title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "owner_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "owner_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "share_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sharing_blocked": {
+            "type": "boolean"
+          },
+          "open_reports_on_clip": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "BackfillClipSummaryRequest": {
         "required": [
           "reasoning_effort"
@@ -4880,6 +5134,31 @@
             "items": {
               "$ref": "#/components/schemas/CompletedUploadPart"
             }
+          }
+        }
+      },
+      "ContentReportRequest": {
+        "required": [
+          "reason",
+          "details",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "details": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -6981,6 +7260,20 @@
           }
         }
       },
+      "ResolveContentReportRequest": {
+        "required": [
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "RoomTokenResponse": {
         "required": [
           "room_token",
@@ -7449,6 +7742,9 @@
     },
     {
       "name": "SharedClipsEndpoints"
+    },
+    {
+      "name": "ContentReportEndpoints"
     },
     {
       "name": "UserEndpoints"

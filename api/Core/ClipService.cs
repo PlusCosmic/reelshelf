@@ -449,6 +449,11 @@ public class ClipService(
             throw new ConflictException("This clip is still processing and cannot be shared yet");
         }
 
+        if (await clipsStatements.IsSharingBlocked(clipId))
+        {
+            throw new ForbiddenException("This clip was taken down after a report and can't be shared");
+        }
+
         ClipsStatements.ClipShareRow? existing = await clipsStatements.GetActiveShareByClipId(clipId);
         if (existing != null)
         {

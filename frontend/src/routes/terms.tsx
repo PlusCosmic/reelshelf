@@ -12,7 +12,7 @@ export const Route = createFileRoute("/terms")({
 
 function TermsRoute() {
   return (
-    <LegalPage title="Terms of service" updated="24 October 2026">
+    <LegalPage title="Terms of service" updated="26 October 2026">
       <p>
         Reelshelf is a place to keep, sort and share your gaming clips. It is
         run by {legalOperator} as a small, independent project. By signing in or
@@ -58,6 +58,18 @@ function TermsRoute() {
         </li>
       </ul>
       <p>We may remove content or suspend accounts that break these rules.</p>
+
+      <h2>Reporting a clip</h2>
+      <p>
+        Anyone watching a shared clip can report it from its page, or by
+        emailing <LegalContact />. We review reports and, if a clip breaks these
+        rules, take it down: its share links stop working, it can't be shared
+        again, and we email its owner to say which rule it broke. If you think
+        we got it wrong, email us and tell us why. A clip reported for child
+        sexual abuse or terrorism stops being shared as soon as it's reported,
+        until we've reviewed it. We report child sexual abuse material to the
+        relevant authorities and keep what the law requires us to keep for them.
+      </p>
 
       <h2>Plans and limits</h2>
       <p>

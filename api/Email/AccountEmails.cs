@@ -121,6 +121,37 @@ public static class AccountEmails
             footer: "Sent by Reelshelf."));
     }
 
+    /// <summary>To an Admin: a shared clip was reported for something serious, and its link is hidden until reviewed.</summary>
+    public static EmailMessage UrgentContentReport(string to, string reason, string reviewUrl)
+    {
+        string subject = "A shared clip was reported and needs review";
+        string text =
+            $"A shared clip was reported for {reason}. Its share link is hidden until you review it: {reviewUrl}\n";
+
+        return new EmailMessage(to, subject, text, Wrap(subject,
+            $"<p>A shared clip was reported for <strong>{Encode(reason)}</strong>. Its share link is hidden until you " +
+            $"<a href=\"{Encode(reviewUrl)}\">review it</a>.</p>",
+            footer: "Sent by Reelshelf to its admins."));
+    }
+
+    /// <summary>To the owner: what was taken down and why, and how to dispute it.</summary>
+    public static EmailMessage ClipTakenDown(string to, string clipTitle, string reason, string contactEmail)
+    {
+        string subject = "One of your Reelshelf clips can no longer be shared";
+        string text =
+            $"We reviewed a report about your clip \"{clipTitle}\" and found it breaks our terms of service ({reason}). " +
+            "Its share links have stopped working and it can't be shared again. It is still in your library.\n\n" +
+            $"If you think we got this wrong, email {contactEmail} and tell us why.\n";
+
+        return new EmailMessage(to, subject, text, Wrap(subject,
+            $"<p>We reviewed a report about your clip <strong>{Encode(clipTitle)}</strong> and found it breaks our terms " +
+            $"of service ({Encode(reason)}). Its share links have stopped working and it can't be shared again. " +
+            "It is still in your library.</p>" +
+            $"<p>If you think we got this wrong, email <a href=\"mailto:{Encode(contactEmail)}\">{Encode(contactEmail)}</a> " +
+            "and tell us why.</p>",
+            footer: "Sent by Reelshelf."));
+    }
+
     private static string Wrap(string title, string body,
         string footer = "Sent by Reelshelf. Change or remove your address in Settings.")
     {

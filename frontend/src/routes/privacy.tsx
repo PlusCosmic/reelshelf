@@ -45,6 +45,13 @@ function PrivacyRoute() {
           it and why.
         </li>
         <li>
+          <strong>If you report a shared clip:</strong> the reason you picked,
+          anything you wrote, and your email address if you gave it, so we can
+          tell you the outcome or ask for more. We don't link the report to your
+          account. The clip's owner is told a clip was taken down and why, never
+          who reported it.
+        </li>
+        <li>
           <strong>Usage within Reelshelf:</strong> which clips you've watched,
           so we can mark them as seen, and when you added each clip in the last
           30 days, for your plan's limit on new clips (kept even if you delete
@@ -131,7 +138,8 @@ function PrivacyRoute() {
         </li>
       </ul>
       <p>
-        We share data only to run Reelshelf, or when the law requires us to.
+        We share data only to run Reelshelf, or when the law requires us to,
+        such as reporting child sexual abuse material to the authorities.
       </p>
 
       <h2>Where your data is stored</h2>
@@ -153,7 +161,8 @@ function PrivacyRoute() {
         in a Discord watch room when you play a clip there. Watch rooms aren't
         saved; they end when everyone leaves. Clip video addresses aren't
         secret-signed, so treat clips as unlisted rather than private. A share
-        link keeps working until you delete the clip.
+        link keeps working until you delete the clip, or until we take the clip
+        down after a report.
       </p>
 
       <h2>How long we keep it</h2>
@@ -174,8 +183,11 @@ function PrivacyRoute() {
         your account has more clips than its plan keeps, for example after a
         paid plan ends, the clips over the limit are deleted 14 days later, and
         a download of them is kept for 28 days after that, then deleted.
-        Downloads you ask for are kept for 28 days too. Backups and logs age out
-        on their own schedule.
+        Downloads you ask for are kept for 28 days too. Reports of shared clips,
+        and what we decided, are kept as a record of how we dealt with them,
+        even after the clip is deleted; deleting your account removes your name
+        from reports about your clips. Backups and logs age out on their own
+        schedule.
       </p>
 
       <h2>Your rights</h2>

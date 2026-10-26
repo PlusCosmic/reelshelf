@@ -7,6 +7,7 @@ export * from "./BunnyWebhookEndpointsApi";
 export * from "./ClipSummaryEndpointsApi";
 export * from "./ClipTranscriptionEndpointsApi";
 export * from "./ClipsEndpointsApi";
+export * from "./ContentReportEndpointsApi";
 export * from "./DiscordActivityEndpointsApi";
 export * from "./FFmpegEndpointsApi";
 export * from "./GameCategoryEndpointsApi";
