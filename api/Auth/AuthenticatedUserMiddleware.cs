@@ -11,29 +11,13 @@ namespace Reelshelf.Auth;
 /// </summary>
 public class AuthenticatedUserMiddleware(RequestDelegate next, WhitelistService whitelistService)
 {
-    private readonly HashSet<string> _bypassPaths = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "/health",
-        "/auth",
-        "/webhooks"
-    };
-
-    /// <summary>
-    /// Configures additional bypass paths for user resolution.
-    /// </summary>
-    public void AddBypassPaths(params string[] paths)
-    {
-        foreach (string path in paths)
-        {
-            _bypassPaths.Add(path);
-        }
-    }
+    private static readonly string[] BypassPaths = ["/health", "/auth"];
 
     public async Task InvokeAsync(HttpContext context)
     {
         // Skip user resolution for bypass paths
         string path = context.Request.Path.Value ?? "";
-        if (_bypassPaths.Any(bp => path.StartsWith(bp, StringComparison.OrdinalIgnoreCase)))
+        if (BypassPaths.Any(bp => path.StartsWith(bp, StringComparison.OrdinalIgnoreCase)))
         {
             await next(context);
             return;

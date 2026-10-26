@@ -15,7 +15,6 @@ using Reelshelf.Billing;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
-using Reelshelf.Discord;
 using Reelshelf.Discord.DiscordActivity;
 using Reelshelf.Email;
 using Reelshelf.Users;
@@ -242,7 +241,6 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddSingleton<WhitelistService>();
         builder.Services.AddScoped<AccountPlanService>();
         builder.AddPlanEnforcement();
-        builder.Services.AddSingleton<DiscordRoleMapping>();
         builder.Services.AddSingleton<ProviderTokenProtector>();
         builder.Services.AddScoped<UserStatements>();
         builder.Services.AddScoped<IUserIdentityStore>(sp => sp.GetRequiredService<UserStatements>());

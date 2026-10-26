@@ -1,8 +1,8 @@
 namespace Reelshelf.Auth;
 
 /// <summary>
-/// Base permission definitions shared across all applications.
-/// Applications should extend this with their own domain-specific permissions.
+/// Permissions checked by <see cref="PermissionAuthorizationExtensions.RequirePermission{TBuilder}"/>.
+/// Reading needs only a signed-in account; these gate writes and the admin pages.
 /// </summary>
 public static class Permissions
 {
@@ -12,77 +12,38 @@ public static class Permissions
     public const string All = "*";
 
     // Clips permissions
-    public const string ClipsRead = "clips.read";
     public const string ClipsCreate = "clips.create";
     public const string ClipsEdit = "clips.edit";
     public const string ClipsDelete = "clips.delete";
 
     // Playlist permissions
-    public const string PlaylistsRead = "playlists.read";
     public const string PlaylistsManage = "playlists.manage";
-
-    // Links permissions
-    public const string LinksRead = "links.read";
-    public const string LinksManage = "links.manage";
 
     // Admin permissions
     public const string AdminUsers = "admin.users";
 
     /// <summary>
     /// Default permissions for each role.
-    /// Applications should call RegisterRolePermissions to add domain-specific permissions.
     /// </summary>
-    private static readonly Dictionary<UserRole, HashSet<string>> _roleDefaults = new()
+    private static readonly Dictionary<UserRole, HashSet<string>> RoleDefaults = new()
     {
-        [UserRole.Viewer] =
-        [
-            ClipsRead,
-            PlaylistsRead,
-            LinksRead
-        ],
+        [UserRole.Viewer] = [],
         [UserRole.Editor] =
         [
-            ClipsRead,
-            PlaylistsRead,
-            LinksRead,
             ClipsCreate,
             ClipsEdit,
             ClipsDelete, // Editors must be able to free room in their plan.
-            PlaylistsManage,
-            LinksManage
+            PlaylistsManage
         ],
         [UserRole.Admin] = [All]
     };
-
-    /// <summary>
-    /// Gets the read-only role defaults.
-    /// </summary>
-    public static IReadOnlyDictionary<UserRole, HashSet<string>> RoleDefaults => _roleDefaults;
-
-    /// <summary>
-    /// Registers additional permissions for a role.
-    /// Call this at application startup to add domain-specific permissions.
-    /// </summary>
-    public static void RegisterRolePermissions(UserRole role, params string[] permissions)
-    {
-        if (!_roleDefaults.TryGetValue(role, out var existing))
-        {
-            existing = [];
-            _roleDefaults[role] = existing;
-        }
-
-        foreach (string permission in permissions)
-        {
-            existing.Add(permission);
-        }
-    }
 
     /// <summary>
     /// Gets the default permissions for a role.
     /// </summary>
     public static HashSet<string> GetRolePermissions(UserRole role)
     {
-        return _roleDefaults.TryGetValue(role, out var permissions)
+        return RoleDefaults.TryGetValue(role, out var permissions)
             ? new HashSet<string>(permissions)
             : [];
     }

@@ -438,25 +438,6 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         await connection.ExecuteAsync(sql, new { userId, role, roleFromWhitelist });
     }
 
-    public async Task GrantPermission(Guid userId, string permission, Guid? grantedBy = null)
-    {
-        const string sql = @"
-            INSERT INTO user_additional_permission (user_id, permission, granted_by)
-            VALUES (@userId, @permission, @grantedBy)
-            ON CONFLICT (user_id, permission) DO NOTHING";
-
-        await connection.ExecuteAsync(sql, new { userId, permission, grantedBy });
-    }
-
-    public async Task RevokePermission(Guid userId, string permission)
-    {
-        const string sql = @"
-            DELETE FROM user_additional_permission
-            WHERE user_id = @userId AND permission = @permission";
-
-        await connection.ExecuteAsync(sql, new { userId, permission });
-    }
-
     public class UserRow
     {
         public Guid Id { get; set; }
