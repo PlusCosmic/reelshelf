@@ -1,6 +1,6 @@
 # ADR-0009: Feature flags through PostHog, evaluated on the API
 
-**Status:** Proposed (2026-10-26). Builds on ADR-0008 (roles and granted tiers in the database), which ships first.
+**Status:** Accepted (2026-10-26). Builds on ADR-0008 (roles and granted tiers in the database).
 
 ## Context
 
