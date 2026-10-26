@@ -36,8 +36,9 @@ An account is known to PostHog only by its `app_user.id`. Email, username and pr
   - `tier`: `free`, `plus`, `pro` or `unlimited`, from `AccountTierService`;
   - `role`: the account's **Role**, so admins can be targeted;
   - `signed_up_at`.
-  
+
   With those, every rollout is set up in PostHog's UI: named accounts, `role = Admin`, `tier in (pro, unlimited)`, a percentage of everyone, or off.
+
 - **Local evaluation.** The SDK downloads the flag definitions and evaluates them in-process, so a flag check makes no network call. Every property a flag's conditions use must be passed, or the SDK can't decide locally. The SDK's `$feature_flag_called` events are turned off, so phase 1 sends PostHog nothing about individual accounts.
 - **Without a request.** Background services (summaries, the over-limit sweep, the transcode claim) call a small `FeatureFlags` service that builds the same properties for an account id and asks the PostHog client directly.
 - **Config.** `PostHog:ProjectApiKey`, `PostHog:PersonalApiKey` (or whichever key PostHog requires for local evaluation when this is built, since it has said personal API keys for this will be deprecated) and `PostHog:HostUrl`. Without a key every flag reads as off and nothing is sent, as with Resend and Billing. The `OpenApi` environment needs no key.
@@ -54,7 +55,7 @@ An account is known to PostHog only by its `app_user.id`. Email, username and pr
    - sent through our own domain (`/ingest`, proxied to PostHog EU) so ad blockers don't drop it;
    - `person_profiles: 'identified_only'`, with cookieless mode or a consent banner, since UK and EU rules require consent for analytics cookies;
    - session replay off, or on with every input and text masked.
-   
+
    This is the step at which the policy's "no analytics scripts" sentence and its cookies section change.
 
 Phase 2 gets its own ADR when it is taken up.
