@@ -76,4 +76,3 @@ Because of this:
 - **Keep the file and copy it into the database at startup.** This is still a deploy per change and gives two sources of truth. Rejected.
 - **A generic grants table** (`account_grant(user_id, grant)` holding `unlimited`, `admin` and permission strings). It mixes tiers with permissions, which ADR-0007 keeps apart, and turns one role per account into a set the code would have to reconcile. Rejected while there are only two things to grant.
 - **Grants keyed by identity, so someone can be granted before they sign up.** This keeps the per-request identity matching the change exists to remove, for a case an admin can handle a minute after the person signs in. Rejected.
-- **Expiring grants** (`granted_tier_until`). Useful for trials, but nothing needs it yet. It can be added as a nullable column later, and the over-limit sweep would handle an expiry as it handles any lost tier.
