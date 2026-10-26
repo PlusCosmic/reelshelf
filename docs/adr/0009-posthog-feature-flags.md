@@ -1,6 +1,6 @@
 # ADR-0009: Feature flags through PostHog, evaluated on the API
 
-**Status:** Accepted (2026-10-26). Builds on ADR-0008 (roles and granted tiers in the database).
+**Status:** Accepted (2026-10-26), amended the same day for PostHog's free plan (one project, prod only). Builds on ADR-0008 (roles and granted tiers in the database).
 
 ## Context
 
@@ -28,7 +28,7 @@ The signed-out front page is the PageSpeed target and must stay off the signed-i
 PostHog provides the flags, and later product analytics.
 
 - **EU Cloud** (`eu.posthog.com`, hosted in Frankfurt). Our servers and database are in Germany. Clips are moving to Cloudflare R2, whose bucket is in eastern North America, so most of what users store will be held in the US anyway, alongside the US providers the privacy policy already lists. EU Cloud is therefore a small gain, not a principle: what PostHog holds about accounts stays in the EU, with the account records it describes, and PostHog doesn't join the list of US processors. Phase 1 sends PostHog very little (below), so the difference is small now; it grows in phase 2, which would send usage events. Speed is no reason either way: flags are evaluated in-process and events are sent in the background. The choice is made once, because a PostHog project can't be moved between regions; changing later means a new project without its history.
-- **Dev and prod are separate PostHog projects** with their own keys, as they have separate databases and buckets, so a dev flag never reaches a prod user.
+- **One PostHog project, used by prod only.** PostHog's free plan has one project, and we don't pay for more. Dev has no PostHog key, so every flag there is off unless overridden in config (below). Sharing the project with dev was rejected: dev's database is a copy of prod's, so the same account ids exist in both, and a condition meant for dev would also switch the flag on in prod unless every condition also named an environment. Dev needs to run the code behind a flag, not to test PostHog's targeting, so config overrides are enough.
 - **An account is known to PostHog only by its `app_user.id`.** Email, username and provider ids are never sent.
 
 ### Flags are for rollouts, not access
@@ -57,10 +57,12 @@ ADR-0008 settles that an account's access is its role and its tier, and that a n
   - testers: accounts granted a tier through ADR-0008 are usually friends and testers, so `granted_tier != none` is a ready-made early-access group;
   - a percentage of everyone;
   - off, as a kill switch.
-- **Changes apply on the next request.** The properties are worked out from the database on every check rather than stored at PostHog, so a role or granted tier changed at `/admin/accounts` changes which flags an account sees on its next request, as ADR-0008's own changes do. PostHog cohorts built from stored person properties are not used, because phase 1 stores none.
+- **When changes apply.** The properties are worked out from the database on every check rather than stored at PostHog, so a role or granted tier changed at `/admin/accounts` changes which flags an account sees on its next request, as ADR-0008's own changes do. A change to a flag in PostHog applies once the API next downloads the definitions, within the poll interval (below), so switching a flag off takes up to 5 minutes. PostHog cohorts built from stored person properties are not used, because phase 1 stores none.
 - **Local evaluation.** The SDK downloads the flag definitions and evaluates them in-process, so a flag check makes no network call. Every property a flag's conditions use must be passed, or the SDK can't decide locally. The SDK's `$feature_flag_called` events are turned off, so phase 1 sends PostHog nothing about individual accounts. The only account data PostHog holds is the ids an admin types into a flag's conditions.
+- **Polling every 5 minutes, to stay on the free plan.** PostHog bills each download of the definitions as 10 flag requests, and the free plan includes 1 million flag requests a month. The SDK's default 30-second poll would use about 864,000 a month for one always-running instance, so the API polls every 5 minutes (`PostHog:PollInterval`), about 86,400 a month. Only prod polls, because dev has no key. A second always-running instance with a key, or a shorter interval, needs checking against the allowance first.
+- **Config overrides.** `FeatureFlags:Overrides:<key>` (`true` or `false`) fixes a flag's value on that instance without asking PostHog. Dev, local runs and tests use it to turn on the code they are working on. Prod sets none, and an override set there would win over PostHog, so it is only for an emergency.
 - **Without a request.** Background services (summaries, the over-limit sweep, the transcode claim) call a small `FeatureFlags` service that builds the same properties for an account id, reading the role and granted tier from `app_user` and the tier from `AccountTierService.GetTier(userId)`, and asks the PostHog client directly.
-- **Config.** `PostHog:ProjectApiKey`, `PostHog:PersonalApiKey` (or whichever key PostHog requires for local evaluation when this is built, since it has said personal API keys for this will be deprecated) and `PostHog:HostUrl`. Without a key every flag reads as off and nothing is sent, as with Resend and Billing. The `OpenApi` environment needs no key.
+- **Config.** `PostHog:ProjectApiKey`, `PostHog:PersonalApiKey` (or whichever key PostHog requires for local evaluation when this is built, since it has said personal API keys for this will be deprecated) and `PostHog:HostUrl`, set on prod only. Without a key every flag reads as off unless overridden, and nothing is sent, as with Resend and Billing. The `OpenApi` environment needs no key.
 - **The frontend.** `GET /api/me/features` (with `RequireAuthorization()`) answers the keys of the flags that are on for the caller, and a `useFeature("key")` hook reads it through React Query. The API is the only place flags are evaluated, so the browser can't switch one on. The generated client is regenerated with `bun run generate:api-client`.
 - **Flag keys** live as constants in one class (`FeatureFlagKeys`), so a removed flag is a compile error rather than a silent `false`.
 - **Tests** replace `IFeatureManager` / `FeatureFlags` with a fake and never call PostHog.
@@ -85,7 +87,9 @@ Phase 2 gets its own ADR when it is taken up.
 
 ## Consequences
 
-- A flag can be switched for named accounts, a role, a tier, granted testers or a percentage without a deploy, and switched off as a kill switch.
+- A flag can be switched for named accounts, a role, a tier, granted testers or a percentage without a deploy, and switched off as a kill switch within 5 minutes.
+- Dev can't try a flag's targeting rules before prod; it runs flagged code through config overrides. A rollout's first audience on prod is admins or granted testers instead.
+- The free plan's 1 million flag requests a month bound how many instances can poll and how often.
 - Access stays where ADR-0008 put it. Flags only hide or show features that are being rolled out, so removing a flag never removes anyone's access.
 - Flag checks stay in-process and don't slow requests, but they depend on the definitions the SDK last fetched; if PostHog is down, the last fetched definitions still apply, and with none fetched every flag is off.
 - PostHog becomes a third party, in the EU, holding the account ids used in flag conditions. Phase 2 would widen that to usage events.
