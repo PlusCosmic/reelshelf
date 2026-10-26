@@ -17,6 +17,7 @@ import type {
   AccountPlanResponse,
   CurrentUserResponse,
   DeleteAccountRequest,
+  FeatureFlagsResponse,
   LinkedIdentity,
   SetEmailRequest,
   UserProfile,
@@ -28,6 +29,8 @@ import {
   CurrentUserResponseToJSON,
   DeleteAccountRequestFromJSON,
   DeleteAccountRequestToJSON,
+  FeatureFlagsResponseFromJSON,
+  FeatureFlagsResponseToJSON,
   LinkedIdentityFromJSON,
   LinkedIdentityToJSON,
   SetEmailRequestFromJSON,
@@ -185,6 +188,41 @@ export class UserEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<CurrentUserResponse> {
     const response = await this.getMeRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async getMyFeaturesRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<FeatureFlagsResponse>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/me/features`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      FeatureFlagsResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async getMyFeatures(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<FeatureFlagsResponse> {
+    const response = await this.getMyFeaturesRaw(initOverrides);
     return await response.value();
   }
 

@@ -133,6 +133,12 @@ function PrivacyRoute() {
           behind it) for the analysis above.
         </li>
         <li>
+          <strong>PostHog</strong>, in the EU, decides which accounts see
+          features we're still rolling out. If we include you in an early
+          release, PostHog holds your account's ID; it isn't sent your name,
+          email or anything you do in Reelshelf.
+        </li>
+        <li>
           <strong>Our hosting provider</strong> runs the servers and database.
         </li>
       </ul>

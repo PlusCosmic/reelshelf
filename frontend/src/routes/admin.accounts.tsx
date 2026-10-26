@@ -243,6 +243,10 @@ function AccountAccess({
           On {tierNames[detail.tier] ?? detail.tier} now
           {account.grantedTier ? ", by a grant" : ""}.
         </p>
+        {/* PostHog targets a named account by this id (docs/feature-flags.md). */}
+        <p className="rs-meta">
+          Account ID <code>{account.id}</code>
+        </p>
         {account.suspendedAt ? (
           <p className="rs-legend-error">
             Suspended since {formatDate(account.suspendedAt)}: it can't sign in

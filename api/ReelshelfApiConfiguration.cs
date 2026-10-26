@@ -12,6 +12,7 @@ using Reelshelf.ApexLegends;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Auth;
 using Reelshelf.Billing;
+using Reelshelf.FeatureFlags;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
@@ -253,6 +254,8 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<IClipLimitWarningStore>(sp => sp.GetRequiredService<UserStatements>());
         builder.Services.AddScoped<ClipLimitWarningService>();
         builder.AddBilling();
+        // Feature flags (ADR-0009): PostHog in prod, off elsewhere unless FeatureFlags:Overrides turns one on.
+        builder.AddFeatureFlags();
         builder.Services.AddSingleton<AccountDeletionSignal>();
         builder.Services.AddScoped<IAccountDeletionStore, AccountDeletionStatements>();
         builder.Services.AddScoped<AccountDeletionService>();
