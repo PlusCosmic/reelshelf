@@ -234,7 +234,7 @@ public class DownloadEndpointTests
                 if (Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out Guid userId))
                 {
                     context.Items[AuthenticatedUser.HttpContextKey] = new AuthenticatedUser(userId, "user", null, null,
-                        null, true, UserRole.Viewer, [], []);
+                        null, true, UserRole.Viewer, null, []);
                 }
 
                 await next(context);

@@ -59,12 +59,4 @@
         <EmbeddedResource Include="ClipSummary/Resources/response-schema.json" LogicalName="ClipSummary.response-schema.json" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Content Update="Shared/whitelist.json">
-            <Link>whitelist.json</Link>
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-            <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-        </Content>
-    </ItemGroup>
-
 </Project>

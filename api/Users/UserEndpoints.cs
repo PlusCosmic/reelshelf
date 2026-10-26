@@ -80,7 +80,7 @@ public static class UserEndpoints
         PlanOptions options = planOptions.CurrentValue;
         return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, hasCustomer,
             overLimit.OverLimitSince + options.GracePeriod, options.Enforce ? options.GracePeriod : null,
-            context.RequestServices.GetService<BillingOptions>()?.CanChangePlan ?? false));
+            context.RequestServices.GetService<BillingOptions>()?.CanChangePlan ?? false, user.GrantedTier));
     }
 
     private static async Task<Ok<List<LinkedIdentity>>> GetLinkedIdentities(

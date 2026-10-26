@@ -94,6 +94,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapClipTranscriptionEndpoints();
         apiGroup.MapClipSummaryEndpoints();
         apiGroup.MapUserEndpoints();
+        apiGroup.MapAdminAccountEndpoints();
         apiGroup.MapBillingEndpoints();
         apiGroup.MapPlanEndpoints();
         apiGroup.MapOverLimitEndpoints();
@@ -237,8 +238,9 @@ internal static class ReelshelfApiConfiguration
 
     private static void AddApplicationModules(this WebApplicationBuilder builder)
     {
-        // whitelist.json no longer gates access; it marks Unlimited accounts and role overrides.
-        builder.Services.AddSingleton<WhitelistService>();
+        // Roles and granted tiers are stored on the account (ADR-0008); AccountAccessService alone changes them.
+        builder.Services.AddScoped<IAccountAccessStore, AccountAccessStatements>();
+        builder.Services.AddScoped<AccountAccessService>();
         builder.Services.AddScoped<AccountPlanService>();
         builder.AddPlanEnforcement();
         builder.Services.AddSingleton<ProviderTokenProtector>();

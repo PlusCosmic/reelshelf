@@ -19,6 +19,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as LibraryIndexRouteImport } from './routes/_library/index'
+import { Route as AdminAccountsRouteImport } from './routes/admin.accounts'
 import { Route as CollectionsIndexRouteImport } from './routes/collections/index'
 import { Route as CollectionsPlaylistIdRouteImport } from './routes/collections/$playlistId'
 import { Route as LegendDetectionBaselineRouteImport } from './routes/legend-detection_.baseline'
@@ -78,6 +79,11 @@ const LibraryIndexRoute = LibraryIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LibraryRoute,
 } as any)
+const AdminAccountsRoute = AdminAccountsRouteImport.update({
+  id: '/admin/accounts',
+  path: '/admin/accounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
   id: '/collections/',
   path: '/collections/',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
+  '/admin/accounts': typeof AdminAccountsRoute
   '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
   '/legend-detection/baseline': typeof LegendDetectionBaselineRoute
   '/legend-detection/evals': typeof LegendDetectionEvalsRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
+  '/admin/accounts': typeof AdminAccountsRoute
   '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
   '/legend-detection/baseline': typeof LegendDetectionBaselineRoute
   '/legend-detection/evals': typeof LegendDetectionEvalsRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
+  '/admin/accounts': typeof AdminAccountsRoute
   '/collections/$playlistId': typeof CollectionsPlaylistIdRoute
   '/legend-detection_/baseline': typeof LegendDetectionBaselineRoute
   '/legend-detection_/evals': typeof LegendDetectionEvalsRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/terms'
     | '/upload'
+    | '/admin/accounts'
     | '/collections/$playlistId'
     | '/legend-detection/baseline'
     | '/legend-detection/evals'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/terms'
     | '/upload'
+    | '/admin/accounts'
     | '/collections/$playlistId'
     | '/legend-detection/baseline'
     | '/legend-detection/evals'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/terms'
     | '/upload'
+    | '/admin/accounts'
     | '/collections/$playlistId'
     | '/legend-detection_/baseline'
     | '/legend-detection_/evals'
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   TermsRoute: typeof TermsRoute
   UploadRoute: typeof UploadRoute
+  AdminAccountsRoute: typeof AdminAccountsRoute
   CollectionsPlaylistIdRoute: typeof CollectionsPlaylistIdRoute
   LegendDetectionBaselineRoute: typeof LegendDetectionBaselineRoute
   LegendDetectionEvalsRoute: typeof LegendDetectionEvalsRoute
@@ -341,6 +354,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof LibraryIndexRouteImport
       parentRoute: typeof LibraryRoute
+    }
+    '/admin/accounts': {
+      id: '/admin/accounts'
+      path: '/admin/accounts'
+      fullPath: '/admin/accounts'
+      preLoaderRoute: typeof AdminAccountsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/collections/': {
       id: '/collections/'
@@ -431,6 +451,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   TermsRoute: TermsRoute,
   UploadRoute: UploadRoute,
+  AdminAccountsRoute: AdminAccountsRoute,
   CollectionsPlaylistIdRoute: CollectionsPlaylistIdRoute,
   LegendDetectionBaselineRoute: LegendDetectionBaselineRoute,
   LegendDetectionEvalsRoute: LegendDetectionEvalsRoute,

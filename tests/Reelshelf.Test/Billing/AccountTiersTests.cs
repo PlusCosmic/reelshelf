@@ -9,15 +9,29 @@ public class AccountTiersTests
         new($"sub_{Guid.NewGuid():N}", Guid.NewGuid(), status, null, tier, null, false, null, null);
 
     [Fact]
-    public void Whitelisted_IsUnlimited_WhateverTheSubscriptions()
+    public void GrantedUnlimited_IsUnlimited_WhateverTheSubscriptions()
     {
-        Assert.Equal(AccountTier.Unlimited, AccountTiers.Resolve(true, [Subscription("active", AccountTier.Plus)]));
+        Assert.Equal(AccountTier.Unlimited,
+            AccountTiers.Resolve(AccountTier.Unlimited, [Subscription("active", AccountTier.Plus)]));
+    }
+
+    [Fact]
+    public void ABetterSubscription_BeatsAGrantedTier()
+    {
+        Assert.Equal(AccountTier.Pro, AccountTiers.Resolve(AccountTier.Plus, [Subscription("active", AccountTier.Pro)]));
+    }
+
+    [Fact]
+    public void AGrantedTier_OutlivesALapsedSubscription()
+    {
+        Assert.Equal(AccountTier.Plus,
+            AccountTiers.Resolve(AccountTier.Plus, [Subscription("canceled", AccountTier.Pro)]));
     }
 
     [Fact]
     public void NoSubscription_IsFree()
     {
-        Assert.Equal(AccountTier.Free, AccountTiers.Resolve(false, []));
+        Assert.Equal(AccountTier.Free, AccountTiers.Resolve(null, []));
     }
 
     [Theory]
@@ -31,13 +45,13 @@ public class AccountTiersTests
     [InlineData("incomplete_expired", AccountTier.Free)]
     public void OnlyActiveTrialingAndPastDueGrantTheirTier(string status, AccountTier expected)
     {
-        Assert.Equal(expected, AccountTiers.Resolve(false, [Subscription(status, AccountTier.Pro)]));
+        Assert.Equal(expected, AccountTiers.Resolve(null, [Subscription(status, AccountTier.Pro)]));
     }
 
     [Fact]
     public void TheBestLiveSubscriptionWins()
     {
-        AccountTier tier = AccountTiers.Resolve(false,
+        AccountTier tier = AccountTiers.Resolve(null,
         [
             Subscription("active", AccountTier.Plus),
             Subscription("canceled", AccountTier.Pro),
@@ -50,7 +64,7 @@ public class AccountTiersTests
     [Fact]
     public void ASubscriptionOnAnUnknownPlan_GrantsNothing()
     {
-        Assert.Equal(AccountTier.Free, AccountTiers.Resolve(false, [Subscription("active", null)]));
+        Assert.Equal(AccountTier.Free, AccountTiers.Resolve(null, [Subscription("active", null)]));
     }
 
     [Theory]

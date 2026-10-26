@@ -2,7 +2,7 @@ namespace Reelshelf.Billing;
 
 /// <summary>
 /// What an account may keep and use (ADR-0007). Free is the default, Plus and Pro come from a Stripe subscription,
-/// and Unlimited from <c>whitelist.json</c>. Ordered so a higher value is a better tier.
+/// and any but Free can be granted by an admin (ADR-0008). Ordered so a higher value is a better tier.
 /// </summary>
 public enum AccountTier
 {
@@ -63,22 +63,17 @@ public static class SubscriptionStatuses
 public static class AccountTiers
 {
     /// <summary>
-    /// Unlimited when <c>whitelist.json</c> lists the account, else the best tier any of its subscriptions grants,
-    /// else Free. Nothing is stored, so nothing has to be kept in step.
+    /// The better of the account's granted tier (ADR-0008) and the best tier any of its subscriptions grants, else
+    /// Free. The result is never stored, so nothing has to be kept in step.
     /// </summary>
-    public static AccountTier Resolve(bool whitelisted, IEnumerable<BillingSubscription> subscriptions)
+    public static AccountTier Resolve(AccountTier? granted, IEnumerable<BillingSubscription> subscriptions)
     {
-        if (whitelisted)
-        {
-            return AccountTier.Unlimited;
-        }
-
-        AccountTier tier = AccountTier.Free;
+        AccountTier tier = granted ?? AccountTier.Free;
         foreach (BillingSubscription subscription in subscriptions)
         {
-            if (subscription.Tier is { } granted && SubscriptionStatuses.GrantsTier(subscription.Status) && granted > tier)
+            if (subscription.Tier is { } paid && SubscriptionStatuses.GrantsTier(subscription.Status) && paid > tier)
             {
-                tier = granted;
+                tier = paid;
             }
         }
 

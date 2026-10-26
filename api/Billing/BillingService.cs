@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
 using Reelshelf.Auth;
-using Reelshelf.Users;
 
 namespace Reelshelf.Billing;
 
@@ -442,38 +441,26 @@ public sealed class BillingService(
     }
 }
 
-/// <summary>Works out an account's <see cref="AccountTier"/> from <c>whitelist.json</c> and its subscriptions.</summary>
-public sealed class AccountTierService(WhitelistService whitelist, IBillingStore store, IUserIdentityStore identities)
+/// <summary>Works out an account's <see cref="AccountTier"/> from its granted tier and its subscriptions.</summary>
+public sealed class AccountTierService(IBillingStore store, IAccountAccessStore access)
 {
     public async Task<AccountTier> GetTier(AuthenticatedUser user)
     {
-        return await Resolve(user.Id, whitelist.IsWhitelisted(user.Identities));
+        return AccountTiers.Resolve(user.GrantedTier, await store.GetSubscriptions(user.Id));
     }
 
     public async Task<AccountTier> GetTier(Guid userId)
     {
-        List<UserStatements.UserIdentityRow> rows = await identities.GetIdentitiesForUser(userId);
-        return await Resolve(userId, whitelist.IsWhitelisted(rows.Select(row => row.ToRef())));
+        return AccountTiers.Resolve(await access.GetGrantedTier(userId), await store.GetSubscriptions(userId));
     }
 
     /// <summary>
-    /// Of these accounts, each with its identities, the ones on <paramref name="minimum"/> or better: whitelisted
-    /// ones (Unlimited), and ones with a subscription granting such a tier.
+    /// Of these accounts, the ones on <paramref name="minimum"/> or better, by a granted tier or a subscription.
     /// </summary>
-    public async Task<List<Guid>> FilterAtLeast(AccountTier minimum,
-        IEnumerable<IGrouping<Guid, UserIdentityRef>> accounts)
+    public async Task<List<Guid>> FilterAtLeast(AccountTier minimum, IEnumerable<Guid> accounts)
     {
-        HashSet<Guid> subscribed = (await store.GetUserIdsWithTierAtLeast(minimum)).ToHashSet();
-        return accounts
-            .Where(account => subscribed.Contains(account.Key) || whitelist.IsWhitelisted(account))
-            .Select(account => account.Key)
-            .ToList();
-    }
-
-    private async Task<AccountTier> Resolve(Guid userId, bool whitelisted)
-    {
-        return whitelisted
-            ? AccountTier.Unlimited
-            : AccountTiers.Resolve(false, await store.GetSubscriptions(userId));
+        HashSet<Guid> atLeast = (await store.GetUserIdsWithTierAtLeast(minimum)).ToHashSet();
+        atLeast.UnionWith(await access.GetUserIdsWithGrantedTierAtLeast(minimum));
+        return accounts.Where(atLeast.Contains).ToList();
     }
 }

@@ -5,9 +5,9 @@ namespace Reelshelf.Test.Auth;
 
 public class PermissionsTests
 {
-    private static AuthenticatedUser UserWith(UserRole role, params string[] additional)
+    private static AuthenticatedUser UserWith(UserRole role)
     {
-        return new AuthenticatedUser(Guid.NewGuid(), "user", null, null, null, true, role, [.. additional], []);
+        return new AuthenticatedUser(Guid.NewGuid(), "user", null, null, null, true, role, null, []);
     }
 
     [Fact]
@@ -33,10 +33,31 @@ public class PermissionsTests
     }
 
     [Fact]
-    public void AdminAndWildcardGrantEverything()
+    public void AdminGrantsEverything()
     {
-        Assert.True(UserWith(UserRole.Admin).HasPermission(Permissions.AdminUsers));
-        Assert.True(UserWith(UserRole.Viewer, Permissions.All).HasPermission(Permissions.ClipsCreate));
-        Assert.True(UserWith(UserRole.Viewer, Permissions.AdminUsers).HasPermission(Permissions.AdminUsers));
+        AuthenticatedUser admin = UserWith(UserRole.Admin);
+
+        Assert.True(admin.HasPermission(Permissions.AdminUsers));
+        Assert.True(admin.HasPermission(Permissions.ClipsCreate));
+    }
+
+    [Theory]
+    [InlineData("Admin", UserRole.Admin)]
+    [InlineData("editor", UserRole.Editor)]
+    [InlineData("VIEWER", UserRole.Viewer)]
+    public void StoredRoles_ParseByName(string stored, UserRole expected)
+    {
+        Assert.Equal(expected, UserRoles.Parse(stored));
+    }
+
+    [Theory]
+    [InlineData("2")]
+    [InlineData("Owner")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void UnknownStoredRoles_AreViewer(string? stored)
+    {
+        Assert.Equal(UserRole.Viewer, UserRoles.Parse(stored));
+        Assert.Null(UserRoles.TryParse(stored));
     }
 }

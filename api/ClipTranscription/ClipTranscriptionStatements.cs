@@ -198,15 +198,11 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
         return (await connection.QueryAsync<ClipTranscriptionRunRow>(sql, new { ClipId = clipId })).ToList();
     }
 
-    /// <summary>The linked identities of every account that owns a clip, to check against the whitelist.</summary>
-    public async Task<List<OwnerIdentityRow>> GetClipOwnerIdentitiesAsync()
+    /// <summary>Every account that owns a clip, to check against their tiers.</summary>
+    public async Task<List<Guid>> GetClipOwnerIdsAsync()
     {
-        const string sql = """
-            SELECT identity.user_id, identity.provider, identity.provider_user_id
-            FROM user_identity identity
-            WHERE EXISTS (SELECT 1 FROM clip WHERE clip.owner_id = identity.user_id)
-            """;
-        return (await connection.QueryAsync<OwnerIdentityRow>(sql)).ToList();
+        const string sql = "SELECT DISTINCT owner_id FROM clip";
+        return (await connection.QueryAsync<Guid>(sql)).ToList();
     }
 
     /// <summary>Clips owned by the given accounts, plus any other clip that has been transcribed, newest first.</summary>
@@ -282,13 +278,6 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
             ORDER BY MAX(created_at) DESC
             """;
         return (await connection.QueryAsync<UsageRow>(sql)).ToList();
-    }
-
-    public class OwnerIdentityRow
-    {
-        public Guid UserId { get; set; }
-        public string Provider { get; set; } = "";
-        public string ProviderUserId { get; set; } = "";
     }
 
     public class ReviewClipRow : IClipVideoColumns

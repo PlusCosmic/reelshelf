@@ -8102,3 +8102,78 @@ html:has(.rs-library-route) {
   justify-content: flex-end;
   gap: 6px;
 }
+
+/* Admin accounts page (/admin/accounts): search on the left, the picked account's access on the right. */
+.rs-access-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.rs-access-search,
+.rs-access-account {
+  display: grid;
+  gap: 16px;
+}
+
+.rs-access-results {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-access-result {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rs-access-result[aria-current] {
+  border-color: var(--accent);
+}
+
+.rs-access-name,
+.rs-access-title {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.rs-access-title {
+  font-size: 20px;
+}
+
+.rs-access-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.rs-access-reason,
+.rs-access-form > .rs-meta {
+  grid-column: 1 / -1;
+}
+
+.rs-legend-table td.rs-access-change-reason {
+  min-width: 200px;
+  white-space: normal;
+}
+
+@media (max-width: 900px) {
+  .rs-access-layout,
+  .rs-access-form {
+    grid-template-columns: 1fr;
+  }
+}

@@ -123,6 +123,12 @@ export interface AccountPlanResponse {
    * @memberof AccountPlanResponse
    */
   canChangePlan: boolean;
+  /**
+   *
+   * @type {string}
+   * @memberof AccountPlanResponse
+   */
+  grantedTier: string | null;
 }
 
 /**
@@ -169,6 +175,8 @@ export function instanceOfAccountPlanResponse(
     return false;
   if (!("canChangePlan" in value) || value["canChangePlan"] === undefined)
     return false;
+  if (!("grantedTier" in value) || value["grantedTier"] === undefined)
+    return false;
   return true;
 }
 
@@ -203,6 +211,7 @@ export function AccountPlanResponseFromJSONTyped(
     freeClipLimit: json["free_clip_limit"],
     overLimitGraceDays: json["over_limit_grace_days"],
     canChangePlan: json["can_change_plan"],
+    grantedTier: json["granted_tier"],
   };
 }
 
@@ -238,5 +247,6 @@ export function AccountPlanResponseToJSONTyped(
     free_clip_limit: value["freeClipLimit"],
     over_limit_grace_days: value["overLimitGraceDays"],
     can_change_plan: value["canChangePlan"],
+    granted_tier: value["grantedTier"],
   };
 }
