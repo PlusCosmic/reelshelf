@@ -122,13 +122,7 @@ function ReportCard({ report }: { report: AdminContentReport }) {
       </h2>
 
       <p className="rs-meta">
-        {!report.clipId
-          ? "The clip has since been deleted."
-          : report.sharingBlocked
-            ? "Taken down: it can't be shared."
-            : report.shareUrl
-              ? null
-              : "It has no live share link."}
+        {shareState(report)}
         {report.shareUrl ? (
           <a href={report.shareUrl} target="_blank" rel="noreferrer">
             Open the shared clip
@@ -167,6 +161,15 @@ function ReportCard({ report }: { report: AdminContentReport }) {
       )}
     </article>
   );
+}
+
+/** What has become of the clip's sharing, unless there's a link to open instead. */
+function shareState(report: AdminContentReport): string | null {
+  if (!report.clipId) return "The clip has since been deleted.";
+  if (report.sharingBlocked) return "Taken down: it can't be shared.";
+  if (report.shareHidden)
+    return "Its share link is hidden while a child-safety or terrorism report is open.";
+  return report.shareUrl ? null : "It has no live share link.";
 }
 
 function ResolveReport({ report }: { report: AdminContentReport }) {

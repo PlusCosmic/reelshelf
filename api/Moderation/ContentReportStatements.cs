@@ -44,8 +44,11 @@ public sealed class ContentReportRow
     public Guid? ClipOwnerId { get; set; }
     public string? OwnerName { get; set; }
 
-    /// <summary>The clip's live share token, if it still has one.</summary>
+    /// <summary>The clip's live share token, if it has one that anyone can watch now.</summary>
     public string? ActiveShareToken { get; set; }
+
+    /// <summary>The clip has a share link, hidden while a child-safety or terrorism report on it is open.</summary>
+    public bool ShareHidden { get; set; }
 
     public bool SharingBlocked { get; set; }
 
@@ -85,12 +88,15 @@ public sealed class ContentReportStatements(NpgsqlConnection connection)
               AND urgent_report.reason IN ({ContentReportReasons.UrgentSqlList}))
         """;
 
-    private const string ReportColumns = """
+    private static readonly string ReportColumns = $"""
         r.id, r.reason, r.details, r.reporter_email, r.status, r.created_at, r.resolved_at,
         resolver.username AS resolved_by_name, r.resolution_note, r.clip_id, r.clip_title, r.clip_owner_id,
         coalesce(owner.global_name, owner.username) AS owner_name,
-        (SELECT cs.token FROM clip_share cs WHERE cs.clip_id = r.clip_id AND cs.revoked_at IS NULL LIMIT 1)
+        (SELECT cs.token FROM clip_share cs
+         WHERE cs.clip_id = r.clip_id AND cs.revoked_at IS NULL AND {ShareableSql("c")} LIMIT 1)
             AS active_share_token,
+        coalesce(NOT ({ShareableSql("c")}) AND c.sharing_blocked_at IS NULL AND EXISTS (
+            SELECT 1 FROM clip_share cs WHERE cs.clip_id = r.clip_id AND cs.revoked_at IS NULL), false) AS share_hidden,
         coalesce(c.sharing_blocked_at IS NOT NULL, false) AS sharing_blocked,
         (SELECT count(*)::int FROM content_report other
          WHERE other.clip_id = r.clip_id AND other.status = 'open') AS open_reports_on_clip

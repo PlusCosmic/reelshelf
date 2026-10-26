@@ -108,6 +108,12 @@ export interface AdminContentReport {
    * @type {boolean}
    * @memberof AdminContentReport
    */
+  shareHidden: boolean;
+  /**
+   *
+   * @type {boolean}
+   * @memberof AdminContentReport
+   */
   sharingBlocked: boolean;
   /**
    *
@@ -141,6 +147,8 @@ export function instanceOfAdminContentReport(
   if (!("ownerId" in value) || value["ownerId"] === undefined) return false;
   if (!("ownerName" in value) || value["ownerName"] === undefined) return false;
   if (!("shareUrl" in value) || value["shareUrl"] === undefined) return false;
+  if (!("shareHidden" in value) || value["shareHidden"] === undefined)
+    return false;
   if (!("sharingBlocked" in value) || value["sharingBlocked"] === undefined)
     return false;
   if (
@@ -178,6 +186,7 @@ export function AdminContentReportFromJSONTyped(
     ownerId: json["owner_id"],
     ownerName: json["owner_name"],
     shareUrl: json["share_url"],
+    shareHidden: json["share_hidden"],
     sharingBlocked: json["sharing_blocked"],
     openReportsOnClip: json["open_reports_on_clip"],
   };
@@ -213,6 +222,7 @@ export function AdminContentReportToJSONTyped(
     owner_id: value["ownerId"],
     owner_name: value["ownerName"],
     share_url: value["shareUrl"],
+    share_hidden: value["shareHidden"],
     sharing_blocked: value["sharingBlocked"],
     open_reports_on_clip: value["openReportsOnClip"],
   };

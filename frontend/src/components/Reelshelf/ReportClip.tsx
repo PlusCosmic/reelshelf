@@ -97,7 +97,7 @@ function ReportClipDialog({
       onClose={onClose}
     >
       {() => (
-        <form className="rs-modal-panel" onSubmit={submit}>
+        <form className="rs-modal-panel rs-report-panel" onSubmit={submit}>
           <fieldset className="rs-report-reasons" disabled={report.isPending}>
             <legend className="rs-visually-hidden">Reason</legend>
             {reportReasons.map((item) => (
@@ -140,7 +140,7 @@ function ReportClipDialog({
               className="rs-report-details"
               value={details}
               maxLength={2000}
-              rows={3}
+              rows={2}
               onChange={(event) => setDetails(event.currentTarget.value)}
               disabled={report.isPending}
             />

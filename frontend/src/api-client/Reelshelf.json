@@ -4064,6 +4064,7 @@
           "owner_id",
           "owner_name",
           "share_url",
+          "share_hidden",
           "sharing_blocked",
           "open_reports_on_clip"
         ],
@@ -4142,6 +4143,9 @@
               "null",
               "string"
             ]
+          },
+          "share_hidden": {
+            "type": "boolean"
           },
           "sharing_blocked": {
             "type": "boolean"

@@ -4008,6 +4008,7 @@ html:has(.rs-library-route) {
 /* Reporting a shared clip (ReportClip): one reason picked from a list, then optional details and email. */
 .rs-report-reasons {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   margin: 0;
   padding: 0;
@@ -4022,7 +4023,7 @@ html:has(.rs-library-route) {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-soft);
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -4030,9 +4031,27 @@ html:has(.rs-library-route) {
   border-color: var(--accent);
 }
 
-.rs-report-details {
+@media (max-width: 560px) {
+  .rs-report-reasons {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rs-modal-note a,
+.rs-report-card a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* The report form is taller than other dialogs; let it use the modal's full height before it scrolls. */
+.rs-modal-panel.rs-report-panel {
+  max-height: none;
+}
+
+.rs-field .rs-report-details {
   width: 100%;
-  min-height: 72px;
+  height: 64px;
+  min-height: 48px;
   resize: vertical;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -4044,7 +4063,7 @@ html:has(.rs-library-route) {
   font-weight: 400;
 }
 
-.rs-report-details:focus {
+.rs-field .rs-report-details:focus {
   border-color: var(--accent);
   outline: 0;
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 16%, transparent);

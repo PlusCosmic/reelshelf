@@ -6,7 +6,10 @@ namespace Reelshelf.Moderation;
 /// <summary>Email is optional, so the reporter can hear the outcome or be asked for more.</summary>
 public sealed record ContentReportRequest(string Reason, string? Details, string? Email);
 
-/// <summary>A report as the admin queue shows it. <see cref="ShareUrl"/> is withheld for child-safety reports.</summary>
+/// <summary>
+/// A report as the admin queue shows it. <see cref="ShareUrl"/> is withheld for child-safety reports, and is null while
+/// the link is hidden (<see cref="ShareHidden"/>) by an open child-safety or terrorism report.
+/// </summary>
 public sealed record AdminContentReport(
     Guid Id,
     string Reason,
@@ -22,6 +25,7 @@ public sealed record AdminContentReport(
     Guid? OwnerId,
     string? OwnerName,
     string? ShareUrl,
+    bool ShareHidden,
     bool SharingBlocked,
     int OpenReportsOnClip);
 
@@ -96,6 +100,6 @@ public static class ContentReportEndpoints
             : null;
         return new AdminContentReport(row.Id, row.Reason, row.Details, row.ReporterEmail, row.Status, row.CreatedAt,
             row.ResolvedAt, row.ResolvedByName, row.ResolutionNote, row.ClipId, row.ClipTitle, row.ClipOwnerId,
-            row.OwnerName, shareUrl, row.SharingBlocked, row.OpenReportsOnClip);
+            row.OwnerName, shareUrl, row.ShareHidden, row.SharingBlocked, row.OpenReportsOnClip);
     }
 }

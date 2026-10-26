@@ -23,9 +23,13 @@ public class ContentReportStatementsTests
 
         Guid urgent = await test.ReportAsync(clip, token, ContentReportReasons.ChildSafety);
         Assert.Null(await test.Statements.FindShare(token));
+        ContentReportRow hidden = (await test.Statements.Get(urgent))!;
+        Assert.Equal((null, true), (hidden.ActiveShareToken, hidden.ShareHidden));
 
         Assert.Equal(ResolveOutcome.Resolved, await test.Statements.Dismiss(urgent, admin, "a game's cutscene"));
         Assert.NotNull(await test.Statements.FindShare(token));
+        ContentReportRow shown = (await test.Statements.Get(urgent))!;
+        Assert.Equal((token, false), (shown.ActiveShareToken, shown.ShareHidden));
         Assert.Equal(ResolveOutcome.AlreadyResolved, await test.Statements.Dismiss(urgent, admin, null));
         Assert.Equal(ResolveOutcome.NotFound, await test.Statements.Dismiss(Guid.NewGuid(), admin, null));
     }
@@ -52,8 +56,9 @@ public class ContentReportStatementsTests
             "SELECT revoked_at IS NOT NULL FROM clip_share WHERE token = @token", new { token }));
 
         ContentReportRow resolved = (await test.Statements.Get(second))!;
-        Assert.Equal((ContentReportStatuses.TakenDown, "admin", "gore", true),
-            (resolved.Status, resolved.ResolvedByName, resolved.ResolutionNote, resolved.SharingBlocked));
+        Assert.Equal((ContentReportStatuses.TakenDown, "admin", "gore", true, false),
+            (resolved.Status, resolved.ResolvedByName, resolved.ResolutionNote, resolved.SharingBlocked,
+                resolved.ShareHidden));
         Assert.Equal(ContentReportStatuses.Open, (await test.Statements.Get(elsewhere))!.Status);
         Assert.Equal([elsewhere], (await test.Statements.List(open: true, 10)).Select(row => row.Id));
         Assert.Equal(ResolveOutcome.AlreadyResolved, (await test.Statements.TakeDown(second, admin, "again")).Outcome);
