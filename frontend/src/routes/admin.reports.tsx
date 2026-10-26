@@ -9,6 +9,7 @@ import {
 } from "@/hooks/queries";
 import {
   reportReasonLabel,
+  urgentReasons,
   type AdminContentReport,
 } from "@/shared/services/contentReports";
 
@@ -24,12 +25,11 @@ export const Route = createFileRoute("/admin/reports")({
   }),
 });
 
-const urgentReasons = new Set(["child_safety", "terrorism"]);
-
 const statusNames: Record<string, string> = {
   open: "Open",
   taken_down: "Taken down",
   dismissed: "Dismissed",
+  removed: "Removed",
 };
 
 function AdminReportsRoute() {
@@ -105,7 +105,13 @@ function ReportCard({ report }: { report: AdminContentReport }) {
         <Badge tone={urgent ? "danger" : "neutral"}>
           {reportReasonLabel(report.reason)}
         </Badge>
-        <Badge tone={report.status === "taken_down" ? "danger" : "neutral"}>
+        <Badge
+          tone={
+            report.status === "taken_down" || report.status === "removed"
+              ? "danger"
+              : "neutral"
+          }
+        >
           {statusNames[report.status] ?? report.status}
         </Badge>
         <span>Reported {formatDate(report.createdAt)}</span>
@@ -142,22 +148,27 @@ function ReportCard({ report }: { report: AdminContentReport }) {
 
       {report.reason === "child_safety" && report.status === "open" ? (
         <p className="rs-legend-error">
-          Don't open or download this clip. If the report looks genuine, take it
-          down, keep the clip, and report it to the IWF (UK) or NCMEC's
-          CyberTipline (US) with the clip's id ({report.clipId ?? "deleted"}).
-          Its share link stays hidden until you decide.
+          Don't open or download this clip. If the report looks genuine, remove
+          it, then report it to the IWF (UK) or NCMEC's CyberTipline (US) with
+          the clip's id ({report.clipId ?? "deleted"}). Its share link stays
+          hidden until you decide.
         </p>
       ) : null}
 
       {report.status === "open" ? (
-        <ResolveReport report={report} />
+        <ResolveReport report={report} urgent={urgent} />
       ) : (
-        <p className="rs-meta">
-          {statusNames[report.status]}{" "}
-          {report.resolvedAt ? formatDate(report.resolvedAt) : ""}
-          {report.resolvedByName ? ` by ${report.resolvedByName}` : ""}
-          {report.resolutionNote ? `: ${report.resolutionNote}` : ""}
-        </p>
+        <>
+          <p className="rs-meta">
+            {statusNames[report.status]}{" "}
+            {report.resolvedAt ? formatDate(report.resolvedAt) : ""}
+            {report.resolvedByName ? ` by ${report.resolvedByName}` : ""}
+            {report.resolutionNote ? `: ${report.resolutionNote}` : ""}
+          </p>
+          {report.status === "removed" ? (
+            <RemovalState report={report} />
+          ) : null}
+        </>
       )}
     </article>
   );
@@ -165,6 +176,7 @@ function ReportCard({ report }: { report: AdminContentReport }) {
 
 /** What has become of the clip's sharing, unless there's a link to open instead. */
 function shareState(report: AdminContentReport): string | null {
+  if (report.status === "removed") return "Removed from Reelshelf.";
   if (!report.clipId) return "The clip has since been deleted.";
   if (report.sharingBlocked) return "Taken down: it can't be shared.";
   if (report.shareHidden)
@@ -172,28 +184,80 @@ function shareState(report: AdminContentReport): string | null {
   return report.shareUrl ? null : "It has no live share link.";
 }
 
-function ResolveReport({ report }: { report: AdminContentReport }) {
+/** What became of a removed clip's evidence and its owner's account. */
+function RemovalState({ report }: { report: AdminContentReport }) {
+  const evidence = report.evidence;
+  return (
+    <ul className="rs-report-removal">
+      {!evidence ? (
+        <li>Nothing was kept: the clip had already been deleted.</li>
+      ) : evidence.status === "failed" ? (
+        <li className="rs-legend-error">
+          The clip couldn't be kept or taken off public storage:{" "}
+          {evidence.error ?? "no error was recorded"}. Fix the cause, then retry
+          it by hand (docs/moderation.md).
+        </li>
+      ) : evidence.status === "pending" ? (
+        <li>
+          Keeping a private copy and taking it off public storage…
+          {evidence.error ? ` Retrying after: ${evidence.error}` : ""}
+        </li>
+      ) : (
+        <li>
+          Kept privately as evidence until {formatDate(evidence.deleteAfter)},
+          and gone from public storage.
+        </li>
+      )}
+      {evidence?.cdnPurge === "not_configured" ? (
+        <li className="rs-legend-error">
+          The media domain wasn't purged, so it may still serve cached copies.
+          Purge the clip's URLs in Cloudflare by hand.
+        </li>
+      ) : null}
+      <li>
+        {report.ownerSuspended
+          ? "The owner's account is suspended."
+          : "The owner's account isn't suspended (Admins can't be)."}
+      </li>
+    </ul>
+  );
+}
+
+function ResolveReport({
+  report,
+  urgent,
+}: {
+  report: AdminContentReport;
+  urgent: boolean;
+}) {
   const [note, setNote] = useState("");
   const resolve = useResolveContentReport();
-  const run = (action: "take-down" | "dismiss") =>
+  const run = (action: "take-down" | "remove" | "dismiss") =>
     resolve.mutate({ reportId: report.id, action, note: note.trim() });
 
   return (
     <div className="rs-report-actions">
+      {urgent ? (
+        <p className="rs-meta rs-report-explain">
+          Removing it deletes the clip from Reelshelf, keeps a private copy for
+          a year for the authorities, and suspends{" "}
+          {report.ownerName ?? "the owner"}. They aren't emailed.
+        </p>
+      ) : null}
       <Field label="Note">
         <Input
           value={note}
           maxLength={500}
-          placeholder="Why, for the record (needed to take down)"
+          placeholder={`Why, for the record (needed to ${urgent ? "remove" : "take down"})`}
           onChange={(event) => setNote(event.target.value)}
         />
       </Field>
       <Button
         variant="primary"
         disabled={!note.trim() || resolve.isPending}
-        onClick={() => run("take-down")}
+        onClick={() => run(urgent ? "remove" : "take-down")}
       >
-        Take down
+        {urgent ? "Remove clip" : "Take down"}
       </Button>
       <Button disabled={resolve.isPending} onClick={() => run("dismiss")}>
         Dismiss

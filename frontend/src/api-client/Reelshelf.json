@@ -1061,6 +1061,47 @@
         }
       }
     },
+    "/api/admin/reports/{reportId}/remove": {
+      "post": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "RemoveContentReportClip",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveContentReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/playlists": {
       "post": {
         "tags": [
@@ -3031,6 +3072,50 @@
         }
       }
     },
+    "/api/admin/accounts/{userId}/suspension": {
+      "put": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "SetAdminAccountSuspension",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAccountSuspensionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/billing/checkout": {
       "post": {
         "tags": [
@@ -3967,6 +4052,7 @@
           "avatar_url",
           "role",
           "granted_tier",
+          "suspended_at",
           "identities"
         ],
         "type": "object",
@@ -3998,6 +4084,13 @@
               "null",
               "string"
             ]
+          },
+          "suspended_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "identities": {
             "type": "array",
@@ -4066,7 +4159,9 @@
           "share_url",
           "share_hidden",
           "sharing_blocked",
-          "open_reports_on_clip"
+          "open_reports_on_clip",
+          "owner_suspended",
+          "evidence"
         ],
         "type": "object",
         "properties": {
@@ -4153,6 +4248,49 @@
           "open_reports_on_clip": {
             "type": "integer",
             "format": "int32"
+          },
+          "owner_suspended": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AdminContentReportEvidence"
+              }
+            ]
+          }
+        }
+      },
+      "AdminContentReportEvidence": {
+        "required": [
+          "status",
+          "error",
+          "cdn_purge",
+          "delete_after"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cdn_purge": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "delete_after": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -7303,6 +7441,24 @@
         "properties": {
           "role": {
             "type": "string"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SetAccountSuspensionRequest": {
+        "required": [
+          "suspended",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "suspended": {
+            "type": "boolean"
           },
           "reason": {
             "type": [

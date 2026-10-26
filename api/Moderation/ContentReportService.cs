@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Reelshelf.Auth;
 using Reelshelf.Email;
 using Reelshelf.Exceptions;
@@ -7,22 +8,23 @@ namespace Reelshelf.Moderation;
 
 /// <summary>
 /// Files reports of shared clips and resolves them. An <see cref="ContentReportReasons.Urgent"/> report hides the share
-/// link at once and mails the Admins; a takedown mails the clip's owner what was removed and why.
+/// link at once and mails the Admins, and is resolved by removing the clip (kept privately as evidence) and suspending
+/// its owner, who isn't told. Any other report is resolved by a takedown, which mails the owner that the clip broke the
+/// terms, without saying which rule or who reported it.
 /// </summary>
 public sealed class ContentReportService(
     ContentReportStatements statements,
+    IEvidenceStorage evidence,
+    ClipEvidenceSignal evidenceSignal,
     IEmailSender emailSender,
+    IOptionsMonitor<ModerationOptions> options,
     IConfiguration configuration,
     ILogger<ContentReportService> logger)
 {
     public const int MaxDetailsLength = 2000;
     public const int MaxNoteLength = 500;
-    public const string DefaultContactEmail = "support@reelshelf.app";
 
     private readonly string _siteUrl = (configuration["FrontendOrigin"] ?? "http://localhost:5173").TrimEnd('/');
-
-    private readonly string _contactEmail =
-        configuration["Moderation:ContactEmail"] is { Length: > 0 } contact ? contact : DefaultContactEmail;
 
     /// <summary>Files a report against the clip a share link shows; false when the link shows nothing.</summary>
     public async Task<bool> Report(string token, string? reason, string? details, string? email)
@@ -84,8 +86,37 @@ public sealed class ContentReportService(
         {
             await emailSender.SendAsync(AccountEmails.ClipTakenDown(ownerEmail,
                 string.IsNullOrWhiteSpace(result.ClipTitle) ? "Untitled clip" : result.ClipTitle,
-                ContentReportReasons.Describe(result.Reason), _contactEmail));
+                $"{_siteUrl}/terms", options.CurrentValue.ContactEmail));
         }
+    }
+
+    /// <summary>Removes the clip of a child-safety or terrorism report; see <see cref="ContentReportStatements.Remove"/>.</summary>
+    public async Task<RemoveResult> Remove(AuthenticatedUser admin, Guid reportId, string? note)
+    {
+        string trimmed = RequireNote(note);
+        if (!evidence.IsConfigured)
+        {
+            throw new ConflictException(
+                "Clips can't be removed until evidence storage is set up (Moderation:EvidenceBucket).");
+        }
+
+        RemoveResult result = await statements.Remove(reportId, admin.Id, trimmed,
+            options.CurrentValue.EvidenceRetention);
+        switch (result.Outcome)
+        {
+            case RemoveOutcome.NotFound:
+                throw new NotFoundException("Report", reportId);
+            case RemoveOutcome.AlreadyResolved:
+                throw new ConflictException("That report has already been dealt with.");
+            case RemoveOutcome.NotUrgent:
+                throw new BadRequestException("Only child-safety and terrorism reports remove a clip. Take it down instead.");
+        }
+
+        logger.LogWarning("Admin {AdminId} removed clip {ClipId} on report {ReportId} as evidence {EvidenceId}; " +
+                          "owner suspended: {Suspended}", admin.Id, result.ClipId, reportId, result.EvidenceId,
+            result.OwnerSuspended);
+        evidenceSignal.Wake();
+        return result;
     }
 
     public async Task Dismiss(AuthenticatedUser admin, Guid reportId, string? note)
@@ -124,6 +155,8 @@ public sealed class ContentReportService(
                 throw new NotFoundException("Report", reportId);
             case ResolveOutcome.AlreadyResolved:
                 throw new ConflictException("That report has already been dealt with.");
+            case ResolveOutcome.NeedsRemoval:
+                throw new BadRequestException("Child-safety and terrorism reports remove the clip. Remove it instead.");
         }
     }
 }

@@ -38,6 +38,11 @@ const roleNames: Record<string, string> = {
 
 const noGrant = "none";
 
+const accountStates = [
+  { value: "active", label: "Active" },
+  { value: "suspended", label: "Suspended" },
+];
+
 function AdminAccountsRoute() {
   const { data: user, isLoading } = useCurrentUser();
 
@@ -170,6 +175,7 @@ function AccessBadges({ account }: { account: AdminAccount }) {
           {tierNames[account.grantedTier] ?? account.grantedTier} granted
         </Badge>
       ) : null}
+      {account.suspendedAt ? <Badge tone="danger">Suspended</Badge> : null}
     </span>
   );
 }
@@ -186,13 +192,19 @@ function AccountAccess({
   const [grantedTier, setGrantedTierValue] = useState(
     account.grantedTier ?? noGrant,
   );
+  const [state, setState] = useState(
+    account.suspendedAt ? "suspended" : "active",
+  );
   const [reason, setReason] = useState("");
   const save = useSaveAccountAccess();
 
   const roleChanged = role !== account.role;
   const tierChanged = grantedTier !== (account.grantedTier ?? noGrant);
+  const stateChanged = (state === "suspended") !== !!account.suspendedAt;
   const canSave =
-    (roleChanged || tierChanged) && reason.trim().length > 0 && !save.isPending;
+    (roleChanged || tierChanged || stateChanged) &&
+    reason.trim().length > 0 &&
+    !save.isPending;
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -206,6 +218,7 @@ function AccountAccess({
             ? null
             : (grantedTier as GrantableTier)
           : undefined,
+        suspended: stateChanged ? state === "suspended" : undefined,
         reason: reason.trim(),
       },
       { onSuccess: () => setReason("") },
@@ -230,6 +243,12 @@ function AccountAccess({
           On {tierNames[detail.tier] ?? detail.tier} now
           {account.grantedTier ? ", by a grant" : ""}.
         </p>
+        {account.suspendedAt ? (
+          <p className="rs-legend-error">
+            Suspended since {formatDate(account.suspendedAt)}: it can't sign in
+            and its share links don't work. Its clips are kept.
+          </p>
+        ) : null}
       </div>
 
       <form className="rs-access-form" onSubmit={onSubmit}>
@@ -259,6 +278,17 @@ function AccountAccess({
             onValueChange={setGrantedTierValue}
           />
         </Field>
+        <Field label="Account">
+          <Select
+            aria-label="Account"
+            value={state}
+            disabled={
+              isSelf || (account.role === "admin" && !account.suspendedAt)
+            }
+            options={accountStates}
+            onValueChange={setState}
+          />
+        </Field>
         <Field label="Reason" className="rs-access-reason">
           <Input
             value={reason}
@@ -271,7 +301,11 @@ function AccountAccess({
           <Button variant="primary" type="submit" disabled={!canSave}>
             {save.isPending ? "Saving…" : "Save"}
           </Button>
-          {isSelf ? <span>You can't change your own role.</span> : null}
+          {isSelf ? (
+            <span>You can't change your own role or suspend yourself.</span>
+          ) : account.role === "admin" ? (
+            <span>Admins can't be suspended; change the role first.</span>
+          ) : null}
           {save.isError ? (
             <span className="rs-legend-error">{save.error.message}</span>
           ) : null}
@@ -303,9 +337,11 @@ function ChangeLog({ changes }: { changes: AdminAccessChange[] }) {
             <tr key={change.id}>
               <td>{formatDate(change.changedAt)}</td>
               <td>
-                {change.field === "role" ? "Role" : "Granted plan"}:{" "}
-                {describe(change.field, change.oldValue)} →{" "}
-                {describe(change.field, change.newValue)}
+                {change.field === "suspended"
+                  ? change.newValue
+                    ? "Suspended"
+                    : "Suspension lifted"
+                  : `${change.field === "role" ? "Role" : "Granted plan"}: ${describe(change.field, change.oldValue)} → ${describe(change.field, change.newValue)}`}
               </td>
               <td>{change.changedByName ?? "—"}</td>
               <td className="rs-access-change-reason">{change.reason}</td>

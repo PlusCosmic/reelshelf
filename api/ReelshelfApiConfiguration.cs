@@ -271,8 +271,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<GameCategoryStatements>();
 
         builder.Services.AddScoped<ClipsStatements>();
-        builder.Services.AddScoped<ContentReportStatements>();
-        builder.Services.AddScoped<ContentReportService>();
+        builder.AddModeration();
         builder.Services.AddScoped<PlaylistStatements>();
         builder.Services.AddScoped<PlaylistAccess>();
         builder.Services.AddScoped<IGamingSessionPlaylistStore, GamingSessionPlaylistStore>();

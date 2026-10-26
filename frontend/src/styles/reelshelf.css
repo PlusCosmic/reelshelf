@@ -8277,6 +8277,20 @@ html:has(.rs-library-route) {
   align-items: end;
 }
 
+.rs-report-explain {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.rs-report-removal {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--fg-soft);
+}
+
 .rs-report-actions .rs-ui-field {
   flex: 1 1 240px;
 }

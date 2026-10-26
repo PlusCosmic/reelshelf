@@ -8,6 +8,7 @@ import {
   fetchAccount,
   findAccounts,
   setAccountRole,
+  setAccountSuspension,
   setGrantedTier,
   type AccountRole,
   type GrantableTier,
@@ -40,7 +41,10 @@ export function useAdminAccount(userId: string | undefined) {
   });
 }
 
-/** Changes the role and granted tier the form changed, one after the other, then refreshes every account view. */
+/**
+ * Changes the role, granted tier and suspension the form changed, one after the other, then refreshes every account
+ * view.
+ */
 export function useSaveAccountAccess() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -48,16 +52,20 @@ export function useSaveAccountAccess() {
       userId,
       role,
       grantedTier,
+      suspended,
       reason,
     }: {
       userId: string;
       role?: AccountRole;
       grantedTier?: GrantableTier | null;
+      suspended?: boolean;
       reason: string;
     }) => {
       if (role !== undefined) await setAccountRole(userId, role, reason);
       if (grantedTier !== undefined)
         await setGrantedTier(userId, grantedTier, reason);
+      if (suspended !== undefined)
+        await setAccountSuspension(userId, suspended, reason);
     },
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: adminAccountsQueryKey }),

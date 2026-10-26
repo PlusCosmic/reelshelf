@@ -1,7 +1,16 @@
-import type { AdminContentReport } from "@/api-client";
+import type {
+  AdminContentReport,
+  AdminContentReportEvidence,
+} from "@/api-client";
 import { createContentReportApi } from "./apiClients";
 
-export type { AdminContentReport };
+export type { AdminContentReport, AdminContentReportEvidence };
+
+/** Reports whose clip is removed (and kept as evidence) rather than taken down. */
+export const urgentReasons: ReadonlySet<string> = new Set([
+  "child_safety",
+  "terrorism",
+]);
 
 /** The reasons a shared clip can be reported for, as the API spells them, in the order the form lists them. */
 export const reportReasons = [
@@ -46,6 +55,17 @@ export async function takeDownContentReport(
   note: string,
 ): Promise<AdminContentReport> {
   return createContentReportApi().takeDownContentReport({
+    reportId,
+    resolveContentReportRequest: { note },
+  });
+}
+
+/** Removes a child-safety or terrorism report's clip, keeps it as evidence and suspends its owner. */
+export async function removeContentReportClip(
+  reportId: string,
+  note: string,
+): Promise<AdminContentReport> {
+  return createContentReportApi().removeContentReportClip({
     reportId,
     resolveContentReportRequest: { note },
   });

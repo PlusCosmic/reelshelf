@@ -42,6 +42,17 @@ export async function setAccountRole(
   });
 }
 
+export async function setAccountSuspension(
+  userId: string,
+  suspended: boolean,
+  reason: string,
+): Promise<AdminAccountDetail> {
+  return createAdminAccountApi().setAdminAccountSuspension({
+    userId,
+    setAccountSuspensionRequest: { suspended, reason },
+  });
+}
+
 export async function setGrantedTier(
   userId: string,
   tier: GrantableTier | null,

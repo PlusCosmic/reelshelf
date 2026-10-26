@@ -163,7 +163,9 @@ public class AccountAccessStatementsTests
                     avatar_url text,
                     role text NOT NULL DEFAULT 'Editor',
                     role_from_whitelist boolean NOT NULL DEFAULT false,
-                    deletion_requested_at timestamptz
+                    deletion_requested_at timestamptz,
+                    -- V52's; the statements read it.
+                    suspended_at timestamptz
                 );
                 CREATE TABLE user_identity (
                     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

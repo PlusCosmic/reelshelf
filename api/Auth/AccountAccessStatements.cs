@@ -12,7 +12,10 @@ public enum AccessChangeOutcome
     NotFound,
 
     /// <summary>The change would leave no Admin.</summary>
-    LastAdmin
+    LastAdmin,
+
+    /// <summary>Admins can't be suspended; their role has to change first.</summary>
+    IsAdmin
 }
 
 /// <summary>One recorded change to an account's role or granted tier (ADR-0008).</summary>
@@ -36,6 +39,7 @@ public sealed record AccountAccessRow(
     string? AvatarUrl,
     UserRole Role,
     AccountTier? GrantedTier,
+    DateTimeOffset? SuspendedAt,
     List<AccountIdentitySummary> Identities);
 
 public interface IAccountAccessStore
@@ -58,17 +62,20 @@ public interface IAccountAccessStore
 
     /// <summary>Sets or clears (null) the granted tier and records the change in one transaction.</summary>
     Task<AccessChangeOutcome> SetGrantedTier(Guid userId, AccountTier? tier, Guid changedBy, string reason);
+
+    /// <summary>Suspends the account or lifts its suspension, and records the change; refuses to suspend an Admin.</summary>
+    Task<AccessChangeOutcome> SetSuspended(Guid userId, bool suspended, Guid changedBy, string reason);
 }
 
 /// <summary>
-/// The only SQL that writes <c>app_user.role</c> and <c>app_user.granted_tier</c>. Accounts being deleted are treated as
+/// The only SQL that writes <c>app_user.role</c>, <c>app_user.granted_tier</c> and <c>app_user.suspended_at</c>. Accounts being deleted are treated as
 /// gone, as everywhere else.
 /// </summary>
 public sealed class AccountAccessStatements(NpgsqlConnection connection) : IAccountAccessStore
 {
     private const string RoleLockKey = "account-access:roles";
 
-    private const string AccountColumns = "id, username, global_name, avatar_url, role, granted_tier";
+    private const string AccountColumns = "id, username, global_name, avatar_url, role, granted_tier, suspended_at";
 
     public async Task<AccountTier?> GetGrantedTier(Guid userId)
     {
@@ -205,8 +212,55 @@ public sealed class AccountAccessStatements(NpgsqlConnection connection) : IAcco
         return AccessChangeOutcome.Changed;
     }
 
-    private async Task RecordChange(Guid userId, string field, string? oldValue, string? newValue, Guid changedBy,
-        string reason, NpgsqlTransaction transaction)
+    public async Task<AccessChangeOutcome> SetSuspended(Guid userId, bool suspended, Guid changedBy, string reason)
+    {
+        await OpenAsync();
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+        AccessChangeOutcome outcome = await SetSuspended(connection, transaction, userId, suspended, changedBy, reason);
+        await transaction.CommitAsync();
+        return outcome;
+    }
+
+    /// <summary>
+    /// Suspends the account or lifts its suspension inside the caller's transaction, recording the change; removing a
+    /// clip (<see cref="Moderation.ContentReportStatements.Remove"/>) suspends its owner this way, in the removal's own
+    /// transaction.
+    /// </summary>
+    public static async Task<AccessChangeOutcome> SetSuspended(NpgsqlConnection connection,
+        NpgsqlTransaction transaction, Guid userId, bool suspended, Guid changedBy, string reason)
+    {
+        CurrentSuspensionRow? current = await connection.QuerySingleOrDefaultAsync<CurrentSuspensionRow>(
+            "SELECT role, suspended_at FROM app_user WHERE id = @userId AND deletion_requested_at IS NULL FOR UPDATE",
+            new { userId }, transaction);
+        if (current is null)
+        {
+            return AccessChangeOutcome.NotFound;
+        }
+
+        if (current.SuspendedAt is not null == suspended)
+        {
+            return AccessChangeOutcome.Unchanged;
+        }
+
+        if (suspended && current.Role == nameof(UserRole.Admin))
+        {
+            return AccessChangeOutcome.IsAdmin;
+        }
+
+        await connection.ExecuteAsync(
+            "UPDATE app_user SET suspended_at = CASE WHEN @suspended THEN now() END WHERE id = @userId",
+            new { userId, suspended }, transaction);
+        await RecordChange(connection, userId, AccessFields.Suspended, suspended ? null : AccessFields.Suspended,
+            suspended ? AccessFields.Suspended : null, changedBy, reason, transaction);
+        return AccessChangeOutcome.Changed;
+    }
+
+    private Task RecordChange(Guid userId, string field, string? oldValue, string? newValue, Guid changedBy,
+        string reason, NpgsqlTransaction transaction) =>
+        RecordChange(connection, userId, field, oldValue, newValue, changedBy, reason, transaction);
+
+    private static async Task RecordChange(NpgsqlConnection connection, Guid userId, string field, string? oldValue,
+        string? newValue, Guid changedBy, string reason, NpgsqlTransaction transaction)
     {
         const string sql = """
             INSERT INTO account_access_change (user_id, changed_by, field, old_value, new_value, reason)
@@ -233,7 +287,7 @@ public sealed class AccountAccessStatements(NpgsqlConnection connection) : IAcco
         ILookup<Guid, IdentityRow> identities =
             (await connection.QueryAsync<IdentityRow>(sql, new { ids })).ToLookup(identity => identity.UserId);
         return rows.Select(row => new AccountAccessRow(row.Id, row.Username, row.GlobalName, row.AvatarUrl,
-                UserRoles.Parse(row.Role), GrantedTiers.Parse(row.GrantedTier),
+                UserRoles.Parse(row.Role), GrantedTiers.Parse(row.GrantedTier), row.SuspendedAt,
                 identities[row.Id]
                     .Select(identity =>
                         new AccountIdentitySummary(identity.Provider, identity.ProviderUserId, identity.Username))
@@ -262,6 +316,13 @@ public sealed class AccountAccessStatements(NpgsqlConnection connection) : IAcco
         public string? AvatarUrl { get; set; }
         public string Role { get; set; } = "";
         public string? GrantedTier { get; set; }
+        public DateTimeOffset? SuspendedAt { get; set; }
+    }
+
+    private sealed class CurrentSuspensionRow
+    {
+        public string Role { get; set; } = "";
+        public DateTimeOffset? SuspendedAt { get; set; }
     }
 
     private sealed class ChangeRow

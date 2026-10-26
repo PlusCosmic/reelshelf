@@ -134,19 +134,23 @@ public static class AccountEmails
             footer: "Sent by Reelshelf to its admins."));
     }
 
-    /// <summary>To the owner: what was taken down and why, and how to dispute it.</summary>
-    public static EmailMessage ClipTakenDown(string to, string clipTitle, string reason, string contactEmail)
+    /// <summary>
+    /// To the owner: a clip was taken down for breaking the terms, and how to dispute it. It names neither the rule nor
+    /// the report, so nothing in it points back at whoever reported the clip.
+    /// </summary>
+    public static EmailMessage ClipTakenDown(string to, string clipTitle, string termsUrl, string contactEmail)
     {
         string subject = "One of your Reelshelf clips can no longer be shared";
         string text =
-            $"We reviewed a report about your clip \"{clipTitle}\" and found it breaks our terms of service ({reason}). " +
-            "Its share links have stopped working and it can't be shared again. It is still in your library.\n\n" +
+            $"Your clip \"{clipTitle}\" breaks our terms of service, so its share links have stopped working and it " +
+            "can't be shared again. It is still in your library.\n\n" +
+            $"Our terms: {termsUrl}\n" +
             $"If you think we got this wrong, email {contactEmail} and tell us why.\n";
 
         return new EmailMessage(to, subject, text, Wrap(subject,
-            $"<p>We reviewed a report about your clip <strong>{Encode(clipTitle)}</strong> and found it breaks our terms " +
-            $"of service ({Encode(reason)}). Its share links have stopped working and it can't be shared again. " +
-            "It is still in your library.</p>" +
+            $"<p>Your clip <strong>{Encode(clipTitle)}</strong> breaks our <a href=\"{Encode(termsUrl)}\">terms of " +
+            "service</a>, so its share links have stopped working and it can't be shared again. It is still in your " +
+            "library.</p>" +
             $"<p>If you think we got this wrong, email <a href=\"mailto:{Encode(contactEmail)}\">{Encode(contactEmail)}</a> " +
             "and tell us why.</p>",
             footer: "Sent by Reelshelf."));

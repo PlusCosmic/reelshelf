@@ -64,11 +64,16 @@ function TermsRoute() {
         Anyone watching a shared clip can report it from its page, or by
         emailing <LegalContact />. We review reports and, if a clip breaks these
         rules, take it down: its share links stop working, it can't be shared
-        again, and we email its owner to say which rule it broke. If you think
-        we got it wrong, email us and tell us why. A clip reported for child
-        sexual abuse or terrorism stops being shared as soon as it's reported,
-        until we've reviewed it. We report child sexual abuse material to the
-        relevant authorities and keep what the law requires us to keep for them.
+        again, and we email its owner to say it broke these terms. If you think
+        we got it wrong, email us and tell us why.
+      </p>
+      <p>
+        A clip reported for child sexual abuse or terrorism stops being shared
+        as soon as it's reported, until we've reviewed it. If we find it breaks
+        these rules, we remove it from Reelshelf and suspend the account that
+        uploaded it, without notice. We keep a private copy of the clip and the
+        account's details for a year so we can give them to the authorities, and
+        we report child sexual abuse material to them.
       </p>
 
       <h2>Plans and limits</h2>

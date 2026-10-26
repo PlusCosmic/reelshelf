@@ -65,6 +65,12 @@ export interface AdminAccount {
   grantedTier: string | null;
   /**
    *
+   * @type {Date}
+   * @memberof AdminAccount
+   */
+  suspendedAt: Date | null;
+  /**
+   *
    * @type {Array<AdminAccountIdentity>}
    * @memberof AdminAccount
    */
@@ -82,6 +88,8 @@ export function instanceOfAdminAccount(value: object): value is AdminAccount {
   if (!("avatarUrl" in value) || value["avatarUrl"] === undefined) return false;
   if (!("role" in value) || value["role"] === undefined) return false;
   if (!("grantedTier" in value) || value["grantedTier"] === undefined)
+    return false;
+  if (!("suspendedAt" in value) || value["suspendedAt"] === undefined)
     return false;
   if (!("identities" in value) || value["identities"] === undefined)
     return false;
@@ -106,6 +114,8 @@ export function AdminAccountFromJSONTyped(
     avatarUrl: json["avatar_url"],
     role: json["role"],
     grantedTier: json["granted_tier"],
+    suspendedAt:
+      json["suspended_at"] == null ? null : new Date(json["suspended_at"]),
     identities: (json["identities"] as Array<any>).map(
       AdminAccountIdentityFromJSON,
     ),
@@ -131,6 +141,10 @@ export function AdminAccountToJSONTyped(
     avatar_url: value["avatarUrl"],
     role: value["role"],
     granted_tier: value["grantedTier"],
+    suspended_at:
+      value["suspendedAt"] == null
+        ? value["suspendedAt"]
+        : value["suspendedAt"].toISOString(),
     identities: (value["identities"] as Array<any>).map(
       AdminAccountIdentityToJSON,
     ),

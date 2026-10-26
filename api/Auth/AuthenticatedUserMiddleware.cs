@@ -37,7 +37,8 @@ public class AuthenticatedUserMiddleware(RequestDelegate next)
         UserStatements userStatements = context.RequestServices.GetRequiredService<UserStatements>();
         UserStatements.UserRow? dbUser = await userStatements.GetUserById(userId);
 
-        if (dbUser is not null)
+        // A suspended account is treated as signed out, so a session from before the suspension stops working at once.
+        if (dbUser is not null && dbUser.SuspendedAt is null)
         {
             List<UserIdentityRef> identities = (await userStatements.GetIdentitiesForUser(dbUser.Id))
                 .Select(identity => identity.ToRef())

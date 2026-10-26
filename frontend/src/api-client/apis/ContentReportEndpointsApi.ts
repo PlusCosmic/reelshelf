@@ -36,6 +36,11 @@ export interface ListContentReportsRequest {
   resolved?: boolean;
 }
 
+export interface RemoveContentReportClipRequest {
+  reportId: string;
+  resolveContentReportRequest: ResolveContentReportRequest;
+}
+
 export interface ReportSharedClipRequest {
   token: string;
   contentReportRequest: ContentReportRequest;
@@ -151,6 +156,69 @@ export class ContentReportEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<AdminContentReport>> {
     const response = await this.listContentReportsRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   */
+  async removeContentReportClipRaw(
+    requestParameters: RemoveContentReportClipRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AdminContentReport>> {
+    if (requestParameters["reportId"] == null) {
+      throw new runtime.RequiredError(
+        "reportId",
+        'Required parameter "reportId" was null or undefined when calling removeContentReportClip().',
+      );
+    }
+
+    if (requestParameters["resolveContentReportRequest"] == null) {
+      throw new runtime.RequiredError(
+        "resolveContentReportRequest",
+        'Required parameter "resolveContentReportRequest" was null or undefined when calling removeContentReportClip().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/admin/reports/{reportId}/remove`;
+    urlPath = urlPath.replace(
+      `{${"reportId"}}`,
+      encodeURIComponent(String(requestParameters["reportId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: ResolveContentReportRequestToJSON(
+          requestParameters["resolveContentReportRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AdminContentReportFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async removeContentReportClip(
+    requestParameters: RemoveContentReportClipRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AdminContentReport> {
+    const response = await this.removeContentReportClipRaw(
       requestParameters,
       initOverrides,
     );

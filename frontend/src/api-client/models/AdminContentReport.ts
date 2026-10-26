@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from "../runtime";
+import type { AdminContentReportEvidence } from "./AdminContentReportEvidence";
+import {
+  AdminContentReportEvidenceFromJSON,
+  AdminContentReportEvidenceFromJSONTyped,
+  AdminContentReportEvidenceToJSON,
+  AdminContentReportEvidenceToJSONTyped,
+} from "./AdminContentReportEvidence";
+
 /**
  *
  * @export
@@ -121,6 +129,18 @@ export interface AdminContentReport {
    * @memberof AdminContentReport
    */
   openReportsOnClip: number;
+  /**
+   *
+   * @type {boolean}
+   * @memberof AdminContentReport
+   */
+  ownerSuspended: boolean;
+  /**
+   *
+   * @type {AdminContentReportEvidence}
+   * @memberof AdminContentReport
+   */
+  evidence: AdminContentReportEvidence | null;
 }
 
 /**
@@ -156,6 +176,9 @@ export function instanceOfAdminContentReport(
     value["openReportsOnClip"] === undefined
   )
     return false;
+  if (!("ownerSuspended" in value) || value["ownerSuspended"] === undefined)
+    return false;
+  if (!("evidence" in value) || value["evidence"] === undefined) return false;
   return true;
 }
 
@@ -189,6 +212,8 @@ export function AdminContentReportFromJSONTyped(
     shareHidden: json["share_hidden"],
     sharingBlocked: json["sharing_blocked"],
     openReportsOnClip: json["open_reports_on_clip"],
+    ownerSuspended: json["owner_suspended"],
+    evidence: AdminContentReportEvidenceFromJSON(json["evidence"]),
   };
 }
 
@@ -225,5 +250,7 @@ export function AdminContentReportToJSONTyped(
     share_hidden: value["shareHidden"],
     sharing_blocked: value["sharingBlocked"],
     open_reports_on_clip: value["openReportsOnClip"],
+    owner_suspended: value["ownerSuspended"],
+    evidence: AdminContentReportEvidenceToJSON(value["evidence"]),
   };
 }

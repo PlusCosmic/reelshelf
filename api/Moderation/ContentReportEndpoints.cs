@@ -27,7 +27,16 @@ public sealed record AdminContentReport(
     string? ShareUrl,
     bool ShareHidden,
     bool SharingBlocked,
-    int OpenReportsOnClip);
+    int OpenReportsOnClip,
+    bool OwnerSuspended,
+    AdminContentReportEvidence? Evidence);
+
+/// <summary>
+/// A removed clip's evidence: <see cref="Status"/> is <c>pending</c> while it is copied and taken off public storage,
+/// then <c>preserved</c>, or <c>failed</c> after every attempt. <see cref="CdnPurge"/> is <c>not_configured</c> when the
+/// media domain still has to be purged by hand.
+/// </summary>
+public sealed record AdminContentReportEvidence(string Status, string? Error, string? CdnPurge, DateTimeOffset DeleteAfter);
 
 public sealed record ResolveContentReportRequest(string? Note);
 
@@ -49,6 +58,7 @@ public static class ContentReportEndpoints
         admin.MapGet("", ListReports).WithName("ListContentReports");
         admin.MapPost("{reportId:guid}/take-down", TakeDown).WithName("TakeDownContentReport");
         admin.MapPost("{reportId:guid}/dismiss", Dismiss).WithName("DismissContentReport");
+        admin.MapPost("{reportId:guid}/remove", Remove).WithName("RemoveContentReportClip");
     }
 
     private static async Task<Results<NoContent, NotFound>> ReportSharedClip(
@@ -80,6 +90,17 @@ public static class ContentReportEndpoints
         return TypedResults.Ok(ToReport((await statements.Get(reportId))!));
     }
 
+    private static async Task<Ok<AdminContentReport>> Remove(
+        Guid reportId,
+        ResolveContentReportRequest request,
+        AuthenticatedUser admin,
+        ContentReportService reports,
+        ContentReportStatements statements)
+    {
+        await reports.Remove(admin, reportId, request.Note);
+        return TypedResults.Ok(ToReport((await statements.Get(reportId))!));
+    }
+
     private static async Task<Ok<AdminContentReport>> Dismiss(
         Guid reportId,
         ResolveContentReportRequest request,
@@ -100,6 +121,9 @@ public static class ContentReportEndpoints
             : null;
         return new AdminContentReport(row.Id, row.Reason, row.Details, row.ReporterEmail, row.Status, row.CreatedAt,
             row.ResolvedAt, row.ResolvedByName, row.ResolutionNote, row.ClipId, row.ClipTitle, row.ClipOwnerId,
-            row.OwnerName, shareUrl, row.ShareHidden, row.SharingBlocked, row.OpenReportsOnClip);
+            row.OwnerName, shareUrl, row.ShareHidden, row.SharingBlocked, row.OpenReportsOnClip, row.OwnerSuspended,
+            row.EvidenceStatus is { } status && row.EvidenceDeleteAfter is { } deleteAfter
+                ? new AdminContentReportEvidence(status, row.EvidenceError, row.EvidenceCdnPurge, deleteAfter)
+                : null);
     }
 }

@@ -41,15 +41,14 @@ function PrivacyRoute() {
         </li>
         <li>
           <strong>Your access:</strong> your role, any plan we give you without
-          charge, and a record of each change to either: when, which of us made
-          it and why.
+          charge, whether your account is suspended, and a record of each change
+          to any of them: when, which of us made it and why.
         </li>
         <li>
           <strong>If you report a shared clip:</strong> the reason you picked,
           anything you wrote, and your email address if you gave it, so we can
           tell you the outcome or ask for more. We don't link the report to your
-          account. The clip's owner is told a clip was taken down and why, never
-          who reported it.
+          account. The clip's owner is never told who reported it.
         </li>
         <li>
           <strong>Usage within Reelshelf:</strong> which clips you've watched,
@@ -186,7 +185,12 @@ function PrivacyRoute() {
         Downloads you ask for are kept for 28 days too. Reports of shared clips,
         and what we decided, are kept as a record of how we dealt with them,
         even after the clip is deleted; deleting your account removes your name
-        from reports about your clips. Backups and logs age out on their own
+        from reports about your clips. If we remove a clip for child sexual
+        abuse or terrorism, we keep a private copy of it, its details and the
+        uploading account's details (usernames, sign-in IDs and email) for a
+        year, even if the account is deleted, so we can give them to the
+        authorities, and then delete them. Nobody can see that copy except us
+        and the authorities we give it to. Backups and logs age out on their own
         schedule.
       </p>
 

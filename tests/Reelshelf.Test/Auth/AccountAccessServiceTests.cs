@@ -91,6 +91,38 @@ public class AccountAccessServiceTests
             new AccountAccessService(store).SetGrantedTier(Admin, Guid.NewGuid(), AccountTier.Plus, "test"));
     }
 
+    [Fact]
+    public async Task AnAdmin_CantSuspendThemselves()
+    {
+        FakeStore store = new();
+
+        await Assert.ThrowsAsync<BadRequestException>(() =>
+            new AccountAccessService(store).SetSuspended(Admin, Admin.Id, true, "test"));
+        Assert.Empty(store.Calls);
+    }
+
+    [Fact]
+    public async Task SuspendingAnAdmin_IsAConflict()
+    {
+        FakeStore store = new() { Outcome = AccessChangeOutcome.IsAdmin };
+
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            new AccountAccessService(store).SetSuspended(Admin, Guid.NewGuid(), true, "test"));
+    }
+
+    [Fact]
+    public async Task Suspending_NeedsAReason_AndIsPassedOn()
+    {
+        FakeStore store = new();
+        Guid account = Guid.NewGuid();
+        AccountAccessService access = new(store);
+
+        await Assert.ThrowsAsync<BadRequestException>(() => access.SetSuspended(Admin, account, true, " "));
+        await access.SetSuspended(Admin, account, false, "appeal upheld");
+
+        Assert.Equal([$"suspended {account} False {Admin.Id} appeal upheld"], store.Calls);
+    }
+
     [Theory]
     [InlineData("plus", AccountTier.Plus)]
     [InlineData("Pro", AccountTier.Pro)]
@@ -126,6 +158,12 @@ public class AccountAccessServiceTests
             string reason)
         {
             Calls.Add($"tier {userId} {tier?.ToString() ?? "none"} {changedBy} {reason}");
+            return Task.FromResult(Outcome);
+        }
+
+        public Task<AccessChangeOutcome> SetSuspended(Guid userId, bool suspended, Guid changedBy, string reason)
+        {
+            Calls.Add($"suspended {userId} {suspended} {changedBy} {reason}");
             return Task.FromResult(Outcome);
         }
 

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   dismissContentReport,
   listContentReports,
+  removeContentReportClip,
   reportSharedClip,
   takeDownContentReport,
   type ReportReason,
@@ -27,7 +28,7 @@ export function useContentReports(resolved: boolean) {
   });
 }
 
-/** Takes the report's clip down or dismisses the report, then refreshes both lists. */
+/** Takes the report's clip down, removes it, or dismisses the report, then refreshes both lists. */
 export function useResolveContentReport() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -37,12 +38,14 @@ export function useResolveContentReport() {
       note,
     }: {
       reportId: string;
-      action: "take-down" | "dismiss";
+      action: "take-down" | "remove" | "dismiss";
       note: string;
     }) =>
       action === "take-down"
         ? takeDownContentReport(reportId, note)
-        : dismissContentReport(reportId, note),
+        : action === "remove"
+          ? removeContentReportClip(reportId, note)
+          : dismissContentReport(reportId, note),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: contentReportsQueryKey }),
   });

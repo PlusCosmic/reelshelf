@@ -117,11 +117,20 @@ public static class UserEndpoints
         AuthenticatedUser user,
         DeleteAccountRequest request,
         AccountDeletionService accountDeletion,
+        Moderation.ContentReportStatements contentReports,
+        IOptionsMonitor<Moderation.ModerationOptions> moderation,
         HttpContext context)
     {
         if (!AccountDeletionService.IsConfirmed(request.Confirmation))
         {
             return TypedResults.BadRequest($"Type \"{AccountDeletionService.ConfirmationPhrase}\" to confirm.");
+        }
+
+        // One of its clips may be evidence (see ClipService.DeleteClip); the message gives nothing away.
+        if (await contentReports.IsHeldForReview(ownerId: user.Id))
+        {
+            throw new Exceptions.ConflictException(
+                $"Your account can't be deleted right now. Email {moderation.CurrentValue.ContactEmail}.");
         }
 
         await accountDeletion.Request(user.Id);

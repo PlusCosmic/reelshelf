@@ -5,6 +5,7 @@ using Reelshelf.Core.Models;
 using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.Games;
+using Reelshelf.Moderation;
 using Reelshelf.Plans;
 using Reelshelf.Video;
 using Reelshelf.Video.Transcoding;
@@ -22,6 +23,7 @@ public class ClipService(
     TimeProvider timeProvider,
     ClipMediaUrls mediaUrls,
     ITranscodeStorage transcodeStorage,
+    ContentReportStatements contentReports,
     ILogger<ClipService> logger)
 {
     private const int ShareTokenByteLength = 32;
@@ -424,6 +426,13 @@ public class ClipService(
         if (clip == null)
         {
             return false;
+        }
+
+        // A clip waiting on review of a child-safety or terrorism report may be evidence. The message says no more,
+        // so it doesn't tell a suspect they were reported.
+        if (await contentReports.IsHeldForReview(clipId: clipId))
+        {
+            throw new ConflictException("This clip can't be deleted right now.");
         }
 
         await ClipVideoDeletion.DeleteAsync(videoHosts, transcodeStorage, clipId, clip.VideoHost, clip.VideoId,
