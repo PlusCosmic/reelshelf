@@ -1,6 +1,6 @@
 # ADR-0008: Roles and granted tiers in the database
 
-**Status:** Proposed (2026-10-25). Replaces `whitelist.json` from ADR-0002 and ADR-0007; their other decisions stand.
+**Status:** Accepted (2026-10-26). Replaces `whitelist.json` from ADR-0002 and ADR-0007; their other decisions stand.
 
 ## Context
 
