@@ -11,7 +11,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyRoute() {
   return (
-    <LegalPage title="Privacy policy" updated="23 October 2026">
+    <LegalPage title="Privacy policy" updated="26 October 2026">
       <p>
         This explains what Reelshelf, run by {legalOperator}, collects, why, and
         who else handles it. We don't sell your data, show ads or use tracking
@@ -131,12 +131,14 @@ function PrivacyRoute() {
 
       <h2>Where your data is stored</h2>
       <p>
-        Reelshelf is run from the UK. Our servers, database and clip storage are
-        in Germany, and clips that Google Cloud encodes are processed in the EU.
-        Discord, Twitch, Stripe, OpenAI, Anthropic, OpenRouter and Resend are
-        based in the US, so data they handle leaves the UK and EU. We rely on
-        their standard data protection terms, such as standard contractual
-        clauses or the UK–US data bridge, to protect it.
+        Reelshelf is run from the UK. Our servers and database are in Germany.
+        Clips in our own pipeline are stored by Cloudflare in the US (eastern
+        North America); clips not yet moved from Bunny.net are stored in Germany
+        until they move. Clips that Google Cloud encodes are processed in the
+        EU. Cloudflare, Discord, Twitch, Stripe, OpenAI, Anthropic, OpenRouter
+        and Resend are based in the US, so data they handle leaves the UK and
+        EU. We rely on their standard data protection terms, such as standard
+        contractual clauses or the UK–US data bridge, to protect it.
       </p>
 
       <h2>Sharing and visibility</h2>
