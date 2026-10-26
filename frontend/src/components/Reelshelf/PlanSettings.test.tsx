@@ -64,6 +64,7 @@ const free: AccountPlanResponse = {
   freeClipLimit: 100,
   overLimitGraceDays: 14,
   canChangePlan: false,
+  grantedTier: null,
 };
 
 const subscription = (
@@ -166,6 +167,27 @@ describe("PlanSettings", () => {
     fireEvent.click(screen.getByRole("button", { name: "Monthly" }));
     fireEvent.click(screen.getByRole("button", { name: "Upgrade to Plus" }));
     expect(mocks.checkout).toHaveBeenLastCalledWith("plus_monthly");
+  });
+
+  it("names a granted plan as granted and still offers the plans above it", () => {
+    mocks.plan = {
+      ...free,
+      tier: "plus",
+      clipLimit: 1000,
+      grantedTier: "plus",
+    };
+    mocks.offers = offers;
+    render(<PlanSettings billingReturn={undefined} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Plus (granted)" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Current plan")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Upgrade to Plus" }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Upgrade to Pro" }));
+    expect(mocks.checkout).toHaveBeenCalledWith("pro_yearly");
   });
 
   it("says in words when the library is nearly full", () => {

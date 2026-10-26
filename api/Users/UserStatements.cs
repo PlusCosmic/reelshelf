@@ -6,7 +6,7 @@ namespace Reelshelf.Users;
 public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector tokenProtector)
     : IUserIdentityStore, IProviderTokenStore, Plans.IClipLimitWarningStore
 {
-    private const string UserColumns = "id, username, global_name, avatar_url, email, onboarding_completed_at, role, role_from_whitelist";
+    private const string UserColumns = "id, username, global_name, avatar_url, email, onboarding_completed_at, role, granted_tier";
 
     private const string IdentityColumns =
         "id, user_id, provider, provider_user_id, username, display_name, avatar_url, email, linked_at";
@@ -362,7 +362,7 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
     public async Task<List<UserRow>> GetUsersWhoAddedMe(Guid userId)
     {
         const string sql = @"
-            SELECT DISTINCT u.id, u.username, u.global_name, u.avatar_url, u.email, u.onboarding_completed_at, u.role, u.role_from_whitelist
+            SELECT DISTINCT u.id, u.username, u.global_name, u.avatar_url, u.email, u.onboarding_completed_at, u.role, u.granted_tier
             FROM playlist_collaborators pc
             JOIN playlists p ON p.id = pc.playlist_id
             JOIN app_user u ON u.id = p.creator_user_id
@@ -416,28 +416,6 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         return result.ToList();
     }
 
-    public async Task<List<string>> GetUserAdditionalPermissions(Guid userId)
-    {
-        const string sql = @"
-            SELECT permission
-            FROM user_additional_permission
-            WHERE user_id = @userId";
-
-        IEnumerable<string> permissions = await connection.QueryAsync<string>(sql, new { userId });
-        return permissions.ToList();
-    }
-
-    public async Task UpdateUserRole(Guid userId, string role, bool roleFromWhitelist)
-    {
-        const string sql = @"
-            UPDATE app_user
-            SET role = @role,
-                role_from_whitelist = @roleFromWhitelist
-            WHERE id = @userId";
-
-        await connection.ExecuteAsync(sql, new { userId, role, roleFromWhitelist });
-    }
-
     public class UserRow
     {
         public Guid Id { get; set; }
@@ -447,7 +425,7 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         public string? Email { get; set; }
         public DateTimeOffset? OnboardingCompletedAt { get; set; }
         public string Role { get; set; } = "Editor";
-        public bool RoleFromWhitelist { get; set; }
+        public string? GrantedTier { get; set; }
     }
 
     public class UserIdentityRow

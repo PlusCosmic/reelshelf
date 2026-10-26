@@ -274,6 +274,8 @@ function planTitle(plan: AccountPlan): string {
   ) {
     return `${tier}, ${subscription.interval === "year" ? "yearly" : "monthly"}`;
   }
+  // A tier an admin granted, when no subscription does as well (ADR-0008).
+  if (plan.grantedTier === plan.tier) return `${tier} (granted)`;
   return tier;
 }
 

@@ -1,4 +1,5 @@
 import {
+  AdminAccountEndpointsApi,
   BillingEndpointsApi,
   ClipsEndpointsApi,
   ClipSummaryEndpointsApi,
@@ -38,6 +39,10 @@ export function createGameCategoryApi() {
 
 export function createUserApi() {
   return new UserEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createAdminAccountApi() {
+  return new AdminAccountEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
 export function createPlanApi() {

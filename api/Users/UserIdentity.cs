@@ -55,7 +55,7 @@ public sealed record ProviderTokens(
     public string ScopesAsString() => string.Join(' ', Scopes);
 }
 
-/// <summary>Provider-level reference to an identity; enough to match whitelist entries.</summary>
+/// <summary>Provider-level reference to an identity: the provider and its id for the user.</summary>
 public sealed record UserIdentityRef(string Provider, string ProviderUserId);
 
 /// <summary>A linked identity as exposed to the account's owner.</summary>

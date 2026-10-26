@@ -40,6 +40,11 @@ function PrivacyRoute() {
           go to Stripe and never reach us.
         </li>
         <li>
+          <strong>Your access:</strong> your role, any plan we give you without
+          charge, and a record of each change to either: when, which of us made
+          it and why.
+        </li>
+        <li>
           <strong>Usage within Reelshelf:</strong> which clips you've watched,
           so we can mark them as seen, and when you added each clip in the last
           30 days, for your plan's limit on new clips (kept even if you delete

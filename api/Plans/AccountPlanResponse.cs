@@ -4,9 +4,10 @@ namespace Reelshelf.Plans;
 
 /// <summary>
 /// The signed-in account's plan (<c>GET /api/me/plan</c>): its tier, limits and usage, and its subscription. Null
-/// limits are no limit. <see cref="FreeClipLimit"/> and <see cref="OverLimitGraceDays"/> let the page say what
-/// ending a plan would cost: the clips over Free's limit, deleted that many days after it ends (null while
-/// <c>Plans:Enforce</c> is off, when nothing is deleted).
+/// limits are no limit. <see cref="GrantedTier"/> is the tier an admin granted, if any (ADR-0008).
+/// <see cref="FreeClipLimit"/> and <see cref="OverLimitGraceDays"/> let the page say what ending a plan would cost:
+/// the clips over Free's limit, deleted that many days after it ends (null while <c>Plans:Enforce</c> is off, when
+/// nothing is deleted).
 /// </summary>
 public sealed record AccountPlanResponse(
     string Tier,
@@ -24,11 +25,12 @@ public sealed record AccountPlanResponse(
     DateTimeOffset? OverLimitDeletesAt,
     int? FreeClipLimit,
     int? OverLimitGraceDays,
-    bool CanChangePlan)
+    bool CanChangePlan,
+    string? GrantedTier)
 {
     public static AccountPlanResponse From(AccountPlan plan, IReadOnlyList<BillingSubscription> subscriptions,
         bool billingEnabled, bool hasCustomer, DateTimeOffset? overLimitDeletesAt = null,
-        TimeSpan? overLimitGrace = null, bool canChangePlan = false)
+        TimeSpan? overLimitGrace = null, bool canChangePlan = false, AccountTier? grantedTier = null)
     {
         // The subscription that grants the tier, else the latest one that could still bill (unpaid, paused), else
         // the latest of any kind, so a lapsed plan still shows when it ended.
@@ -55,7 +57,8 @@ public sealed record AccountPlanResponse(
             overLimitDeletesAt,
             TierLimits.For(AccountTier.Free).MaxClips,
             overLimitGrace is { } grace ? (int)Math.Ceiling(grace.TotalDays) : null,
-            billingEnabled && canChangePlan);
+            billingEnabled && canChangePlan,
+            grantedTier is { } granted ? BillingStatements.TierName(granted) : null);
     }
 }
 

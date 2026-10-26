@@ -9,7 +9,7 @@ namespace Reelshelf.Test.Billing;
 public class BillingServiceTests
 {
     private static readonly AuthenticatedUser User = new(Guid.NewGuid(), "harry", null, null, "harry@example.com", true,
-        UserRole.Editor, [], []);
+        UserRole.Editor, null, []);
 
     private static (BillingService Service, FakeStripe Stripe, FakeStore Store) Build() => Build(new NoPlanEndingNotifier());
 

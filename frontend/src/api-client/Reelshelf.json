@@ -2727,6 +2727,160 @@
         }
       }
     },
+    "/api/admin/accounts": {
+      "get": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "FindAdminAccounts",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminAccount"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/accounts/{userId}": {
+      "get": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "GetAdminAccount",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/admin/accounts/{userId}/role": {
+      "put": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "SetAdminAccountRole",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAccountRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/admin/accounts/{userId}/granted-tier": {
+      "put": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "SetAdminAccountGrantedTier",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetGrantedTierRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/billing/checkout": {
       "post": {
         "tags": [
@@ -3243,7 +3397,8 @@
           "over_limit_deletes_at",
           "free_clip_limit",
           "over_limit_grace_days",
-          "can_change_plan"
+          "can_change_plan",
+          "granted_tier"
         ],
         "type": "object",
         "properties": {
@@ -3329,6 +3484,12 @@
           },
           "can_change_plan": {
             "type": "boolean"
+          },
+          "granted_tier": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3598,6 +3759,141 @@
         "type": "object",
         "properties": {
           "tag": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminAccessChange": {
+        "required": [
+          "id",
+          "field",
+          "old_value",
+          "new_value",
+          "reason",
+          "changed_by_name",
+          "changed_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "field": {
+            "type": "string"
+          },
+          "old_value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "new_value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "changed_by_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminAccount": {
+        "required": [
+          "id",
+          "username",
+          "global_name",
+          "avatar_url",
+          "role",
+          "granted_tier",
+          "identities"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "global_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "avatar_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "granted_tier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "identities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAccountIdentity"
+            }
+          }
+        }
+      },
+      "AdminAccountDetail": {
+        "required": [
+          "account",
+          "tier",
+          "changes"
+        ],
+        "type": "object",
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AdminAccount"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAccessChange"
+            }
+          }
+        }
+      },
+      "AdminAccountIdentity": {
+        "required": [
+          "provider",
+          "provider_user_id",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "provider_user_id": {
+            "type": "string"
+          },
+          "username": {
             "type": "string"
           }
         }
@@ -6701,6 +6997,24 @@
           }
         }
       },
+      "SetAccountRoleRequest": {
+        "required": [
+          "role",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "SetClipKeptRequest": {
         "required": [
           "keep"
@@ -6719,6 +7033,27 @@
         "type": "object",
         "properties": {
           "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SetGrantedTierRequest": {
+        "required": [
+          "tier",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
             "type": [
               "null",
               "string"
@@ -7144,6 +7479,9 @@
     },
     {
       "name": "ClipSummaryEndpoints"
+    },
+    {
+      "name": "AdminAccountEndpoints"
     },
     {
       "name": "BillingEndpoints"
