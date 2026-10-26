@@ -22,6 +22,7 @@ using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.FFmpeg;
 using Reelshelf.Games;
+using Reelshelf.Moderation;
 using Reelshelf.Playlists;
 using Reelshelf.QueueMetrics;
 using Reelshelf.Plans;
@@ -87,6 +88,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapClipsEndpoints();
         apiGroup.MapMultipartUploadEndpoints();
         apiGroup.MapSharedClipsEndpoints();
+        apiGroup.MapContentReportEndpoints();
         apiGroup.MapPlaylistEndpoints();
         apiGroup.MapFFmpegEndpoints();
         apiGroup.MapBunnyWebhookEndpoints();
@@ -272,6 +274,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<GameCategoryStatements>();
 
         builder.Services.AddScoped<ClipsStatements>();
+        builder.AddModeration();
         builder.Services.AddScoped<PlaylistStatements>();
         builder.Services.AddScoped<PlaylistAccess>();
         builder.Services.AddScoped<IGamingSessionPlaylistStore, GamingSessionPlaylistStore>();

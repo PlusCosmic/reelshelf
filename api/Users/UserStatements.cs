@@ -6,7 +6,7 @@ namespace Reelshelf.Users;
 public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector tokenProtector)
     : IUserIdentityStore, IProviderTokenStore, Plans.IClipLimitWarningStore
 {
-    private const string UserColumns = "id, username, global_name, avatar_url, email, onboarding_completed_at, role, granted_tier";
+    private const string UserColumns = "id, username, global_name, avatar_url, email, onboarding_completed_at, role, granted_tier, suspended_at";
 
     private const string IdentityColumns =
         "id, user_id, provider, provider_user_id, username, display_name, avatar_url, email, linked_at";
@@ -426,6 +426,9 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         public DateTimeOffset? OnboardingCompletedAt { get; set; }
         public string Role { get; set; } = "Editor";
         public string? GrantedTier { get; set; }
+
+        /// <summary>Set while an admin has suspended the account: it can't sign in or be used.</summary>
+        public DateTimeOffset? SuspendedAt { get; set; }
     }
 
     public class UserIdentityRow

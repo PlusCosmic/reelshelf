@@ -17,6 +17,7 @@ import type {
   AdminAccount,
   AdminAccountDetail,
   SetAccountRoleRequest,
+  SetAccountSuspensionRequest,
   SetGrantedTierRequest,
 } from "../models/index";
 import {
@@ -26,6 +27,8 @@ import {
   AdminAccountDetailToJSON,
   SetAccountRoleRequestFromJSON,
   SetAccountRoleRequestToJSON,
+  SetAccountSuspensionRequestFromJSON,
+  SetAccountSuspensionRequestToJSON,
   SetGrantedTierRequestFromJSON,
   SetGrantedTierRequestToJSON,
 } from "../models/index";
@@ -46,6 +49,11 @@ export interface SetAdminAccountGrantedTierRequest {
 export interface SetAdminAccountRoleRequest {
   userId: string;
   setAccountRoleRequest: SetAccountRoleRequest;
+}
+
+export interface SetAdminAccountSuspensionRequest {
+  userId: string;
+  setAccountSuspensionRequest: SetAccountSuspensionRequest;
 }
 
 /**
@@ -267,6 +275,69 @@ export class AdminAccountEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<AdminAccountDetail> {
     const response = await this.setAdminAccountRoleRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   */
+  async setAdminAccountSuspensionRaw(
+    requestParameters: SetAdminAccountSuspensionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AdminAccountDetail>> {
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling setAdminAccountSuspension().',
+      );
+    }
+
+    if (requestParameters["setAccountSuspensionRequest"] == null) {
+      throw new runtime.RequiredError(
+        "setAccountSuspensionRequest",
+        'Required parameter "setAccountSuspensionRequest" was null or undefined when calling setAdminAccountSuspension().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/admin/accounts/{userId}/suspension`;
+    urlPath = urlPath.replace(
+      `{${"userId"}}`,
+      encodeURIComponent(String(requestParameters["userId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "PUT",
+        headers: headerParameters,
+        query: queryParameters,
+        body: SetAccountSuspensionRequestToJSON(
+          requestParameters["setAccountSuspensionRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AdminAccountDetailFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async setAdminAccountSuspension(
+    requestParameters: SetAdminAccountSuspensionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AdminAccountDetail> {
+    const response = await this.setAdminAccountSuspensionRaw(
       requestParameters,
       initOverrides,
     );

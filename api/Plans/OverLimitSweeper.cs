@@ -19,7 +19,18 @@ public interface IOwnedClipDeleter
 
 public sealed class ClipServiceDeleter(ClipService clips) : IOwnedClipDeleter
 {
-    public Task<bool> DeleteAsync(Guid clipId, Guid ownerId) => clips.DeleteClip(clipId, ownerId);
+    /// <summary>A clip held for review of a child-safety or terrorism report is skipped, not deleted.</summary>
+    public async Task<bool> DeleteAsync(Guid clipId, Guid ownerId)
+    {
+        try
+        {
+            return await clips.DeleteClip(clipId, ownerId);
+        }
+        catch (Exceptions.ConflictException)
+        {
+            return false;
+        }
+    }
 }
 
 /// <summary>

@@ -21,6 +21,7 @@ public static class Permissions
 
     // Admin permissions
     public const string AdminUsers = "admin.users";
+    public const string AdminReports = "admin.reports";
 
     /// <summary>
     /// Default permissions for each role.

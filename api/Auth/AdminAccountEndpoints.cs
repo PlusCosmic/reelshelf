@@ -6,7 +6,7 @@ namespace Reelshelf.Auth;
 
 public sealed record AdminAccountIdentity(string Provider, string ProviderUserId, string Username);
 
-/// <summary>An account's role and granted tier; roles and tiers are lowercase names.</summary>
+/// <summary>An account's role, granted tier and suspension; roles and tiers are lowercase names.</summary>
 public sealed record AdminAccount(
     Guid Id,
     string Username,
@@ -14,6 +14,7 @@ public sealed record AdminAccount(
     string? AvatarUrl,
     string Role,
     string? GrantedTier,
+    DateTimeOffset? SuspendedAt,
     List<AdminAccountIdentity> Identities);
 
 public sealed record AdminAccessChange(
@@ -33,7 +34,10 @@ public sealed record SetAccountRoleRequest(string Role, string? Reason);
 /// <summary>A null <see cref="Tier"/> takes the grant away.</summary>
 public sealed record SetGrantedTierRequest(string? Tier, string? Reason);
 
-/// <summary>Admins find accounts and change their role or granted tier (ADR-0008).</summary>
+/// <summary>True suspends the account; false lifts its suspension.</summary>
+public sealed record SetAccountSuspensionRequest(bool Suspended, string? Reason);
+
+/// <summary>Admins find accounts and change their role, granted tier or suspension (ADR-0008).</summary>
 public static class AdminAccountEndpoints
 {
     private const int SearchLimit = 20;
@@ -48,6 +52,7 @@ public static class AdminAccountEndpoints
         group.MapGet("{userId:guid}", GetAccount).WithName("GetAdminAccount");
         group.MapPut("{userId:guid}/role", SetRole).WithName("SetAdminAccountRole");
         group.MapPut("{userId:guid}/granted-tier", SetGrantedTier).WithName("SetAdminAccountGrantedTier");
+        group.MapPut("{userId:guid}/suspension", SetSuspension).WithName("SetAdminAccountSuspension");
     }
 
     /// <summary>Accounts matching a username, display name or Discord or Twitch id; nothing under two characters.</summary>
@@ -110,6 +115,18 @@ public static class AdminAccountEndpoints
         return await GetAccount(userId, store, tiers);
     }
 
+    private static async Task<Results<Ok<AdminAccountDetail>, NotFound>> SetSuspension(
+        Guid userId,
+        SetAccountSuspensionRequest request,
+        AuthenticatedUser admin,
+        AccountAccessService access,
+        IAccountAccessStore store,
+        AccountTierService tiers)
+    {
+        await access.SetSuspended(admin, userId, request.Suspended, request.Reason);
+        return await GetAccount(userId, store, tiers);
+    }
+
     private static async Task<AdminAccountDetail> Detail(AccountAccessRow row, IAccountAccessStore store,
         AccountTierService tiers)
     {
@@ -133,6 +150,7 @@ public static class AdminAccountEndpoints
         return new AdminAccount(row.Id, row.Username, row.GlobalName, row.AvatarUrl,
             row.Role.ToString().ToLowerInvariant(),
             row.GrantedTier is { } granted ? GrantedTiers.Name(granted) : null,
+            row.SuspendedAt,
             row.Identities
                 .Select(identity =>
                     new AdminAccountIdentity(identity.Provider, identity.ProviderUserId, identity.Username))

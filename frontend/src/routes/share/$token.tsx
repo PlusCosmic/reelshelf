@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
+import { ReportClip } from "@/components/Reelshelf/ReportClip";
 import { ClipVideoPlayer } from "@/components/Video/ClipVideoPlayer";
 import { useSharedClip } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
@@ -65,6 +66,7 @@ function SharedClipRoute() {
               <span>{formatDuration(clip.durationSeconds)}</span>
               <span>{formatDate(clip.uploadedAt)}</span>
             </div>
+            <ReportClip token={token} />
           </div>
         </section>
       ) : null}

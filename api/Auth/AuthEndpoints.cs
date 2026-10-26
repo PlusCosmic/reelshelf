@@ -21,6 +21,10 @@ public static class AuthEndpoints
 
     /// <summary>Frontend page that shows linked accounts; link flows land here by default.</summary>
     private const string SettingsPath = "/settings";
+    private const string SignInPath = "/sign-in";
+
+    /// <summary>The sign-in page's <c>auth_error</c> for an account an admin has suspended.</summary>
+    internal const string SuspendedError = "suspended";
 
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app, IConfiguration configuration)
     {
@@ -119,6 +123,12 @@ public static class AuthEndpoints
         }
 
         SignInOutcome outcome = await accountLinking.SignIn(identity);
+        if (outcome.User.SuspendedAt is not null)
+        {
+            return TypedResults.Redirect(WithQuery(_frontendOrigin.TrimEnd('/') + SignInPath, "auth_error",
+                SuspendedError));
+        }
+
         await SignInAccount(ctx, outcome.User);
 
         return TypedResults.Redirect(ResolveReturnUrl(returnUrl) ?? _frontendOrigin);

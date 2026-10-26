@@ -4,6 +4,7 @@ import {
   ClipsEndpointsApi,
   ClipSummaryEndpointsApi,
   ClipTranscriptionEndpointsApi,
+  ContentReportEndpointsApi,
   Configuration as ClipsConfiguration,
   DiscordActivityEndpointsApi,
   UserEndpointsApi,
@@ -39,6 +40,10 @@ export function createGameCategoryApi() {
 
 export function createUserApi() {
   return new UserEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createContentReportApi() {
+  return new ContentReportEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
 export function createAdminAccountApi() {

@@ -8,6 +8,9 @@ public static class AccessFields
 {
     public const string Role = "role";
     public const string GrantedTier = "granted_tier";
+
+    /// <summary>Recorded with <c>suspended</c> as the new value when suspended, and as the old one when lifted.</summary>
+    public const string Suspended = "suspended";
 }
 
 /// <summary>Roles as <c>app_user.role</c> stores them: the enum's names.</summary>
@@ -66,7 +69,7 @@ public static class GrantedTiers
 }
 
 /// <summary>
-/// Changes an account's role or granted tier (ADR-0008). Nothing else writes them, and every change is recorded with
+/// Changes an account's role, granted tier or suspension (ADR-0008). Nothing else writes them, and every change is recorded with
 /// who made it and why. An admin can't change their own role, and the last Admin can't be demoted, so the admin pages
 /// can't lock everyone out.
 /// </summary>
@@ -97,6 +100,21 @@ public sealed class AccountAccessService(IAccountAccessStore store)
         Check(await store.SetGrantedTier(userId, tier, admin.Id, why));
     }
 
+    /// <summary>
+    /// Suspends the account, so it can't sign in and its share links stop working, or lifts the suspension. Its clips
+    /// are kept either way. An admin can't suspend themselves or another Admin.
+    /// </summary>
+    public async Task SetSuspended(AuthenticatedUser admin, Guid userId, bool suspended, string? reason)
+    {
+        string why = RequireReason(reason);
+        if (admin.Id == userId)
+        {
+            throw new BadRequestException("You can't suspend your own account.");
+        }
+
+        Check(await store.SetSuspended(userId, suspended, admin.Id, why));
+    }
+
     private static void Check(AccessChangeOutcome outcome)
     {
         switch (outcome)
@@ -105,6 +123,8 @@ public sealed class AccountAccessService(IAccountAccessStore store)
                 throw new NotFoundException("Account not found.");
             case AccessChangeOutcome.LastAdmin:
                 throw new ConflictException("This is the last Admin. Make someone else an Admin first.");
+            case AccessChangeOutcome.IsAdmin:
+                throw new ConflictException("Admins can't be suspended. Change their role first.");
         }
     }
 

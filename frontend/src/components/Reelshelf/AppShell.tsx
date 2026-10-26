@@ -1,5 +1,6 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
+  IconFlag,
   IconLogout,
   IconMoon,
   IconScan,
@@ -142,6 +143,17 @@ export function AppShell({
                   >
                     <IconUserShield size={16} />
                     Accounts
+                  </Link>
+                ) : null}
+                {user.isAdmin ? (
+                  <Link
+                    to="/admin/reports"
+                    className="rs-menu-item"
+                    role="menuitem"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <IconFlag size={16} />
+                    Reports
                   </Link>
                 ) : null}
                 <button

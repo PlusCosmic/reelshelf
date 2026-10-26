@@ -94,6 +94,11 @@ public sealed class ActivitySignInService(
     {
         UserStatements.UserIdentityRow? identity = await identities.GetIdentity(AuthProvider.Discord, discordUserId);
         UserStatements.UserRow? account = identity is null ? null : await identities.GetUserById(identity.UserId);
+        if (account?.SuspendedAt is not null)
+        {
+            // A suspended account joins as a guest: it can watch, but has no shelf to queue from.
+            account = null;
+        }
 
         return account is null
             ? new ActivityParticipantResponse(discordUserId, name, avatarUrl, false, null, null)
