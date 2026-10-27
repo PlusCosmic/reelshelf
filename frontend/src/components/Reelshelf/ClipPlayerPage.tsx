@@ -27,6 +27,7 @@ import type { ClipLinkSearch } from "./primitives/ClipViews";
 import {
   ClipGrid,
   ClipThumb,
+  LegendPlate,
   PlayerActions,
   SharedIndicator,
 } from "./ReelshelfPrimitives";
@@ -321,6 +322,15 @@ function ClipFacts({
             {game?.name ?? clip.categorySlug}
           </Link>
         </dd>
+        {clip.legend ? (
+          <>
+            <dt>Legend</dt>
+            <dd className="rs-watch-facts-legend">
+              <LegendPlate legend={clip.legend} size="small" />
+              {clip.legend}
+            </dd>
+          </>
+        ) : null}
         <dt>Recorded</dt>
         <dd>
           {formatDate(clip.createdAt)}, {formatTime(clip.createdAt)}
@@ -493,6 +503,13 @@ export function ClipPlayerPage({
         <section className="rs-watch-details" ref={trackDetailsHeight}>
           <h1 className="rs-display rs-watch-title">{clip.video.title}</h1>
           <div className="rs-watch-meta">
+            {clip.legend ? (
+              <span className="rs-watch-legend">
+                <LegendPlate legend={clip.legend} size="large" />
+                <small>Played as </small>
+                {clip.legend}
+              </span>
+            ) : null}
             <span>
               {formatDate(clip.createdAt)}, {formatTime(clip.createdAt)}
             </span>

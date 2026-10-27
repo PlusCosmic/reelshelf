@@ -100,6 +100,12 @@ export interface Clip {
    * @memberof Clip
    */
   gameMetadata: any | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Clip
+   */
+  legend: string | null;
 }
 
 /**
@@ -120,6 +126,7 @@ export function instanceOfClip(value: object): value is Clip {
   if (!("share" in value) || value["share"] === undefined) return false;
   if (!("gameMetadata" in value) || value["gameMetadata"] === undefined)
     return false;
+  if (!("legend" in value) || value["legend"] === undefined) return false;
   return true;
 }
 
@@ -146,6 +153,7 @@ export function ClipFromJSONTyped(
     isViewed: json["is_viewed"],
     share: ClipShareSummaryFromJSON(json["share"]),
     gameMetadata: json["game_metadata"],
+    legend: json["legend"],
   };
 }
 
@@ -173,5 +181,6 @@ export function ClipToJSONTyped(
     is_viewed: value["isViewed"],
     share: ClipShareSummaryToJSON(value["share"]),
     game_metadata: value["gameMetadata"],
+    legend: value["legend"],
   };
 }

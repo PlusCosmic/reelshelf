@@ -221,6 +221,13 @@
               "type": "string",
               "format": "date-time"
             }
+          },
+          {
+            "name": "legend",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -561,6 +568,29 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/TopTag"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clips/legends": {
+      "get": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "GetClipLegends",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LegendCount"
                   }
                 }
               }
@@ -4402,7 +4432,8 @@
           "tags",
           "is_viewed",
           "share",
-          "game_metadata"
+          "game_metadata",
+          "legend"
         ],
         "type": "object",
         "properties": {
@@ -4444,7 +4475,13 @@
           "share": {
             "$ref": "#/components/schemas/ClipShareSummary"
           },
-          "game_metadata": { }
+          "game_metadata": { },
+          "legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
         }
       },
       "ClipCategoryTotals": {
@@ -5904,6 +5941,22 @@
               "number"
             ],
             "format": "double"
+          }
+        }
+      },
+      "LegendCount": {
+        "required": [
+          "legend",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "legend": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

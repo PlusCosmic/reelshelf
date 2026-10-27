@@ -20,6 +20,7 @@ import type {
   ClipLibraryResponse,
   ClipShareResponse,
   CreateClipResponse,
+  LegendCount,
   PagedClipsResponse,
   TopTag,
   UpdateTitleRequest,
@@ -37,6 +38,8 @@ import {
   ClipShareResponseToJSON,
   CreateClipResponseFromJSON,
   CreateClipResponseToJSON,
+  LegendCountFromJSON,
+  LegendCountToJSON,
   PagedClipsResponseFromJSON,
   PagedClipsResponseToJSON,
   TopTagFromJSON,
@@ -72,6 +75,7 @@ export interface GetClipsRequest {
   sortOrder?: number;
   startDate?: Date;
   endDate?: Date;
+  legend?: string;
 }
 
 export interface GetTopTagsRequest {
@@ -328,6 +332,41 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
 
   /**
    */
+  async getClipLegendsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LegendCount>>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clips/legends`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LegendCountFromJSON),
+    );
+  }
+
+  /**
+   */
+  async getClipLegends(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LegendCount>> {
+    const response = await this.getClipLegendsRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
   async getClipLibraryRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<ClipLibraryResponse>> {
@@ -403,6 +442,10 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
 
     if (requestParameters["endDate"] != null) {
       queryParameters["endDate"] = requestParameters["endDate"];
+    }
+
+    if (requestParameters["legend"] != null) {
+      queryParameters["legend"] = requestParameters["legend"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};

@@ -13,7 +13,7 @@ import {
 import { useUploads } from "@/components/AddClips/UploadsProvider";
 import type { BulkUploadFileInput } from "@/hooks/bulkUploadQueue";
 import { useAddGameFromIgdb } from "@/hooks/queries";
-import { useTopTags } from "@/hooks/clips.queries";
+import { useClipLegends, useTopTags } from "@/hooks/clips.queries";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import {
   bulkUploadInputsFromDataTransfer,
@@ -24,11 +24,13 @@ import { GameBanner } from "./GameBanner";
 import { ShelfBar } from "./ShelfBar";
 import {
   Chip,
+  LegendPlate,
   PagedClipGrid,
   SearchBox,
   StatLine,
 } from "./ReelshelfPrimitives";
 import {
+  bookBinding,
   categoryTotalsFor,
   makeGameShelf,
   type GameShelfItem,
@@ -41,6 +43,8 @@ declare module "@tanstack/react-router" {
     toClips?: boolean;
   }
 }
+
+const APEX_LEGENDS_SLUG = "apex-legends";
 
 function topbarHeight() {
   return (
@@ -57,13 +61,15 @@ type LibraryState = {
   draggingUpload: boolean;
   query: string;
   tag: string | null;
+  legend: string | null;
 };
 
 type LibraryAction =
   | { type: "setAddCategoryOpen"; value: boolean }
   | { type: "setDraggingUpload"; value: boolean }
   | { type: "setQuery"; value: string }
-  | { type: "setTag"; value: string | null };
+  | { type: "setTag"; value: string | null }
+  | { type: "setLegend"; value: string | null };
 
 function libraryReducer(
   state: LibraryState,
@@ -78,6 +84,8 @@ function libraryReducer(
       return { ...state, query: action.value };
     case "setTag":
       return { ...state, tag: action.value };
+    case "setLegend":
+      return { ...state, legend: action.value };
   }
 }
 
@@ -103,15 +111,17 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     draggingUpload: false,
     query: "",
     tag: null,
+    legend: null,
   });
   const dragDepthRef = useRef(0);
   // The page stays mounted as books are pulled in and out, so a new game starts with a clean
-  // search and no tag, as it would on arriving fresh.
+  // search and no tag or legend, as it would on arriving fresh.
   const [shownSlug, setShownSlug] = useState(selectedSlug);
   if (shownSlug !== selectedSlug) {
     setShownSlug(selectedSlug);
     dispatch({ type: "setQuery", value: "" });
     dispatch({ type: "setTag", value: null });
+    dispatch({ type: "setLegend", value: null });
   }
   const [topSection, setTopSection] = useState<HTMLElement | null>(null);
   const [clipsSection, setClipsSection] = useState<HTMLElement | null>(null);
@@ -140,11 +150,16 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
   const tags = (
     useTopTags(selectedId, !selectedSlug || selectedId !== null).data ?? []
   ).slice(0, 8);
+  // Only the Apex book filters by legend, the one game whose clips have them.
+  const apexBook = selectedSlug === APEX_LEGENDS_SLUG;
+  const legends = useClipLegends(apexBook).data ?? [];
+  const legend = apexBook ? state.legend : null;
+  const selectedCloth = selected ? bookBinding(selected).cloth : undefined;
   // The grid queries the API, so let typing settle before asking for a new page of results.
   const search = useDebouncedValue(state.query);
   const filters = useMemo(
-    () => ({ categoryId: selectedId, tag: state.tag, search }),
-    [search, selectedId, state.tag],
+    () => ({ categoryId: selectedId, tag: state.tag, search, legend }),
+    [search, selectedId, state.tag, legend],
   );
 
   // The bar takes over once the whole shelf and its header have scrolled up under the topbar.
@@ -430,6 +445,40 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
               value={state.query}
               onChange={(value) => dispatch({ type: "setQuery", value })}
             />
+            {/* Its own row under the tags and search: there can be a couple of dozen legends. */}
+            {apexBook && legends.length > 0 ? (
+              <div className="rs-filter-chips rs-legend-chips">
+                <span className="rs-eyebrow rs-filter-label">Legends</span>
+                <Chip
+                  active={!legend}
+                  onClick={() => dispatch({ type: "setLegend", value: null })}
+                >
+                  All legends
+                </Chip>
+                {legends.map((item) => (
+                  <Chip
+                    key={item.legend}
+                    active={legend === item.legend}
+                    onClick={() =>
+                      dispatch({
+                        type: "setLegend",
+                        value: legend === item.legend ? null : item.legend,
+                      })
+                    }
+                  >
+                    <span className="rs-legend-chip">
+                      <LegendPlate
+                        legend={item.legend}
+                        cloth={selectedCloth}
+                        size="small"
+                      />
+                      {item.legend}{" "}
+                      <span className="rs-muted-count">{item.count}</span>
+                    </span>
+                  </Chip>
+                ))}
+              </div>
+            ) : null}
           </section>
 
           <section className="rs-section rs-clips" ref={setClipsSection}>

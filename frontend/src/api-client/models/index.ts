@@ -64,6 +64,7 @@ export * from "./LegendBaselineLabel";
 export * from "./LegendBaselineResult";
 export * from "./LegendCascade";
 export * from "./LegendCascadeClip";
+export * from "./LegendCount";
 export * from "./LegendDetectionArchiveResponse";
 export * from "./LegendDetectionBackfillResponse";
 export * from "./LegendDetectionLabel";

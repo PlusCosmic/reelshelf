@@ -2,6 +2,7 @@ import {
   type Clip,
   type ClipLibraryResponse,
   type GetClipsRequest,
+  type LegendCount,
   type PagedClipsResponse,
   type TopTag,
   type ClipShareResponse,
@@ -25,6 +26,11 @@ export async function fetchClips(
 export async function fetchTopTags(categoryId?: string): Promise<TopTag[]> {
   const api = createClipsApi();
   return api.getTopTags({ categoryId });
+}
+
+export async function fetchClipLegends(): Promise<LegendCount[]> {
+  const api = createClipsApi();
+  return api.getClipLegends();
 }
 
 export async function createVideoRequest(

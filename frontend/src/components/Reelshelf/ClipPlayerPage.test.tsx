@@ -44,6 +44,7 @@ vi.mock("./useLibraryData", () => ({
 vi.mock("./ReelshelfPrimitives", () => ({
   ClipGrid: () => null,
   ClipThumb: () => null,
+  LegendPlate: () => null,
   PlayerActions: () => null,
   SharedIndicator: () => null,
 }));

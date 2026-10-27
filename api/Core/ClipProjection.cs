@@ -1,3 +1,4 @@
+using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Core.Models;
 using Reelshelf.Games;
 using Reelshelf.Video;
@@ -34,7 +35,8 @@ public class ClipProjection(ClipMediaUrls mediaUrls)
             ParseTags(row.TagNames),
             isViewed,
             new ClipShareSummary(isShared),
-            null);
+            null,
+            ApexLegendNames.Canonicalize(row.PlayerLegend));
     }
 
     public List<Clip> ProjectClips(

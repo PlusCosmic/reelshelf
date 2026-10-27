@@ -3,6 +3,7 @@ using Npgsql;
 using Reelshelf.Core;
 using Reelshelf.Core.Models;
 using Reelshelf.Games;
+using Reelshelf.Test.ApexLegends;
 using Reelshelf.Test.Core;
 using Xunit;
 
@@ -113,12 +114,14 @@ public class ClipThumbnailsReadyTests
                 $"{PostgresFactAttribute.ConnectionString};Search Path={schema}");
             NpgsqlConnection connection = await dataSource.OpenConnectionAsync();
             await TestClipSchema.CreateAsync(connection);
-            // The tag tables the clip queries join, and the game categories their search reads.
+            // The tag tables the clip queries join, the game categories their search reads, and the legend
+            // tables an Apex clip's legend comes from.
             await connection.ExecuteAsync("""
                 CREATE TABLE tag (id uuid PRIMARY KEY, name text NOT NULL);
                 CREATE TABLE clip_tag (clip_id uuid NOT NULL, tag_id uuid NOT NULL);
-                CREATE TABLE game_category (id uuid PRIMARY KEY, name text NOT NULL);
+                CREATE TABLE game_category (id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL);
                 """);
+            await ClipLegendTests.CreateLegendTablesAsync(connection);
             return new TestDatabase(dataSource, connection, schema);
         }
 

@@ -14,6 +14,7 @@ import {
   formatDate,
   formatDuration,
   formatSize,
+  legendPortraitUrl,
   thumbnailUrl,
 } from "../reelshelf-model";
 import { StitchedDot } from "../StitchedDot";
@@ -86,6 +87,37 @@ export function ClipThumb({
         </span>
       ) : null}
     </Tag>
+  );
+}
+
+/**
+ * An Apex legend's portrait as a small 2:1 plate, underlined in the game's cloth. The legend's name always goes
+ * beside it, so the picture itself is decoration.
+ */
+export function LegendPlate({
+  legend,
+  cloth,
+  size = "medium",
+}: {
+  legend: string;
+  cloth?: string;
+  size?: "small" | "medium" | "large";
+}) {
+  return (
+    <span
+      className={`rs-legend-plate ${size}`}
+      style={cloth ? ({ "--cloth": cloth } as CSSProperties) : undefined}
+      aria-hidden="true"
+    >
+      <img
+        src={legendPortraitUrl(legend)}
+        alt=""
+        loading="lazy"
+        onError={(event) => {
+          event.currentTarget.style.display = "none";
+        }}
+      />
+    </span>
   );
 }
 
@@ -169,19 +201,24 @@ function ClipRow({
   clip,
   category,
   showGame,
+  showLegend,
   current,
   search,
 }: {
   clip: Clip;
   category: GameCategoryResponse | undefined;
   showGame: boolean;
+  /** The legend column, kept even for a clip whose legend isn't known so the columns line up. */
+  showLegend: boolean;
   current: boolean;
   search: ClipLinkSearch | undefined;
 }) {
   const stage = clipStageFor(clip, useUploadForClip(clip.clipId));
+  const cloth = category ? bookBinding(category).cloth : undefined;
+  const legend = showLegend ? clip.legend : null;
   return (
     <Link
-      className={`rs-row${showGame ? "" : " no-game"}${current ? " current" : ""}`}
+      className={`rs-row${showGame ? "" : " no-game"}${showLegend ? " has-legend" : ""}${current ? " current" : ""}`}
       to="/games/$slug/$clipId"
       params={{ slug: clip.categorySlug, clipId: clip.clipId }}
       search={search}
@@ -205,6 +242,14 @@ function ClipRow({
           </span>
         ) : null}
         <span className="rs-meta">
+          {/* Where there's no room for the legend column (beside the player, or on a phone), the legend
+              leads the meta line instead. */}
+          {legend ? (
+            <span className="rs-row-legend-inline">
+              <LegendPlate legend={legend} cloth={cloth} size="small" />
+              {legend}
+            </span>
+          ) : null}
           {clip.tags
             .slice(0, 3)
             .map((tag) => `#${tag}`)
@@ -222,6 +267,17 @@ function ClipRow({
             <img src={category.coverUrl} alt="" loading="lazy" />
           ) : null}
           {category?.name ?? "Game"}
+        </span>
+      ) : null}
+      {showLegend ? (
+        <span className="wide-only rs-row-legend">
+          {legend ? (
+            <>
+              <LegendPlate legend={legend} cloth={cloth} />
+              <span className="rs-visually-hidden">Played as </span>
+              {legend}
+            </>
+          ) : null}
         </span>
       ) : null}
       <span className="wide-only rs-meta rs-row-duration">
@@ -257,6 +313,9 @@ export function ClipGrid({
   }
 
   if (variant === "filmstrip") {
+    // The legend is only shown in one game's list (the Apex book, or more from it beside the player), never
+    // beside the game column of a mixed list.
+    const showLegend = !showGame && clips.some((clip) => clip.legend);
     return (
       <div className="rs-filmstrip">
         {filmstripItems(clips, groupByMonth).map((item) =>
@@ -271,6 +330,7 @@ export function ClipGrid({
               clip={item.clip}
               category={categoryForClip(item.clip, categories)}
               showGame={showGame}
+              showLegend={showLegend}
               current={item.clip.clipId === currentClipId}
               search={linkSearch}
             />

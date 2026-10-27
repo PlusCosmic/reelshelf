@@ -37,6 +37,25 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
+    /// The legend the owner played in an Apex Legends clip: its label when an admin has set one (a label with no
+    /// legend means it can't be told, so no run overrides it), else the latest succeeded run outside evals, as clip
+    /// summaries use. Null for every other game. An expression, so it can be selected, filtered on or counted.
+    /// </summary>
+    private static string PlayerLegendSql(string clipAlias) => $"""
+        (SELECT CASE WHEN label.clip_id IS NOT NULL THEN label.player_legend ELSE run.player_legend END
+         FROM game_category legend_game
+         LEFT JOIN legend_detection_label label ON label.clip_id = {clipAlias}.id
+         LEFT JOIN LATERAL (
+             SELECT latest.player_legend
+             FROM legend_detection_run latest
+             WHERE latest.clip_id = {clipAlias}.id AND latest.status = 'succeeded'
+               AND latest.archived_at IS NULL AND latest.trigger <> 'eval'
+             ORDER BY latest.completed_at DESC
+             LIMIT 1) run ON true
+         WHERE legend_game.id = {clipAlias}.game_category_id AND legend_game.slug = 'apex-legends')
+        """;
+
+    /// <summary>
     /// Wraps free-text search in a literal "contains" pattern. The user typed a substring, not a pattern,
     /// so the LIKE metacharacters and the escape character itself are escaped first — otherwise a search
     /// for "_" or "%" matches every clip. Pairs with ESCAPE '\' on each ILIKE.
@@ -70,7 +89,8 @@ public class ClipsStatements(NpgsqlConnection connection)
         ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
         Guid? viewedByUserId = null,
         int limit = 50,
-        int offset = 0)
+        int offset = 0,
+        string? legend = null)
     {
         DynamicParameters parameters = new();
         parameters.Add("ownerId", ownerId);
@@ -115,6 +135,16 @@ public class ClipsStatements(NpgsqlConnection connection)
                     """);
                 parameters.Add($"tag{i}", tags[i]);
             }
+        }
+
+        // Only Apex clips have a legend, so a legend filter leaves every other game's clips out.
+        if (legend is not null)
+        {
+            where.Append($"""
+
+                AND {PlayerLegendSql("c")} = @legend
+                """);
+            parameters.Add("legend", legend);
         }
 
         if (unviewedOnly)
@@ -183,7 +213,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 LEFT JOIN tag t ON ct.tag_id = t.id
                 GROUP BY f.id, f.owner_id, f.video_id, f.game_category_id, f.md5_hash, f.created_at, f.title, f.length, f.thumbnail_file_name, f.date_uploaded, f.storage_size, f.video_state, f.video_host, f.video_version, f.video_codecs, f.video_height, f.encode_progress, f.thumbnails_ready
             )
-            SELECT *
+            SELECT tagged.*, {PlayerLegendSql("tagged")} AS player_legend
             FROM tagged
             ORDER BY {orderBy}
             LIMIT @limit OFFSET @offset;
@@ -456,6 +486,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.video_height,
                 c.encode_progress,
                 {ClipVideoColumns.ThumbnailsReadySql("c")},
+                {PlayerLegendSql("c")} AS player_legend,
                 STRING_AGG(t.name, ',') as tag_names
             FROM clip c
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
@@ -532,6 +563,28 @@ public class ClipsStatements(NpgsqlConnection connection)
     {
         const string sql = "DELETE FROM clip_tag WHERE clip_id = @clipId AND tag_id = @tagId";
         await connection.ExecuteAsync(sql, new { clipId, tagId });
+    }
+
+    /// <summary>
+    /// The legends the owner played across their Apex Legends clips (<see cref="PlayerLegendSql"/>), most played
+    /// first, with how many clips each. Clips whose legend isn't known are left out.
+    /// </summary>
+    public async Task<List<LegendCountRow>> GetLegendCountsForOwner(Guid ownerId)
+    {
+        string sql = $"""
+            SELECT legend, COUNT(*)::int AS count
+            FROM (
+                SELECT {PlayerLegendSql("c")} AS legend
+                FROM clip c
+                JOIN game_category apex ON apex.id = c.game_category_id AND apex.slug = 'apex-legends'
+                WHERE c.owner_id = @ownerId
+            ) legends
+            WHERE legend IS NOT NULL
+            GROUP BY legend
+            ORDER BY count DESC, legend ASC
+            """;
+
+        return (await connection.QueryAsync<LegendCountRow>(sql, new { ownerId })).ToList();
     }
 
     /// <summary>Tags used on the owner's own clips, most used first. Other users' tags are private to them.</summary>
@@ -690,6 +743,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.encode_progress,
                 c.bunny_video_id,
                 {ClipVideoColumns.ThumbnailsReadySql("c")},
+                {PlayerLegendSql("c")} AS player_legend,
                 STRING_AGG(t.name, ',') as tag_names
             FROM clip c
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
@@ -1116,6 +1170,9 @@ public class ClipsStatements(NpgsqlConnection connection)
         public bool ThumbnailsReady { get; set; }
         public int? EncodeProgress { get; set; }
 
+        /// <summary>The owner's legend in an Apex Legends clip (<see cref="PlayerLegendSql"/>); null otherwise.</summary>
+        public string? PlayerLegend { get; set; }
+
         /// <summary>
         /// A migrated clip's Bunny copy waiting out its grace period, so deleting the clip deletes it too. Only
         /// <see cref="GetClipWithTagsByIdAndOwner"/> selects it.
@@ -1124,6 +1181,12 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     public record PagedClipWithTagsRows(List<ClipWithTagsRow> Rows, int TotalCount);
+
+    public class LegendCountRow
+    {
+        public string Legend { get; set; } = string.Empty;
+        public int Count { get; set; }
+    }
 
     public class TopTagRow
     {

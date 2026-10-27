@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Core.Models;
 using Reelshelf.Auth;
 
@@ -24,6 +25,7 @@ public static class ClipsEndpoints
         group.MapDelete("videos/{clipId:guid}/tags/{tag}", RemoveTagFromClip).WithName("RemoveTagFromClip")
             .RequirePermission(Permissions.ClipsEdit);
         group.MapGet("tags/top", GetTopTags).WithName("GetTopTags");
+        group.MapGet("legends", GetClipLegends).WithName("GetClipLegends");
         group.MapPatch("videos/{clipId:guid}/title", UpdateClipTitle).WithName("UpdateClipTitle")
             .RequirePermission(Permissions.ClipsEdit);
         group.MapDelete("videos/{clipId:guid}", DeleteClip).WithName("DeleteClip")
@@ -42,7 +44,8 @@ public static class ClipsEndpoints
     /// <summary>
     /// A page of the caller's clips. Omit categoryId to search and filter the whole archive; the grids
     /// page through this rather than filtering a preview payload client-side.
-    /// search matches a clip's title, one of its tags, or its category name.
+    /// search matches a clip's title, one of its tags, or its category name. legend keeps the Apex clips played as
+    /// that legend (any spelling <c>ApexLegendNames</c> recognizes); an unknown one is a bad request.
     /// </summary>
     private static async Task<Results<Ok<PagedClipsResponse>, BadRequest<string>>> GetClips(
         ClipService clipService,
@@ -55,8 +58,15 @@ public static class ClipsEndpoints
         bool unviewedOnly = false,
         ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
         DateTimeOffset? startDate = null,
-        DateTimeOffset? endDate = null)
+        DateTimeOffset? endDate = null,
+        string? legend = null)
     {
+        string? canonicalLegend = ApexLegendNames.Canonicalize(legend);
+        if (!string.IsNullOrWhiteSpace(legend) && canonicalLegend is null)
+        {
+            return TypedResults.BadRequest("Unknown legend");
+        }
+
         if (page < 1)
         {
             return TypedResults.BadRequest("Page must be greater than zero");
@@ -69,7 +79,7 @@ public static class ClipsEndpoints
 
         List<string>? tagList = tags?.ToList();
         return TypedResults.Ok(
-            await clipService.GetClips(user.Id, categoryId, page, pageSize, tagList, search, unviewedOnly, sortOrder, startDate, endDate));
+            await clipService.GetClips(user.Id, categoryId, page, pageSize, tagList, search, unviewedOnly, sortOrder, startDate, endDate, canonicalLegend));
     }
 
     private static async Task<Results<Ok<CreateClipResponse>, Conflict<string>, BadRequest<string>>> CreateVideo(
@@ -174,6 +184,14 @@ public static class ClipsEndpoints
         Guid? categoryId = null)
     {
         return TypedResults.Ok(await clipService.GetTopTags(user.Id, categoryId));
+    }
+
+    /// <summary>The legends the caller played across their Apex clips, most played first, for the Apex book's filter.</summary>
+    private static async Task<Ok<List<LegendCount>>> GetClipLegends(
+        ClipService clipService,
+        AuthenticatedUser user)
+    {
+        return TypedResults.Ok(await clipService.GetLegendCounts(user.Id));
     }
 
     private static async Task<Results<Ok, NotFound>> MarkVideoAsViewed(

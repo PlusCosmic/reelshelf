@@ -3,6 +3,10 @@ using Reelshelf.Video;
 
 namespace Reelshelf.Core.Models;
 
+/// <param name="Legend">
+/// The legend the owner played in an Apex Legends clip, spelled as in <c>ApexLegendNames</c>: its label, else the
+/// latest succeeded legend detection. Null for other games and for clips whose legend isn't known.
+/// </param>
 public record Clip(
     Guid ClipId,
     Guid OwnerId,
@@ -14,7 +18,8 @@ public record Clip(
     IReadOnlyList<string> Tags,
     bool IsViewed,
     ClipShareSummary Share,
-    object? GameMetadata)
+    object? GameMetadata,
+    string? Legend)
 {
 }
 

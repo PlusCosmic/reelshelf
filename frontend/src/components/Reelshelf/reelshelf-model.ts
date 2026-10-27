@@ -162,6 +162,15 @@ export function thumbnailUrl(clip: Clip) {
   return clip.video.thumbnailUrl;
 }
 
+/** An Apex legend's portrait in `public/apex-legends/`, named after the legend ("Mad Maggie" is `mad-maggie.png`). */
+export function legendPortraitUrl(legend: string) {
+  const slug = legend
+    .toLowerCase()
+    .replace(/[^a-z]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `/apex-legends/${slug}.png`;
+}
+
 export function formatDuration(seconds = 0) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
   const h = Math.floor(safeSeconds / 3600);

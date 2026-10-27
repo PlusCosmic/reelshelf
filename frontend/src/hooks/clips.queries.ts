@@ -12,6 +12,7 @@ import { planQueryKey } from "@/hooks/auth.queries";
 import { gamingSessionBounds } from "@/shared/utils/gamingSession";
 import {
   deleteClip,
+  fetchClipLegends,
   fetchClips,
   fetchTopTags,
   getSharedClip,
@@ -24,7 +25,7 @@ export const CLIPS_PAGE_SIZE = 48;
 
 /**
  * Drops every cache that describes which clips exist: the paged grids, the shelf totals and topline,
- * and the tag chips. Call it wherever clips are added or removed — all three are computed server-side
+ * and the tag and legend chips. Call it wherever clips are added or removed — all three are computed server-side
  * now, so none of them can be patched up client-side from the mutation's result.
  *
  * Only active queries refetch, so calling this once per clip during a bulk import costs nothing while
@@ -34,12 +35,15 @@ export function invalidateClipCollections(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ["clips", "library"] });
   void queryClient.invalidateQueries({ queryKey: ["clips", "list"] });
   void queryClient.invalidateQueries({ queryKey: ["clips", "top-tags"] });
+  void queryClient.invalidateQueries({ queryKey: ["clips", "legends"] });
 }
 
 export type ClipsFilters = {
   categoryId?: string | null;
   tag?: string | null;
   search?: string;
+  /** An Apex legend: only the clips played as it. */
+  legend?: string | null;
 };
 
 /**
@@ -50,9 +54,10 @@ export function useClipsInfinite(filters: ClipsFilters = {}, enabled = true) {
   const search = filters.search?.trim() || undefined;
   const categoryId = filters.categoryId ?? undefined;
   const tag = filters.tag ?? undefined;
+  const legend = filters.legend ?? undefined;
 
   return useInfiniteQuery({
-    queryKey: ["clips", "list", { categoryId, tag, search }],
+    queryKey: ["clips", "list", { categoryId, tag, search, legend }],
     queryFn: ({ pageParam }) =>
       fetchClips({
         page: pageParam,
@@ -60,6 +65,7 @@ export function useClipsInfinite(filters: ClipsFilters = {}, enabled = true) {
         categoryId,
         tags: tag ? [tag] : undefined,
         search,
+        legend,
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) =>
@@ -149,6 +155,16 @@ export function useTopTags(categoryId?: string | null, enabled = true) {
   return useQuery({
     queryKey: ["clips", "top-tags", categoryId ?? null],
     queryFn: () => fetchTopTags(categoryId ?? undefined),
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
+/** The legends played across the owner's Apex clips, most played first, counted in the database. */
+export function useClipLegends(enabled = true) {
+  return useQuery({
+    queryKey: ["clips", "legends"],
+    queryFn: fetchClipLegends,
     staleTime: 30_000,
     enabled,
   });

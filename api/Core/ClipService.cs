@@ -1,6 +1,7 @@
 using Npgsql;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.WebUtilities;
+using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Core.Models;
 using Reelshelf.Users;
 using Reelshelf.Exceptions;
@@ -351,6 +352,15 @@ public class ClipService(
         return topTagRows.Select(t => new TopTag(t.Name, t.Count)).ToList();
     }
 
+    public async Task<List<LegendCount>> GetLegendCounts(Guid userId)
+    {
+        List<ClipsStatements.LegendCountRow> rows = await clipsStatements.GetLegendCountsForOwner(userId);
+        return rows
+            .Where(row => ApexLegendNames.Canonicalize(row.Legend) == row.Legend)
+            .Select(row => new LegendCount(row.Legend, row.Count))
+            .ToList();
+    }
+
     public async Task<bool> MarkClipAsViewed(Guid clipId, Guid userId)
     {
         ClipsStatements.ClipRow? clip = await clipsStatements.GetClipById(clipId);
@@ -373,12 +383,13 @@ public class ClipService(
     /// A page of the caller's clips. A null <paramref name="gameCategoryId"/> spans the whole archive, so
     /// search and filters run in the database over every clip rather than over whatever the client holds.
     /// <paramref name="search"/> matches a clip's title, one of its tags, or its category name.
+    /// <paramref name="legend"/>, spelled as in <see cref="ApexLegendNames"/>, keeps the Apex clips played as it.
     /// </summary>
     public async Task<PagedClipsResponse> GetClips(
         Guid userId, Guid? gameCategoryId, int page, int pageSize, List<string>? tags = null,
         string? search = null, bool unviewedOnly = false,
         ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
-        DateTimeOffset? startDate = null, DateTimeOffset? endDate = null)
+        DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? legend = null)
     {
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -398,7 +409,8 @@ public class ClipService(
                 sortOrder,
                 userId,
                 pageSize,
-                (page - 1) * pageSize);
+                (page - 1) * pageSize,
+                legend);
 
         List<ClipsStatements.ClipWithTagsRow> pagedClips = clipsPage.Rows;
         List<Guid> clipIds = pagedClips.Select(c => c.Id).ToList();
