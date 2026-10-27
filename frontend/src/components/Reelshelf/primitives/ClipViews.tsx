@@ -101,7 +101,7 @@ export function LegendPlate({
 }: {
   legend: string;
   cloth?: string;
-  size?: "small" | "medium" | "large";
+  size?: "small" | "medium" | "large" | "tile";
 }) {
   return (
     <span
