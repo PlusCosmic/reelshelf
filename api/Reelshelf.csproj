@@ -39,6 +39,7 @@
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.0" />
         <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.20.0" />
         <PackageReference Include="Pgvector" Version="0.3.2" />
+        <PackageReference Include="PostHog" Version="2.17.1" />
         <PackageReference Include="StackExchange.Redis" Version="3.3.1" />
         <PackageReference Include="Stripe.net" Version="53.0.0" />
     </ItemGroup>
@@ -57,14 +58,6 @@
         <Content Remove="ClipSummary/Resources/**" />
         <EmbeddedResource Include="ClipSummary/Resources/prompt.md" LogicalName="ClipSummary.prompt.md" />
         <EmbeddedResource Include="ClipSummary/Resources/response-schema.json" LogicalName="ClipSummary.response-schema.json" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Content Update="Shared/whitelist.json">
-            <Link>whitelist.json</Link>
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-            <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-        </Content>
     </ItemGroup>
 
 </Project>

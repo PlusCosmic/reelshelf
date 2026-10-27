@@ -58,8 +58,15 @@ _Avoid_: Treating an import as an upload in the UI copy; the user picks from a l
 Where an imported **Clip** came from (provider and the clip's id there). Locally uploaded clips have none. One owner holds a given source clip at most once.
 
 **Tier**:
-What an **Account** may keep and add (ADR-0007): Free by default, Plus or Pro from a Stripe subscription, Unlimited for accounts with a **Linked Identity** listed in `whitelist.json`. Each tier limits the **Clip Count**, the length of each clip and the clips added in 30 days. It is worked out when needed, never stored.
-_Avoid_: Treating the whitelist as an access gate (it no longer blocks sign-in), or calling Unlimited "Admin", which is a **Role**.
+What an **Account** may keep and add (ADR-0007): Free by default, Plus or Pro from a Stripe subscription, or a **Granted Tier**, whichever is best. Each tier limits the **Clip Count**, the length of each clip and the clips added in 30 days. It is worked out when needed, never stored.
+_Avoid_: Calling Unlimited "Admin", which is a **Role**.
+
+**Granted Tier**:
+Plus, Pro or Unlimited given to an **Account** by an admin rather than paid for (ADR-0008). Taking it away is like a subscription ending.
+_Avoid_: "Whitelist", which is gone.
+
+**Role**:
+What an **Account** may do: Viewer, Editor (the default) or Admin, who also manages other accounts' roles and **Granted Tiers**. Independent of the **Tier**.
 
 **Grace**:
 The 14 days an **Account** over its **Tier**'s clip limit keeps the clips over it, from when it went over. When it ends those clips are put in an **Export** and deleted. Picked clips are kept first, then the newest.
@@ -149,8 +156,8 @@ The clips waiting to play in a **Watch Room**, played in turn by who added them.
 > **Dev:** "Should upload have an explicit folder picker?"
 > **Domain expert:** "Yes, where the browser supports it; normal multi-file selection remains the fallback."
 >
-> **Dev:** "Does a user need to be on the whitelist to use Reelshelf?"
-> **Domain expert:** "No. Anyone can sign in and starts on the Free **Tier**. The whitelist only marks Unlimited accounts (and optional role overrides)."
+> **Dev:** "Does a user need to be invited to use Reelshelf?"
+> **Domain expert:** "No. Anyone can sign in and starts on the Free **Tier**. An admin can give someone a **Granted Tier** or a **Role** afterwards."
 >
 > **Dev:** "If someone signs in with Twitch after using Discord, do they get a second library?"
 > **Domain expert:** "Only if they never linked the two. Linking from Settings attaches the Twitch login to the existing **Account**; a fresh Twitch sign-in with nothing linked creates a new **Account**."

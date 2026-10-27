@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Reelshelf.Users;
 
 namespace Reelshelf.Auth;
@@ -7,33 +9,18 @@ namespace Reelshelf.Auth;
 /// Middleware that resolves the authenticated user from the database and stores it in HttpContext.Items.
 /// This middleware runs after authentication and before endpoint execution.
 /// The user is then available via AuthenticatedUser.BindAsync for parameter binding.
-/// Also syncs roles from whitelist.json to the database (whitelist is source of truth for base roles).
+/// The account's role and granted tier are read as stored (ADR-0008); only <see cref="AccountAccessService"/>
+/// changes them.
 /// </summary>
-public class AuthenticatedUserMiddleware(RequestDelegate next, WhitelistService whitelistService)
+public class AuthenticatedUserMiddleware(RequestDelegate next)
 {
-    private readonly HashSet<string> _bypassPaths = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "/health",
-        "/auth",
-        "/webhooks"
-    };
-
-    /// <summary>
-    /// Configures additional bypass paths for user resolution.
-    /// </summary>
-    public void AddBypassPaths(params string[] paths)
-    {
-        foreach (string path in paths)
-        {
-            _bypassPaths.Add(path);
-        }
-    }
+    private static readonly string[] BypassPaths = ["/health", "/auth"];
 
     public async Task InvokeAsync(HttpContext context)
     {
         // Skip user resolution for bypass paths
         string path = context.Request.Path.Value ?? "";
-        if (_bypassPaths.Any(bp => path.StartsWith(bp, StringComparison.OrdinalIgnoreCase)))
+        if (BypassPaths.Any(bp => path.StartsWith(bp, StringComparison.OrdinalIgnoreCase)))
         {
             await next(context);
             return;
@@ -52,41 +39,19 @@ public class AuthenticatedUserMiddleware(RequestDelegate next, WhitelistService 
         UserStatements userStatements = context.RequestServices.GetRequiredService<UserStatements>();
         UserStatements.UserRow? dbUser = await userStatements.GetUserById(userId);
 
+        // A suspended account is treated as signed out, so a session from before the suspension stops working at once,
+        // and its cookie is dropped so the browser is plainly signed out from the next request.
+        if (dbUser?.SuspendedAt is not null)
+        {
+            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            dbUser = null;
+        }
+
         if (dbUser is not null)
         {
             List<UserIdentityRef> identities = (await userStatements.GetIdentitiesForUser(dbUser.Id))
                 .Select(identity => identity.ToRef())
                 .ToList();
-
-            // Determine the effective role:
-            // 1. If whitelist.json pins a role for any linked identity, use it and persist it (flagged as whitelist-driven).
-            // 2. If the stored role was pinned by the whitelist but the entry is gone, revoke it: fall back
-            //    to the default role so removing an override actually removes the privileges.
-            // 3. Otherwise use the stored role (default, or set by some other mechanism).
-            UserRole? whitelistRole = whitelistService.GetRole(identities);
-            UserRole dbRole = ParseRole(dbUser.Role);
-            UserRole effectiveRole;
-
-            if (whitelistRole is { } pinnedRole)
-            {
-                effectiveRole = pinnedRole;
-                if (dbRole != pinnedRole || !dbUser.RoleFromWhitelist)
-                {
-                    await userStatements.UpdateUserRole(dbUser.Id, pinnedRole.ToString(), roleFromWhitelist: true);
-                }
-            }
-            else if (dbUser.RoleFromWhitelist)
-            {
-                effectiveRole = DefaultRole;
-                await userStatements.UpdateUserRole(dbUser.Id, DefaultRole.ToString(), roleFromWhitelist: false);
-            }
-            else
-            {
-                effectiveRole = dbRole;
-            }
-
-            // Load additional permissions
-            List<string> additionalPermissions = await userStatements.GetUserAdditionalPermissions(dbUser.Id);
 
             context.Items[AuthenticatedUser.HttpContextKey] = new AuthenticatedUser(
                 dbUser.Id,
@@ -95,26 +60,12 @@ public class AuthenticatedUserMiddleware(RequestDelegate next, WhitelistService 
                 dbUser.AvatarUrl,
                 dbUser.Email,
                 dbUser.OnboardingCompletedAt is not null,
-                effectiveRole,
-                new HashSet<string>(additionalPermissions),
+                UserRoles.Parse(dbUser.Role),
+                GrantedTiers.Parse(dbUser.GrantedTier),
                 identities);
         }
 
         await next(context);
-    }
-
-    /// <summary>Role for accounts with no whitelist override; matches the app_user.role column default.</summary>
-    private const UserRole DefaultRole = UserRole.Editor;
-
-    /// <summary>
-    /// New accounts get <see cref="DefaultRole"/> from the column default, so the parser never needs to grant
-    /// privileges: an unrecognised stored value falls back to Viewer rather than Editor.
-    /// </summary>
-    private static UserRole ParseRole(string roleString)
-    {
-        return Enum.TryParse<UserRole>(roleString, ignoreCase: true, out UserRole role)
-            ? role
-            : UserRole.Viewer;
     }
 }
 

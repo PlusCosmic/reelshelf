@@ -1,4 +1,4 @@
-using Reelshelf.DiscordActivity;
+using Reelshelf.Discord.DiscordActivity;
 using Reelshelf.Test.Core;
 using Reelshelf.Video;
 using Xunit;

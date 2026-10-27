@@ -6,3 +6,6 @@ export * from "./legendDetection.queries";
 export * from "./playlists.queries";
 export * from "./clipTranscription.queries";
 export * from "./clipSummary.queries";
+export * from "./adminAccounts.queries";
+export * from "./contentReports.queries";
+export * from "./featureFlags.queries";

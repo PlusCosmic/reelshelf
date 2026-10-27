@@ -12,22 +12,23 @@ using Reelshelf.ApexLegends;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Auth;
 using Reelshelf.Billing;
-using Reelshelf.Bunny;
+using Reelshelf.FeatureFlags;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
-using Reelshelf.Discord;
-using Reelshelf.DiscordActivity;
+using Reelshelf.Discord.DiscordActivity;
 using Reelshelf.Email;
 using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.FFmpeg;
 using Reelshelf.Games;
+using Reelshelf.Moderation;
 using Reelshelf.Playlists;
 using Reelshelf.QueueMetrics;
 using Reelshelf.Plans;
 using Reelshelf.Twitch;
 using Reelshelf.Video;
+using Reelshelf.Video.Bunny;
 using Reelshelf.Video.Migration;
 using Reelshelf.Video.R2;
 using Reelshelf.Video.Transcoding;
@@ -87,6 +88,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapClipsEndpoints();
         apiGroup.MapMultipartUploadEndpoints();
         apiGroup.MapSharedClipsEndpoints();
+        apiGroup.MapContentReportEndpoints();
         apiGroup.MapPlaylistEndpoints();
         apiGroup.MapFFmpegEndpoints();
         apiGroup.MapBunnyWebhookEndpoints();
@@ -95,6 +97,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapClipTranscriptionEndpoints();
         apiGroup.MapClipSummaryEndpoints();
         apiGroup.MapUserEndpoints();
+        apiGroup.MapAdminAccountEndpoints();
         apiGroup.MapBillingEndpoints();
         apiGroup.MapPlanEndpoints();
         apiGroup.MapOverLimitEndpoints();
@@ -238,11 +241,11 @@ internal static class ReelshelfApiConfiguration
 
     private static void AddApplicationModules(this WebApplicationBuilder builder)
     {
-        // whitelist.json no longer gates access; it marks Unlimited accounts and role overrides.
-        builder.Services.AddSingleton<WhitelistService>();
+        // Roles and granted tiers are stored on the account (ADR-0008); AccountAccessService alone changes them.
+        builder.Services.AddScoped<IAccountAccessStore, AccountAccessStatements>();
+        builder.Services.AddScoped<AccountAccessService>();
         builder.Services.AddScoped<AccountPlanService>();
         builder.AddPlanEnforcement();
-        builder.Services.AddSingleton<DiscordRoleMapping>();
         builder.Services.AddSingleton<ProviderTokenProtector>();
         builder.Services.AddScoped<UserStatements>();
         builder.Services.AddScoped<IUserIdentityStore>(sp => sp.GetRequiredService<UserStatements>());
@@ -251,6 +254,8 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<IClipLimitWarningStore>(sp => sp.GetRequiredService<UserStatements>());
         builder.Services.AddScoped<ClipLimitWarningService>();
         builder.AddBilling();
+        // Feature flags (ADR-0009): PostHog in prod, off elsewhere unless FeatureFlags:Overrides turns one on.
+        builder.AddFeatureFlags();
         builder.Services.AddSingleton<AccountDeletionSignal>();
         builder.Services.AddScoped<IAccountDeletionStore, AccountDeletionStatements>();
         builder.Services.AddScoped<AccountDeletionService>();
@@ -269,6 +274,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<GameCategoryStatements>();
 
         builder.Services.AddScoped<ClipsStatements>();
+        builder.AddModeration();
         builder.Services.AddScoped<PlaylistStatements>();
         builder.Services.AddScoped<PlaylistAccess>();
         builder.Services.AddScoped<IGamingSessionPlaylistStore, GamingSessionPlaylistStore>();

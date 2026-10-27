@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Reelshelf.DiscordActivity;
+using Reelshelf.Discord.DiscordActivity;
 using Xunit;
 
 namespace Reelshelf.Test.DiscordActivity;

@@ -1,6 +1,7 @@
 import { Link, Navigate, createFileRoute } from "@tanstack/react-router";
 import { IconChevronLeft } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
+import { LegalContact } from "@/components/Reelshelf/LegalPage";
 import { ProviderIcon } from "@/components/Reelshelf/ProviderIcon";
 import { useCurrentUser } from "@/hooks/queries";
 import { authProviders, startLogin } from "@/shared/services/auth";
@@ -73,7 +74,12 @@ function SignInRoute() {
           </p>
         ) : null}
 
-        {search.auth_error ? (
+        {search.auth_error === "suspended" ? (
+          <p className="rs-landing-error rs-signin-error" role="alert">
+            This account has been suspended for breaking our terms of service.
+            If you think that's a mistake, email <LegalContact />.
+          </p>
+        ) : search.auth_error ? (
           <p className="rs-landing-error rs-signin-error" role="alert">
             The provider didn't complete the sign-in. Try again.
           </p>

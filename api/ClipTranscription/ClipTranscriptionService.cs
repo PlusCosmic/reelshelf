@@ -6,7 +6,6 @@ using Reelshelf.ClipSummary;
 using Reelshelf.Core;
 using Reelshelf.Exceptions;
 using Reelshelf.Plans;
-using Reelshelf.Users;
 using Reelshelf.Video;
 
 namespace Reelshelf.ClipTranscription;
@@ -289,13 +288,10 @@ public class ClipTranscriptionService(
         }
     }
 
-    /// <summary>Owners of clips whose plan has transcripts: whitelisted ones (Unlimited) and Pro subscribers.</summary>
+    /// <summary>Owners of clips whose plan has transcripts: Pro or Unlimited, granted or paid for.</summary>
     private async Task<List<Guid>> GetTranscribedOwnersAsync()
     {
-        IEnumerable<IGrouping<Guid, UserIdentityRef>> owners = (await statements.GetClipOwnerIdentitiesAsync())
-            .GroupBy(identity => identity.UserId,
-                identity => new UserIdentityRef(identity.Provider, identity.ProviderUserId));
-        return await tiers.FilterAtLeast(AccountTier.Pro, owners);
+        return await tiers.FilterAtLeast(AccountTier.Pro, await statements.GetClipOwnerIdsAsync());
     }
 
     private string ConfiguredModel()

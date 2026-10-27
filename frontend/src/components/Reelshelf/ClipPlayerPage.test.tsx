@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Clip, PlaylistWithDetails } from "@/api-client";
 import { ClipPlayerPage } from "./ClipPlayerPage";
@@ -9,7 +9,6 @@ import { ClipPlayerPage } from "./ClipPlayerPage";
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   markViewed: vi.fn(),
-  autoplay: false,
   clips: new Map<string, unknown>(),
   playlist: null as unknown,
 }));
@@ -17,13 +16,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
   useNavigate: () => mocks.navigate,
-  useRouterState: ({
-    select,
-  }: {
-    select: (router: {
-      location: { state: { autoplay?: boolean } };
-    }) => unknown;
-  }) => select({ location: { state: { autoplay: mocks.autoplay } } }),
 }));
 
 vi.mock("@/hooks/queries", () => ({
@@ -128,7 +120,6 @@ beforeEach(() => {
       disconnect() {}
     },
   );
-  mocks.autoplay = false;
   mocks.clips = new Map(
     [clip("a"), clip("b"), clip("c", true)].map((item) => [item.clipId, item]),
   );
@@ -145,16 +136,16 @@ afterEach(() => {
 });
 
 describe("ClipPlayerPage", () => {
-  it("plays the clip's HLS stream over its thumbnail", () => {
+  it("plays the clip's HLS stream over its thumbnail, as soon as it loads", () => {
     const { video } = renderPage("a");
     expect(video.getAttribute("poster")).toBe(
       "https://cdn.example/a/thumbnail.jpg",
     );
     expect(video.controls).toBe(true);
-    expect(video.autoplay).toBe(false);
+    expect(video.autoplay).toBe(true);
   });
 
-  it("moves on to the collection's next clip, set to play, when the video ends", async () => {
+  it("moves on to the collection's next clip when the video ends", async () => {
     const { video, findAllByText } = renderPage("a", "night");
     await findAllByText("Clip 1 of 2");
 
@@ -164,7 +155,6 @@ describe("ClipPlayerPage", () => {
       to: "/games/$slug/$clipId",
       params: { slug: "apex-legends", clipId: "b" },
       search: { collection: "night" },
-      state: { autoplay: true },
     });
   });
 
@@ -178,12 +168,6 @@ describe("ClipPlayerPage", () => {
     alone.video.dispatchEvent(new Event("ended"));
 
     expect(mocks.navigate).not.toHaveBeenCalled();
-  });
-
-  it("autoplays a clip the collection moved on to", async () => {
-    mocks.autoplay = true;
-    const { video } = renderPage("b", "night");
-    await waitFor(() => expect(video.autoplay).toBe(true));
   });
 
   it("marks the clip watched once it loads, once", () => {

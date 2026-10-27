@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
 using Microsoft.Extensions.Options;
 using Reelshelf.Billing;
+using Reelshelf.FeatureFlags;
 using Reelshelf.Plans;
 
 namespace Reelshelf.Users;
@@ -19,6 +20,7 @@ public static class UserEndpoints
         meGroup.MapGet("/", GetMe).WithName("GetMe");
         meGroup.MapPut("/email", SetEmail).WithName("SetMyEmail");
         meGroup.MapGet("/plan", GetPlan).WithName("GetMyPlan");
+        meGroup.MapGet("/features", GetFeatures).WithName("GetMyFeatures");
         meGroup.MapGet("/identities", GetLinkedIdentities).WithName("GetMyLinkedIdentities");
         meGroup.MapDelete("/identities/{provider}", UnlinkIdentity).WithName("UnlinkMyIdentity");
         meGroup.MapPost("/deletion", DeleteAccount).WithName("DeleteMyAccount");
@@ -80,7 +82,16 @@ public static class UserEndpoints
         PlanOptions options = planOptions.CurrentValue;
         return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, hasCustomer,
             overLimit.OverLimitSince + options.GracePeriod, options.Enforce ? options.GracePeriod : null,
-            context.RequestServices.GetService<BillingOptions>()?.CanChangePlan ?? false));
+            context.RequestServices.GetService<BillingOptions>()?.CanChangePlan ?? false, user.GrantedTier));
+    }
+
+    /// <summary>The feature flags on for the caller (ADR-0009), which the frontend reads to show what is being rolled out.</summary>
+    private static async Task<Ok<FeatureFlagsResponse>> GetFeatures(
+        AuthenticatedUser user,
+        FeatureFlagService featureFlags,
+        CancellationToken cancellationToken)
+    {
+        return TypedResults.Ok(new FeatureFlagsResponse(await featureFlags.GetEnabledAsync(user, cancellationToken)));
     }
 
     private static async Task<Ok<List<LinkedIdentity>>> GetLinkedIdentities(
@@ -117,11 +128,20 @@ public static class UserEndpoints
         AuthenticatedUser user,
         DeleteAccountRequest request,
         AccountDeletionService accountDeletion,
+        Moderation.ContentReportStatements contentReports,
+        IOptionsMonitor<Moderation.ModerationOptions> moderation,
         HttpContext context)
     {
         if (!AccountDeletionService.IsConfirmed(request.Confirmation))
         {
             return TypedResults.BadRequest($"Type \"{AccountDeletionService.ConfirmationPhrase}\" to confirm.");
+        }
+
+        // One of its clips may be evidence (see ClipService.DeleteClip); the message gives nothing away.
+        if (await contentReports.IsHeldForReview(ownerId: user.Id))
+        {
+            throw new Exceptions.ConflictException(
+                $"Your account can't be deleted right now. Email {moderation.CurrentValue.ContactEmail}.");
         }
 
         await accountDeletion.Request(user.Id);

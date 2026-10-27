@@ -815,6 +815,42 @@
         }
       }
     },
+    "/api/shared-clips/{token}/reports": {
+      "post": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "ReportSharedClip",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/user/{userId}": {
       "get": {
         "tags": [
@@ -934,6 +970,161 @@
               "application/json": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports": {
+      "get": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "ListContentReports",
+        "parameters": [
+          {
+            "name": "resolved",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminContentReport"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports/{reportId}/take-down": {
+      "post": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "TakeDownContentReport",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveContentReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports/{reportId}/dismiss": {
+      "post": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "DismissContentReport",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveContentReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports/{reportId}/remove": {
+      "post": {
+        "tags": [
+          "ContentReportEndpoints"
+        ],
+        "operationId": "RemoveContentReportClip",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveContentReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContentReport"
                 }
               }
             }
@@ -2665,6 +2856,26 @@
         }
       }
     },
+    "/api/me/features": {
+      "get": {
+        "tags": [
+          "UserEndpoints"
+        ],
+        "operationId": "GetMyFeatures",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/me/identities": {
       "get": {
         "tags": [
@@ -2753,6 +2964,204 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/admin/accounts": {
+      "get": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "FindAdminAccounts",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminAccount"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/accounts/{userId}": {
+      "get": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "GetAdminAccount",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/admin/accounts/{userId}/role": {
+      "put": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "SetAdminAccountRole",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAccountRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/admin/accounts/{userId}/granted-tier": {
+      "put": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "SetAdminAccountGrantedTier",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetGrantedTierRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/admin/accounts/{userId}/suspension": {
+      "put": {
+        "tags": [
+          "AdminAccountEndpoints"
+        ],
+        "operationId": "SetAdminAccountSuspension",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAccountSuspensionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccountDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -3273,7 +3682,8 @@
           "over_limit_deletes_at",
           "free_clip_limit",
           "over_limit_grace_days",
-          "can_change_plan"
+          "can_change_plan",
+          "granted_tier"
         ],
         "type": "object",
         "properties": {
@@ -3359,6 +3769,12 @@
           },
           "can_change_plan": {
             "type": "boolean"
+          },
+          "granted_tier": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3629,6 +4045,302 @@
         "properties": {
           "tag": {
             "type": "string"
+          }
+        }
+      },
+      "AdminAccessChange": {
+        "required": [
+          "id",
+          "field",
+          "old_value",
+          "new_value",
+          "reason",
+          "changed_by_name",
+          "changed_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "field": {
+            "type": "string"
+          },
+          "old_value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "new_value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "changed_by_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminAccount": {
+        "required": [
+          "id",
+          "username",
+          "global_name",
+          "avatar_url",
+          "role",
+          "granted_tier",
+          "suspended_at",
+          "identities"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "global_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "avatar_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "granted_tier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "suspended_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "identities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAccountIdentity"
+            }
+          }
+        }
+      },
+      "AdminAccountDetail": {
+        "required": [
+          "account",
+          "tier",
+          "changes"
+        ],
+        "type": "object",
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AdminAccount"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAccessChange"
+            }
+          }
+        }
+      },
+      "AdminAccountIdentity": {
+        "required": [
+          "provider",
+          "provider_user_id",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "provider_user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminContentReport": {
+        "required": [
+          "id",
+          "reason",
+          "details",
+          "reporter_email",
+          "status",
+          "created_at",
+          "resolved_at",
+          "resolved_by_name",
+          "resolution_note",
+          "clip_id",
+          "clip_title",
+          "owner_id",
+          "owner_name",
+          "share_url",
+          "share_hidden",
+          "sharing_blocked",
+          "open_reports_on_clip",
+          "owner_suspended",
+          "evidence"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "reporter_email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolved_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "resolved_by_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "resolution_note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clip_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "clip_title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "owner_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "owner_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "share_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "share_hidden": {
+            "type": "boolean"
+          },
+          "sharing_blocked": {
+            "type": "boolean"
+          },
+          "open_reports_on_clip": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "owner_suspended": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AdminContentReportEvidence"
+              }
+            ]
+          }
+        }
+      },
+      "AdminContentReportEvidence": {
+        "required": [
+          "status",
+          "error",
+          "cdn_purge",
+          "delete_after"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cdn_purge": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "delete_after": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -4624,6 +5336,31 @@
           }
         }
       },
+      "ContentReportRequest": {
+        "required": [
+          "reason",
+          "details",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "details": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "CreateClipResponse": {
         "required": [
           "clip_id",
@@ -4841,6 +5578,20 @@
           },
           "timezone": {
             "type": "string"
+          }
+        }
+      },
+      "FeatureFlagsResponse": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -6738,6 +7489,20 @@
           }
         }
       },
+      "ResolveContentReportRequest": {
+        "required": [
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "RoomTokenResponse": {
         "required": [
           "room_token",
@@ -6751,6 +7516,42 @@
           "room_token_expires_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "SetAccountRoleRequest": {
+        "required": [
+          "role",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SetAccountSuspensionRequest": {
+        "required": [
+          "suspended",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "suspended": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -6772,6 +7573,27 @@
         "type": "object",
         "properties": {
           "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SetGrantedTierRequest": {
+        "required": [
+          "tier",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
             "type": [
               "null",
               "string"
@@ -7169,6 +7991,9 @@
       "name": "SharedClipsEndpoints"
     },
     {
+      "name": "ContentReportEndpoints"
+    },
+    {
       "name": "UserEndpoints"
     },
     {
@@ -7197,6 +8022,9 @@
     },
     {
       "name": "ClipSummaryEndpoints"
+    },
+    {
+      "name": "AdminAccountEndpoints"
     },
     {
       "name": "BillingEndpoints"

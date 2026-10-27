@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { PlaybackSource } from "@/api-client";
 import { attachStream } from "@/shared/utils/videoStream";
+import { loadVolume, saveVolume } from "@/shared/utils/volumePreference";
+
+/** The viewer's volume for every player on the site, so it carries over from clip to clip. */
+const volumeStorageKey = "reelshelf.player.volume";
 
 /** Identifies a list of sources by value, so a re-fetched clip with the same sources keeps playing. */
 function sourcesKey(sources: readonly PlaybackSource[]) {
@@ -18,7 +22,8 @@ type Problem = { key: string; kind: "fatal" | "unsupported" };
  * arrives so whatever is behind it (the poster, a thumbnail) shows while it loads.
  *
  * New `sources` swap the stream on the same element, so moving to the next clip keeps the browser's permission
- * to play with sound.
+ * to play with sound. The volume and mute set on its controls are remembered in the browser and applied to every
+ * player, so they carry over to the next clip.
  */
 export function ClipVideoPlayer({
   sources,
@@ -82,6 +87,21 @@ export function ClipVideoPlayer({
     const ended = () => onEndedRef.current?.();
     video.addEventListener("ended", ended);
     return () => video.removeEventListener("ended", ended);
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const { volume, muted } = loadVolume(volumeStorageKey);
+    video.volume = volume;
+    video.muted = muted;
+    const onVolumeChange = () =>
+      saveVolume(volumeStorageKey, {
+        volume: video.volume,
+        muted: video.muted,
+      });
+    video.addEventListener("volumechange", onVolumeChange);
+    return () => video.removeEventListener("volumechange", onVolumeChange);
   }, []);
 
   const currentProblem = problem?.key === key ? problem.kind : null;

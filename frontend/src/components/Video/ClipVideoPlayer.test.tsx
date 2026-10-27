@@ -30,6 +30,7 @@ vi.mock("@/shared/utils/videoStream", () => ({
 afterEach(() => {
   cleanup();
   stream.attached.length = 0;
+  window.localStorage.clear();
 });
 
 const hls = (url: string): PlaybackSource[] => [
@@ -90,5 +91,22 @@ describe("ClipVideoPlayer", () => {
 
     view.rerender(<ClipVideoPlayer sources={hls(second)} title="B" />);
     expect(view.queryByRole("alert")).toBeNull();
+  });
+
+  it("remembers the volume, so the next player starts with it", () => {
+    const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
+    const video = view.container.querySelector("video")!;
+    expect(video.volume).toBe(1);
+    expect(video.muted).toBe(false);
+
+    video.volume = 0.3;
+    video.muted = true;
+    act(() => void video.dispatchEvent(new Event("volumechange")));
+    view.unmount();
+
+    const next = render(<ClipVideoPlayer sources={hls(second)} title="B" />);
+    const nextVideo = next.container.querySelector("video")!;
+    expect(nextVideo.volume).toBe(0.3);
+    expect(nextVideo.muted).toBe(true);
   });
 });

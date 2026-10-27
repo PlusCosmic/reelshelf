@@ -2,8 +2,8 @@ using System.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using Reelshelf.Bunny;
 using Reelshelf.Core;
+using Reelshelf.Video.Bunny;
 using Xunit;
 
 namespace Reelshelf.Test.Bunny;

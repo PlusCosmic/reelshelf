@@ -1,4 +1,4 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -44,13 +44,6 @@ import { StitchedDot } from "./StitchedDot";
 import { useLibraryData } from "./useLibraryData";
 
 const THEATRE_KEY = "reelshelf.theatre";
-
-declare module "@tanstack/react-router" {
-  interface HistoryState {
-    /** Set when a collection moves on to its next clip by itself, so that clip starts playing. */
-    autoplay?: boolean;
-  }
-}
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
   hour: "numeric",
@@ -372,9 +365,6 @@ export function ClipPlayerPage({
 }) {
   const { data: clip, isLoading, isError } = useClip(clipId);
   const navigate = useNavigate();
-  const autoplay = useRouterState({
-    select: (router) => router.location.state.autoplay === true,
-  });
   const { data: playlist } = useQuery({
     queryKey: ["playlists", collectionId],
     queryFn: () => fetchPlaylistById(collectionId!),
@@ -407,7 +397,6 @@ export function ClipPlayerPage({
             to: "/games/$slug/$clipId",
             params: { slug: upNext.categorySlug, clipId: upNext.clipId },
             search: { collection: playThrough.playlist.id },
-            state: { autoplay: true },
           })
       : undefined;
   const { data: sessionData } = useClipSession(clip);
@@ -495,7 +484,7 @@ export function ClipPlayerPage({
               poster={thumbnailUrl(clip)}
               title={clip.video.title}
               className="rs-player-frame"
-              autoPlay={autoplay && !!playThrough}
+              autoPlay
               onLoaded={() => {
                 if (!clip.isViewed && !markViewed.isPending) {
                   markViewed.mutate(clip.clipId);

@@ -3,6 +3,11 @@ import { IconVolume, IconVolume2, IconVolumeOff } from "@tabler/icons-react";
 import { activityStreamSource } from "@/shared/services/discordActivity";
 import { attachStream } from "@/shared/utils/videoStream";
 import {
+  loadVolume,
+  saveVolume,
+  type VolumePreference,
+} from "@/shared/utils/volumePreference";
+import {
   correctDrift,
   expectedPosition,
   type RoomPlayback,
@@ -11,33 +16,8 @@ import {
 /** How often a follower checks its position against the room. */
 const syncIntervalMs = 500;
 
-const volumeStorageKey = "reelshelf.activity.volume";
-
-type VolumePreference = { volume: number; muted: boolean };
-
 /** This viewer's own volume, remembered in their browser; it never reaches the room. */
-function loadVolume(): VolumePreference {
-  try {
-    const saved = JSON.parse(
-      window.localStorage.getItem(volumeStorageKey) ?? "null",
-    ) as Partial<VolumePreference> | null;
-    const volume = Number(saved?.volume);
-    return {
-      volume: Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 1,
-      muted: saved?.muted === true,
-    };
-  } catch {
-    return { volume: 1, muted: false };
-  }
-}
-
-function saveVolume(preference: VolumePreference) {
-  try {
-    window.localStorage.setItem(volumeStorageKey, JSON.stringify(preference));
-  } catch {
-    // Storage blocked (private window, previews): the setting lasts until the Activity closes.
-  }
-}
+const volumeStorageKey = "reelshelf.activity.volume";
 
 export type HostControls = {
   onPlay: (positionSeconds: number) => void;
@@ -69,7 +49,9 @@ export function ActivityPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
   const [mutedForAutoplay, setMutedForAutoplay] = useState(false);
-  const [{ volume, muted }, setVolume] = useState(loadVolume);
+  const [{ volume, muted }, setVolume] = useState(() =>
+    loadVolume(volumeStorageKey),
+  );
   const itemId = playback.itemId;
   const {
     host: mediaHost,
@@ -104,7 +86,10 @@ export function ActivityPlayer({
     video.muted = muted || mutedForAutoplay;
   }, [volume, muted, mutedForAutoplay]);
 
-  useEffect(() => saveVolume({ volume, muted }), [volume, muted]);
+  useEffect(
+    () => saveVolume(volumeStorageKey, { volume, muted }),
+    [volume, muted],
+  );
 
   // The host changes volume with the video's own controls; keep their choice the same way.
   useEffect(() => {

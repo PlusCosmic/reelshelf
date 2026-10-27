@@ -1,6 +1,7 @@
 using System.Text;
 using Dapper;
 using Npgsql;
+using Reelshelf.Moderation;
 using Reelshelf.Video;
 
 namespace Reelshelf.Core;
@@ -705,10 +706,18 @@ public class ClipsStatements(NpgsqlConnection connection)
             INNER JOIN clip c ON c.id = cs.clip_id
             INNER JOIN game_category gc ON gc.id = c.game_category_id
             WHERE cs.token = @token AND cs.revoked_at IS NULL
+              AND {ContentReportStatements.ShareableSql("c")}
             LIMIT 1
             """;
 
         return await connection.QuerySingleOrDefaultAsync<SharedClipRow>(sql, new { token });
+    }
+
+    /// <summary>Whether an admin took the clip down, so it may not be shared.</summary>
+    public async Task<bool> IsSharingBlocked(Guid clipId)
+    {
+        return await connection.QuerySingleOrDefaultAsync<bool>(
+            "SELECT sharing_blocked_at IS NOT NULL FROM clip WHERE id = @clipId", new { clipId });
     }
 
     public async Task<ClipWithTagsRow?> GetClipWithTagsByIdAndOwner(Guid clipId, Guid ownerId)

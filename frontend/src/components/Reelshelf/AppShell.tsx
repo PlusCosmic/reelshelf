@@ -1,11 +1,13 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
+  IconFlag,
   IconLogout,
   IconMoon,
   IconScan,
   IconMicrophone,
   IconSettings,
   IconSun,
+  IconUserShield,
 } from "@tabler/icons-react";
 import { useState } from "react";
 import { UploadsProvider } from "@/components/AddClips/UploadsProvider";
@@ -130,6 +132,28 @@ export function AppShell({
                   >
                     <IconMicrophone size={16} />
                     Transcription
+                  </Link>
+                ) : null}
+                {user.isAdmin ? (
+                  <Link
+                    to="/admin/accounts"
+                    className="rs-menu-item"
+                    role="menuitem"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <IconUserShield size={16} />
+                    Accounts
+                  </Link>
+                ) : null}
+                {user.isAdmin ? (
+                  <Link
+                    to="/admin/reports"
+                    className="rs-menu-item"
+                    role="menuitem"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <IconFlag size={16} />
+                    Reports
                   </Link>
                 ) : null}
                 <button

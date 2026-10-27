@@ -121,6 +121,41 @@ public static class AccountEmails
             footer: "Sent by Reelshelf."));
     }
 
+    /// <summary>To an Admin: a shared clip was reported for something serious, and its link is hidden until reviewed.</summary>
+    public static EmailMessage UrgentContentReport(string to, string reason, string reviewUrl)
+    {
+        string subject = "A shared clip was reported and needs review";
+        string text =
+            $"A shared clip was reported for {reason}. Its share link is hidden until you review it: {reviewUrl}\n";
+
+        return new EmailMessage(to, subject, text, Wrap(subject,
+            $"<p>A shared clip was reported for <strong>{Encode(reason)}</strong>. Its share link is hidden until you " +
+            $"<a href=\"{Encode(reviewUrl)}\">review it</a>.</p>",
+            footer: "Sent by Reelshelf to its admins."));
+    }
+
+    /// <summary>
+    /// To the owner: a clip was taken down for breaking the terms, and how to dispute it. It names neither the rule nor
+    /// the report, so nothing in it points back at whoever reported the clip.
+    /// </summary>
+    public static EmailMessage ClipTakenDown(string to, string clipTitle, string termsUrl, string contactEmail)
+    {
+        string subject = "One of your Reelshelf clips can no longer be shared";
+        string text =
+            $"Your clip \"{clipTitle}\" breaks our terms of service, so its share links have stopped working and it " +
+            "can't be shared again. It is still in your library.\n\n" +
+            $"Our terms: {termsUrl}\n" +
+            $"If you think we got this wrong, email {contactEmail} and tell us why.\n";
+
+        return new EmailMessage(to, subject, text, Wrap(subject,
+            $"<p>Your clip <strong>{Encode(clipTitle)}</strong> breaks our <a href=\"{Encode(termsUrl)}\">terms of " +
+            "service</a>, so its share links have stopped working and it can't be shared again. It is still in your " +
+            "library.</p>" +
+            $"<p>If you think we got this wrong, email <a href=\"mailto:{Encode(contactEmail)}\">{Encode(contactEmail)}</a> " +
+            "and tell us why.</p>",
+            footer: "Sent by Reelshelf."));
+    }
+
     private static string Wrap(string title, string body,
         string footer = "Sent by Reelshelf. Change or remove your address in Settings.")
     {
