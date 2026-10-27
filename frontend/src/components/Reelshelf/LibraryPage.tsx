@@ -22,9 +22,9 @@ import {
 import { Bookcase } from "./Bookcase";
 import { GameBanner } from "./GameBanner";
 import { ShelfBar } from "./ShelfBar";
+import { LegendPicker } from "./LegendPicker";
 import {
   Chip,
-  LegendPlate,
   PagedClipGrid,
   SearchBox,
   StatLine,
@@ -441,44 +441,18 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
                 </Chip>
               ))}
             </div>
+            {apexBook && legends.length > 0 ? (
+              <LegendPicker
+                legends={legends}
+                value={legend}
+                onChange={(value) => dispatch({ type: "setLegend", value })}
+                cloth={selectedCloth}
+              />
+            ) : null}
             <SearchBox
               value={state.query}
               onChange={(value) => dispatch({ type: "setQuery", value })}
             />
-            {/* Its own row under the tags and search: there can be a couple of dozen legends. */}
-            {apexBook && legends.length > 0 ? (
-              <div className="rs-filter-chips rs-legend-chips">
-                <span className="rs-eyebrow rs-filter-label">Legends</span>
-                <Chip
-                  active={!legend}
-                  onClick={() => dispatch({ type: "setLegend", value: null })}
-                >
-                  All legends
-                </Chip>
-                {legends.map((item) => (
-                  <Chip
-                    key={item.legend}
-                    active={legend === item.legend}
-                    onClick={() =>
-                      dispatch({
-                        type: "setLegend",
-                        value: legend === item.legend ? null : item.legend,
-                      })
-                    }
-                  >
-                    <span className="rs-legend-chip">
-                      <LegendPlate
-                        legend={item.legend}
-                        cloth={selectedCloth}
-                        size="small"
-                      />
-                      {item.legend}{" "}
-                      <span className="rs-muted-count">{item.count}</span>
-                    </span>
-                  </Chip>
-                ))}
-              </div>
-            ) : null}
           </section>
 
           <section className="rs-section rs-clips" ref={setClipsSection}>

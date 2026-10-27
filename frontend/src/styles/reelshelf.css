@@ -1327,16 +1327,209 @@ a {
   min-width: 0;
 }
 
-/* The Apex book's legends: a row of their own, after the tags and search. */
-.rs-legend-chips {
-  flex-basis: 100%;
-  order: 1;
+/* The Apex book's legend filter: a button beside the search, opening a grid of portraits. */
+.rs-legend-picker {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: stretch;
 }
 
-.rs-legend-chip {
+.rs-legend-trigger,
+.rs-legend-clear {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rs-legend-trigger {
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.rs-legend-trigger:hover,
+.rs-legend-clear:hover {
+  border-color: var(--fg-soft);
+}
+
+.rs-legend-trigger[aria-expanded="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 16%, transparent);
+}
+
+/* A legend picked: the trigger and its clear button read as one control, in the active chip's colours. */
+.rs-legend-picker.picked .rs-legend-trigger,
+.rs-legend-picker.picked .rs-legend-clear {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg));
+  color: var(--accent-ink);
+}
+
+.rs-legend-picker.picked .rs-legend-trigger {
+  padding-left: 6px;
+  border-right: 0;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.rs-legend-clear {
+  justify-content: center;
+  width: 30px;
+  padding: 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.rs-legend-panel {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  z-index: 60;
+  width: 640px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - var(--rs-topbar-height, 0px) - 140px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 22px 44px -16px
+    color-mix(in oklab, var(--shadow) 60%, transparent);
+  animation: rs-shelfbar-drop 0.16s ease-out;
+}
+
+.rs-legend-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rs-legend-panel-head .rs-display {
+  font-size: 19px;
+}
+
+.rs-legend-panel-count {
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-legend-any {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+
+.rs-legend-any[aria-pressed="true"] {
+  color: var(--fg-soft);
+}
+
+.rs-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  padding: 12px;
+}
+
+.rs-legend-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 6px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.rs-legend-tile:hover {
+  border-color: var(--line);
+  background: var(--bg-soft);
+}
+
+.rs-legend-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.rs-legend-tile[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg));
+}
+
+.rs-legend-tile-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-legend-tile-count {
+  color: var(--fg-soft);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-legend-backdrop {
+  display: none;
+}
+
+/* On a phone the grid rises from the bottom as a sheet over a dimmed page, as the game list does. */
+@media (max-width: 720px) {
+  .rs-legend-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    background: color-mix(in oklab, var(--scrim) 62%, transparent);
+  }
+
+  .rs-legend-panel {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    width: auto;
+    max-width: none;
+    max-height: 80vh;
+    border-radius: 12px 12px 0 0;
+    animation-name: rs-shelfbar-rise;
+  }
+
+  .rs-legend-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding-bottom: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-legend-panel {
+    animation: none;
+  }
 }
 
 .rs-library-route {
@@ -5318,6 +5511,11 @@ html:has(.rs-library-route) {
 .rs-legend-plate.large {
   width: 48px;
   height: 24px;
+}
+
+.rs-legend-plate.tile {
+  width: 84px;
+  height: 42px;
 }
 
 .rs-row-duration {
