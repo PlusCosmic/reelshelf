@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Clip } from "@/api-client";
-import { thumbnailUrl } from "./reelshelf-model";
+import { legendPortraitUrl, thumbnailUrl } from "./reelshelf-model";
 
 function clip(video: Partial<Clip["video"]>): Clip {
   return {
@@ -10,6 +10,15 @@ function clip(video: Partial<Clip["video"]>): Clip {
     },
   } as Clip;
 }
+
+describe("legend portraits", () => {
+  it("names the file after the legend", () => {
+    expect(legendPortraitUrl("Wraith")).toBe("/apex-legends/wraith.png");
+    expect(legendPortraitUrl("Mad Maggie")).toBe(
+      "/apex-legends/mad-maggie.png",
+    );
+  });
+});
 
 describe("clip media URLs", () => {
   it("uses the thumbnail the API built", () => {

@@ -1327,6 +1327,18 @@ a {
   min-width: 0;
 }
 
+/* The Apex book's legends: a row of their own, after the tags and search. */
+.rs-legend-chips {
+  flex-basis: 100%;
+  order: 1;
+}
+
+.rs-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
 .rs-library-route {
   min-height: 100%;
 }
@@ -3547,6 +3559,25 @@ html:has(.rs-library-route) {
   color: var(--fg);
 }
 
+/* "Played as" an Apex clip's legend, leading the meta line. */
+.rs-watch-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 3px 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.rs-watch-legend small {
+  color: var(--fg-soft);
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .rs-watch-details .rs-chip {
   cursor: default;
 }
@@ -3659,7 +3690,8 @@ html:has(.rs-library-route) {
 }
 
 .rs-watch-more .rs-row,
-.rs-watch-more .rs-row.no-game {
+.rs-watch-more .rs-row.no-game,
+.rs-watch-more .rs-row.no-game.has-legend {
   grid-template-columns: 132px minmax(0, 1fr);
   gap: 12px;
   padding: 10px 0;
@@ -3670,8 +3702,13 @@ html:has(.rs-library-route) {
   line-height: 1.35;
 }
 
-.rs-watch-more .rs-row-duration {
+.rs-watch-more .rs-row-duration,
+.rs-watch-more .rs-row-legend {
   display: none;
+}
+
+.rs-watch-more .rs-row-legend-inline {
+  display: inline-flex;
 }
 
 .rs-watch-all {
@@ -3880,6 +3917,12 @@ html:has(.rs-library-route) {
   object-fit: cover;
 }
 
+.rs-watch-facts-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 @media (max-width: 900px) {
   .rs-watch-strip {
     min-height: 56px;
@@ -3948,7 +3991,8 @@ html:has(.rs-library-route) {
   }
 
   .rs-watch-more .rs-row,
-  .rs-watch-more .rs-row.no-game {
+  .rs-watch-more .rs-row.no-game,
+  .rs-watch-more .rs-row.no-game.has-legend {
     grid-template-columns: 120px minmax(0, 1fr);
   }
 }
@@ -5158,6 +5202,60 @@ html:has(.rs-library-route) {
   object-fit: cover;
 }
 
+/* An Apex clip's legend, in one game's list: its own column, the width of the longest name so the
+   durations after it line up. */
+.rs-row.no-game.has-legend {
+  grid-template-columns: 190px minmax(0, 1fr) auto auto;
+}
+
+.rs-row-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+  color: var(--fg-soft);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.rs-row-legend-inline {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* A legend's portrait: a 2:1 plate on the soft ground, underlined in the game's cloth. */
+.rs-legend-plate {
+  flex: none;
+  display: block;
+  width: 56px;
+  height: 28px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--bg-soft);
+  box-shadow: inset 0 -2px 0 var(--cloth, var(--accent));
+}
+
+.rs-legend-plate img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rs-legend-plate.small {
+  width: 30px;
+  height: 15px;
+  box-shadow: inset 0 -1.5px 0 var(--cloth, var(--accent));
+}
+
+.rs-legend-plate.large {
+  width: 48px;
+  height: 24px;
+}
+
 .rs-row-duration {
   min-width: 48px;
   justify-content: flex-end;
@@ -5575,13 +5673,18 @@ html:has(.rs-library-route) {
   }
 
   .rs-row,
-  .rs-row.no-game {
+  .rs-row.no-game,
+  .rs-row.no-game.has-legend {
     grid-template-columns: 120px minmax(0, 1fr);
     gap: 14px;
   }
 
   .rs-row .wide-only {
     display: none;
+  }
+
+  .rs-row .rs-row-legend-inline {
+    display: inline-flex;
   }
 
   .rs-bulk-upload-page {
