@@ -34,10 +34,10 @@ export function LegendPicker({
     if (!open) return;
     // Start on the legend being shown, else the most played, so the keyboard lands somewhere useful.
     const grid = gridRef.current;
-    (
+    const start =
       grid?.querySelector<HTMLButtonElement>('[aria-pressed="true"]') ??
-      grid?.querySelector<HTMLButtonElement>("button")
-    )?.focus();
+      grid?.querySelector<HTMLButtonElement>("button");
+    start?.focus();
     const onPointerDown = (event: PointerEvent) => {
       if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
     };
@@ -135,11 +135,7 @@ export function LegendPicker({
                   aria-pressed={value === item.legend}
                   onClick={() => choose(item.legend)}
                 >
-                  <LegendPlate
-                    legend={item.legend}
-                    cloth={cloth}
-                    size="tile"
-                  />
+                  <LegendPlate legend={item.legend} cloth={cloth} size="tile" />
                   <span className="rs-legend-tile-name">{item.legend}</span>
                   <span className="rs-legend-tile-count">
                     {plural(item.count, "clip", "clips")}
