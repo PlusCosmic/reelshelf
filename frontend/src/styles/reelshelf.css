@@ -128,9 +128,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  width: min(1120px, 100%);
-  margin: 0 auto;
-  padding: 28px 32px;
+  padding: 20px 24px;
 }
 
 .rs-landing-header-actions {
@@ -155,7 +153,10 @@ a {
   padding: 24px 32px 48px;
 }
 
-/* Bookcases in the margins beside the hero, only where the margins are wide enough to hold them. */
+/*
+ * Bookcases in the margins beside the hero, only where the margins are wide enough to hold them: packed
+ * against the window's edges below the header, and mostly faded out toward the content.
+ */
 .rs-landing-sides {
   position: absolute;
   inset: 0 0 auto;
@@ -168,30 +169,28 @@ a {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: calc((100% - 1120px) / 2 + 24px);
+  width: calc((100% - 1120px) / 2 - 8px);
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-top: 24px;
+  padding-top: 120px;
   overflow: hidden;
   mask-image:
-    linear-gradient(var(--side-fade), #000 50%, transparent),
-    linear-gradient(#000 50%, transparent);
+    linear-gradient(var(--side-fade), #000 15%, transparent),
+    linear-gradient(#000 510px, transparent);
   mask-composite: intersect;
 }
 
 .rs-landing-side.left {
   --side-fade: to right;
   left: 0;
-  align-items: flex-end;
-  padding-right: 12px;
+  align-items: flex-start;
 }
 
 .rs-landing-side.right {
   --side-fade: to left;
   right: 0;
-  align-items: flex-start;
-  padding-left: 12px;
+  align-items: flex-end;
 }
 
 .rs-landing-side-row {
@@ -201,7 +200,6 @@ a {
   align-items: flex-end;
   gap: 2px;
   height: 272px;
-  padding: 0 10px;
 }
 
 .rs-landing-side-row::after {
