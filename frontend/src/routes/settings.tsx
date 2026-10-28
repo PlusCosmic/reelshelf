@@ -11,6 +11,10 @@ import {
   PlanSettings,
 } from "@/components/Reelshelf/PlanSettings";
 import { useCurrentUser } from "@/hooks/queries";
+import { settingsCopy } from "@/copy/settings";
+
+const copy = settingsCopy;
+const sections = settingsCopy.sections;
 
 type SettingsSearch = {
   linked?: string;
@@ -52,46 +56,38 @@ function SettingsRoute() {
   return (
     <>
       <section className="rs-hero">
-        <div className="rs-eyebrow">Settings</div>
+        <div className="rs-eyebrow">{copy.eyebrow}</div>
         <h1 className="rs-display rs-h1">
-          Archive preferences for{" "}
-          <em>{user?.globalName ?? user?.username ?? "your account"}</em>.
+          {copy.title(user?.globalName ?? user?.username ?? copy.yourAccount)}
         </h1>
       </section>
       <section className="rs-section rs-settings">
         <div className="rs-settings-section">
-          <h2 className="rs-eyebrow">Plan</h2>
+          <h2 className="rs-eyebrow">{sections.plan}</h2>
           <PlanSettings billingReturn={billingReturn} />
         </div>
         <div className="rs-settings-section">
-          <h2 className="rs-eyebrow">Account email</h2>
-          <p className="rs-sidebar-copy">
-            Used for notices about newly linked sign-in methods and when your
-            library is nearly full. Leave it empty to receive nothing.
-          </p>
+          <h2 className="rs-eyebrow">{sections.email.title}</h2>
+          <p className="rs-sidebar-copy">{sections.email.copy}</p>
           <EmailField initialEmail={user?.email ?? null} />
         </div>
         <div className="rs-settings-section">
-          <h2 className="rs-eyebrow">Linked accounts</h2>
-          <p className="rs-sidebar-copy">
-            Sign in with any linked account. Your name and avatar follow the
-            primary one.
-          </p>
+          <h2 className="rs-eyebrow">{sections.linkedAccounts.title}</h2>
+          <p className="rs-sidebar-copy">{sections.linkedAccounts.copy}</p>
           <LinkedAccounts notice={notice} />
         </div>
         <div className="rs-settings-section">
-          <h2 className="rs-eyebrow">Your data</h2>
+          <h2 className="rs-eyebrow">{sections.yourData.title}</h2>
           <p className="rs-sidebar-copy">
-            Read the <Link to="/privacy">privacy policy</Link> and{" "}
-            <Link to="/terms">terms of service</Link>.
+            {sections.yourData.copy(
+              <Link to="/privacy">{sections.yourData.privacyLink}</Link>,
+              <Link to="/terms">{sections.yourData.termsLink}</Link>,
+            )}
           </p>
         </div>
         <div className="rs-settings-section">
-          <h2 className="rs-eyebrow">Delete account</h2>
-          <p className="rs-sidebar-copy">
-            Permanently delete your account, every clip in it and the
-            collections you made. This can't be undone.
-          </p>
+          <h2 className="rs-eyebrow">{sections.deleteAccount.title}</h2>
+          <p className="rs-sidebar-copy">{sections.deleteAccount.copy}</p>
           <DeleteAccount />
         </div>
       </section>

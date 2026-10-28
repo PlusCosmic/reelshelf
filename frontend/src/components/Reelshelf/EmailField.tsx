@@ -2,13 +2,17 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useSetEmail } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
+import { commonCopy } from "@/copy/common";
+import { settingsCopy } from "@/copy/settings";
+
+const copy = settingsCopy.email;
 
 /**
  * Lets the user choose where account mail goes. Used both for the first-sign-in step and in Settings.
  */
 export function EmailField({
   initialEmail,
-  submitLabel = "Save",
+  submitLabel = commonCopy.save,
   allowSkip = false,
   onSaved,
 }: {
@@ -36,9 +40,7 @@ export function EmailField({
       },
       onError: (failure) => {
         setError(
-          failure instanceof ApiError
-            ? failure.message
-            : "Couldn't save that address.",
+          failure instanceof ApiError ? failure.message : copy.saveFailed,
         );
       },
     });
@@ -52,13 +54,13 @@ export function EmailField({
   return (
     <form className="rs-form rs-email-form" onSubmit={handleSubmit}>
       <div className="rs-field">
-        <label htmlFor="account-email">Email</label>
+        <label htmlFor="account-email">{copy.label}</label>
         <input
           id="account-email"
           type="email"
           name="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder={copy.placeholder}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           disabled={setEmail.isPending}
@@ -71,7 +73,7 @@ export function EmailField({
       ) : null}
       {saved && !error ? (
         <p className="rs-linked-notice" data-tone="success" role="status">
-          Saved.
+          {copy.saved}
         </p>
       ) : null}
       <div className="rs-email-actions">
@@ -89,7 +91,7 @@ export function EmailField({
             disabled={setEmail.isPending}
             onClick={() => submit("")}
           >
-            Skip for now
+            {copy.skip}
           </button>
         ) : null}
       </div>

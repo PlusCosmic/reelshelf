@@ -1,3 +1,4 @@
+import { planCopy } from "@/copy/plan";
 import { type AccountPlan, tierNames } from "@/shared/services/plans";
 
 /** At this share of the limit the meter turns amber and the account is "nearly full". */
@@ -29,21 +30,19 @@ export function PlanMeter({
     limit !== null &&
     !overLimit &&
     (limit === 0 || fraction >= nearLimitFraction);
-  const clips = plan.clipCount.toLocaleString();
-
   let label: string;
   if (limit === null) {
-    label = `${clips} ${plan.clipCount === 1 ? "clip" : "clips"}`;
+    label = planCopy.meter.noLimit(plan.clipCount);
   } else if (overLimit) {
-    const over = (plan.clipCount - limit).toLocaleString();
+    const over = plan.clipCount - limit;
     label = compact
-      ? `${clips} clips · ${over} over the limit`
-      : `${clips} clips, ${over} over ${tier}'s limit of ${limit.toLocaleString()}`;
+      ? planCopy.meter.overCompact(plan.clipCount, over)
+      : planCopy.meter.over(plan.clipCount, over, tier, limit);
   } else {
-    label = `${clips} of ${limit.toLocaleString()} clips`;
-    if (nearLimit && compact) label += " · nearly full";
+    label = planCopy.meter.ofLimit(plan.clipCount, limit);
+    if (nearLimit && compact) label += planCopy.meter.nearlyFull;
   }
-  if (showTier && !(overLimit && !compact)) label += ` · ${tier}`;
+  if (showTier && !(overLimit && !compact)) label += planCopy.meter.tier(tier);
 
   return (
     <div
@@ -51,7 +50,7 @@ export function PlanMeter({
         nearLimit ? " near-limit" : ""
       }${overLimit ? " over-limit" : ""}`}
       role="meter"
-      aria-label="Clips kept"
+      aria-label={planCopy.meter.label}
       aria-valuemin={0}
       aria-valuemax={limit ?? undefined}
       aria-valuenow={plan.clipCount}

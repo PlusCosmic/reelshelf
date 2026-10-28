@@ -8,19 +8,12 @@ import {
   type AuthProvider,
 } from "@/shared/services/auth";
 import { ApiError } from "@/shared/services/apiError";
+import { settingsCopy } from "@/copy/settings";
+
+const copy = settingsCopy.linkedAccounts;
 
 export type LinkNotice =
   { tone: "success"; text: string } | { tone: "error"; text: string };
-
-const linkErrorMessages: Record<string, string> = {
-  session_expired:
-    "Your session changed while linking. Sign in again and retry.",
-  provider_already_linked:
-    "This account already has a login from that provider. Unlink it first.",
-  linked_to_another_account:
-    "That login already belongs to a different Reelshelf account.",
-  provider_failed: "The provider didn't complete the sign-in. Nothing changed.",
-};
 
 export function describeLinkResult(search: {
   linked?: string;
@@ -29,15 +22,13 @@ export function describeLinkResult(search: {
   if (search.linked) {
     return {
       tone: "success",
-      text: `${providerLabel(search.linked)} is now linked to your account.`,
+      text: copy.linked(providerLabel(search.linked)),
     };
   }
   if (search.link_error) {
     return {
       tone: "error",
-      text:
-        linkErrorMessages[search.link_error] ??
-        "Linking didn't complete. Nothing changed.",
+      text: copy.linkErrors[search.link_error] ?? copy.linkFailed,
     };
   }
   return null;
@@ -59,9 +50,7 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
     unlink.mutate(provider, {
       onError: (error) => {
         setUnlinkError(
-          error instanceof ApiError
-            ? error.message
-            : "Couldn't unlink that account.",
+          error instanceof ApiError ? error.message : copy.unlinkFailed,
         );
       },
     });
@@ -78,12 +67,12 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
       ) : null}
 
       {identities.isLoading ? (
-        <p className="rs-sidebar-copy">Loading linked accounts…</p>
+        <p className="rs-sidebar-copy">{copy.loading}</p>
       ) : null}
 
       {identities.isError ? (
         <p className="rs-linked-notice" data-tone="error">
-          Couldn't load linked accounts.
+          {copy.loadFailed}
         </p>
       ) : null}
 
@@ -100,12 +89,15 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
               <span className="rs-linked-name">
                 <span>{identity.displayName ?? identity.username}</span>
                 {identity.isPrimary ? (
-                  <span className="rs-linked-primary">primary</span>
+                  <span className="rs-linked-primary">{copy.primary}</span>
                 ) : null}
               </span>
               <span className="rs-linked-sub">
                 <span>
-                  {providerLabel(identity.provider)} · @{identity.username}
+                  {copy.handle(
+                    providerLabel(identity.provider),
+                    identity.username,
+                  )}
                 </span>
                 {identity.email ? <span>{identity.email}</span> : null}
               </span>
@@ -114,14 +106,10 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
               className="rs-secondary"
               type="button"
               disabled={!canUnlink || unlink.isPending}
-              title={
-                canUnlink
-                  ? undefined
-                  : "Link another sign-in method before removing this one"
-              }
+              title={canUnlink ? undefined : copy.cantUnlink}
               onClick={() => handleUnlink(identity.provider)}
             >
-              Unlink
+              {copy.unlink}
             </button>
           </li>
         ))}
@@ -144,7 +132,7 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
               onClick={() => startLink(provider.id as AuthProvider, returnUrl)}
             >
               <ProviderIcon provider={provider.id} />
-              Link {provider.label}
+              {copy.link(provider.label)}
             </button>
           ))}
         </div>

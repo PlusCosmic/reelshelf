@@ -18,6 +18,13 @@ import {
   tierNames,
 } from "@/shared/services/plans";
 import { ApiError } from "@/shared/services/apiError";
+import { commonCopy } from "@/copy/common";
+import { planCopy } from "@/copy/plan";
+
+const copy = planCopy.settings;
+const alerts = planCopy.alerts;
+const returnCopy = planCopy.returnBanner;
+const offerCopy = planCopy.offers;
 
 /** Where the browser came back from: Checkout (`success`, `cancelled`) or the Customer Portal (`portal`). */
 export type BillingReturn = "success" | "cancelled" | "portal" | undefined;
@@ -106,7 +113,7 @@ export function PlanSettings({
   if (!plan.data) {
     return plan.isError ? (
       <p className="rs-linked-notice" data-tone="error">
-        Your plan couldn't be loaded. Refresh to try again.
+        {copy.loadFailed}
       </p>
     ) : null;
   }
@@ -155,8 +162,8 @@ export function PlanSettings({
         {current.tier !== "unlimited" ? (
           <p className="rs-plan-limits">
             {current.maxClipSeconds !== null
-              ? `Clips up to ${formatClipLength(current.maxClipSeconds)} long`
-              : "Clips of any length"}
+              ? copy.clipsUpTo(formatClipLength(current.maxClipSeconds))
+              : copy.anyLength}
           </p>
         ) : null}
         <SubscriptionLine plan={current} />
@@ -189,7 +196,7 @@ export function PlanSettings({
               ) : null}
               {alert.planPage ? (
                 <Link to="/plan" className="rs-secondary rs-plan-link-button">
-                  Choose clips to keep
+                  {copy.chooseClipsToKeep}
                 </Link>
               ) : null}
               {alert.portal ? <PortalHint /> : null}
@@ -207,7 +214,7 @@ export function PlanSettings({
               disabled={keep.isPending}
               onClick={keepPlan}
             >
-              Keep {tier}
+              {copy.keep(tier)}
             </button>
           ) : null}
           <button
@@ -216,19 +223,19 @@ export function PlanSettings({
             disabled={portal.isPending}
             onClick={openPortal}
           >
-            {hasOpenSubscription ? "Manage billing" : "Billing history"}
+            {hasOpenSubscription ? copy.manageBilling : copy.billingHistory}
           </button>
           <PortalHint />
         </div>
       ) : null}
       {portal.isError ? (
         <p className="rs-linked-notice" data-tone="error">
-          Billing couldn't be opened. Try again.
+          {copy.portalFailed}
         </p>
       ) : null}
       {keep.isError ? (
         <p className="rs-linked-notice" data-tone="error">
-          Your plan couldn't be kept. Try again.
+          {copy.keepFailed}
         </p>
       ) : null}
 
@@ -259,7 +266,7 @@ export function PlanSettings({
 }
 
 function PortalHint() {
-  return <span className="rs-plan-hint">Opens Stripe's billing portal</span>;
+  return <span className="rs-plan-hint">{copy.portalHint}</span>;
 }
 
 /** "Plus, monthly" for a paid plan, else the tier. */
@@ -272,17 +279,17 @@ function planTitle(plan: AccountPlan): string {
     currentStatuses.has(subscription.status) &&
     subscription.interval
   ) {
-    return `${tier}, ${subscription.interval === "year" ? "yearly" : "monthly"}`;
+    return copy.title.subscribed(tier, subscription.interval);
   }
   // A tier an admin granted, when no subscription does as well (ADR-0008).
-  if (plan.grantedTier === plan.tier) return `${tier} (granted)`;
+  if (plan.grantedTier === plan.tier) return copy.title.granted(tier);
   return tier;
 }
 
 /** When the plan renews or ends; payment problems are the alert's. */
 function SubscriptionLine({ plan }: { plan: AccountPlan }) {
   if (plan.tier === "unlimited") {
-    return <p className="rs-sidebar-copy">Unlimited clips of any length.</p>;
+    return <p className="rs-sidebar-copy">{planCopy.subscription.unlimited}</p>;
   }
   const subscription = plan.subscription;
   if (!subscription) return null;
@@ -296,9 +303,9 @@ function SubscriptionLine({ plan }: { plan: AccountPlan }) {
       return (
         <p className="rs-sidebar-copy">
           {endsOn
-            ? `Ends on ${endsOn}. You keep ${tier} until then.`
+            ? planCopy.subscription.endsOn(endsOn, tier)
             : (scheduledLine(plan) ??
-              (periodEnd ? `Renews on ${periodEnd}.` : null))}
+              (periodEnd ? planCopy.subscription.renewsOn(periodEnd) : null))}
         </p>
       );
     case "past_due":
@@ -309,7 +316,7 @@ function SubscriptionLine({ plan }: { plan: AccountPlan }) {
       const ended = formatDate(subscription.endedAt);
       return ended ? (
         <p className="rs-sidebar-copy">
-          {tier} ended on {ended}.
+          {planCopy.subscription.endedOn(tier, ended)}
         </p>
       ) : null;
     }
@@ -321,22 +328,27 @@ function scheduledLine(plan: AccountPlan): string | null {
   const subscription = plan.subscription;
   if (!subscription?.scheduledTier || !subscription.scheduledAt) return null;
   if (subscription.scheduledTier === subscription.tier) {
-    return `Switches to ${subscription.scheduledInterval === "year" ? "yearly" : "monthly"} billing on ${formatDate(subscription.scheduledAt)}.`;
+    return planCopy.subscription.switchesBilling(
+      subscription.scheduledInterval,
+      formatDate(subscription.scheduledAt),
+    );
   }
-  return `Switches to ${planName(subscription.scheduledTier, subscription.scheduledInterval)} on ${formatDate(subscription.scheduledAt)}. You keep ${subscriptionTierName(plan)} until then.`;
+  return planCopy.subscription.switchesTo(
+    planName(subscription.scheduledTier, subscription.scheduledInterval),
+    formatDate(subscription.scheduledAt),
+    subscriptionTierName(plan),
+  );
 }
 
 /** "Plus (monthly)". */
 function planName(tier: string, interval: string | null | undefined): string {
   const name = tierNames[tier] ?? tier;
-  return interval
-    ? `${name} (${interval === "year" ? "yearly" : "monthly"})`
-    : name;
+  return interval ? copy.planName(name, interval) : name;
 }
 
 function subscriptionTierName(plan: AccountPlan): string {
   const tier = plan.subscription?.tier;
-  return tier ? (tierNames[tier] ?? tier) : "your plan";
+  return tier ? (tierNames[tier] ?? tier) : copy.yourPlan;
 }
 
 /** When an active plan set to end will end, if it is. */
@@ -367,8 +379,8 @@ function planAlert(
   const tier = subscriptionTierName(plan);
 
   const overTitle = deletesOn
-    ? `${clipCount(over)} will be deleted on ${deletesOn}.`
-    : `${clipCount(over)} ${over === 1 ? "is" : "are"} over your plan's limit.`;
+    ? alerts.overDeletesOn(over, deletesOn)
+    : alerts.overLimit(over);
 
   if (subscription && paymentProblemStatuses.has(subscription.status)) {
     const pastDue = subscription.status === "past_due";
@@ -376,12 +388,8 @@ function planAlert(
       return {
         tone: deletesOn ? "error" : "warning",
         title: overTitle,
-        body: `${
-          pastDue
-            ? `Your last payment for ${tier} didn't go through.`
-            : `${tier} is on hold because a payment failed, so your account has Free's limits.`
-        } Update your payment method to keep them, or choose which clips to keep.`,
-        portal: "Update payment method",
+        body: alerts.paymentProblemOver(pastDue, tier),
+        portal: alerts.updatePaymentMethod,
         planPage: true,
       };
     }
@@ -393,20 +401,20 @@ function planAlert(
         overFree === 0
           ? ""
           : graceDays !== null
-            ? `, and the ${clipCount(overFree)} over them will be deleted ${graceDays} days later`
-            : `, and you can't add clips while ${clipCount(overFree)} are over them`;
+            ? alerts.pastDue.deletedLater(overFree, graceDays)
+            : alerts.pastDue.cantAdd(overFree);
       return {
         tone: "warning",
-        title: `Your last payment for ${tier} didn't go through.`,
-        body: `We'll try it again. Update your payment method to keep ${tier}: if the last try fails, ${tier} ends and your account moves to Free's limits${clipsCost}.`,
-        portal: "Update payment method",
+        title: alerts.pastDue.title(tier),
+        body: alerts.pastDue.body(tier, clipsCost),
+        portal: alerts.updatePaymentMethod,
       };
     }
     return {
       tone: "warning",
-      title: `${tier} is on hold because a payment failed.`,
-      body: "Your account has Free's limits until you update your payment method.",
-      portal: "Update payment method",
+      title: alerts.onHold.title(tier),
+      body: alerts.onHold.body,
+      portal: alerts.updatePaymentMethod,
     };
   }
 
@@ -415,10 +423,8 @@ function planAlert(
       tone: deletesOn ? "error" : "warning",
       title: overTitle,
       body: deletesOn
-        ? `Your plan keeps ${limit.toLocaleString()}. Choose which clips to keep and download the rest${
-            canUpgrade ? ", or pick a plan below to keep them all" : ""
-          }.`
-        : `Your plan keeps ${limit.toLocaleString()}, so you can't add clips until you're back within it.`,
+        ? alerts.over.deletes(limit, canUpgrade)
+        : alerts.over.blocked(limit),
       planPage: true,
     };
   }
@@ -442,11 +448,16 @@ function planAlert(
         : null;
     return {
       tone: "warning",
-      title: `When you switch to ${scheduledName} on ${formatDate(at)}, ${clipCount(overScheduled)} will be over its limit of ${scheduledLimit.toLocaleString()}.`,
+      title: alerts.scheduled.title(
+        scheduledName,
+        formatDate(at),
+        overScheduled,
+        scheduledLimit,
+      ),
       body: deletes
-        ? `They'll be deleted ${graceDays} days later, on ${deletes}, unless you keep ${tier}.`
-        : `You won't be able to add clips until you're back within it, unless you keep ${tier}.`,
-      keep: `Keep ${tier}`,
+        ? alerts.scheduled.deletedLater(graceDays, deletes, tier)
+        : alerts.scheduled.blocked(tier),
+      keep: copy.keep(tier),
     };
   }
 
@@ -459,23 +470,25 @@ function planAlert(
         : null;
     return {
       tone: "warning",
-      title: `When ${tier} ends on ${formatDate(end)}, ${clipCount(overFree)} will be over Free's limit of ${freeLimit.toLocaleString()}.`,
+      title: alerts.ending.title(tier, formatDate(end), overFree, freeLimit),
       body: deletes
-        ? `They'll be deleted ${graceDays} days later, on ${deletes}, unless you keep ${tier}.`
-        : `You won't be able to add clips until you're back within it, unless you keep ${tier}.`,
-      portal: `Keep ${tier}`,
+        ? alerts.ending.deletedLater(graceDays, deletes, tier)
+        : alerts.ending.blocked(tier),
+      portal: copy.keep(tier),
     };
   }
 
   if (limit !== null && plan.clipCount >= limit * nearLimitFraction) {
     const full = plan.clipCount >= limit;
-    const way = canUpgrade ? "delete some or upgrade" : "delete some";
+    const way = canUpgrade
+      ? alerts.full.deleteOrUpgrade
+      : alerts.full.deleteSome;
     return {
       tone: "warning",
-      title: full ? "Your library is full." : "Your library is nearly full.",
+      title: full ? alerts.full.title : alerts.full.nearlyTitle,
       body: full
-        ? `You can't add clips until you ${way}.`
-        : `You've used ${plan.clipCount.toLocaleString()} of ${limit.toLocaleString()} clips. At ${limit.toLocaleString()} you can't add more until you ${way}.`,
+        ? alerts.full.body(way)
+        : alerts.full.nearlyBody(plan.clipCount, limit, way),
     };
   }
 
@@ -494,35 +507,29 @@ function ReturnBanner({
 }) {
   if (billingReturn === "cancelled") {
     return (
-      <PlanAlert tone="info" title="Checkout was cancelled.">
-        <p>Nothing was charged.</p>
+      <PlanAlert tone="info" title={returnCopy.cancelled.title}>
+        <p>{returnCopy.cancelled.body}</p>
       </PlanAlert>
     );
   }
   if (billingReturn !== "success") return null;
   if (upgradedTo) {
     return (
-      <PlanAlert tone="success" title={`You're on ${upgradedTo} now.`}>
-        <p>Thanks for subscribing.</p>
+      <PlanAlert tone="success" title={returnCopy.upgraded.title(upgradedTo)}>
+        <p>{returnCopy.upgraded.body}</p>
       </PlanAlert>
     );
   }
   if (stillWaiting) {
     return (
-      <PlanAlert
-        tone="warning"
-        title="Your payment is taking longer than usual to confirm."
-      >
-        <p>
-          Refresh in a minute. If your plan still hasn't changed, email us
-          before trying again.
-        </p>
+      <PlanAlert tone="warning" title={returnCopy.slow.title}>
+        <p>{returnCopy.slow.body}</p>
       </PlanAlert>
     );
   }
   return (
-    <PlanAlert tone="info" title="Confirming your payment…" busy>
-      <p>This usually takes a few seconds.</p>
+    <PlanAlert tone="info" title={returnCopy.confirming.title} busy>
+      <p>{returnCopy.confirming.body}</p>
     </PlanAlert>
   );
 }
@@ -601,10 +608,6 @@ function AlertIcon({ tone }: { tone: Tone }) {
   );
 }
 
-function clipCount(count: number): string {
-  return count === 1 ? "1 clip" : `${count.toLocaleString()} clips`;
-}
-
 function formatDate(value: Date | null | undefined): string | null {
   if (!value) return null;
   return new Date(value).toLocaleDateString(undefined, {
@@ -630,8 +633,8 @@ function yearlyNote(
         )
       : 0;
   return monthsFree > 0
-    ? `${perMonth}/mo · ${monthsFree === 1 ? "1 month" : `${monthsFree} months`} free`
-    : `${perMonth}/mo`;
+    ? offerCopy.perMonthFree(perMonth, monthsFree)
+    : offerCopy.perMonth(perMonth);
 }
 
 const tierRank: Record<string, number> = { free: 0, plus: 1, pro: 2 };
@@ -688,15 +691,17 @@ function PlanOffers({
       ? failure.message
       : failure
         ? change
-          ? "Your plan couldn't be changed. Try again."
-          : "Checkout couldn't be started. Try again."
+          ? offerCopy.changeFailed
+          : offerCopy.checkoutFailed
         : null;
 
   function action(offer: PlanOffer, price: PlanOfferPrice | undefined) {
     const name = tierNames[offer.tier] ?? offer.tier;
     if (!change || !current) {
       if (offer.tier === currentTier) {
-        return <span className="rs-plan-card-current">Current plan</span>;
+        return (
+          <span className="rs-plan-card-current">{offerCopy.currentPlan}</span>
+        );
       }
       return price ? (
         <button
@@ -705,7 +710,9 @@ function PlanOffers({
           disabled={pending}
           onClick={() => checkout.mutate(price.lookupKey)}
         >
-          {offer.tier === lapsedTier ? "Resubscribe to" : "Upgrade to"} {name}
+          {offer.tier === lapsedTier
+            ? offerCopy.resubscribeTo(name)
+            : offerCopy.upgradeTo(name)}
         </button>
       ) : null;
     }
@@ -713,22 +720,24 @@ function PlanOffers({
     // Free is reached by cancelling, which is the billing portal's.
     if (!price) return null;
     if (price.lookupKey === change.currentLookupKey) {
-      return <span className="rs-plan-card-current">Current plan</span>;
+      return (
+        <span className="rs-plan-card-current">{offerCopy.currentPlan}</span>
+      );
     }
     if (price.lookupKey === change.scheduledLookupKey) {
       return (
         <span className="rs-plan-card-current">
-          From {formatDate(change.switchesOn)}
+          {offerCopy.from(formatDate(change.switchesOn))}
         </span>
       );
     }
     const target = lookupKeyParts(price.lookupKey);
     const sameTier = target.tier === current.tier;
     const label = sameTier
-      ? `Switch to ${target.interval === "year" ? "yearly" : "monthly"}`
+      ? offerCopy.switchToInterval(target.interval)
       : isUpgrade(current, target)
-        ? `Upgrade to ${name}`
-        : `Switch to ${name}`;
+        ? offerCopy.upgradeTo(name)
+        : offerCopy.switchTo(name);
     return isUpgrade(current, target) ? (
       <button
         className="rs-primary"
@@ -755,7 +764,7 @@ function PlanOffers({
       <div
         className="rs-plan-interval"
         role="group"
-        aria-label="Billing period"
+        aria-label={offerCopy.billingPeriod}
       >
         {(["year", "month"] as const).map((value) => (
           <button
@@ -765,7 +774,7 @@ function PlanOffers({
             aria-pressed={interval === value}
             onClick={() => setBillingInterval(value)}
           >
-            {value === "year" ? "Yearly" : "Monthly"}
+            {offerCopy.interval[value]}
           </button>
         ))}
       </div>
@@ -780,14 +789,14 @@ function PlanOffers({
             offer.tier === recommendedTier && offer.tier !== currentTier;
           const note =
             offer.tier === "free"
-              ? "No card needed"
+              ? offerCopy.noCard
               : price && interval === "year"
                 ? yearlyNote(
                     price,
                     offer.prices.find((p) => p.interval === "month"),
                   )
                 : price
-                  ? "Billed monthly"
+                  ? offerCopy.billedMonthly
                   : "";
           return (
             <div
@@ -799,7 +808,9 @@ function PlanOffers({
               <div className="rs-plan-card-name">
                 {name}
                 {recommended ? (
-                  <span className="rs-plan-card-badge">Best value</span>
+                  <span className="rs-plan-card-badge">
+                    {offerCopy.bestValue}
+                  </span>
                 ) : null}
               </div>
               <div className="rs-plan-card-price">
@@ -811,19 +822,19 @@ function PlanOffers({
                       currency,
                     })
                   : price
-                    ? `${formatPrice(price)} / ${interval}`
-                    : "Not available"}
+                    ? offerCopy.price(formatPrice(price), interval)
+                    : offerCopy.notAvailable}
               </div>
               <div className="rs-plan-card-note">{note || "\u00a0"}</div>
               <div className="rs-plan-card-clips">
                 {offer.clipLimit !== null
-                  ? `${offer.clipLimit.toLocaleString()} clips`
-                  : "Unlimited clips"}
+                  ? offerCopy.clipLimit(offer.clipLimit)
+                  : offerCopy.unlimitedClips}
               </div>
               <div className="rs-plan-card-length">
                 {offer.maxClipSeconds !== null
-                  ? `Up to ${formatClipLength(offer.maxClipSeconds)} each`
-                  : "Any length"}
+                  ? offerCopy.upTo(formatClipLength(offer.maxClipSeconds))
+                  : offerCopy.anyLength}
               </div>
               <div className="rs-plan-card-action">{action(offer, price)}</div>
             </div>
@@ -845,16 +856,10 @@ function PlanOffers({
           onCancel={() => setConfirming(null)}
         />
       ) : null}
-      <p className="rs-plan-included">
-        Every plan includes legend detection for Apex Legends clips.
-      </p>
+      <p className="rs-plan-included">{offerCopy.included}</p>
       <p className="rs-plan-footnote">
-        {change
-          ? `Upgrades are charged now, less what's left of your current plan. Moving to a smaller plan, or to monthly, waits until ${formatDate(change.switchesOn) ?? "your plan renews"}. `
-          : ""}
-        Prices are in {currency.toUpperCase()}
-        {change ? "" : "; Checkout shows your own currency where it can"}. Plans
-        are sold by Stripe through Link, so charges show as LINK.COM* REELSHELF.
+        {change ? offerCopy.changeFootnote(formatDate(change.switchesOn)) : ""}
+        {offerCopy.pricesFootnote(currency.toUpperCase(), !change)}
       </p>
       {error ? (
         <p className="rs-linked-notice" data-tone="error">
@@ -894,16 +899,20 @@ function DowngradeConfirmation({
     over === 0
       ? ""
       : change.graceDays !== null
-        ? ` ${clipCount(over)} will then be over its limit of ${limit!.toLocaleString()}, and deleted ${change.graceDays} days later unless you switch back.`
-        : ` ${clipCount(over)} will then be over its limit of ${limit!.toLocaleString()}, so you won't be able to add clips until you're back within it.`;
+        ? planCopy.downgrade.deletedLater(over, limit!, change.graceDays)
+        : planCopy.downgrade.blocked(over, limit!);
   return (
     <PlanAlert
       tone={over > 0 ? "warning" : "info"}
-      title={`Switch to ${name}${on ? ` on ${on}` : ""}?`}
+      title={planCopy.downgrade.title(name, on)}
     >
       <p>
-        You keep {currentName} until then, and pay {formatPrice(price)} a{" "}
-        {target.interval} from then on.{cost}
+        {planCopy.downgrade.body(
+          currentName,
+          formatPrice(price),
+          target.interval,
+          cost,
+        )}
       </p>
       <div className="rs-plan-actions">
         <button
@@ -912,7 +921,7 @@ function DowngradeConfirmation({
           disabled={pending}
           onClick={onConfirm}
         >
-          Switch{on ? ` on ${on}` : ""}
+          {planCopy.downgrade.confirm(on)}
         </button>
         <button
           className="rs-secondary"
@@ -920,7 +929,7 @@ function DowngradeConfirmation({
           disabled={pending}
           onClick={onCancel}
         >
-          Cancel
+          {commonCopy.cancel}
         </button>
       </div>
     </PlanAlert>

@@ -6,6 +6,10 @@ import { useDeleteAccount, usePlan } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 import { deleteAccountPhrase } from "@/shared/services/user";
 import { formatFileSize } from "@/shared/utils/format";
+import { commonCopy } from "@/copy/common";
+import { settingsCopy } from "@/copy/settings";
+
+const copy = settingsCopy.deleteAccount;
 
 /** The Settings control for permanently deleting the account, confirmed by typing a phrase. */
 export function DeleteAccount() {
@@ -19,7 +23,7 @@ export function DeleteAccount() {
           type="button"
           onClick={() => setOpen(true)}
         >
-          Delete account…
+          {copy.open}
         </button>
       </div>
       {open ? <DeleteAccountDialog onClose={() => setOpen(false)} /> : null}
@@ -48,53 +52,45 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
         });
       },
       onError: (failure) => {
-        setError(
-          failure instanceof ApiError
-            ? failure.message
-            : "Your account couldn't be deleted. Try again.",
-        );
+        setError(failure instanceof ApiError ? failure.message : copy.failed);
       },
     });
   };
 
   return (
     <Dialog
-      eyebrow="Delete account"
-      title="Delete your account?"
+      eyebrow={copy.eyebrow}
+      title={copy.title}
       busy={deleteAccount.isPending}
       onClose={onClose}
     >
       {() => (
         <form className="rs-modal-panel" onSubmit={submit}>
           <div className="rs-modal-note rs-delete-account-note">
-            <p>This permanently deletes, and can't be undone:</p>
+            <p>{copy.intro}</p>
             <ul className="rs-delete-account-list">
               <li>
-                every clip you've uploaded or imported
-                {plan && plan.clipCount > 0
-                  ? ` (${plan.clipCount.toLocaleString()} ${
-                      plan.clipCount === 1 ? "clip" : "clips"
-                    }, ${formatFileSize(plan.storageUsedBytes)})`
-                  : ""}
-                , with its tags, detections and transcripts
+                {copy.clips(
+                  plan && plan.clipCount > 0
+                    ? copy.clipsSummary(
+                        plan.clipCount,
+                        formatFileSize(plan.storageUsedBytes),
+                      )
+                    : "",
+                )}
               </li>
-              <li>
-                your share links, and the collections you made, including for
-                their collaborators
-              </li>
+              <li>{copy.collections}</li>
               {plan?.subscription &&
               !["canceled", "incomplete_expired"].includes(
                 plan.subscription.status,
               ) ? (
-                <li>your paid plan, which is cancelled straight away</li>
+                <li>{copy.paidPlan}</li>
               ) : null}
-              <li>your linked Discord and Twitch sign-ins</li>
+              <li>{copy.signIns}</li>
             </ul>
           </div>
           <label className="rs-field">
-            <span>
-              Type <strong>{deleteAccountPhrase}</strong> to confirm
-            </span>
+            <span>{copy.confirm(deleteAccountPhrase)}</span>
             <span className="rs-input-shell">
               <input
                 value={confirmation}
@@ -117,9 +113,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
               type="submit"
               disabled={!confirmed || deleteAccount.isPending}
             >
-              {deleteAccount.isPending
-                ? "Deleting…"
-                : "Permanently delete my account"}
+              {deleteAccount.isPending ? commonCopy.deleting : copy.submit}
             </button>
           </div>
         </form>

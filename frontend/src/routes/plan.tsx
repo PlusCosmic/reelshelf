@@ -10,6 +10,9 @@ import { ApiError } from "@/shared/services/apiError";
 import { type ClipExport, exportPartUrl } from "@/shared/services/plans";
 import type { OverLimitClip } from "@/api-client";
 import { formatFileSize } from "@/shared/utils/format";
+import { planCopy } from "@/copy/plan";
+
+const copy = planCopy.page;
 
 export const Route = createFileRoute("/plan")({
   component: PlanRoute,
@@ -27,10 +30,6 @@ function formatDate(value: Date | null | undefined): string | null {
   });
 }
 
-function clipCount(count: number): string {
-  return count === 1 ? "1 clip" : `${count.toLocaleString()} clips`;
-}
-
 function PlanRoute() {
   const overLimit = useOverLimit();
   const exports = useExports();
@@ -41,63 +40,54 @@ function PlanRoute() {
   return (
     <>
       <section className="rs-hero">
-        <div className="rs-eyebrow">Plan</div>
+        <div className="rs-eyebrow">{copy.eyebrow}</div>
         <h1 className="rs-display rs-h1">
-          {over.length > 0 ? (
-            <>
-              <em>{clipCount(over.length)}</em> over your plan's limit.
-            </>
-          ) : (
-            "Your clips and downloads."
-          )}
+          {over.length > 0 ? copy.overTitle(over.length) : copy.title}
         </h1>
       </section>
       <section className="rs-section rs-settings">
         {overLimit.isError ? (
           <p className="rs-linked-notice" data-tone="error">
-            Your clips couldn't be loaded. Refresh to try again.
+            {copy.loadFailed}
           </p>
         ) : null}
 
         {data && over.length > 0 ? (
           <div className="rs-settings-section">
             <p className="rs-sidebar-copy">
-              Your plan keeps {data.clipLimit?.toLocaleString()} clips.{" "}
-              {deletesOn
-                ? `The ${clipCount(over.length)} below will be deleted on ${deletesOn}, and you'll be emailed a download of them.`
-                : "The clips below are over the limit; you can't add more until you're back within it."}{" "}
-              To keep them, <Link to="/settings">upgrade in Settings</Link>,
-              download them, or pick other clips to let go instead.
+              {copy.overIntro(
+                data.clipLimit,
+                over.length,
+                deletesOn,
+                <Link to="/settings">{copy.upgradeLink}</Link>,
+              )}
             </p>
             <StartExportButton exports={exports.data ?? []} />
           </div>
         ) : data ? (
           <p className="rs-sidebar-copy">
-            All your clips are within your plan.{" "}
-            <Link to="/settings">See your plan in Settings</Link>.
+            {copy.withinPlan(<Link to="/settings">{copy.settingsLink}</Link>)}
           </p>
         ) : null}
 
         {(exports.data ?? []).length > 0 ? (
           <div className="rs-settings-section">
-            <h2 className="rs-eyebrow">Downloads</h2>
+            <h2 className="rs-eyebrow">{copy.downloads}</h2>
             <ExportList exports={exports.data ?? []} />
           </div>
         ) : null}
 
         {over.length > 0 ? (
           <div className="rs-settings-section">
-            <h2 className="rs-eyebrow">Over the limit</h2>
+            <h2 className="rs-eyebrow">{copy.overTheLimit}</h2>
             <ClipList clips={over} keep />
           </div>
         ) : null}
 
         {(data?.picked ?? []).length > 0 ? (
           <div className="rs-settings-section">
-            <h2 className="rs-eyebrow">Picked to keep</h2>
-            <p className="rs-sidebar-copy">
-              Clips you picked are kept before your newest ones.
-            </p>
+            <h2 className="rs-eyebrow">{copy.picked}</h2>
+            <p className="rs-sidebar-copy">{copy.pickedCopy}</p>
             <ClipList clips={data?.picked ?? []} keep={false} />
           </div>
         ) : null}
@@ -115,7 +105,7 @@ function StartExportButton({ exports }: { exports: ClipExport[] }) {
     start.error instanceof ApiError
       ? start.error.message
       : start.error
-        ? "The download couldn't be started. Try again."
+        ? copy.exportFailed
         : null;
 
   return (
@@ -127,7 +117,7 @@ function StartExportButton({ exports }: { exports: ClipExport[] }) {
           disabled={making || start.isPending}
           onClick={() => start.mutate()}
         >
-          {making ? "Making your download…" : "Download clips over the limit"}
+          {making ? copy.makingExport : copy.startExport}
         </button>
       </div>
       {error ? (
@@ -145,8 +135,8 @@ function ExportList({ exports }: { exports: ClipExport[] }) {
       {exports.map((e) => {
         const what =
           e.reason === "grace_ended"
-            ? `${clipCount(e.clipCount)} deleted when your grace ended`
-            : `${clipCount(e.clipCount)} over the limit`;
+            ? copy.exports.graceEnded(e.clipCount)
+            : copy.exports.overLimit(e.clipCount);
         const until = formatDate(e.expiresAt);
         return (
           <li key={e.id} className="rs-plan-list-row">
@@ -154,12 +144,12 @@ function ExportList({ exports }: { exports: ClipExport[] }) {
               <span>{what}</span>
               <span className="rs-plan-list-sub">
                 {e.status === "ready"
-                  ? `Ready until ${until}`
+                  ? copy.exports.readyUntil(until)
                   : e.status === "failed"
-                    ? "Couldn't be made. Email us and we'll sort it out."
+                    ? copy.exports.failed
                     : e.status === "expired"
-                      ? "Expired"
-                      : "Being made; this page updates when it's ready"}
+                      ? copy.exports.expired
+                      : copy.exports.making}
               </span>
             </span>
             {e.status === "ready" ? (
@@ -170,7 +160,7 @@ function ExportList({ exports }: { exports: ClipExport[] }) {
                     className="rs-secondary"
                     href={exportPartUrl(e.id, part.index)}
                   >
-                    {e.parts.length > 1 ? `Part ${part.index} · ` : ""}
+                    {e.parts.length > 1 ? copy.exports.part(part.index) : ""}
                     {formatFileSize(part.sizeBytes)}
                   </a>
                 ))}
@@ -201,7 +191,7 @@ function ClipList({ clips, keep }: { clips: OverLimitClip[]; keep: boolean }) {
         {shown.map((clip) => (
           <li key={clip.id} className="rs-plan-list-row">
             <span className="rs-plan-list-main">
-              <span>{clip.title || "Untitled clip"}</span>
+              <span>{clip.title || copy.untitledClip}</span>
               <span className="rs-plan-list-sub">
                 {[clip.gameName, formatDate(clip.createdAt)]
                   .filter(Boolean)
@@ -214,7 +204,7 @@ function ClipList({ clips, keep }: { clips: OverLimitClip[]; keep: boolean }) {
               disabled={setKept.isPending}
               onClick={() => setKept.mutate({ clipId: clip.id, keep })}
             >
-              {keep ? "Keep instead" : "Unpick"}
+              {keep ? copy.keepInstead : copy.unpick}
             </button>
           </li>
         ))}
@@ -225,7 +215,7 @@ function ClipList({ clips, keep }: { clips: OverLimitClip[]; keep: boolean }) {
           type="button"
           onClick={() => setShowAll(true)}
         >
-          Show all {clips.length.toLocaleString()}
+          {copy.showAll(clips.length)}
         </button>
       ) : null}
     </>
