@@ -3,11 +3,16 @@ import { useState } from "react";
 import {
   useExports,
   useOverLimit,
+  usePlanOffers,
   useSetClipKept,
   useStartExport,
 } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
-import { type ClipExport, exportPartUrl } from "@/shared/services/plans";
+import {
+  type ClipExport,
+  exportPartUrl,
+  upgradeKeepsMoreClips,
+} from "@/shared/services/plans";
 import type { OverLimitClip } from "@/api-client";
 import { formatFileSize } from "@/shared/utils/format";
 import { planCopy } from "@/copy/plan";
@@ -33,6 +38,7 @@ function formatDate(value: Date | null | undefined): string | null {
 function PlanRoute() {
   const overLimit = useOverLimit();
   const exports = useExports();
+  const offers = usePlanOffers();
   const data = overLimit.data;
   const over = data?.over ?? [];
   const deletesOn = formatDate(data?.deletesAt);
@@ -59,7 +65,9 @@ function PlanRoute() {
                 data.clipLimit,
                 over.length,
                 deletesOn,
-                <Link to="/settings">{copy.upgradeLink}</Link>,
+                upgradeKeepsMoreClips(offers.data, data.clipLimit) ? (
+                  <Link to="/settings">{copy.upgradeLink}</Link>
+                ) : null,
               )}
             </p>
             <StartExportButton exports={exports.data ?? []} />

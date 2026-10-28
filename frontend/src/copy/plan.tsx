@@ -54,11 +54,11 @@ export const planCopy = {
 
   /** Settings → Plan. */
   settings: {
-    loadFailed: "Your plan couldn't be loaded. Refresh to try again.",
+    loadFailed: "Your plan didn't load. Refresh to try again.",
     title: {
       subscribed: (tier: string, interval: string | null | undefined) =>
         `${tier}, ${intervalAdjective(interval)}`,
-      granted: (tier: string) => `${tier} (granted)`,
+      granted: (tier: string) => `${tier} · given by Reelshelf`,
     },
     clipsUpTo: (length: string) => `Clips up to ${length} long`,
     anyLength: "Clips of any length",
@@ -100,13 +100,13 @@ export const planCopy = {
       `${
         pastDue
           ? `Your last payment for ${tier} didn't go through.`
-          : `${tier} is on hold because a payment failed, so your account has Free's limits.`
+          : `${tier} is on hold because a payment failed, so you're on Free's limits.`
       } Update your payment method to keep them, or choose which clips to keep.`,
     pastDue: {
       title: (tier: string) =>
         `Your last payment for ${tier} didn't go through.`,
       body: (tier: string, clipsCost: string) =>
-        `We'll try it again. Update your payment method to keep ${tier}: if the last try fails, ${tier} ends and your account moves to Free's limits${clipsCost}.`,
+        `We'll try your card again. If that fails too, ${tier} ends and you'll be on Free's limits${clipsCost}. Update your payment method to keep ${tier}.`,
       deletedLater: (overFree: number, days: number) =>
         `, and the ${clipCount(overFree)} over them will be deleted ${days} days later`,
       cantAdd: (overFree: number) =>
@@ -114,19 +114,19 @@ export const planCopy = {
     },
     onHold: {
       title: (tier: string) => `${tier} is on hold because a payment failed.`,
-      body: "Your account has Free's limits until you update your payment method.",
+      body: "You're on Free's limits until you update your payment method.",
     },
     over: {
       deletes: (limit: number, canUpgrade: boolean) =>
-        `Your plan keeps ${count(limit)}. Choose which clips to keep and download the rest${
+        `Your plan keeps ${count(limit)} clips. Choose which to keep and download the rest${
           canUpgrade ? ", or pick a plan below to keep them all" : ""
         }.`,
       blocked: (limit: number) =>
-        `Your plan keeps ${count(limit)}, so you can't add clips until you're back within it.`,
+        `Your plan keeps ${count(limit)} clips, so you can't add more until you're back within it.`,
     },
     scheduled: {
       title: (plan: string, on: string | null, over: number, limit: number) =>
-        `When you switch to ${plan} on ${on}, ${clipCount(over)} will be over its limit of ${count(limit)}.`,
+        `${plan} keeps ${count(limit)} clips, so from ${on} you'll have ${count(over)} over.`,
       deletedLater,
       blocked: blockedUnlessKept,
     },
@@ -137,7 +137,7 @@ export const planCopy = {
         over: number,
         freeLimit: number,
       ) =>
-        `When ${tier} ends on ${on}, ${clipCount(over)} will be over Free's limit of ${count(freeLimit)}.`,
+        `Free keeps ${count(freeLimit)} clips, so when ${tier} ends on ${on} you'll have ${count(over)} over.`,
       deletedLater,
       blocked: blockedUnlessKept,
     },
@@ -148,7 +148,7 @@ export const planCopy = {
       deleteSome: "delete some",
       body: (way: string) => `You can't add clips until you ${way}.`,
       nearlyBody: (clips: number, limit: number, way: string) =>
-        `You've used ${count(clips)} of ${count(limit)} clips. At ${count(limit)} you can't add more until you ${way}.`,
+        `You have ${count(clips)} of ${count(limit)} clips. At ${count(limit)} you'll need to ${way} to add more.`,
     },
   },
 
@@ -232,15 +232,19 @@ export const planCopy = {
       limit: number | null | undefined,
       over: number,
       deletesOn: string | null,
-      upgradeLink: ReactNode,
+      /** The link to Settings, or null when no plan that can be bought keeps more clips. */
+      upgradeLink: ReactNode | null,
     ) => (
       <>
         Your plan keeps {limit?.toLocaleString()} clips.{" "}
         {deletesOn
-          ? `The ${clipCount(over)} below will be deleted on ${deletesOn}, and you'll be emailed a download of them.`
-          : "The clips below are over the limit; you can't add more until you're back within it."}{" "}
-        To keep them, {upgradeLink}, download them, or pick other clips to let
-        go instead.
+          ? `The ${over === 1 ? "one" : count(over)} below will be deleted on ${deletesOn}, and we'll email you a download of them first.`
+          : "The clips below are over the limit, so you can't add more until you're back within it."}{" "}
+        {upgradeLink ? (
+          <>To keep them here, {upgradeLink} or pick other clips to let go.</>
+        ) : (
+          "To keep them here, pick other clips to let go."
+        )}
       </>
     ),
     upgradeLink: "upgrade in Settings",
@@ -260,9 +264,9 @@ export const planCopy = {
         `${clipCount(clips)} deleted when your grace ended`,
       overLimit: (clips: number) => `${clipCount(clips)} over the limit`,
       readyUntil: (until: string | null) => `Ready until ${until}`,
-      failed: "Couldn't be made. Email us and we'll sort it out.",
+      failed: "This download couldn't be made. Email us and we'll sort it out.",
       expired: "Expired",
-      making: "Being made; this page updates when it's ready",
+      making: "Being made. This page updates when it's ready.",
       part: (index: number) => `Part ${index} · `,
     },
     untitledClip: "Untitled clip",

@@ -25,6 +25,22 @@ export type Tier = "free" | "plus" | "pro" | "unlimited";
 export const tierNames: Record<string, string> = planCopy.tierNames;
 
 /** The signed-in account's tier, limits, usage and subscription. */
+/**
+ * True when a plan that can be bought (one with prices) keeps more clips than `clipLimit`, so offering an upgrade
+ * would help; a null limit is already no limit. Unlimited is only ever granted, so it has no prices.
+ */
+export function upgradeKeepsMoreClips(
+  offers: PlanOffer[] | undefined,
+  clipLimit: number | null | undefined,
+): boolean {
+  if (clipLimit === null || clipLimit === undefined) return false;
+  return (offers ?? []).some(
+    (offer) =>
+      offer.prices.length > 0 &&
+      (offer.clipLimit === null || offer.clipLimit > clipLimit),
+  );
+}
+
 export async function fetchPlan(): Promise<AccountPlan> {
   return createUserApi().getMyPlan();
 }
