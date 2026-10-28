@@ -221,7 +221,7 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
       )}
       {reorder.isError || takeOut.isError ? (
         <p className="rs-upload-error" role="alert">
-          {collectionsCopy.collection.changeFailed}
+          {collectionsCopy.changeFailed}
         </p>
       ) : null}
 
