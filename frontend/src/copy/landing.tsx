@@ -11,8 +11,8 @@ export const landingCopy = {
         Every clip, <em>on one shelf</em>.
       </>
     ),
-    copy: "Reelshelf keeps your gameplay clips organised by game and by night, shares them one link at a time, and lets your friends help fill the shelf.",
-    cta: "Get started",
+    copy: "Your gameplay clips, sorted by game and by night. Share one with a link, or watch them back with friends on Discord.",
+    cta: "Start your shelf",
     fineprint: `Free for up to ${formatCount(planLimits.free.clips)} clips. Sign in with Discord or Twitch.`,
   },
   /** Tags on the example clips floating over the hero, by the example game's slug. */
@@ -23,8 +23,8 @@ export const landingCopy = {
     "apex-legends": "story",
   },
   shelfDemo: {
-    label: "Example shelf of games",
-    eyebrow: "Your archive",
+    label: "An example shelf",
+    eyebrow: "Your library",
     stat: (clips: number, games: number) =>
       `${commonCopy.clips(clips)} across ${games} games. Pull one out.`,
   },
@@ -37,28 +37,28 @@ export const landingCopy = {
     ),
     items: {
       books: {
-        title: "Every game gets its own book",
-        copy: "Your library is a shelf of games with real cover art, not a folder of filenames. Pick a game, filter by tag, or search, and see what's new since you last looked.",
+        title: "A book for every game",
+        copy: "Each with its real cover on the spine.",
       },
       bulkUpload: {
-        title: "Upload a whole night at once",
-        copy: "Drag your recorder's folder onto the library and Reelshelf works out which game each clip is from. Review the queue, fix anything it got wrong, and let it run. Clips you've already uploaded are skipped.",
+        title: "Drop in a whole night",
+        copy: "Drag a folder onto a book. Twitch clips copy straight across.",
       },
       sessions: {
-        title: "Sessions sort themselves",
-        copy: "Clips from the same game on the same night land in one collection without you lifting a finger. Rename it, tidy it, or leave it as the record of that evening.",
+        title: "Sessions by night",
+        copy: "One game, one evening, kept together.",
       },
       collections: {
-        title: "Collections you build with friends",
-        copy: "Put the best moments in the order you want them watched, then invite the people who were there. They can watch everything in it and add their own clips alongside yours.",
+        title: "Collections with friends",
+        copy: "Set the order, then let your friends add theirs.",
+      },
+      watchRoom: {
+        title: "Watch together on Discord",
+        copy: "Queue clips from your shelves and watch them in the voice channel.",
       },
       sharing: {
-        title: "Share one clip with one link",
-        copy: "Send a link and it plays. No account needed on their end, and the clip is only visible to people who have the link.",
-      },
-      downloads: {
-        title: "Your clips stay yours",
-        copy: "Download any clip back to your computer whenever you like. Reelshelf is somewhere to keep them, not somewhere they get stuck.",
+        title: "One clip, one link",
+        copy: "It plays for anyone you send it to. No account needed.",
       },
     },
   },
@@ -72,15 +72,15 @@ export const landingCopy = {
     items: [
       {
         title: "Sign in",
-        copy: "Use Discord or Twitch. There's no form to fill in and nothing to pay. Link the other one later and either login opens the same shelf.",
+        copy: "With Discord or Twitch. No form, no card.",
       },
       {
         title: "Drop your clips",
-        copy: "Drag your recorder's folder onto the library. Review the queue, fix any game guesses, pick tags, and let it upload.",
+        copy: "Drag a folder onto a game's book, or bring them over from Twitch.",
       },
       {
-        title: "Watch, tag, share",
-        copy: "Sessions are already grouped. Build collections with friends, send one clip with one link, or download it back.",
+        title: "Watch them back",
+        copy: "Each night is already grouped. Press play.",
       },
     ],
   },
@@ -90,7 +90,7 @@ export const landingCopy = {
         Your shelf is <em>waiting</em>.
       </>
     ),
-    copy: "Sign in, drop a folder, and the first session sorts itself.",
+    copy: "Sign in and drop in your first night.",
   },
   footer: {
     tagline: "for the clips worth keeping",
