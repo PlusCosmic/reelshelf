@@ -18,14 +18,18 @@ public sealed record AccountPlan(
     {
         if (Limits.MaxClips is { } maxClips && ClipCount >= maxClips)
         {
-            return $"Your plan keeps up to {maxClips:N0} clips and you have {ClipCount:N0}. Delete some clips, or " +
-                   "upgrade to keep more.";
+            return $"Your plan keeps up to {maxClips:N0} clips and you have {ClipCount:N0}. " +
+                   (TierLimits.Exceeds(TierLimits.BestToBuy.MaxClips, maxClips)
+                       ? "Delete some, or upgrade to keep more."
+                       : "Delete some to add more.");
         }
 
         if (Limits.MaxNewClipsPer30Days is { } maxNew && NewClipsLast30Days >= maxNew)
         {
             return $"You've added {NewClipsLast30Days:N0} clips in the last 30 days, the most your plan allows. " +
-                   "Try again later, or upgrade.";
+                   (TierLimits.Exceeds(TierLimits.BestToBuy.MaxNewClipsPer30Days, maxNew)
+                       ? "Try again later, or upgrade."
+                       : "Try again later.");
         }
 
         return null;

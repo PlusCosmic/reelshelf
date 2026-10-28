@@ -8,11 +8,13 @@ describe("clipLengthProblem", () => {
     expect(clipLengthProblem(61, 60)).toBeNull();
   });
 
-  it("refuses a longer clip in the API's words", () => {
+  it("refuses a longer clip in the API's words, offering an upgrade only when one keeps longer clips", () => {
     expect(clipLengthProblem(95.4, 60)).toBe(
-      "This clip is 95 s long, and your plan keeps clips of up to 1 min. Trim it, or upgrade for longer clips.",
+      "This clip is 95 s. Your plan keeps clips up to 1 min, so trim it or upgrade for clips up to 2 min.",
     );
-    expect(clipLengthProblem(180, 120)).toContain("This clip is 3 min long");
+    expect(clipLengthProblem(150, 120)).toBe(
+      "This clip is 150 s, and clips can be up to 2 min. Trim it, then add it again.",
+    );
   });
 
   it("leaves unknown lengths and uncapped plans to the API", () => {

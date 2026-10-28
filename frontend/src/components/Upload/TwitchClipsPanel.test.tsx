@@ -159,7 +159,7 @@ describe("TwitchClipsPanel", () => {
     renderPanel();
 
     expect(
-      await screen.findByText(/reconnect twitch to allow clip downloads/i),
+      await screen.findByText(/reconnect twitch to bring clips over/i),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /reconnect twitch/i }));
     expect(authMocks.startLink).toHaveBeenCalledWith(

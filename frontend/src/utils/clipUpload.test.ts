@@ -5,6 +5,7 @@ import {
   createS3ClipUpload,
   createTusClipUpload,
 } from "./clipUpload";
+import { uploadCopy } from "@/copy/upload";
 import { S3MultipartUpload } from "./s3MultipartUpload";
 
 vi.mock("tus-js-client", () => ({
@@ -71,7 +72,7 @@ describe("createPreparedClipUpload", () => {
         md5Hash: "hash",
         title: "Triple kill",
       }),
-    ).rejects.toThrow("The upload could not be prepared.");
+    ).rejects.toThrow(uploadCopy.errors.notStarted);
   });
 });
 
@@ -109,7 +110,7 @@ describe("createTusClipUpload", () => {
 
     expect(() =>
       startUpload(response, new File(["bytes"], "clip.mp4")),
-    ).toThrow('unsupported upload protocol "carrier-pigeon"');
+    ).toThrow(uploadCopy.errors.notStarted);
   });
 });
 
@@ -124,7 +125,7 @@ describe("createS3ClipUpload", () => {
         onSuccess: noop,
         onError: noop,
       }),
-    ).toThrow('unsupported upload protocol "tus"');
+    ).toThrow(uploadCopy.errors.notStarted);
   });
 
   it("uploads an R2 target in parts", () => {

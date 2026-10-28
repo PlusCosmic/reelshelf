@@ -187,7 +187,7 @@ public class R2MultipartUploadTests
             test.Host.CompleteUploadAsync(clip, uploadId, Parts(3), TierLimits.For(AccountTier.Free),
                 CancellationToken.None));
 
-        Assert.StartsWith("This clip is 75 s long, and your plan keeps clips of up to 1 min.", refused.Message);
+        Assert.StartsWith("This clip is 75 s. Your plan keeps clips up to 1 min,", refused.Message);
         Assert.Equal("upload_failed", (await test.ClipAsync(clip.Id)).VideoState);
         Assert.Empty(await test.RunsAsync(clip.Id));
         Assert.Empty(test.R2.Objects);

@@ -382,15 +382,19 @@ export class S3MultipartUpload {
           signal,
         });
         if (!response.ok) {
+          console.warn(
+            `Upload part ${partNumber} was refused (${response.status})`,
+          );
           throw new PartUploadError(
-            uploadCopy.errors.partRefused(partNumber, response.status),
+            uploadCopy.errors.partFailed,
             response.status,
           );
         }
         const etag = response.headers.get("ETag");
         if (!etag) {
           // The bucket's CORS must expose ETag; without it the upload can't be completed.
-          throw new PartUploadError(uploadCopy.errors.noEtag(partNumber), 0);
+          console.warn(`Storage sent no ETag for upload part ${partNumber}`);
+          throw new PartUploadError(uploadCopy.errors.partFailed, 0);
         }
         this.done.set(partNumber, etag);
         this.save();
@@ -441,7 +445,10 @@ export class S3MultipartUpload {
         this.batch = null;
       }
       const fresh = this.urls.get(partNumber);
-      if (!fresh) throw new Error(uploadCopy.errors.noPartUrl(partNumber));
+      if (!fresh) {
+        console.warn(`No URL came back for upload part ${partNumber}`);
+        throw new Error(uploadCopy.errors.partFailed);
+      }
       return fresh.url;
     }
   }

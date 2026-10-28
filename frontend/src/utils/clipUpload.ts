@@ -50,7 +50,7 @@ export async function createPreparedClipUpload({
   });
 
   if (!response?.upload) {
-    throw new Error(uploadCopy.errors.notPrepared);
+    throw new Error(uploadCopy.errors.notStarted);
   }
 
   return response;
@@ -69,7 +69,8 @@ export function createTusClipUpload({
 }: TusClipUploadOptions) {
   const { upload } = response;
   if (upload.protocol !== "tus") {
-    throw new Error(uploadCopy.errors.unsupportedProtocol(upload.protocol));
+    console.warn(`Unsupported upload protocol "${upload.protocol}"`);
+    throw new Error(uploadCopy.errors.notStarted);
   }
 
   return new tus.Upload(file, {
@@ -103,7 +104,8 @@ export function createS3ClipUpload({
 }: S3ClipUploadOptions) {
   const { upload } = response;
   if (upload.protocol !== "s3-multipart" || !upload.multipart) {
-    throw new Error(uploadCopy.errors.unsupportedProtocol(upload.protocol));
+    console.warn(`Unsupported upload protocol "${upload.protocol}"`);
+    throw new Error(uploadCopy.errors.notStarted);
   }
 
   return new S3MultipartUpload({
