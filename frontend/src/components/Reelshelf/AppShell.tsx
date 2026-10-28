@@ -183,7 +183,7 @@ export function AppShell({
                   }}
                 >
                   <IconLogout size={16} />
-                  {shellCopy.profileMenu.logOut}
+                  {shellCopy.profileMenu.signOut}
                 </button>
               </div>
             ) : null}
