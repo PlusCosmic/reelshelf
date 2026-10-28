@@ -7,6 +7,8 @@ import {
   IconPlayerPlayFilled,
   IconUserPlus,
 } from "@tabler/icons-react";
+import { collectionsCopy } from "@/copy/collections";
+import { commonCopy } from "@/copy/common";
 import { useCurrentUser } from "@/hooks/auth.queries";
 import {
   useDeleteCollection,
@@ -27,10 +29,6 @@ import { PeopleDialog } from "./collections/PeopleDialog";
 import { Avatar, BackToLibrary } from "./ReelshelfPrimitives";
 import { formatDate, makeGameShelf } from "./reelshelf-model";
 import { useLibraryData } from "./useLibraryData";
-
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 /** One collection: who it is shared with, which games it draws on, and its clips in order. */
 export function CollectionPage({ playlistId }: { playlistId: string }) {
@@ -56,11 +54,15 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
   const takeOut = useRemoveClipFromCollection();
 
   if (isLoading)
-    return <div className="rs-section rs-empty">Loading collection…</div>;
+    return (
+      <div className="rs-section rs-empty">
+        {collectionsCopy.collection.loading}
+      </div>
+    );
   if (isError || !playlist)
     return (
       <div className="rs-section rs-empty">
-        This collection could not be loaded.
+        {collectionsCopy.collection.loadFailed}
       </div>
     );
 
@@ -77,14 +79,19 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
 
   return (
     <main className="rs-ledger-page">
-      <BackToLibrary to="/collections" label="Collections" />
+      <BackToLibrary
+        to="/collections"
+        label={collectionsCopy.collection.back}
+      />
       <header className="rs-collection-head">
         <div>
           <div className="rs-eyebrow">
-            {playlist.clips.length > 0
-              ? `Collection · ${plural(clips.length, "clip", "clips")} · ${collectionMinutes(clips)} min`
-              : "Collection"}{" "}
-            · Updated {formatDate(playlist.updatedAt)}
+            {collectionsCopy.collection.eyebrow(
+              playlist.clips.length > 0
+                ? { clips: clips.length, minutes: collectionMinutes(clips) }
+                : null,
+              formatDate(playlist.updatedAt),
+            )}
           </div>
           <h1 className="rs-display rs-h1">{playlist.name}</h1>
           {playlist.description ? (
@@ -96,7 +103,7 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
             type="button"
             className="rs-ledger-people rs-collection-people"
             onClick={() => setDialog("people")}
-            aria-label={`People: ${sharing.label}`}
+            aria-label={collectionsCopy.collection.people(sharing.label)}
           >
             {sharing.people.length > 0 ? (
               <>
@@ -119,7 +126,7 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
             ) : (
               <>
                 <IconLock size={14} aria-hidden="true" />
-                Private
+                {collectionsCopy.private}
               </>
             )}
           </button>
@@ -131,7 +138,7 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
                 onClick={() => setDialog("people")}
               >
                 <IconUserPlus size={15} aria-hidden="true" />
-                Invite
+                {collectionsCopy.collection.invite}
               </button>
               <button
                 type="button"
@@ -142,7 +149,7 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
                 }}
               >
                 <IconPencil size={15} aria-hidden="true" />
-                Edit
+                {collectionsCopy.collection.edit}
               </button>
             </>
           ) : null}
@@ -154,7 +161,7 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
               search={{ collection: playlist.id }}
             >
               <IconPlayerPlayFilled size={15} aria-hidden="true" />
-              Play in order
+              {collectionsCopy.collection.playInOrder}
             </Link>
           ) : null}
         </div>
@@ -166,9 +173,8 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
             className="rs-collection-share-bar"
             role="img"
             aria-label={games
-              .map(
-                (game) =>
-                  `${game.name}: ${plural(game.count, "clip", "clips")}`,
+              .map((game) =>
+                collectionsCopy.collection.gameShare(game.name, game.count),
               )
               .join(", ")}
           >
@@ -211,14 +217,11 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
           }
         />
       ) : (
-        <div className="rs-empty">
-          No clips in this collection yet. Add them from a clip's page with Add
-          to collection.
-        </div>
+        <div className="rs-empty">{collectionsCopy.collection.empty}</div>
       )}
       {reorder.isError || takeOut.isError ? (
         <p className="rs-upload-error" role="alert">
-          That change could not be saved. Try again.
+          {collectionsCopy.collection.changeFailed}
         </p>
       ) : null}
 
@@ -231,9 +234,9 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
       ) : null}
       {dialog === "edit" ? (
         <CollectionFormDialog
-          title="Edit collection"
-          submitLabel="Save"
-          savingLabel="Saving…"
+          title={collectionsCopy.collection.editTitle}
+          submitLabel={commonCopy.save}
+          savingLabel={commonCopy.saving}
           initialName={playlist.name}
           initialDescription={playlist.description ?? ""}
           saving={update.isPending}
@@ -249,7 +252,7 @@ export function CollectionPage({ playlistId }: { playlistId: string }) {
           onDelete={() => {
             if (
               !window.confirm(
-                `Delete "${playlist.name}"? The clips stay in your library.`,
+                collectionsCopy.collection.confirmDelete(playlist.name),
               )
             )
               return;

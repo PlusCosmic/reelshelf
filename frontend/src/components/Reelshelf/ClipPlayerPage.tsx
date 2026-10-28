@@ -20,6 +20,8 @@ import {
   useClipsInfinite,
 } from "@/hooks/clips.queries";
 import { useClip, useMarkAsViewed } from "@/hooks/queries";
+import { clipCopy } from "@/copy/clip";
+import { commonCopy } from "@/copy/common";
 import { ClipVideoStage } from "@/components/Video/ClipVideoStage";
 import { fetchPlaylistById } from "@/shared/services/playlists";
 import { collectionClips } from "./collections-model";
@@ -74,10 +76,6 @@ function trackDetailsHeight(details: HTMLElement | null) {
   return () => observer.disconnect();
 }
 
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
-
 /** Theatre mode is a viewing preference, so it is remembered in this browser and nowhere else. */
 function useTheatreMode() {
   const [theatre, setTheatre] = useState(() => {
@@ -119,7 +117,7 @@ function GameStrip({
   onToggleTheatre: () => void;
 }) {
   return (
-    <nav className="rs-watch-strip" aria-label="Where this clip lives">
+    <nav className="rs-watch-strip" aria-label={clipCopy.strip.label}>
       {playThrough ? (
         <Link
           to="/collections/$playlistId"
@@ -133,7 +131,7 @@ function GameStrip({
             aria-hidden="true"
           />
           <span>
-            <small>Back to</small>
+            <small>{clipCopy.strip.backTo}</small>
             <span className="rs-display">{playThrough.playlist.name}</span>
           </span>
         </Link>
@@ -142,22 +140,27 @@ function GameStrip({
           <IconChevronLeft size={18} aria-hidden="true" />
           {game?.coverUrl ? <img src={game.coverUrl} alt="" /> : null}
           <span>
-            <small>Back to</small>
-            <span className="rs-display">{game?.name ?? "the shelf"}</span>
+            <small>{clipCopy.strip.backTo}</small>
+            <span className="rs-display">
+              {game?.name ?? clipCopy.strip.theShelf}
+            </span>
           </span>
         </Link>
       )}
       {playThrough ? (
         <span className="rs-watch-counts">
-          Clip {playThrough.index + 1} of {playThrough.clips.length}
+          {clipCopy.strip.position(
+            playThrough.index + 1,
+            playThrough.clips.length,
+          )}
         </span>
       ) : game ? (
         <span className="rs-watch-counts">
-          {plural(game.clipCount, "clip", "clips")}
+          {commonCopy.clips(game.clipCount)}
           {game.unviewedCount > 0 ? (
             <strong>
               <StitchedDot />
-              {game.unviewedCount} new
+              {clipCopy.strip.newCount(game.unviewedCount)}
             </strong>
           ) : null}
         </span>
@@ -173,7 +176,7 @@ function GameStrip({
         ) : (
           <IconLayoutSidebarRight size={18} aria-hidden="true" />
         )}
-        Theatre mode
+        {clipCopy.strip.theatre}
       </button>
     </nav>
   );
@@ -191,11 +194,11 @@ function NeighbourLink({
 }) {
   const label = inCollection
     ? direction === "older"
-      ? "Previous"
-      : "Next"
+      ? clipCopy.neighbour.previous
+      : clipCopy.neighbour.next
     : direction === "older"
-      ? "Older"
-      : "Newer";
+      ? clipCopy.neighbour.older
+      : clipCopy.neighbour.newer;
   if (!clip)
     return (
       <span
@@ -209,7 +212,7 @@ function NeighbourLink({
       params={{ slug: clip.categorySlug, clipId: clip.clipId }}
       search={inCollection ? { collection: inCollection } : undefined}
       className={`rs-watch-neighbour ${direction}`}
-      aria-label={`${label} clip: ${clip.video.title}`}
+      aria-label={clipCopy.neighbour.label(label, clip.video.title)}
     >
       {direction === "older" ? (
         <IconChevronLeft size={20} aria-hidden="true" />
@@ -260,11 +263,15 @@ function SameSession({
     <section className="rs-watch-session" aria-labelledby="rs-session-heading">
       <div className="rs-watch-section-head">
         <h2 id="rs-session-heading" className="rs-display">
-          Same session
+          {clipCopy.session.title}
         </h2>
         <span>
-          {dayFormatter.format(day)} · {plural(session.length, "clip", "clips")}
-          , {formatTime(first.createdAt)} to {formatTime(last.createdAt)}
+          {clipCopy.session.summary(
+            dayFormatter.format(day),
+            session.length,
+            formatTime(first.createdAt),
+            formatTime(last.createdAt),
+          )}
         </span>
       </div>
       <div className="rs-session-cards" ref={cardsRef}>
@@ -282,13 +289,15 @@ function SameSession({
               <span className="rs-session-card-top">
                 <span className="rs-display">{formatTime(clip.createdAt)}</span>
                 {isCurrent ? (
-                  <span className="rs-session-card-now">Now playing</span>
+                  <span className="rs-session-card-now">
+                    {clipCopy.session.nowPlaying}
+                  </span>
                 ) : clip.isViewed ? (
-                  <span>Watched</span>
+                  <span>{clipCopy.session.watched}</span>
                 ) : (
                   <span>
                     <StitchedDot />
-                    New
+                    {clipCopy.session.new}
                   </span>
                 )}
               </span>
@@ -309,9 +318,9 @@ function ClipFacts({
   game: GameShelfItem | undefined;
 }) {
   return (
-    <aside className="rs-watch-facts" aria-label="Clip details">
+    <aside className="rs-watch-facts" aria-label={clipCopy.facts.label}>
       <dl>
-        <dt>Game</dt>
+        <dt>{clipCopy.facts.game}</dt>
         <dd>
           <Link
             to="/games/$slug"
@@ -324,25 +333,31 @@ function ClipFacts({
         </dd>
         {clip.legend ? (
           <>
-            <dt>Legend</dt>
+            <dt>{clipCopy.facts.legend}</dt>
             <dd className="rs-watch-facts-legend">
               <LegendPlate legend={clip.legend} size="small" />
               {clip.legend}
             </dd>
           </>
         ) : null}
-        <dt>Recorded</dt>
+        <dt>{clipCopy.facts.recorded}</dt>
         <dd>
           {formatDate(clip.createdAt)}, {formatTime(clip.createdAt)}
         </dd>
-        <dt>Length</dt>
+        <dt>{clipCopy.facts.length}</dt>
         <dd>{formatDuration(clip.video.durationSeconds)}</dd>
-        <dt>Size</dt>
+        <dt>{clipCopy.facts.size}</dt>
         <dd>{formatSize(clip.video.storageBytes)}</dd>
-        <dt>Watched</dt>
-        <dd>{clip.isViewed ? "Yes" : "Not yet"}</dd>
-        <dt>Sharing</dt>
-        <dd>{clip.share.shared ? "Anyone with the link" : "Only you"}</dd>
+        <dt>{clipCopy.facts.watched}</dt>
+        <dd>
+          {clip.isViewed ? clipCopy.facts.watchedYes : clipCopy.facts.watchedNo}
+        </dd>
+        <dt>{clipCopy.facts.sharing}</dt>
+        <dd>
+          {clip.share.shared
+            ? clipCopy.facts.sharedWithLink
+            : clipCopy.facts.onlyYou}
+        </dd>
       </dl>
     </aside>
   );
@@ -416,11 +431,9 @@ export function ClipPlayerPage({
   }, [gameClips, session, clipId]);
 
   if (isLoading)
-    return <div className="rs-section rs-empty">Loading player…</div>;
+    return <div className="rs-section rs-empty">{clipCopy.loading}</div>;
   if (isError || !clip)
-    return (
-      <div className="rs-section rs-empty">This clip could not be found.</div>
-    );
+    return <div className="rs-section rs-empty">{clipCopy.notFound}</div>;
 
   const { cloth } = game ? bookBinding(game) : { cloth: "var(--accent)" };
   const gameName = game?.name ?? clip.categorySlug;
@@ -454,7 +467,7 @@ export function ClipPlayerPage({
       />
 
       <div className="rs-watch-layout">
-        <section className="rs-watch-stage" aria-label="Player">
+        <section className="rs-watch-stage" aria-label={clipCopy.stage}>
           {game?.keyArtUrl ? (
             <img className="rs-watch-stage-art" src={game.keyArtUrl} alt="" />
           ) : null}
@@ -506,7 +519,7 @@ export function ClipPlayerPage({
             {clip.legend ? (
               <span className="rs-watch-legend">
                 <LegendPlate legend={clip.legend} size="large" />
-                <small>Played as </small>
+                <small>{clipCopy.playedAs}</small>
                 {clip.legend}
               </span>
             ) : null}
@@ -518,7 +531,7 @@ export function ClipPlayerPage({
             {clip.isViewed ? null : (
               <strong>
                 <StitchedDot />
-                Not watched yet
+                {clipCopy.notWatchedYet}
               </strong>
             )}
             {clip.share.shared ? <SharedIndicator /> : null}
@@ -546,7 +559,7 @@ export function ClipPlayerPage({
               aria-labelledby="rs-collection-heading-side"
             >
               <h2 id="rs-collection-heading-side" className="rs-eyebrow">
-                Up next in {playThrough.playlist.name}
+                {clipCopy.upNextIn(playThrough.playlist.name)}
               </h2>
               <ClipGrid
                 clips={playThrough.clips}
@@ -566,7 +579,10 @@ export function ClipPlayerPage({
                   {playThrough.playlist.name}
                 </h2>
                 <span>
-                  Clip {playThrough.index + 1} of {playThrough.clips.length}
+                  {clipCopy.strip.position(
+                    playThrough.index + 1,
+                    playThrough.clips.length,
+                  )}
                 </span>
               </div>
               <ClipGrid
@@ -596,7 +612,7 @@ export function ClipPlayerPage({
               aria-labelledby="rs-more-heading-side"
             >
               <h2 id="rs-more-heading-side" className="rs-eyebrow">
-                More from {gameName}
+                {clipCopy.moreFrom(gameName)}
               </h2>
               <ClipGrid
                 clips={more.slice(0, 5)}
@@ -609,8 +625,7 @@ export function ClipPlayerPage({
                 params={{ slug: clip.categorySlug }}
                 className="rs-watch-all"
               >
-                All {game ? `${game.clipCount} ` : ""}
-                {gameName} clips
+                {clipCopy.allGameClips(game?.clipCount, gameName)}
                 <IconChevronRight size={16} aria-hidden="true" />
               </Link>
             </aside>
@@ -620,14 +635,14 @@ export function ClipPlayerPage({
             >
               <div className="rs-watch-section-head">
                 <h2 id="rs-more-heading-full" className="rs-display">
-                  More from {gameName}
+                  {clipCopy.moreFrom(gameName)}
                 </h2>
                 <Link
                   to="/games/$slug"
                   params={{ slug: clip.categorySlug }}
                   className="rs-watch-all-inline"
                 >
-                  All {game ? `${game.clipCount} ` : ""}clips
+                  {clipCopy.allClips(game?.clipCount)}
                   <IconChevronRight size={15} aria-hidden="true" />
                 </Link>
               </div>

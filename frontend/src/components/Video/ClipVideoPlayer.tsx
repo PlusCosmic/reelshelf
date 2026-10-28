@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { PlaybackSource } from "@/api-client";
+import { videoCopy } from "@/copy/video";
 import { attachStream } from "@/shared/utils/videoStream";
 import { loadVolume, saveVolume } from "@/shared/utils/volumePreference";
 
@@ -121,11 +122,11 @@ export function ClipVideoPlayer({
       {currentProblem === "unsupported" ? (
         // Where a fallback (an H.264 copy made on demand) would plug in.
         <p className="rs-video-error" role="alert">
-          This clip can't play on this device.
+          {videoCopy.player.unsupported}
         </p>
       ) : currentProblem === "fatal" ? (
         <p className="rs-video-error" role="alert">
-          This clip couldn't be played.
+          {videoCopy.player.fatal}
         </p>
       ) : null}
     </>

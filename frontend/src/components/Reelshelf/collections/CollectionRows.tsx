@@ -8,6 +8,7 @@ import type {
   PlaylistClip,
   PlaylistWithDetails,
 } from "@/api-client";
+import { collectionsCopy } from "@/copy/collections";
 import { Avatar, ClipThumb } from "../ReelshelfPrimitives";
 import { categoryForClip, formatDuration } from "../reelshelf-model";
 import { StitchedDot } from "../StitchedDot";
@@ -56,15 +57,20 @@ export function CollectionRows({
     playlist.collaborators.map((person) => [person.userId, person]),
   );
   const addedBy = (userId: string) => {
-    if (userId === viewerId) return { name: "you", person: people.get(userId) };
+    if (userId === viewerId)
+      return {
+        name: collectionsCopy.rows.you,
+        person: people.get(userId),
+      };
     const person = people.get(userId);
     return person ? { name: person.username, person } : null;
   };
 
   const announce = (id: string, next: string[]) => {
-    const title = byId.get(id)?.clip.video.title ?? "Clip";
+    const title =
+      byId.get(id)?.clip.video.title ?? collectionsCopy.rows.untitled;
     setAnnouncement(
-      `${title} moved to ${next.indexOf(id) + 1} of ${next.length}`,
+      collectionsCopy.rows.moved(title, next.indexOf(id) + 1, next.length),
     );
   };
 
@@ -129,7 +135,7 @@ export function CollectionRows({
   return (
     <>
       <p id="rs-reorder-help" className="rs-visually-hidden">
-        Drag, or press the up and down arrow keys, to move a clip.
+        {collectionsCopy.rows.reorderHelp}
       </p>
       <p className="rs-visually-hidden" aria-live="polite">
         {announcement}
@@ -150,7 +156,7 @@ export function CollectionRows({
               <button
                 type="button"
                 className="rs-drag-handle"
-                aria-label={`Move ${clip.video.title}`}
+                aria-label={collectionsCopy.rows.move(clip.video.title)}
                 aria-describedby="rs-reorder-help"
                 onPointerDown={(event) => startDrag(event, id)}
                 onKeyDown={(event) => nudge(event, id)}
@@ -172,7 +178,7 @@ export function CollectionRows({
                       <>
                         <StitchedDot className="rs-row-new" />
                         <span className="rs-visually-hidden">
-                          Not watched yet
+                          {collectionsCopy.rows.notWatchedYet}
                         </span>
                       </>
                     ) : null}
@@ -184,7 +190,7 @@ export function CollectionRows({
                         src={adder.person?.avatarUrl}
                         size={18}
                       />
-                      Added by {adder.name}
+                      {collectionsCopy.rows.addedBy(adder.name)}
                     </span>
                   ) : null}
                 </span>
@@ -193,7 +199,7 @@ export function CollectionRows({
                     {category?.coverUrl ? (
                       <img src={category.coverUrl} alt="" loading="lazy" />
                     ) : null}
-                    {category?.name ?? "Game"}
+                    {category?.name ?? collectionsCopy.rows.unknownGame}
                   </span>
                 ) : null}
                 <span className="wide-only rs-meta rs-row-duration">
@@ -203,8 +209,8 @@ export function CollectionRows({
               <button
                 type="button"
                 className="rs-icon-button rs-collection-remove"
-                aria-label={`Take ${clip.video.title} out of this collection`}
-                title="Take out of this collection"
+                aria-label={collectionsCopy.rows.takeOutLabel(clip.video.title)}
+                title={collectionsCopy.rows.takeOut}
                 disabled={removingId === id}
                 onClick={() => onRemove(clip)}
               >

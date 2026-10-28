@@ -3,6 +3,7 @@ import type {
   PlaylistGameCount,
   PlaylistWithDetails,
 } from "@/api-client";
+import { collectionsCopy } from "@/copy/collections";
 import { bookBinding, type GameShelfItem } from "./reelshelf-model";
 
 export type CollectionGame = {
@@ -50,7 +51,7 @@ export function gamesFromCounts(
       return {
         game,
         id,
-        name: game?.name ?? "Unknown game",
+        name: game?.name ?? collectionsCopy.sharing.unknownGame,
         count,
         cloth: game ? bookBinding(game).cloth : "var(--track-bg)",
       };
@@ -94,9 +95,13 @@ export function sharingSummary<P extends Person>(
     const owner = everyone.find((person) => person.userId === creatorUserId);
     return {
       people: owner ? [owner] : others.slice(0, 1),
-      label: `Shared by ${owner?.username ?? "a friend"}`,
+      label: collectionsCopy.sharing.sharedBy(owner?.username),
     };
   }
-  if (others.length === 0) return { people: [], label: "Private" };
-  return { people: others, label: `Shared with ${names(others)}` };
+  if (others.length === 0)
+    return { people: [], label: collectionsCopy.private };
+  return {
+    people: others,
+    label: collectionsCopy.sharing.sharedWith(names(others)),
+  };
 }

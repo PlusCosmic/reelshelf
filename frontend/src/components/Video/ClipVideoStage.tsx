@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import { ClipVideoStatus, type PlaybackSource } from "@/api-client";
+import { videoCopy } from "@/copy/video";
 import { ClipVideoPlayer } from "./ClipVideoPlayer";
 
 export type ClipProcessingMessage = {
@@ -18,15 +19,13 @@ export function clipProcessingMessage(
   switch (status) {
     case ClipVideoStatus.EncodeFailed:
       return {
-        title: "This clip couldn’t be processed.",
-        detail: "Its video couldn’t be encoded. Try uploading it again.",
+        ...videoCopy.processing.encodeFailed,
         failed: true,
         progress: null,
       };
     case ClipVideoStatus.UploadFailed:
       return {
-        title: "This clip’s upload didn’t finish.",
-        detail: "Try uploading it again.",
+        ...videoCopy.processing.uploadFailed,
         failed: true,
         progress: null,
       };
@@ -35,8 +34,8 @@ export function clipProcessingMessage(
       const progress =
         encodeProgress > 0 ? Math.min(encodeProgress, 100) : null;
       return {
-        title: progress === null ? "Processing" : `Processing ${progress}%`,
-        detail: "It’ll play here as soon as it’s ready.",
+        title: videoCopy.processing.title(progress),
+        detail: videoCopy.processing.detail,
         failed: false,
         progress,
       };

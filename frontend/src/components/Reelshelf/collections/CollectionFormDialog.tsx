@@ -1,5 +1,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { collectionsCopy } from "@/copy/collections";
+import { commonCopy } from "@/copy/common";
 import { Dialog } from "../Dialog";
 
 /** The name and description of a collection, for making a new one or editing one. */
@@ -40,7 +42,7 @@ export function CollectionFormDialog({
 
   return (
     <Dialog
-      eyebrow="Collection"
+      eyebrow={collectionsCopy.form.eyebrow}
       title={title}
       busy={saving || deleting}
       onClose={onClose}
@@ -48,12 +50,12 @@ export function CollectionFormDialog({
       {() => (
         <form className="rs-modal-panel" onSubmit={submit}>
           <label className="rs-field">
-            <span>Name</span>
+            <span>{collectionsCopy.form.name}</span>
             <span className="rs-input-shell">
               <input
                 value={name}
                 onChange={(event) => setName(event.currentTarget.value)}
-                placeholder="Ranked highlights, Friday night…"
+                placeholder={collectionsCopy.form.namePlaceholder}
                 maxLength={100}
                 required
                 autoFocus
@@ -61,12 +63,12 @@ export function CollectionFormDialog({
             </span>
           </label>
           <label className="rs-field">
-            <span>Description (optional)</span>
+            <span>{collectionsCopy.form.description}</span>
             <span className="rs-input-shell">
               <input
                 value={description}
                 onChange={(event) => setDescription(event.currentTarget.value)}
-                placeholder="What goes in it"
+                placeholder={collectionsCopy.form.descriptionPlaceholder}
                 maxLength={500}
               />
             </span>
@@ -75,7 +77,7 @@ export function CollectionFormDialog({
             <p className="rs-modal-error" role="alert">
               {error instanceof Error
                 ? error.message
-                : "The collection could not be saved."}
+                : collectionsCopy.form.saveFailed}
             </p>
           ) : null}
           <div className="rs-modal-actions">
@@ -93,7 +95,7 @@ export function CollectionFormDialog({
                 disabled={saving || deleting}
                 onClick={onDelete}
               >
-                {deleting ? "Deleting…" : "Delete collection"}
+                {deleting ? commonCopy.deleting : collectionsCopy.form.delete}
               </button>
             ) : null}
           </div>
