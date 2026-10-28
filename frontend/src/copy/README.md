@@ -25,17 +25,17 @@ and the race to post it; Reelshelf is about keeping clips, and it talks like it.
 
 ### Words we use
 
-| Word         | Means                                                                                           |
-| ------------ | ----------------------------------------------------------------------------------------------- |
-| library      | Everything someone keeps on Reelshelf. Not "archive".                                           |
-| shelf        | The bookcase of games at the top of the library, and the place clips land ("on the shelf").     |
-| book         | One game's clips on the shelf, or a category someone named themselves ("Snowboarding").         |
-| clip         | One video. Not "video" unless we mean the file itself.                                          |
-| session      | The clips from one game on one night, grouped for you.                                          |
-| collection   | Clips someone put together, in their order, perhaps with friends.                               |
-| share link   | The link that lets anyone who has it watch one clip.                                            |
-| plan         | Free, Plus, Pro or Unlimited; how many clips a library keeps and how long each can be.          |
-| sign in/out  | The verbs (never "log in" or "log out"); "sign-in" is the noun, as in "linked sign-ins".        |
+| Word        | Means                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| library     | Everything someone keeps on Reelshelf. Not "archive".                                       |
+| shelf       | The bookcase of games at the top of the library, and the place clips land ("on the shelf"). |
+| book        | One game's clips on the shelf, or a category someone named themselves ("Snowboarding").     |
+| clip        | One video. Not "video" unless we mean the file itself.                                      |
+| session     | The clips from one game on one night, grouped for you.                                      |
+| collection  | Clips someone put together, in their order, perhaps with friends.                           |
+| share link  | The link that lets anyone who has it watch one clip.                                        |
+| plan        | Free, Plus, Pro or Unlimited; how many clips a library keeps and how long each can be.      |
+| sign in/out | The verbs (never "log in" or "log out"); "sign-in" is the noun, as in "linked sign-ins".    |
 
 ### House style
 
