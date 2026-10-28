@@ -96,7 +96,8 @@ public sealed class OverLimitSweeper(
                 logger.LogInformation("Account {UserId} has {Over} clips over its {Tier} plan's limit; its grace started",
                     userId, over.Count, plan.Tier);
                 await MailAsync(state.Email,
-                    email => AccountEmails.OverLimitStarted(email, over.Count, now + current.GracePeriod, _planUrl),
+                    email => AccountEmails.OverLimitStarted(email, over.Count, now + current.GracePeriod,
+                        plan.CanBuyMoreClips, _planUrl),
                     cancellationToken);
             }
 
@@ -110,7 +111,8 @@ public sealed class OverLimitSweeper(
                 await accounts.MarkGraceWarned(userId))
             {
                 await MailAsync(state.Email,
-                    email => AccountEmails.OverLimitEndingSoon(email, over.Count, deletesAt, _planUrl),
+                    email => AccountEmails.OverLimitEndingSoon(email, over.Count, deletesAt, plan.CanBuyMoreClips,
+                        _planUrl),
                     cancellationToken);
             }
 
