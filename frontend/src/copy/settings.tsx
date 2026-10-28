@@ -5,7 +5,7 @@ export const settingsCopy = {
   eyebrow: "Settings",
   title: (name: string) => (
     <>
-      Archive preferences for <em>{name}</em>.
+      Settings for <em>{name}</em>.
     </>
   ),
   /** Stands in for the account's name before it has loaded. */
@@ -14,7 +14,7 @@ export const settingsCopy = {
     plan: "Plan",
     email: {
       title: "Account email",
-      copy: "Used for notices about newly linked sign-in methods and when your library is nearly full. Leave it empty to receive nothing.",
+      copy: "For things about your account, like a new sign-in being linked or a warning before any clips are deleted. No newsletters. Leave it empty and we won't email you, warnings included.",
     },
     linkedAccounts: {
       title: "Linked accounts",
@@ -53,7 +53,7 @@ export const settingsCopy = {
         Where should we <em>reach you</em>?
       </>
     ),
-    copy: "We email you when a new sign-in method is linked to your account and when your library is nearly full. Nothing else.",
+    copy: "Only for things about your account, like a new sign-in being linked or a warning before any clips are deleted. No newsletters.",
     submit: "Use this address",
   },
 
@@ -61,24 +61,23 @@ export const settingsCopy = {
     /** By the `link_error` the API sends the browser back with. */
     linkErrors: {
       session_expired:
-        "Your session changed while linking. Sign in again and retry.",
+        "You were signed out while linking. Sign in and try again.",
       provider_already_linked:
-        "This account already has a login from that provider. Unlink it first.",
+        "Your account already has a sign-in from there. Unlink it first.",
       linked_to_another_account:
-        "That login already belongs to a different Reelshelf account.",
-      provider_failed:
-        "The provider didn't complete the sign-in. Nothing changed.",
+        "That sign-in already belongs to another Reelshelf account.",
+      provider_failed: "Linking didn't finish, so nothing changed.",
     } as Record<string, string>,
-    linkFailed: "Linking didn't complete. Nothing changed.",
+    linkFailed: "Linking didn't finish, so nothing changed.",
     linked: (provider: string) => `${provider} is now linked to your account.`,
     loading: "Loading linked accounts…",
-    loadFailed: "Couldn't load linked accounts.",
+    loadFailed: "Your linked accounts didn't load.",
     primary: "primary",
     handle: (provider: string, username: string) =>
       `${provider} · @${username}`,
     unlink: "Unlink",
-    cantUnlink: "Link another sign-in method before removing this one",
-    unlinkFailed: "Couldn't unlink that account.",
+    cantUnlink: "Link another sign-in before removing this one",
+    unlinkFailed: "That didn't unlink. Try again.",
     link: (provider: string) => `Link ${provider}`,
   },
 
