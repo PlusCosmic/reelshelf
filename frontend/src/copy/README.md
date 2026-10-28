@@ -6,6 +6,53 @@ without hunting through components. The `reelshelf/no-jsx-copy` lint rule
 this folder: text, strings or templates in `{...}`, and strings given to attributes people read
 (`aria-label`, `title`, `placeholder`, `alt`, `label`, `description`, ...). Tests are exempt.
 
+## Voice
+
+Reelshelf is the friend who keeps the good tapes: they were there that night, they kept the footage,
+and they can find it again when you want it. They play games, so they know what a clutch or a squad
+night is, but they don't need to shout about it. Every other clip app sells the moment of capture
+and the race to post it; Reelshelf is about keeping clips, and it talks like it.
+
+1. **Quiet confidence over hype.** No "ultimate", "epic", "insane" or "magically", and no
+   exclamation marks. Describe the thing well and trust it to be good.
+2. **Plain words, said once.** Short, active sentences. Say what happened and what to do next.
+   Don't pass on an engineer's words (ETag, protocol, modal, IGDB, encode) to someone who didn't ask.
+3. **The shelf is the metaphor; use it lightly.** Keep to the words below and don't pile them up:
+   "Add a game", not "Add a new book to your bookshelf category".
+4. **Warm when it matters, straight when it counts.** Empty states, a finished upload and the
+   greeting can have a little character. Errors, billing, deletion and moderation are calm and
+   exact, and never joke.
+
+### Words we use
+
+| Word         | Means                                                                                           |
+| ------------ | ----------------------------------------------------------------------------------------------- |
+| library      | Everything someone keeps on Reelshelf. Not "archive".                                           |
+| shelf        | The bookcase of games at the top of the library, and the place clips land ("on the shelf").     |
+| book         | One game's clips on the shelf, or a category someone named themselves ("Snowboarding").         |
+| clip         | One video. Not "video" unless we mean the file itself.                                          |
+| session      | The clips from one game on one night, grouped for you.                                          |
+| collection   | Clips someone put together, in their order, perhaps with friends.                               |
+| share link   | The link that lets anyone who has it watch one clip.                                            |
+| plan         | Free, Plus, Pro or Unlimited; how many clips a library keeps and how long each can be.          |
+| sign in/out  | The verbs (never "log in" or "log out"); "sign-in" is the noun, as in "linked sign-ins".        |
+
+### House style
+
+- **British English**: organised, colour, uncategorised, theatre.
+- **Contractions** wherever they read naturally: "couldn't", "you'll", "isn't".
+- **Errors say what didn't happen, then what to do**: "Your library didn't load. Try again." Not
+  "The archive could not be loaded." Say "nothing changed" or "nothing was charged" when that is
+  true, because it's the first thing people want to know.
+- **Sentence case** for headings, buttons and labels. Buttons are verbs: "Add clips", "Share",
+  "Make collection".
+- **We and you**: "we" is Reelshelf, "you" is the person reading. Clips are "your clips".
+- **Punctuation**: straight apostrophes and quotes in source (`'` and `"`), so the copy stays easy
+  to search and to type; `·` separates facts on one line; `…` ends anything still happening
+  ("Uploading…") and a button that opens a further step ("Delete account…"); no exclamation marks.
+- **Numbers** go through `formatCount` or `toLocaleString`; spell out "one" only in a sentence that
+  reads better for it ("One new clip is waiting").
+
 ## Layout
 
 One module per area of the site, named after it, exporting one object named `<area>Copy`:
