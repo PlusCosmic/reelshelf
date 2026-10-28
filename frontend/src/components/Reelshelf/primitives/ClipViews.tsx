@@ -14,7 +14,6 @@ import {
   categoryForClip,
   formatDate,
   formatDuration,
-  formatSize,
   legendPortraitUrl,
   thumbnailUrl,
 } from "../reelshelf-model";
@@ -150,12 +149,10 @@ function ClipCard({
         <span>
           {category?.name ??
             clip.categorySlug ??
-            libraryCopy.clip.uncategorized}
+            libraryCopy.clip.uncategorised}
         </span>
         <span className="rs-dot" />
         <span>{formatDate(clip.createdAt)}</span>
-        <span className="rs-dot" />
-        <span>{formatSize(clip.video.storageBytes)}</span>
         {!clip.isViewed ? (
           <>
             <span className="rs-dot" />

@@ -89,9 +89,9 @@ export const settingsCopy = {
     intro: "This permanently deletes, and can't be undone:",
     clips: (summary: string) =>
       `every clip you've uploaded or imported${summary}, with its tags, detections and transcripts`,
-    /** " (12 clips, 3.4 GB)", after the clips line. */
-    clipsSummary: (clips: number, size: string) =>
-      ` (${clips.toLocaleString()} ${clips === 1 ? "clip" : "clips"}, ${size})`,
+    /** " (12 clips)", after the clips line. */
+    clipsSummary: (clips: number) =>
+      ` (${clips.toLocaleString()} ${clips === 1 ? "clip" : "clips"})`,
     collections:
       "your share links, and the collections you made, including for their collaborators",
     paidPlan: "your paid plan, which is cancelled straight away",
