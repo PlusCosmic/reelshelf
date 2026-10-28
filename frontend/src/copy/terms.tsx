@@ -59,7 +59,12 @@ export function TermsText() {
           systems.
         </li>
       </ul>
-      <p>We may remove content or suspend accounts that break these rules.</p>
+      <p>
+        We may remove content, or suspend or close an account, if it breaks
+        these terms, if we need to for security or legal reasons, or if it puts
+        an unreasonable load on Reelshelf. Where we can, we'll tell you first
+        and give you a chance to download your clips.
+      </p>
 
       <h2>Reporting a clip</h2>
       <p>
@@ -92,6 +97,13 @@ export function TermsText() {
         notice before anything you've already uploaded is affected.
       </p>
 
+      <h2>Changes to Reelshelf</h2>
+      <p>
+        Reelshelf will change over time, and we may add, change or remove
+        features. If a change takes away something your paid plan includes,
+        we'll tell you first, and you can cancel.
+      </p>
+
       <h2>Paid plans</h2>
       <p>
         Paid plans are sold to you by Stripe, through its Link service, as the
@@ -119,10 +131,10 @@ export function TermsText() {
         <li>
           When a paid plan ends, your account goes back to the free plan, and
           you can't add clips while you have more than it keeps. The clips over
-          its limit are kept for 14 days, so you can download them, pick which
-          clips to keep, or subscribe again. After that they're deleted, and we
-          email you a download of them that lasts 28 days. The clips kept are
-          the ones you picked, then your newest.
+          its limit are kept for at least 14 days, so you can download them,
+          pick which clips to keep, or subscribe again. After that they're
+          deleted, and we email you a download of them that lasts at least 28
+          days. The clips kept are the ones you picked, then your newest.
         </li>
       </ul>
 
@@ -131,8 +143,10 @@ export function TermsText() {
         Reelshelf is provided as is, without warranties of any kind. It may go
         down, change, or lose data, so keep your own copies of clips that matter
         to you. As far as the law allows, we aren't liable for indirect or
-        consequential losses or for lost content. Nothing in these terms limits
-        rights you have under consumer law that can't be excluded.
+        consequential losses or for lost content, and our total liability to you
+        is limited to the greater of what you've paid for Reelshelf in the 12
+        months before the claim, or £50. Nothing in these terms limits rights
+        you have under consumer law that can't be excluded.
       </p>
 
       <h2>Leaving, and the service ending</h2>
