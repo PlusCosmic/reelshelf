@@ -485,33 +485,43 @@ a {
   text-wrap: balance;
 }
 
+/* The features read like a book's contents: rows of icon, title and one line, in two columns. */
 .rs-landing-features {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 48px;
+  border-bottom: 1px solid var(--line);
 }
 
 .rs-landing-feature {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 24px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: color-mix(in oklab, var(--bg-soft) 55%, var(--bg));
+  display: grid;
+  grid-template-columns: 30px minmax(0, 13em) minmax(0, 1fr);
+  column-gap: 14px;
+  align-items: baseline;
+  align-content: start;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
 }
 
 .rs-landing-feature-icon {
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  align-self: start;
+  width: 30px;
+  height: 30px;
+  margin-top: -5px;
   border-radius: var(--radius);
   background: color-mix(in oklab, var(--accent) 16%, var(--bg));
   color: var(--accent-ink);
 }
 
-.rs-landing-feature h3,
+.rs-landing-feature h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 .rs-landing-step h3 {
   margin: 0;
   font-size: 17px;
@@ -519,12 +529,30 @@ a {
   line-height: 1.25;
 }
 
-.rs-landing-feature p,
+.rs-landing-feature p {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
 .rs-landing-step p {
   margin: 0;
   color: var(--fg-soft);
   font-size: 14px;
   line-height: 1.55;
+}
+
+/* Too narrow for the title and its line side by side: the line goes under the title. */
+@media (max-width: 1180px) {
+  .rs-landing-feature {
+    grid-template-columns: 30px minmax(0, 1fr);
+    row-gap: 4px;
+  }
+
+  .rs-landing-feature p {
+    grid-column: 2;
+  }
 }
 
 .rs-landing-steps {

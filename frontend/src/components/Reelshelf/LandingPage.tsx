@@ -4,8 +4,8 @@ import { Link } from "@tanstack/react-router";
 import {
   IconArrowRight,
   IconBooks,
+  IconBrandDiscord,
   IconClock,
-  IconDownload,
   IconFolderDown,
   IconLink,
   IconMoon,
@@ -93,8 +93,8 @@ const featureIcons: Record<keyof typeof landingCopy.features.items, ReactNode> =
     bulkUpload: <IconFolderDown size={20} aria-hidden="true" />,
     sessions: <IconClock size={20} aria-hidden="true" />,
     collections: <IconUsers size={20} aria-hidden="true" />,
+    watchRoom: <IconBrandDiscord size={20} aria-hidden="true" />,
     sharing: <IconLink size={20} aria-hidden="true" />,
-    downloads: <IconDownload size={20} aria-hidden="true" />,
   };
 
 const features = (

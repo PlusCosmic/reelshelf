@@ -8,17 +8,17 @@ export const signInCopy = {
       Open your <em>shelf</em>.
     </>
   ),
-  intro: `Continue with any provider below. If you're new, this creates your account. It's free for up to ${formatCount(planLimits.free.clips)} clips. Link the others later from Settings and any of them will open the same shelf.`,
+  intro: `Choose Discord or Twitch. If you're new, that makes your account, free for up to ${formatCount(planLimits.free.clips)} clips. You can link the other one later.`,
   continueWith: (provider: string) => `Continue with ${provider}`,
   accountDeleted:
-    "Your account has been deleted. Its clips are being removed from storage now.",
+    "Your account has been deleted. We're removing its clips now.",
   suspended: (contact: ReactNode) => (
     <>
       This account has been suspended for breaking our terms of service. If you
-      think that's a mistake, email {contact}.
+      think we've got that wrong, email {contact}.
     </>
   ),
-  authFailed: "The provider didn't complete the sign-in. Try again.",
+  authFailed: "Sign-in didn't finish, so nothing changed. Try again.",
   agreeToTerms: (terms: ReactNode, privacy: ReactNode) => (
     <>
       By continuing you agree to the {terms} and {privacy}.
