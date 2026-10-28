@@ -13,6 +13,7 @@ import {
   IconPlus,
 } from "@tabler/icons-react";
 import type { TwitchGhost } from "@/components/AddClips/addClipsModel";
+import { libraryCopy } from "@/copy/library";
 import { dataTransferHasFiles } from "@/utils/bulkUploadDrop";
 import {
   bookBinding,
@@ -89,18 +90,6 @@ const ADD_KEY = "add-a-game";
 const SHIFT_MS = 220;
 const EASE = "cubic-bezier(0.2, 0.7, 0.2, 1)";
 
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
-
-function describe(game: GameShelfItem) {
-  if (game.clipCount === 0) return `${game.name}, no clips yet`;
-  const clips = plural(game.clipCount, "clip", "clips");
-  return game.unviewedCount > 0
-    ? `${game.name}, ${clips}, ${game.unviewedCount} new`
-    : `${game.name}, ${clips}`;
-}
-
 function reducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -154,11 +143,12 @@ function Spine({
       onPointerLeave={onHideTip}
       onFocus={(event) => onShowTip(event.currentTarget)}
       onBlur={onHideTip}
-      aria-label={
-        twitchCount > 0
-          ? `${describe(game)}, ${plural(twitchCount, "Twitch clip", "Twitch clips")} to bring in`
-          : describe(game)
-      }
+      aria-label={libraryCopy.bookcase.spine(
+        game.name,
+        game.clipCount,
+        game.unviewedCount,
+        twitchCount,
+      )}
       {...drop}
     >
       {twitchCount > 0 ? (
@@ -180,7 +170,7 @@ function Spine({
       </span>
       <span className="rs-book-foot" aria-hidden="true">
         {empty ? (
-          <span className="rs-book-empty">Empty</span>
+          <span className="rs-book-empty">{libraryCopy.bookcase.empty}</span>
         ) : (
           <span className="rs-book-count">
             {game.clipCount}
@@ -213,12 +203,18 @@ function FaceOutBook({
       style={{ "--cloth": binding.cloth } as CSSProperties}
       onClick={onPutBack}
       aria-pressed="true"
-      aria-label={`${describe(game)}. Pulled out; press to put it back on the shelf`}
+      aria-label={libraryCopy.bookcase.faceOut(
+        game.name,
+        game.clipCount,
+        game.unviewedCount,
+      )}
     >
       <span className="rs-book-face-shadow" aria-hidden="true" />
       <span className="rs-book-face-body" aria-hidden="true">
         {game.unviewedCount > 0 ? (
-          <span className="rs-book-face-tab">{game.unviewedCount} new</span>
+          <span className="rs-book-face-tab">
+            {libraryCopy.newCount(game.unviewedCount)}
+          </span>
         ) : null}
         <span className="rs-book-face-hinge" />
         <span className="rs-book-face-cover">
@@ -228,7 +224,9 @@ function FaceOutBook({
             <span className="rs-book-face-plain rs-display">{game.name}</span>
           )}
           {empty ? (
-            <span className="rs-book-face-empty rs-display">No clips yet</span>
+            <span className="rs-book-face-empty rs-display">
+              {libraryCopy.noClipsYet}
+            </span>
           ) : null}
         </span>
       </span>
@@ -418,7 +416,7 @@ export function Bookcase({
       <div
         className="rs-bookcase-back"
         role="region"
-        aria-label="Your shelf"
+        aria-label={libraryCopy.bookcase.label}
         ref={backRef}
         onScroll={hideTip}
       >
@@ -474,7 +472,10 @@ export function Bookcase({
                 }
                 onClick={(event) => openGhost(ghost, event.currentTarget)}
                 aria-haspopup="dialog"
-                aria-label={`${ghost.gameName}, not on your shelf, ${plural(ghost.clips.length, "Twitch clip", "Twitch clips")}`}
+                aria-label={libraryCopy.bookcase.ghost(
+                  ghost.gameName,
+                  ghost.clips.length,
+                )}
                 {...dropHandlers(
                   key,
                   setDropKey,
@@ -501,11 +502,15 @@ export function Bookcase({
               ref={itemRef(ADD_KEY)}
               className={`rs-book-add${dropping ? " dropping" : ""}${dropping && dropKey === ADD_KEY ? " drop-target" : ""}`}
               onClick={onAddGame}
-              aria-label="Add a game or category"
+              aria-label={libraryCopy.bookcase.addGame}
               {...dropHandlers(ADD_KEY, setDropKey, onDropOnNewBook)}
             >
               <IconPlus size={20} aria-hidden="true" />
-              <span>{dropping ? "New book" : "Add a game"}</span>
+              <span>
+                {dropping
+                  ? libraryCopy.bookcase.newBook
+                  : libraryCopy.bookcase.addGameShort}
+              </span>
             </button>
           ) : null}
         </div>
@@ -515,7 +520,7 @@ export function Bookcase({
           type="button"
           className="rs-bookcase-scroll left"
           onClick={() => scrollShelf(-1)}
-          aria-label="Scroll the shelf left"
+          aria-label={libraryCopy.bookcase.scrollLeft}
         >
           <IconChevronLeft size={20} aria-hidden="true" />
         </button>
@@ -525,7 +530,7 @@ export function Bookcase({
           type="button"
           className="rs-bookcase-scroll right"
           onClick={() => scrollShelf(1)}
-          aria-label="Scroll the shelf right"
+          aria-label={libraryCopy.bookcase.scrollRight}
         >
           <IconChevronRight size={20} aria-hidden="true" />
         </button>
@@ -540,25 +545,20 @@ export function Bookcase({
         >
           <span className="rs-book-tip-name">{tip.game.name}</span>
           <span className="rs-book-tip-meta">
-            {tip.game.clipCount === 0
-              ? "No clips yet"
-              : plural(tip.game.clipCount, "clip", "clips")}
+            {libraryCopy.bookcase.tipClips(tip.game.clipCount)}
             {tip.game.unviewedCount > 0 ? (
               <>
                 <StitchedDot />
-                <strong>{tip.game.unviewedCount} new</strong>
+                <strong>{libraryCopy.newCount(tip.game.unviewedCount)}</strong>
               </>
             ) : null}
           </span>
           {twitchCounts?.get(tip.game.id) ? (
             <span className="rs-book-tip-meta rs-book-tip-twitch">
               <IconBrandTwitch size={13} />
-              {plural(
+              {libraryCopy.bookcase.tipTwitch(
                 twitchCounts.get(tip.game.id) ?? 0,
-                "Twitch clip",
-                "Twitch clips",
-              )}{" "}
-              to bring in
+              )}
             </span>
           ) : null}
         </div>
@@ -569,10 +569,15 @@ export function Bookcase({
           top={dropTarget.top}
           label={
             dropKey === ADD_KEY
-              ? "Drop to start a new book"
+              ? libraryCopy.bookcase.dropNewBook
               : dropKey.startsWith("ghost-")
-                ? `Drop to add ${ghosts.find((g) => `ghost-${g.igdbId}` === dropKey)?.gameName ?? "this game"} to your shelf`
-                : `Drop into ${shelf.find((g) => g.id === dropKey)?.name ?? "this book"}`
+                ? libraryCopy.bookcase.dropOnGhost(
+                    ghosts.find((g) => `ghost-${g.igdbId}` === dropKey)
+                      ?.gameName,
+                  )
+                : libraryCopy.bookcase.dropOnBook(
+                    shelf.find((g) => g.id === dropKey)?.name,
+                  )
           }
         />
       ) : null}
@@ -592,12 +597,7 @@ export function Bookcase({
         >
           <span className="rs-book-tip-name">{ghostCard.ghost.gameName}</span>
           <span className="rs-ghost-card-meta">
-            {plural(
-              ghostCard.ghost.clips.length,
-              "of your Twitch clips",
-              "of your Twitch clips",
-            )}{" "}
-            · not on your shelf yet
+            {libraryCopy.bookcase.ghostCard.meta(ghostCard.ghost.clips.length)}
           </span>
           <span className="rs-ghost-card-actions">
             <button
@@ -609,7 +609,7 @@ export function Bookcase({
                 onAddGhost?.(ghostCard.ghost);
               }}
             >
-              Add to shelf
+              {libraryCopy.bookcase.ghostCard.add}
             </button>
             <button
               type="button"
@@ -618,7 +618,7 @@ export function Bookcase({
                 onDismissGhost?.(ghostCard.ghost);
               }}
             >
-              Not interested
+              {libraryCopy.bookcase.ghostCard.dismiss}
             </button>
           </span>
         </div>

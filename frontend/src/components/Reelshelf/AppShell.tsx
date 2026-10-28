@@ -16,6 +16,7 @@ import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
 import { PlanMeter } from "@/components/Reelshelf/PlanMeter";
+import { shellCopy } from "@/copy/shell";
 import { useLogout, usePlan } from "@/hooks/queries";
 import type { CurrentUser } from "@/shared/services/user";
 
@@ -58,19 +59,19 @@ export function AppShell({
   return (
     <div className="rs-app">
       <header className="rs-topbar" ref={trackTopbarHeight}>
-        <Link to="/" className="rs-brand" aria-label="Reelshelf library">
+        <Link to="/" className="rs-brand" aria-label={shellCopy.brandLink}>
           <BrandLogo />
         </Link>
 
-        <nav className="rs-nav" aria-label="Primary">
+        <nav className="rs-nav" aria-label={shellCopy.nav.label}>
           <Link to="/" className={active("/") ? "active" : undefined}>
-            Library
+            {shellCopy.nav.library}
           </Link>
           <Link
             to="/collections"
             className={active("/collections") ? "active" : undefined}
           >
-            Collections
+            {shellCopy.nav.collections}
           </Link>
         </nav>
 
@@ -87,7 +88,7 @@ export function AppShell({
               className="rs-profile-trigger"
               type="button"
               onClick={() => setProfileMenuOpen((open) => !open)}
-              aria-label="Open profile menu"
+              aria-label={shellCopy.profileMenu.open}
               aria-haspopup="menu"
               aria-expanded={profileMenuOpen}
             >
@@ -110,7 +111,7 @@ export function AppShell({
                   onClick={() => setProfileMenuOpen(false)}
                 >
                   <IconSettings size={16} />
-                  Settings
+                  {shellCopy.profileMenu.settings}
                 </Link>
                 {user.isAdmin ? (
                   <Link
@@ -120,7 +121,7 @@ export function AppShell({
                     onClick={() => setProfileMenuOpen(false)}
                   >
                     <IconScan size={16} />
-                    Legend detection
+                    {shellCopy.profileMenu.legendDetection}
                   </Link>
                 ) : null}
                 {user.isAdmin ? (
@@ -131,7 +132,7 @@ export function AppShell({
                     onClick={() => setProfileMenuOpen(false)}
                   >
                     <IconMicrophone size={16} />
-                    Transcription
+                    {shellCopy.profileMenu.transcription}
                   </Link>
                 ) : null}
                 {user.isAdmin ? (
@@ -142,7 +143,7 @@ export function AppShell({
                     onClick={() => setProfileMenuOpen(false)}
                   >
                     <IconUserShield size={16} />
-                    Accounts
+                    {shellCopy.profileMenu.accounts}
                   </Link>
                 ) : null}
                 {user.isAdmin ? (
@@ -153,7 +154,7 @@ export function AppShell({
                     onClick={() => setProfileMenuOpen(false)}
                   >
                     <IconFlag size={16} />
-                    Reports
+                    {shellCopy.profileMenu.reports}
                   </Link>
                 ) : null}
                 <button
@@ -170,7 +171,7 @@ export function AppShell({
                   ) : (
                     <IconMoon size={16} />
                   )}
-                  {theme === "dark" ? "Light mode" : "Dark mode"}
+                  {shellCopy.profileMenu.theme(theme)}
                 </button>
                 <button
                   className="rs-menu-item"
@@ -182,7 +183,7 @@ export function AppShell({
                   }}
                 >
                   <IconLogout size={16} />
-                  Log out
+                  {shellCopy.profileMenu.logOut}
                 </button>
               </div>
             ) : null}

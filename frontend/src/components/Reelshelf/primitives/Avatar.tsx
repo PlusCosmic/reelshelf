@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import { uiCopy } from "@/copy/ui";
 
 export function Avatar({
-  name = "You",
+  name = uiCopy.avatar.defaultName,
   src,
   size = 28,
   color,
@@ -14,7 +15,7 @@ export function Avatar({
   color?: string;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const initials = (name ?? "You")
+  const initials = (name ?? uiCopy.avatar.defaultName)
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
@@ -28,11 +29,11 @@ export function Avatar({
       {src && !imageFailed ? (
         <img
           src={src}
-          alt={name ?? "User avatar"}
+          alt={name ?? uiCopy.avatar.alt}
           onError={() => setImageFailed(true)}
         />
       ) : (
-        initials || "Y"
+        initials || uiCopy.avatar.defaultInitial
       )}
     </span>
   );

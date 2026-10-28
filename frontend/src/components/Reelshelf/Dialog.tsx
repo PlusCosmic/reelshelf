@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useEffectEvent, useId } from "react";
 import { IconX } from "@tabler/icons-react";
+import { commonCopy } from "@/copy/common";
 
 /**
  * A modal dialog in the shelf's style: eyebrow, title and a close button over the content. Escape
@@ -52,7 +53,7 @@ export function Dialog({
           <button
             className="rs-icon-button"
             type="button"
-            aria-label="Close"
+            aria-label={commonCopy.close}
             onClick={close}
             disabled={busy}
           >

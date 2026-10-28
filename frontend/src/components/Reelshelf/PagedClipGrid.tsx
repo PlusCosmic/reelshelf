@@ -1,5 +1,6 @@
 import type { GameCategoryResponse } from "@/api-client";
 import { LoadMore } from "@/components/ui";
+import { libraryCopy } from "@/copy/library";
 import { useClipsInfinite, type ClipsFilters } from "@/hooks/clips.queries";
 import { ClipGrid } from "./primitives/ClipViews";
 
@@ -47,11 +48,11 @@ export function PagedClipGrid({
     return rows ? (
       <SkeletonRows count={4} />
     ) : (
-      <div className="rs-empty">Loading clips…</div>
+      <div className="rs-empty">{libraryCopy.list.loading}</div>
     );
   // A page that fails partway through keeps the clips already on screen; LoadMore offers the retry.
   if (query.isError && clips.length === 0)
-    return <div className="rs-empty">Clips could not be loaded.</div>;
+    return <div className="rs-empty">{libraryCopy.list.loadFailed}</div>;
 
   return (
     <>
@@ -63,7 +64,7 @@ export function PagedClipGrid({
         showGame={showGame}
       />
       {rows && query.isFetchingNextPage ? <SkeletonRows count={3} /> : null}
-      <LoadMore label="clips" query={query} />
+      <LoadMore label={libraryCopy.clipsNoun} query={query} />
     </>
   );
 }

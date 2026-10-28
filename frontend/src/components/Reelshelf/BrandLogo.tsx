@@ -1,3 +1,5 @@
+import { commonCopy } from "@/copy/common";
+
 /** The Reelshelf tile beside the wordmark; `.rs-brand-logo-mark` lifts the tile in dark theme so it stays visible. */
 export function BrandLogo() {
   return (
@@ -47,7 +49,7 @@ export function BrandLogo() {
           rx="17"
         />
       </svg>
-      <span className="rs-brand-logo-word">Reelshelf</span>
+      <span className="rs-brand-logo-word">{commonCopy.brand}</span>
     </span>
   );
 }

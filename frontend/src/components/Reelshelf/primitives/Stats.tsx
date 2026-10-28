@@ -1,3 +1,4 @@
+import { libraryCopy } from "@/copy/library";
 import { formatDuration, formatSize } from "../reelshelf-model";
 
 export type ClipTotals = {
@@ -14,8 +15,11 @@ export type ClipTotals = {
 export function StatLine({ totals }: { totals: ClipTotals }) {
   return (
     <span>
-      {totals.clipCount}&nbsp;clips - {formatDuration(totals.durationSeconds)} -{" "}
-      {formatSize(totals.storageBytes)}
+      {libraryCopy.statLine(
+        totals.clipCount,
+        formatDuration(totals.durationSeconds),
+        formatSize(totals.storageBytes),
+      )}
     </span>
   );
 }

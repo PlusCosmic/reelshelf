@@ -2,11 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { IconChevronDown, IconUser, IconX } from "@tabler/icons-react";
 import type { LegendCount } from "@/api-client";
+import { commonCopy } from "@/copy/common";
+import { libraryCopy } from "@/copy/library";
 import { LegendPlate } from "./ReelshelfPrimitives";
-
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 /**
  * The Apex book's legend filter: a button beside the search that opens a grid of the legends the owner
@@ -55,7 +53,6 @@ export function LegendPicker({
     };
   }, [open]);
 
-  const legendCount = plural(legends.length, "legend", "legends");
   const choose = (legend: string | null) => {
     setOpen(false);
     onChange(legend);
@@ -75,9 +72,7 @@ export function LegendPicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="rs-legend-panel"
-        aria-label={
-          value ? `Played as ${value}. Change legend` : "Filter by legend"
-        }
+        aria-label={libraryCopy.legendPicker.trigger(value)}
         onClick={() => setOpen((current) => !current)}
       >
         {value ? (
@@ -85,14 +80,14 @@ export function LegendPicker({
         ) : (
           <IconUser size={15} aria-hidden="true" />
         )}
-        {value ?? "Any legend"}
+        {value ?? libraryCopy.legendPicker.anyLegend}
         <IconChevronDown size={14} aria-hidden="true" />
       </button>
       {value ? (
         <button
           type="button"
           className="rs-legend-clear"
-          aria-label="Show every legend"
+          aria-label={libraryCopy.legendPicker.clear}
           onClick={() => choose(null)}
         >
           <IconX size={13} aria-hidden="true" />
@@ -110,12 +105,14 @@ export function LegendPicker({
             id="rs-legend-panel"
             className="rs-legend-panel"
             role="dialog"
-            aria-label="Played as"
+            aria-label={libraryCopy.legendPicker.playedAs}
           >
             <div className="rs-legend-panel-head">
-              <span className="rs-display">Played as</span>
+              <span className="rs-display">
+                {libraryCopy.legendPicker.playedAs}
+              </span>
               <span className="rs-legend-panel-count">
-                {legendCount}, most played first
+                {libraryCopy.legendPicker.count(legends.length)}
               </span>
               <button
                 type="button"
@@ -123,7 +120,7 @@ export function LegendPicker({
                 aria-pressed={!value}
                 onClick={() => choose(null)}
               >
-                Any legend
+                {libraryCopy.legendPicker.anyLegend}
               </button>
             </div>
             <div className="rs-legend-grid" ref={gridRef}>
@@ -138,7 +135,7 @@ export function LegendPicker({
                   <LegendPlate legend={item.legend} cloth={cloth} size="tile" />
                   <span className="rs-legend-tile-name">{item.legend}</span>
                   <span className="rs-legend-tile-count">
-                    {plural(item.count, "clip", "clips")}
+                    {commonCopy.clips(item.count)}
                   </span>
                 </button>
               ))}

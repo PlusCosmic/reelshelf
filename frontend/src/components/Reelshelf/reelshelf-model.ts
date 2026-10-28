@@ -3,6 +3,7 @@ import type {
   ClipCategoryTotals,
   GameCategoryResponse,
 } from "@/api-client";
+import { libraryCopy } from "@/copy/library";
 
 export interface GameShelfItem extends GameCategoryResponse {
   clipCount: number;
@@ -182,7 +183,7 @@ export function formatDuration(seconds = 0) {
 }
 
 export function formatDate(date: Date | string | undefined) {
-  if (!date) return "Unknown";
+  if (!date) return libraryCopy.clip.unknownDate;
   return shortDateFormatter.format(new Date(date));
 }
 

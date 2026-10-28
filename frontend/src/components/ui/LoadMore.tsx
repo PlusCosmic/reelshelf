@@ -2,6 +2,8 @@ import {
   useInfiniteScroll,
   type InfiniteScrollTarget,
 } from "@/hooks/useInfiniteScroll";
+import { commonCopy } from "@/copy/common";
+import { uiCopy } from "@/copy/ui";
 import { Button } from "./Button";
 import { cx } from "./cx";
 
@@ -29,17 +31,21 @@ export function LoadMore({
       {isFetchNextPageError ? (
         <>
           <span className="rs-load-more-error">
-            More {label} could not be loaded.
+            {uiCopy.loadMore.failed(label)}
           </span>
-          <Button onClick={() => query.fetchNextPage()}>Try again</Button>
+          <Button onClick={() => query.fetchNextPage()}>
+            {commonCopy.tryAgain}
+          </Button>
         </>
       ) : isFetchingNextPage || autoLoads ? (
         <span className="rs-spinner" aria-hidden="true" />
       ) : (
-        <Button onClick={() => query.fetchNextPage()}>Load more {label}</Button>
+        <Button onClick={() => query.fetchNextPage()}>
+          {uiCopy.loadMore.button(label)}
+        </Button>
       )}
       <span className="rs-visually-hidden" role="status">
-        {isFetchingNextPage ? `Loading more ${label}…` : ""}
+        {isFetchingNextPage ? uiCopy.loadMore.loading(label) : ""}
       </span>
     </div>
   );

@@ -10,6 +10,8 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Clip } from "@/api-client";
+import { commonCopy } from "@/copy/common";
+import { libraryCopy } from "@/copy/library";
 import { useCurrentUser, useDeleteClip, useShareClip } from "@/hooks/queries";
 import { apiConfig } from "@/shared/config/apiConfig";
 import { ApiError } from "@/shared/services/apiError";
@@ -33,7 +35,7 @@ export function PlayerActions({ clip }: { clip: Clip }) {
   function handleDelete() {
     if (deleteClip.isPending) return;
     const confirmed = window.confirm(
-      `Delete "${clip.video.title}"? This removes the video and frees its storage.`,
+      libraryCopy.actions.confirmDelete(clip.video.title),
     );
     if (!confirmed) return;
 
@@ -57,7 +59,7 @@ export function PlayerActions({ clip }: { clip: Clip }) {
             onClick={() => setShareOpen(true)}
           >
             <IconShare3 size={13} />
-            Share
+            {libraryCopy.actions.share}
           </button>
         ) : null}
         <button
@@ -66,7 +68,7 @@ export function PlayerActions({ clip }: { clip: Clip }) {
           onClick={() => setCollectOpen(true)}
         >
           <IconFolderPlus size={13} />
-          Add to collection
+          {libraryCopy.actions.addToCollection}
         </button>
         {/* A plain link, never fetch: an R2 clip is a redirect to a presigned URL in the bucket, which
             the browser saves as it is. An HLS (Bunny) clip is remuxed on the server before the file
@@ -84,7 +86,9 @@ export function PlayerActions({ clip }: { clip: Clip }) {
           }}
         >
           <IconDownload size={13} />
-          {preparing ? "Preparing download…" : "Download"}
+          {preparing
+            ? libraryCopy.actions.preparingDownload
+            : libraryCopy.actions.download}
         </a>
         {canDelete ? (
           <button
@@ -94,7 +98,7 @@ export function PlayerActions({ clip }: { clip: Clip }) {
             disabled={deleteClip.isPending}
           >
             <IconTrash size={13} />
-            {deleteClip.isPending ? "Deleting…" : "Delete"}
+            {deleteClip.isPending ? commonCopy.deleting : commonCopy.delete}
           </button>
         ) : null}
       </div>
@@ -102,7 +106,7 @@ export function PlayerActions({ clip }: { clip: Clip }) {
         <div className="rs-upload-error" role="alert">
           {deleteClip.error instanceof Error
             ? deleteClip.error.message
-            : "The clip could not be deleted."}
+            : libraryCopy.actions.deleteFailed}
         </div>
       ) : null}
       {shareOpen ? (
@@ -149,8 +153,8 @@ function ShareClipDialog({
 
   const errorMessage =
     shareClip.error instanceof ApiError && shareClip.error.kind === "conflict"
-      ? "This clip is still processing and cannot be shared yet."
-      : "The share link could not be created. Try again.";
+      ? libraryCopy.shareDialog.stillProcessing
+      : libraryCopy.shareDialog.failed;
 
   async function copyShareUrl() {
     if (!shareUrl) return;
@@ -176,7 +180,7 @@ function ShareClipDialog({
       >
         <header className="rs-modal-header">
           <div>
-            <p className="rs-eyebrow">Share clip</p>
+            <p className="rs-eyebrow">{libraryCopy.shareDialog.eyebrow}</p>
             <h2 className="rs-modal-title" id="share-clip-title">
               {clip.video.title}
             </h2>
@@ -185,7 +189,7 @@ function ShareClipDialog({
             className="rs-icon-button"
             type="button"
             onClick={onClose}
-            aria-label="Close share dialog"
+            aria-label={libraryCopy.shareDialog.close}
           >
             <IconX size={16} />
           </button>
@@ -194,7 +198,7 @@ function ShareClipDialog({
           {shareClip.isPending ? (
             <p className="rs-modal-note rs-inline-status">
               <span className="rs-spinner" aria-hidden="true" />
-              Creating share link…
+              {libraryCopy.shareDialog.creating}
             </p>
           ) : null}
 
@@ -208,7 +212,7 @@ function ShareClipDialog({
                 type="button"
                 onClick={() => shareClip.mutate(clip.clipId)}
               >
-                Retry
+                {libraryCopy.shareDialog.retry}
               </button>
             </>
           ) : null}
@@ -216,7 +220,7 @@ function ShareClipDialog({
           {shareUrl ? (
             <>
               <label className="rs-field" htmlFor="share-url">
-                Share link
+                {libraryCopy.shareDialog.link}
                 <div className="rs-share-copy-row">
                   <input
                     ref={inputRef}
@@ -232,13 +236,13 @@ function ShareClipDialog({
                     onClick={copyShareUrl}
                   >
                     <IconCopy size={15} />
-                    {copied ? "Copied" : "Copy"}
+                    {copied
+                      ? libraryCopy.shareDialog.copied
+                      : libraryCopy.shareDialog.copy}
                   </button>
                 </div>
               </label>
-              <p className="rs-modal-note">
-                Anyone with this link can watch the shared clip.
-              </p>
+              <p className="rs-modal-note">{libraryCopy.shareDialog.note}</p>
             </>
           ) : null}
         </div>
@@ -252,8 +256,8 @@ export function SharedIndicator({ compact = false }: { compact?: boolean }) {
     return (
       <span
         className="rs-shared-indicator compact"
-        title="Shared"
-        aria-label="Shared"
+        title={libraryCopy.shared}
+        aria-label={libraryCopy.shared}
       >
         <IconShare3 size={13} />
       </span>
@@ -263,14 +267,14 @@ export function SharedIndicator({ compact = false }: { compact?: boolean }) {
   return (
     <span className="rs-shared-indicator">
       <IconShare3 size={13} />
-      Shared
+      {libraryCopy.shared}
     </span>
   );
 }
 
 export function BackToLibrary({
   to = "/",
-  label = "Library",
+  label = libraryCopy.backToLibrary,
 }: {
   to?: string;
   label?: string;

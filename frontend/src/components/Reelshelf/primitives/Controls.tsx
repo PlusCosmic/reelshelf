@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { IconSearch } from "@tabler/icons-react";
+import { uiCopy } from "@/copy/ui";
 
 export function Chip({
   children,
@@ -24,7 +25,7 @@ export function Chip({
 export function SearchBox({
   value,
   onChange,
-  placeholder = "Search clips, games, tags…",
+  placeholder = uiCopy.searchPlaceholder,
 }: {
   value: string;
   onChange: (value: string) => void;

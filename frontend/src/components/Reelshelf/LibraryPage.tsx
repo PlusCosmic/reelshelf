@@ -12,6 +12,7 @@ import {
 } from "@/components/AddClips/twitchSuggestions";
 import { useUploads } from "@/components/AddClips/UploadsProvider";
 import type { BulkUploadFileInput } from "@/hooks/bulkUploadQueue";
+import { libraryCopy } from "@/copy/library";
 import { useAddGameFromIgdb } from "@/hooks/queries";
 import { useClipLegends, useTopTags } from "@/hooks/clips.queries";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
@@ -185,16 +186,12 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
   }, [clipsSection, historyState, isCurrentPage]);
 
   if (isLoading)
-    return <div className="rs-section rs-empty">Loading your archive…</div>;
+    return <div className="rs-section rs-empty">{libraryCopy.loading}</div>;
   if (isError)
-    return (
-      <div className="rs-section rs-empty">
-        The archive could not be loaded.
-      </div>
-    );
+    return <div className="rs-section rs-empty">{libraryCopy.loadFailed}</div>;
   if (selectedSlug && !selected)
     return (
-      <div className="rs-section rs-empty">This game could not be found.</div>
+      <div className="rs-section rs-empty">{libraryCopy.gameNotFound}</div>
     );
 
   // With a book pulled out, its banner names the page; the greeting steps down to a paragraph.
@@ -232,7 +229,7 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     const rejected = addClips(inputs, categoryId);
     setNotice(
       rejected.length
-        ? `${rejected[0].message}${rejected.length > 1 ? ` ${rejected.length - 1} more skipped.` : ""}`
+        ? libraryCopy.rejectedNotice(rejected[0].message, rejected.length - 1)
         : null,
     );
   };
@@ -289,7 +286,7 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     event.preventDefault();
     endDrag();
     if (!selected) {
-      setNotice("Drop clips onto a book, or onto New book for another game.");
+      setNotice(libraryCopy.dropOutsideBook);
       return;
     }
     fileInto(await readDrop(event.dataTransfer), selected.id);
@@ -307,13 +304,13 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
         <div className="rs-drop-hint" role="status">
           {selected ? (
             <>
-              Drop anywhere to add to <strong>{selected.name}</strong>
-              <span> · or onto another book</span>
+              {libraryCopy.dropHint.intoBook(selected.name)}
+              <span>{libraryCopy.dropHint.orAnotherBook}</span>
             </>
           ) : (
             <>
-              Drop on a book to add these clips
-              <span> · or on New book for another game</span>
+              {libraryCopy.dropHint.ontoShelf}
+              <span>{libraryCopy.dropHint.orNewBook}</span>
             </>
           )}
         </div>
@@ -324,7 +321,7 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
         type="file"
         accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
         multiple
-        aria-label="Choose clips to add"
+        aria-label={libraryCopy.chooseClips}
         onChange={(event) => {
           const files = Array.from(event.currentTarget.files ?? []);
           event.currentTarget.value = "";
@@ -337,11 +334,10 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
             never moves the shelf; the pulled-out book's banner opens under it. */}
         <div className="rs-library-greeting">
           <div className="rs-eyebrow">
-            Your archive - <StatLine totals={totals} />
+            {libraryCopy.greeting.eyebrow(<StatLine totals={totals} />)}
           </div>
           <Greeting className="rs-display rs-h1">
-            Welcome back. <em>{totals.unviewedCount || "No"} new clips</em> are
-            waiting on the shelf.
+            {libraryCopy.greeting.title(totals.unviewedCount)}
           </Greeting>
         </div>
         <Bookcase
@@ -416,12 +412,14 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
             <div className="rs-filter-chips">
               {tags.length > 0 ? (
                 <>
-                  <span className="rs-eyebrow rs-filter-label">Tags</span>
+                  <span className="rs-eyebrow rs-filter-label">
+                    {libraryCopy.filters.tags}
+                  </span>
                   <Chip
                     active={!state.tag}
                     onClick={() => dispatch({ type: "setTag", value: null })}
                   >
-                    All tags
+                    {libraryCopy.filters.allTags}
                   </Chip>
                 </>
               ) : null}
