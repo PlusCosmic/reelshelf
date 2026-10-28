@@ -74,48 +74,36 @@ export function PrivacyText() {
       </p>
 
       <h2>Automated analysis of clips</h2>
+      <p>For some clips, Reelshelf uses AI services to:</p>
       <ul>
         <li>
-          <strong>Apex Legends detection:</strong> for Apex clips, still frames
-          are sent to OpenAI to recognise which legend you're playing, so clips
-          can be sorted by legend. To compare how well models do this, we may
-          also send the same frames to Anthropic, or through OpenRouter to the
-          model providers behind it.
+          recognise which legend you're playing in Apex Legends clips, from
+          still frames, so clips can be sorted by legend;
         </li>
         <li>
-          <strong>Speech transcription:</strong> for accounts on the Pro plan
-          (and a few others), a clip's audio is sent through OpenRouter to a
-          speech-to-text provider (such as Google or Deepgram) to make clips
-          searchable. Transcripts are used for search and may be reviewed by us
-          to check their quality. Email us if you'd like your clips left out of
-          transcription.
+          transcribe speech in clips on the Pro and Unlimited plans, to make
+          them searchable;
         </li>
         <li>
-          <strong>Clip summaries:</strong> a transcript, with the clip's title,
-          game and date (and, for Apex clips, the legend detected), is sent to
-          OpenAI to write a short searchable description of the clip, and that
-          description is turned into a search index entry. Summaries are stored,
-          like transcripts, for search and quality checks, and are deleted with
-          the clip.
+          write a short, searchable description of a clip from its transcript,
+          title, game and date (and, for Apex clips, the legend detected).
         </li>
       </ul>
       <p>
-        These providers receive the data only to return a result to us, and
-        handle it under their own API terms.
+        We may send the same data to more than one provider to compare how well
+        they do. Transcripts and descriptions are used for search, may be
+        reviewed by us to check their quality, and are deleted with the clip.
+        Email us if you'd like your clips left out of transcription. These
+        providers receive the data only to return a result to us, and handle it
+        under their own API terms. They're listed below.
       </p>
 
       <h2>Who else handles your data</h2>
       <ul>
         <li>
-          <strong>Bunny.net</strong> stores and streams your clips. We are
-          moving clips to our own pipeline, existing ones included, so some
-          clips are instead stored and delivered by <strong>Cloudflare</strong>{" "}
-          (R2 storage and its CDN) and encoded on servers we run.
-        </li>
-        <li>
-          <strong>Google Cloud</strong> encodes some of those clips when our own
-          servers are busy. The video is processed on servers we rent in the EU
-          just for that encode, and nothing is kept there afterwards.
+          <strong>Cloudflare</strong> and <strong>Bunny.net</strong> store and
+          stream your clips. <strong>Google Cloud</strong> converts some of them
+          for streaming, in the EU, and keeps nothing afterwards.
         </li>
         <li>
           <strong>Discord and Twitch</strong> handle sign-in, Twitch clip import
@@ -134,7 +122,7 @@ export function PrivacyText() {
         </li>
         <li>
           <strong>OpenAI, Anthropic and OpenRouter</strong> (and the providers
-          behind it) for the analysis above.
+          behind it, such as Google and Deepgram) for the analysis above.
         </li>
         <li>
           <strong>PostHog</strong>, in the EU, decides which accounts see
@@ -155,12 +143,12 @@ export function PrivacyText() {
       <p>
         Reelshelf is run from the UK. Our servers and database are in Germany.
         Clips in our own pipeline are stored by Cloudflare in the US (eastern
-        North America); clips not yet moved from Bunny.net are stored in Germany
-        until they move. Clips that Google Cloud encodes are processed in the
-        EU. Cloudflare, Discord, Twitch, Stripe, OpenAI, Anthropic, OpenRouter
-        and Resend are based in the US, so data they handle leaves the UK and
-        EU. We rely on their standard data protection terms, such as standard
-        contractual clauses or the UK–US data bridge, to protect it.
+        North America); some older clips are stored by Bunny.net in Germany.
+        Clips that Google Cloud encodes are processed in the EU. Cloudflare,
+        Discord, Twitch, Stripe, OpenAI, Anthropic, OpenRouter and Resend are
+        based in the US, so data they handle leaves the UK and EU. We rely on
+        their standard data protection terms, such as standard contractual
+        clauses or the UK–US data bridge, to protect it.
       </p>
 
       <h2>Sharing and visibility</h2>
@@ -168,36 +156,34 @@ export function PrivacyText() {
         Your clips are visible only to you, to collaborators you add, to anyone
         with a share link to the clip or a shared collection, and to the people
         in a Discord watch room when you play a clip there. Watch rooms aren't
-        saved; they end when everyone leaves. Clip video addresses aren't
-        secret-signed, so treat clips as unlisted rather than private. A share
-        link keeps working until you delete the clip, or until we take the clip
-        down after a report.
+        saved; they end when everyone leaves. Treat clips as unlisted rather
+        than private: anyone given the address of a clip's video can watch it. A
+        share link keeps working until you delete the clip, or until we take the
+        clip down after a report.
       </p>
 
       <h2>How long we keep it</h2>
       <p>
-        We keep your data while your account exists. For clips in our own
-        pipeline, the file you uploaded is deleted once it has been encoded, and
-        only the encoded video is kept. When an existing clip moves from
-        Bunny.net to our own pipeline, its copy at Bunny.net is kept for up to 7
-        days, so we can switch back if the move went wrong, and is then deleted.
-        Deleting a clip removes the video, and any copy still at Bunny.net, from
-        storage and deletes its tags, detections and transcripts. Unlinking a
-        sign-in method deletes its stored tokens. You can delete your whole
-        account in Settings: it stops working straight away, and its clips are
-        removed from storage and the rest of its data deleted shortly after,
-        usually within minutes. Any paid plan is cancelled first, though Stripe
-        keeps its records of past payments for as long as the law requires.
-        Collections you made go with it, including for their collaborators. If
-        your account has more clips than its plan keeps, for example after a
-        paid plan ends, the clips over the limit are deleted 14 days later, and
-        a download of them is kept for 28 days after that, then deleted.
-        Downloads you ask for are kept for 28 days too. Reports of shared clips,
-        and what we decided, are kept as a record of how we dealt with them,
-        even after the clip is deleted; deleting your account removes your name
-        from reports about your clips. If we remove a clip for child sexual
-        abuse or terrorism, we keep a private copy of it, its details and the
-        uploading account's details (usernames, sign-in IDs and email) for a
+        We keep your data while your account exists. For most clips, the file
+        you upload is deleted once it's been converted for streaming, and only
+        the converted video is kept. When we move a clip from one storage
+        provider to another, the old copy is deleted within 7 days. Deleting a
+        clip removes its video, and any older copy, from storage and deletes its
+        tags, detections and transcripts. Unlinking a sign-in method deletes its
+        stored tokens. You can delete your whole account in Settings: it stops
+        working straight away, and its clips are removed from storage and the
+        rest of its data deleted shortly after. Any paid plan is cancelled
+        first, though Stripe keeps its records of past payments for as long as
+        the law requires. Collections you made go with it, including for their
+        collaborators. If your account has more clips than its plan keeps, for
+        example after a paid plan ends, the clips over the limit are deleted 14
+        days later, and a download of them is kept for 28 days after that, then
+        deleted. Downloads you ask for are kept for 28 days too. Reports of
+        shared clips, and what we decided, are kept as a record of how we dealt
+        with them, even after the clip is deleted; deleting your account removes
+        your name from reports about your clips. If we remove a clip for child
+        sexual abuse or terrorism, we keep a private copy of it, its details and
+        the uploading account's details (usernames, sign-in IDs and email) for a
         year, even if the account is deleted, so we can give them to the
         authorities, and then delete them. Nobody can see that copy except us
         and the authorities we give it to. Backups and logs age out on their own
@@ -223,9 +209,9 @@ export function PrivacyText() {
 
       <h2>Changes and contact</h2>
       <p>
-        We'll change the date at the top when this policy changes, and email you
-        about significant changes. For questions or requests, email{" "}
-        <LegalContact />.
+        We'll change the date at the top when this policy changes, and tell you
+        in the app or by email about significant changes. For questions or
+        requests, email <LegalContact />.
       </p>
     </>
   );
