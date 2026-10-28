@@ -29,7 +29,9 @@ describe("useLogout", () => {
 
     await act(() => result.current.logout.mutateAsync());
 
-    expect(result.current.user.data).toBeNull();
+    // Observers hear about cache changes through TanStack's batched notifier, which flushes on a
+    // timer; without the fix the user is never set to null, so this times out.
+    await waitFor(() => expect(result.current.user.data).toBeNull());
     expect(
       queryClient.getQueryCache().find({ queryKey: planQueryKey }),
     ).toBeUndefined();
