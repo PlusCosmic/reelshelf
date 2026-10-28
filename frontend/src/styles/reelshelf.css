@@ -155,6 +155,118 @@ a {
   padding: 24px 32px 48px;
 }
 
+/* Bookcases in the margins beside the hero, only where the margins are wide enough to hold them. */
+.rs-landing-sides {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: 900px;
+  pointer-events: none;
+}
+
+.rs-landing-side {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: calc((100% - 1120px) / 2 + 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 24px;
+  overflow: hidden;
+  mask-image:
+    linear-gradient(var(--side-fade), #000 50%, transparent),
+    linear-gradient(#000 50%, transparent);
+  mask-composite: intersect;
+}
+
+.rs-landing-side.left {
+  --side-fade: to right;
+  left: 0;
+  align-items: flex-end;
+  padding-right: 12px;
+}
+
+.rs-landing-side.right {
+  --side-fade: to left;
+  right: 0;
+  align-items: flex-start;
+  padding-left: 12px;
+}
+
+.rs-landing-side-row {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 272px;
+  padding: 0 10px;
+}
+
+.rs-landing-side-row::after {
+  /* The plank, filling the gap below the row and running on out under the fade. */
+  content: "";
+  position: absolute;
+  left: -600px;
+  right: -600px;
+  bottom: -14px;
+  height: 14px;
+  background: linear-gradient(
+    var(--plank-top) 0 4px,
+    var(--plank-front) 4px
+  );
+}
+
+.rs-side-book {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 14px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--cloth);
+  box-shadow:
+    inset -6px 0 0 rgba(0, 0, 0, 0.13),
+    inset 2px 0 0 rgba(255, 255, 255, 0.07);
+}
+
+.rs-side-book::before,
+.rs-side-book::after {
+  /* The bands across the top of the spine. */
+  content: "";
+  width: 60%;
+  height: 2px;
+  background: color-mix(in oklab, white 45%, var(--cloth));
+}
+
+.rs-side-book::after {
+  height: 1px;
+}
+
+.rs-side-stack {
+  flex: none;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 1px;
+}
+
+.rs-side-stack span {
+  display: block;
+  border-radius: 2px;
+  background: var(--cloth);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.13);
+}
+
+@media (max-width: 1359px) {
+  .rs-landing-sides {
+    display: none;
+  }
+}
+
 .rs-landing-hero {
   display: flex;
   flex-direction: column;

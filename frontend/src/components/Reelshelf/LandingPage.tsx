@@ -16,6 +16,7 @@ import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { commonCopy } from "@/copy/common";
 import { landingCopy } from "@/copy/landing";
 import { Bookcase } from "./Bookcase";
+import { LandingSideShelves } from "./LandingSideShelves";
 import type { GameShelfItem } from "./reelshelf-model";
 
 const igdbCover = (id: string) =>
@@ -121,6 +122,7 @@ export function LandingPage({
 
   return (
     <div className="rs-landing">
+      <LandingSideShelves />
       <header className="rs-landing-header">
         <div className="rs-brand" aria-label={commonCopy.brand}>
           <BrandLogo />
