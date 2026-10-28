@@ -7,7 +7,7 @@ import { legalOperator } from "./legal";
  */
 export const privacyCopy = {
   title: "Privacy policy",
-  updated: "26 October 2026",
+  updated: "28 October 2026",
 } as const;
 
 export function PrivacyText() {
@@ -65,10 +65,12 @@ export function PrivacyText() {
 
       <h2>Cookies and local storage</h2>
       <p>
-        We use one cookie to keep you signed in, and your browser's local
-        storage to remember your light or dark theme and whether you've signed
-        in on that browser before, so the front page can load without waiting to
-        check. Nothing is used for advertising or tracking.
+        We use one cookie to keep you signed in. Your browser's local storage
+        remembers your light or dark theme, your player volume and theatre mode,
+        Twitch suggestions you've dismissed, uploads in progress so they can
+        carry on after a reload, and whether you've signed in on that browser
+        before, so the front page can load without waiting to check. It stays on
+        your device, and nothing is used for advertising or tracking.
       </p>
 
       <h2>Automated analysis of clips</h2>
@@ -90,10 +92,11 @@ export function PrivacyText() {
         </li>
         <li>
           <strong>Clip summaries:</strong> a transcript, with the clip's title,
-          game and date, is sent to OpenAI to write a short searchable
-          description of the clip, and that description is turned into a search
-          index entry. Summaries are stored, like transcripts, for search and
-          quality checks, and are deleted with the clip.
+          game and date (and, for Apex clips, the legend detected), is sent to
+          OpenAI to write a short searchable description of the clip, and that
+          description is turned into a search index entry. Summaries are stored,
+          like transcripts, for search and quality checks, and are deleted with
+          the clip.
         </li>
       </ul>
       <p>

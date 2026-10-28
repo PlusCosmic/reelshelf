@@ -9,7 +9,7 @@ import { legalGoverningLaw, legalOperator } from "./legal";
  */
 export const termsCopy = {
   title: "Terms of service",
-  updated: "26 October 2026",
+  updated: "28 October 2026",
 } as const;
 
 export function TermsText() {
@@ -82,7 +82,7 @@ export function TermsText() {
       <p>
         Every account starts on the free plan, which keeps up to{" "}
         {formatCount(planLimits.free.clips)} clips of up to a minute each. The
-        paid plans keep more and longer clips: Plus up to
+        paid plans keep more and longer clips: Plus up to{" "}
         {formatCount(planLimits.plus.clips)} clips and Pro up to{" "}
         {formatCount(planLimits.pro.clips)}, each up to two minutes. Uploads are
         under a fair use limit: in any 30 days you can add up to twice the clips
@@ -108,8 +108,9 @@ export function TermsText() {
           change applies to you.
         </li>
         <li>
-          Cancel or change your plan any time in Settings, under Manage billing.
-          A cancelled plan lasts until the end of the period you've paid for.
+          Change your plan any time from the plans in Settings, or cancel under
+          Manage billing. A cancelled plan lasts until the end of the period
+          you've paid for.
         </li>
         <li>
           If a payment fails, Stripe tries again for a while. If it still can't
