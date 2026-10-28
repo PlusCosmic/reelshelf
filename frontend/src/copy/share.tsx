@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 
 /** The public page a share link opens, and its form for reporting the clip. */
 export const shareCopy = {
-  loading: "Loading shared clip…",
-  unavailable: "This shared clip is unavailable.",
-  loadFailed: "Shared clip could not be loaded. Try again later.",
+  loading: "Loading clip…",
+  unavailable:
+    "This link doesn't work any more. The clip may have been deleted or unshared.",
+  loadFailed: "This clip didn't load. Try again in a moment.",
   report: {
     button: "Report this clip",
     eyebrow: "Report",

@@ -4,13 +4,13 @@ import { commonCopy } from "./common";
 export const collectionsCopy = {
   list: {
     loading: "Loading collections…",
-    loadFailed: "Collections could not be loaded.",
+    loadFailed: "Your collections didn't load.",
     eyebrow: (count: number) => `Collections · ${count}`,
     title: "Collections",
     search: "Search collections",
     newCollection: "New collection",
-    empty: "No collections yet.",
-    noMatch: (query: string) => `No collections match “${query}”.`,
+    empty: "No collections yet. Make one to put clips in your own order.",
+    noMatch: (query: string) => `No collections match "${query}".`,
     groups: {
       mine: { title: "Made by you" },
       shared: {
@@ -19,7 +19,7 @@ export const collectionsCopy = {
       },
       sessions: {
         title: "Sessions",
-        note: "Made for you from each night of play",
+        note: "One for each night you played",
       },
     },
     row: {
@@ -36,7 +36,7 @@ export const collectionsCopy = {
   private: "Private",
   collection: {
     loading: "Loading collection…",
-    loadFailed: "This collection could not be loaded.",
+    loadFailed: "This collection didn't load.",
     back: "Collections",
     eyebrow: (
       stats: { clips: number; minutes: number } | null,
@@ -49,9 +49,7 @@ export const collectionsCopy = {
     playInOrder: "Play in order",
     gameShare: (game: string, clips: number) =>
       `${game}: ${commonCopy.clips(clips)}`,
-    empty:
-      "No clips in this collection yet. Add them from a clip's page with Add to collection.",
-    changeFailed: "That change could not be saved. Try again.",
+    empty: "No clips here yet. Open a clip and choose Add to collection.",
     editTitle: "Edit collection",
     confirmDelete: (name: string) =>
       `Delete "${name}"? The clips stay in your library.`,
@@ -62,12 +60,12 @@ export const collectionsCopy = {
     namePlaceholder: "Ranked highlights, Friday night…",
     description: "Description (optional)",
     descriptionPlaceholder: "What goes in it",
-    saveFailed: "The collection could not be saved.",
+    saveFailed: "The collection didn't save. Try again.",
     delete: "Delete collection",
   },
   rows: {
     reorderHelp: "Drag, or press the up and down arrow keys, to move a clip.",
-    untitled: "Clip",
+    untitled: "Untitled clip",
     moved: (title: string, position: number, total: number) =>
       `${title} moved to ${position} of ${total}`,
     move: (title: string) => `Move ${title}`,
@@ -104,7 +102,7 @@ export const collectionsCopy = {
     inviting: "Inviting…",
     note: "People you invite can watch everything in it and add their own clips.",
   },
-  changeFailed: "That change could not be saved.",
+  changeFailed: "That change didn't save. Try again.",
   /** How the viewer's side of a collection's sharing reads. */
   sharing: {
     unknownGame: "Unknown game",
