@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { IconFlag } from "@tabler/icons-react";
 import { Dialog } from "@/components/Reelshelf/Dialog";
+import { commonCopy } from "@/copy/common";
+import { shareCopy } from "@/copy/share";
 import { useReportSharedClip } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 import {
@@ -22,7 +24,7 @@ export function ReportClip({ token }: { token: string }) {
           onClick={() => setOpen(true)}
         >
           <IconFlag size={14} aria-hidden="true" />
-          Report this clip
+          {shareCopy.report.button}
         </button>
       </div>
       {open ? (
@@ -56,7 +58,7 @@ function ReportClipDialog({
           setError(
             failure instanceof ApiError
               ? failure.message
-              : "The report couldn't be sent. Try again.",
+              : shareCopy.report.failed,
           );
         },
       },
@@ -65,13 +67,17 @@ function ReportClipDialog({
 
   if (report.isSuccess) {
     return (
-      <Dialog eyebrow="Report" title="Thanks for telling us" onClose={onClose}>
+      <Dialog
+        eyebrow={shareCopy.report.eyebrow}
+        title={shareCopy.report.thanks.title}
+        onClose={onClose}
+      >
         {() => (
           <div className="rs-modal-panel">
             <p className="rs-modal-note">
-              We'll review this clip and remove it if it breaks our terms.
+              {shareCopy.report.thanks.note}
               {reason === "child_safety" || reason === "terrorism"
-                ? " Its link has stopped working while we do."
+                ? shareCopy.report.thanks.linkHidden
                 : ""}
             </p>
             <div className="rs-modal-actions">
@@ -80,7 +86,7 @@ function ReportClipDialog({
                 type="button"
                 onClick={onClose}
               >
-                Close
+                {commonCopy.close}
               </button>
             </div>
           </div>
@@ -91,15 +97,17 @@ function ReportClipDialog({
 
   return (
     <Dialog
-      eyebrow="Report"
-      title="What's wrong with this clip?"
+      eyebrow={shareCopy.report.eyebrow}
+      title={shareCopy.report.title}
       busy={report.isPending}
       onClose={onClose}
     >
       {() => (
         <form className="rs-modal-panel rs-report-panel" onSubmit={submit}>
           <fieldset className="rs-report-reasons" disabled={report.isPending}>
-            <legend className="rs-visually-hidden">Reason</legend>
+            <legend className="rs-visually-hidden">
+              {shareCopy.report.reason}
+            </legend>
             {reportReasons.map((item) => (
               <label key={item.value} className="rs-report-reason">
                 <input
@@ -115,27 +123,26 @@ function ReportClipDialog({
           </fieldset>
           {reason === "child_safety" ? (
             <p className="rs-modal-note">
-              You can also report it to the{" "}
-              <a
-                href="https://report.iwf.org.uk/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Internet Watch Foundation
-              </a>{" "}
-              or, in the US,{" "}
-              <a
-                href="https://report.cybertip.org/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                NCMEC's CyberTipline
-              </a>
-              . Please don't download or share it.
+              {shareCopy.report.childSafety(
+                <a
+                  href="https://report.iwf.org.uk/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {shareCopy.report.iwf}
+                </a>,
+                <a
+                  href="https://report.cybertip.org/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {shareCopy.report.ncmec}
+                </a>,
+              )}
             </p>
           ) : null}
           <label className="rs-field">
-            <span>Anything else we should know? (optional)</span>
+            <span>{shareCopy.report.details}</span>
             <textarea
               className="rs-report-details"
               value={details}
@@ -147,10 +154,8 @@ function ReportClipDialog({
           </label>
           <label className="rs-field">
             <span>
-              Your email, if you'd like to hear back (optional)
-              {reason === "copyright"
-                ? ". For copyright, include it so we can follow up"
-                : ""}
+              {shareCopy.report.email}
+              {reason === "copyright" ? shareCopy.report.emailCopyright : ""}
             </span>
             <span className="rs-input-shell">
               <input
@@ -174,7 +179,9 @@ function ReportClipDialog({
               type="submit"
               disabled={!reason || report.isPending}
             >
-              {report.isPending ? "Sending…" : "Send report"}
+              {report.isPending
+                ? shareCopy.report.sending
+                : shareCopy.report.send}
             </button>
           </div>
         </form>

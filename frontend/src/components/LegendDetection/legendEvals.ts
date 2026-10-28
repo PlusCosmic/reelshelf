@@ -2,6 +2,7 @@ import type {
   LegendEval,
   LegendEvalMiss,
 } from "@/shared/services/legendDetection";
+import { runsCopy } from "@/copy/runs";
 
 /**
  * The 95% Wilson interval for k correct out of n, which stays inside 0–1 and is honest at small n. At a few hundred
@@ -30,23 +31,24 @@ export function costPerThousand(evaluation: LegendEval) {
 }
 
 export function formatUsd(value: number) {
-  if (value === 0) return "$0";
-  if (value < 0.01) return `$${value.toFixed(4)}`;
-  if (value < 10) return `$${value.toFixed(2)}`;
-  return `$${value.toFixed(1)}`;
+  const { usd } = runsCopy.units;
+  if (value === 0) return usd(0);
+  if (value < 0.01) return usd(value.toFixed(4));
+  if (value < 10) return usd(value.toFixed(2));
+  return usd(value.toFixed(1));
 }
 
 export function formatSeconds(ms: number | null) {
-  return ms === null ? "—" : `${(ms / 1000).toFixed(1)}s`;
+  return ms === null ? "—" : runsCopy.units.durationMs(ms);
 }
 
 export function formatWall(seconds: number | null) {
   if (seconds === null) return "—";
-  if (seconds < 90) return `${seconds}s`;
+  if (seconds < 90) return runsCopy.units.seconds(seconds);
   const minutes = Math.round(seconds / 60);
   return minutes < 90
-    ? `${minutes}m`
-    : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    ? runsCopy.units.minutes(minutes)
+    : runsCopy.units.hoursMinutes(Math.floor(minutes / 60), minutes % 60);
 }
 
 export function evalName(evaluation: LegendEval) {

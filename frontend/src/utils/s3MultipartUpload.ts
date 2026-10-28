@@ -7,6 +7,7 @@ import type {
 } from "@/api-client";
 import { ApiError } from "@/shared/services/api-error";
 import { createMultipartUploadApi } from "@/shared/services/apiClients";
+import { uploadCopy } from "@/copy/upload";
 
 /** The API's side of a multipart upload (`api/Video/MultipartUploadEndpoints.cs`). */
 export type MultipartUploadApi = {
@@ -310,7 +311,7 @@ export class S3MultipartUpload {
     } catch (error) {
       if (signal.aborted) return;
       this.options.onError(
-        error instanceof Error ? error : new Error("The upload failed."),
+        error instanceof Error ? error : new Error(uploadCopy.errors.failed),
       );
     }
   }
@@ -382,17 +383,14 @@ export class S3MultipartUpload {
         });
         if (!response.ok) {
           throw new PartUploadError(
-            `Part ${partNumber} was refused (${response.status}).`,
+            uploadCopy.errors.partRefused(partNumber, response.status),
             response.status,
           );
         }
         const etag = response.headers.get("ETag");
         if (!etag) {
           // The bucket's CORS must expose ETag; without it the upload can't be completed.
-          throw new PartUploadError(
-            `Storage sent no ETag for part ${partNumber}.`,
-            0,
-          );
+          throw new PartUploadError(uploadCopy.errors.noEtag(partNumber), 0);
         }
         this.done.set(partNumber, etag);
         this.save();
@@ -443,7 +441,7 @@ export class S3MultipartUpload {
         this.batch = null;
       }
       const fresh = this.urls.get(partNumber);
-      if (!fresh) throw new Error(`No URL came back for part ${partNumber}.`);
+      if (!fresh) throw new Error(uploadCopy.errors.noPartUrl(partNumber));
       return fresh.url;
     }
   }

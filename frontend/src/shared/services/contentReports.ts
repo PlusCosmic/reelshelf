@@ -2,6 +2,7 @@ import type {
   AdminContentReport,
   AdminContentReportEvidence,
 } from "@/api-client";
+import { reportReasonsCopy } from "@/copy/reportReasons";
 import { createContentReportApi } from "./apiClients";
 
 export type { AdminContentReport, AdminContentReportEvidence };
@@ -14,13 +15,13 @@ export const urgentReasons: ReadonlySet<string> = new Set([
 
 /** The reasons a shared clip can be reported for, as the API spells them, in the order the form lists them. */
 export const reportReasons = [
-  { value: "child_safety", label: "Child sexual abuse or exploitation" },
-  { value: "terrorism", label: "Terrorism or violent extremism" },
-  { value: "sexual", label: "Nudity or sexual content" },
-  { value: "violence", label: "Graphic violence or gore" },
-  { value: "hate_or_harassment", label: "Hate or harassment" },
-  { value: "copyright", label: "It uses my work without permission" },
-  { value: "other", label: "Something else that breaks the terms" },
+  { value: "child_safety", label: reportReasonsCopy.child_safety },
+  { value: "terrorism", label: reportReasonsCopy.terrorism },
+  { value: "sexual", label: reportReasonsCopy.sexual },
+  { value: "violence", label: reportReasonsCopy.violence },
+  { value: "hate_or_harassment", label: reportReasonsCopy.hate_or_harassment },
+  { value: "copyright", label: reportReasonsCopy.copyright },
+  { value: "other", label: reportReasonsCopy.other },
 ] as const;
 
 export type ReportReason = (typeof reportReasons)[number]["value"];

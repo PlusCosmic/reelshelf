@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { IconPlus } from "@tabler/icons-react";
+import { libraryCopy } from "@/copy/library";
 import { StitchedDot } from "./StitchedDot";
 import { StatLine, type ClipTotals } from "./primitives/Stats";
 import { bookBinding, type GameShelfItem } from "./reelshelf-model";
@@ -46,21 +47,21 @@ export function GameBanner({
       ) : null}
       <div className="rs-game-banner-text">
         <div className="rs-eyebrow">
-          {game.isCustom ? "Custom category" : "Game category"}
+          {libraryCopy.banner.eyebrow(game.isCustom)}
         </div>
         <h1 id="rs-game-banner-title" className="rs-display">
           {game.name}
         </h1>
         <p className="rs-game-banner-stats">
           {game.clipCount === 0 ? (
-            "No clips on this shelf yet"
+            libraryCopy.banner.empty
           ) : (
             <>
               <StatLine totals={totals} />
               {game.unviewedCount > 0 ? (
                 <span className="rs-game-banner-new">
                   <StitchedDot />
-                  {game.unviewedCount} new
+                  {libraryCopy.newCount(game.unviewedCount)}
                 </span>
               ) : null}
             </>
@@ -70,14 +71,14 @@ export function GameBanner({
       <div className="rs-game-banner-actions">
         <button type="button" className="rs-primary" onClick={onUpload}>
           <IconPlus size={16} aria-hidden="true" />
-          Add clips
+          {libraryCopy.banner.addClips}
         </button>
         <button
           type="button"
           className="rs-game-banner-back"
           onClick={onPutBack}
         >
-          Put it back on the shelf
+          {libraryCopy.banner.putBack}
         </button>
       </div>
     </section>

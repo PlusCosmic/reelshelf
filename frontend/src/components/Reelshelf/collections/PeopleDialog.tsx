@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { IconUserPlus } from "@tabler/icons-react";
 import type { PlaylistWithDetails } from "@/api-client";
+import { collectionsCopy } from "@/copy/collections";
 import {
   useInviteToCollection,
   useRemovePersonFromCollection,
@@ -54,7 +55,7 @@ export function PeopleDialog({
 
   const leave = () => {
     if (!viewerId) return;
-    if (!window.confirm(`Leave "${playlist.name}"? You'll need inviting back.`))
+    if (!window.confirm(collectionsCopy.people.confirmLeave(playlist.name)))
       return;
     remove.mutate(viewerId, {
       onSuccess: () => void navigate({ to: "/collections" }),
@@ -64,13 +65,16 @@ export function PeopleDialog({
   return (
     <Dialog
       eyebrow={playlist.name}
-      title="People"
+      title={collectionsCopy.people.title}
       busy={busy}
       onClose={onClose}
     >
       {() => (
         <div className="rs-modal-panel">
-          <ul className="rs-people" aria-label="On this collection">
+          <ul
+            className="rs-people"
+            aria-label={collectionsCopy.people.onCollection}
+          >
             {people.map((person) => {
               const owner = person.userId === playlist.creatorUserId;
               const you = person.userId === viewerId;
@@ -83,10 +87,16 @@ export function PeopleDialog({
                   />
                   <span className="rs-people-name">
                     {person.username}
-                    {you ? <span className="rs-people-tag">You</span> : null}
+                    {you ? (
+                      <span className="rs-people-tag">
+                        {collectionsCopy.people.you}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="rs-people-role">
-                    {owner ? "Made it" : "Can add clips"}
+                    {owner
+                      ? collectionsCopy.people.owner
+                      : collectionsCopy.people.member}
                   </span>
                   {isOwner && !owner ? (
                     <button
@@ -95,7 +105,7 @@ export function PeopleDialog({
                       disabled={busy}
                       onClick={() => remove.mutate(person.userId)}
                     >
-                      Remove
+                      {collectionsCopy.people.remove}
                     </button>
                   ) : !isOwner && you ? (
                     <button
@@ -104,7 +114,7 @@ export function PeopleDialog({
                       disabled={busy}
                       onClick={leave}
                     >
-                      Leave
+                      {collectionsCopy.people.leave}
                     </button>
                   ) : (
                     <span />
@@ -117,7 +127,7 @@ export function PeopleDialog({
           {isOwner ? (
             <section className="rs-people-invite" aria-labelledby="rs-invite">
               <h3 id="rs-invite" className="rs-eyebrow">
-                Invite
+                {collectionsCopy.people.invite}
               </h3>
               {offered.length > 0 ? (
                 <div className="rs-people-suggestions">
@@ -145,8 +155,8 @@ export function PeopleDialog({
                   <input
                     value={username}
                     onChange={(event) => setUsername(event.currentTarget.value)}
-                    placeholder="Their Discord or Twitch username"
-                    aria-label="Username to invite"
+                    placeholder={collectionsCopy.people.usernamePlaceholder}
+                    aria-label={collectionsCopy.people.usernameLabel}
                   />
                 </span>
                 <button
@@ -154,13 +164,12 @@ export function PeopleDialog({
                   type="submit"
                   disabled={!username.trim() || busy}
                 >
-                  {invite.isPending ? "Inviting…" : "Invite"}
+                  {invite.isPending
+                    ? collectionsCopy.people.inviting
+                    : collectionsCopy.people.invite}
                 </button>
               </form>
-              <p className="rs-people-note">
-                People you invite can watch everything in it and add their own
-                clips.
-              </p>
+              <p className="rs-people-note">{collectionsCopy.people.note}</p>
             </section>
           ) : null}
 
@@ -168,7 +177,7 @@ export function PeopleDialog({
             <p className="rs-modal-error" role="alert">
               {error instanceof Error
                 ? error.message
-                : "That change could not be saved."}
+                : collectionsCopy.changeFailed}
             </p>
           ) : null}
         </div>

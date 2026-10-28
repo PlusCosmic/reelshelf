@@ -3,6 +3,7 @@ import {
   type Clip,
   type TwitchClipSummary,
 } from "@/api-client";
+import { uploadCopy } from "@/copy/upload";
 
 export type UploadStatus =
   | "queued"
@@ -88,13 +89,15 @@ export function clipStillArriving(clip: Clip) {
 export function clipStageLabel(stage: ClipStage) {
   switch (stage.kind) {
     case "uploading":
-      return stage.paused ? "Paused" : `Uploading ${stage.progress}%`;
+      return stage.paused
+        ? uploadCopy.stage.paused
+        : uploadCopy.stage.uploading(stage.progress);
     case "processing":
       return stage.progress === null
-        ? "Processing"
-        : `Processing ${stage.progress}%`;
+        ? uploadCopy.stage.processing
+        : uploadCopy.stage.processingPercent(stage.progress);
     case "failed":
-      return "Couldn’t be processed";
+      return uploadCopy.stage.failed;
     case "ready":
       return "";
   }
@@ -137,7 +140,7 @@ export function sortTwitchClips(
     if (clip.igdbId === null || dismissedIgdbIds.has(clip.igdbId)) continue;
     const ghost = ghostsById.get(clip.igdbId) ?? {
       igdbId: clip.igdbId,
-      gameName: clip.gameName ?? "Unknown game",
+      gameName: clip.gameName ?? uploadCopy.unknownGame,
       clips: [],
     };
     ghost.clips.push(clip);

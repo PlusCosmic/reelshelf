@@ -3,6 +3,8 @@ import { IconChevronLeft } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { LegalContact } from "@/components/Reelshelf/LegalPage";
 import { ProviderIcon } from "@/components/Reelshelf/ProviderIcon";
+import { commonCopy } from "@/copy/common";
+import { signInCopy } from "@/copy/signIn";
 import { useCurrentUser } from "@/hooks/queries";
 import { authProviders, startLogin } from "@/shared/services/auth";
 
@@ -32,22 +34,16 @@ function SignInRoute() {
   return (
     <main className="rs-public-page rs-signin-page">
       <header className="rs-public-header">
-        <Link to="/" className="rs-brand" aria-label="Reelshelf">
+        <Link to="/" className="rs-brand" aria-label={commonCopy.brand}>
           <BrandLogo />
         </Link>
       </header>
 
       <section className="rs-signin-card" aria-busy={isLoading}>
         <div>
-          <span className="rs-eyebrow">Sign in or create an account</span>
-          <h1 className="rs-display rs-signin-title">
-            Open your <em>shelf</em>.
-          </h1>
-          <p className="rs-signin-copy">
-            Continue with any provider below. If you're new, this creates your
-            account. It's free for up to 100 clips. Link the others later from
-            Settings and any of them will open the same shelf.
-          </p>
+          <span className="rs-eyebrow">{signInCopy.eyebrow}</span>
+          <h1 className="rs-display rs-signin-title">{signInCopy.title}</h1>
+          <p className="rs-signin-copy">{signInCopy.intro}</p>
         </div>
 
         <div className="rs-signin-providers">
@@ -62,38 +58,37 @@ function SignInRoute() {
               }
             >
               <ProviderIcon provider={provider.id} size={22} />
-              Continue with {provider.label}
+              {signInCopy.continueWith(provider.label)}
             </button>
           ))}
         </div>
 
         {search.account_deleted ? (
           <p className="rs-signin-copy" role="status">
-            Your account has been deleted. Its clips are being removed from
-            storage now.
+            {signInCopy.accountDeleted}
           </p>
         ) : null}
 
         {search.auth_error === "suspended" ? (
           <p className="rs-landing-error rs-signin-error" role="alert">
-            This account has been suspended for breaking our terms of service.
-            If you think that's a mistake, email <LegalContact />.
+            {signInCopy.suspended(<LegalContact />)}
           </p>
         ) : search.auth_error ? (
           <p className="rs-landing-error rs-signin-error" role="alert">
-            The provider didn't complete the sign-in. Try again.
+            {signInCopy.authFailed}
           </p>
         ) : null}
 
         <p className="rs-signin-legal">
-          By continuing you agree to the{" "}
-          <Link to="/terms">terms of service</Link> and{" "}
-          <Link to="/privacy">privacy policy</Link>.
+          {signInCopy.agreeToTerms(
+            <Link to="/terms">{signInCopy.termsLink}</Link>,
+            <Link to="/privacy">{signInCopy.privacyLink}</Link>,
+          )}
         </p>
 
         <Link to="/" className="rs-signin-back">
           <IconChevronLeft size={14} aria-hidden="true" />
-          Back to the front page
+          {commonCopy.backToFrontPage}
         </Link>
       </section>
     </main>

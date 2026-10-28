@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { IconExternalLink } from "@tabler/icons-react";
 import { Button, Input } from "@/components/ui";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
+import { legendDetectionCopy } from "@/copy/legendDetection";
 import { legendReferenceSheetUrl } from "@/shared/services/legendDetection";
 import { formatConfidence } from "./legendReview";
 import {
@@ -10,6 +11,8 @@ import {
   matchLegends,
   type BaselineTile,
 } from "./legendBaseline";
+
+const copy = legendDetectionCopy.baseline;
 
 /**
  * A legend's portrait, cut out of the reference sheet the model is sent: its legends sit in name order, half on
@@ -71,7 +74,7 @@ export function HudCrop({
 }
 
 export function answerLabel(answer: string | null) {
-  return answer ?? "Can't tell";
+  return answer ?? legendDetectionCopy.cantTell;
 }
 
 /** One clip in a group. Hovering steps through its frames, in case the first shows a spectated teammate. */
@@ -111,7 +114,7 @@ export function BaselineTileButton({
       className={classes}
       data-baseline-clip={tile.clip.clipId}
       aria-current={selected ? "true" : undefined}
-      aria-label={`${tile.clip.title}: ${answerLabel(tile.answer)}`}
+      aria-label={copy.tile.label(tile.clip.title, answerLabel(tile.answer))}
       onClick={onSelect}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => {
@@ -135,7 +138,7 @@ export function BaselineTileButton({
             : tile.confidence !== null
               ? formatConfidence(tile.confidence)
               : tile.source === "none"
-                ? "no result"
+                ? copy.tile.noResult
                 : ""}
         </span>
       </span>
@@ -158,14 +161,12 @@ export function LegendPicker({
   return (
     <div className="rs-baseline-picker">
       <label className="rs-baseline-picker-label">
-        <span className="rs-meta">
-          Type a few letters · Enter picks the first · Esc cancels
-        </span>
+        <span className="rs-meta">{copy.picker.hint}</span>
         <Input
           autoFocus
           value={query}
-          placeholder="val, mag, hor…"
-          aria-label="Legend"
+          placeholder={copy.picker.placeholder}
+          aria-label={copy.picker.label}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
@@ -196,7 +197,7 @@ export function LegendPicker({
           onClick={() => onPick(null)}
         >
           <LegendPortrait legend={null} legends={legends} size={28} />
-          Can't tell
+          {legendDetectionCopy.cantTell}
         </button>
       </div>
     </div>
@@ -227,12 +228,16 @@ export function BaselinePanel({
   const src = clip.frameUrls[frame] ?? clip.frameUrls[0];
   const source =
     tile.source === "label"
-      ? `Labelled ${formatDate(clip.label!.labelledAt)}`
+      ? copy.panel.labelled(formatDate(clip.label!.labelledAt))
       : tile.source === "result"
-        ? `Current result · ${clip.result!.model}${tile.confidence !== null ? ` · ${formatConfidence(tile.confidence)}` : ""}${clip.result!.hudDetected === false ? " · HUD not seen" : ""}`
-        : "No result yet: pick a legend";
+        ? copy.panel.currentResult(
+            clip.result!.model,
+            tile.confidence !== null ? formatConfidence(tile.confidence) : null,
+            clip.result!.hudDetected === false,
+          )
+        : copy.panel.noResult;
   return (
-    <aside className="rs-baseline-panel" aria-label="Selected clip">
+    <aside className="rs-baseline-panel" aria-label={copy.panel.label}>
       <div className="rs-baseline-panel-heading">
         <div>
           <strong>{clip.title}</strong>
@@ -244,8 +249,8 @@ export function BaselinePanel({
           to="/legend-detection"
           search={{ clip: clip.clipId }}
           className="rs-legend-open-clip"
-          aria-label="Open in review"
-          title="Open in review"
+          aria-label={copy.panel.openInReview}
+          title={copy.panel.openInReview}
         >
           <IconExternalLink size={16} />
         </Link>
@@ -262,7 +267,7 @@ export function BaselinePanel({
             key={url}
             type="button"
             className={`rs-baseline-frame${index === frame ? " selected" : ""}`}
-            aria-label={`Frame ${index + 1}`}
+            aria-label={copy.panel.frame(index + 1)}
             aria-pressed={index === frame}
             onClick={() => onFrame(index)}
           >
@@ -274,7 +279,7 @@ export function BaselinePanel({
       <div className="rs-baseline-answer">
         <LegendPortrait legend={tile.answer} legends={legends} size={48} />
         <div>
-          <div className="rs-eyebrow">Answer</div>
+          <div className="rs-eyebrow">{copy.panel.answer}</div>
           <div className="rs-baseline-answer-name">
             {answerLabel(tile.answer)}
           </div>
@@ -289,18 +294,11 @@ export function BaselinePanel({
         />
       ) : (
         <div className="rs-baseline-actions">
-          <Button onClick={onStartPicking}>
-            Change legend <kbd>Enter</kbd>
-          </Button>
-          <Button onClick={() => onPick(null)}>
-            Can't tell <kbd>x</kbd>
-          </Button>
+          <Button onClick={onStartPicking}>{copy.panel.changeLegend}</Button>
+          <Button onClick={() => onPick(null)}>{copy.panel.cantTell}</Button>
         </div>
       )}
-      <p className="rs-meta rs-baseline-panel-note">
-        A change saves at once and moves to the next clip. Confirming a group
-        saves the rest of it as shown.
-      </p>
+      <p className="rs-meta rs-baseline-panel-note">{copy.panel.note}</p>
     </aside>
   );
 }

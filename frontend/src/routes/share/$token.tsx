@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { ReportClip } from "@/components/Reelshelf/ReportClip";
 import { ClipVideoPlayer } from "@/components/Video/ClipVideoPlayer";
+import { commonCopy } from "@/copy/common";
+import { shareCopy } from "@/copy/share";
 import { useSharedClip } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 import {
@@ -35,7 +37,7 @@ function SharedClipRoute() {
   return (
     <main className="rs-public-page">
       <header className="rs-public-header">
-        <Link to="/" className="rs-brand" aria-label="Reelshelf">
+        <Link to="/" className="rs-brand" aria-label={commonCopy.brand}>
           <BrandLogo />
         </Link>
       </header>
@@ -43,7 +45,7 @@ function SharedClipRoute() {
       {isLoading ? (
         <section className="rs-public-state" aria-live="polite">
           <span className="rs-spinner" aria-hidden="true" />
-          <p>Loading shared clip…</p>
+          <p>{shareCopy.loading}</p>
         </section>
       ) : null}
 
@@ -77,8 +79,8 @@ function SharedClipRoute() {
 function SharedClipError({ error }: { error: unknown }) {
   const message =
     error instanceof ApiError && error.kind === "not-found"
-      ? "This shared clip is unavailable."
-      : "Shared clip could not be loaded. Try again later.";
+      ? shareCopy.unavailable
+      : shareCopy.loadFailed;
 
   return (
     <section className="rs-public-state" aria-live="polite">

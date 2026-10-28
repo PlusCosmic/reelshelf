@@ -1,6 +1,10 @@
 import type { ClipTranscriptionUsage } from "@/shared/services/clipTranscription";
 import { formatTokens } from "@/components/LegendDetection/legendReview";
+import { clipTranscriptionCopy } from "@/copy/clipTranscription";
+import { runsCopy } from "@/copy/runs";
 import { formatCost } from "./transcriptionReview";
+
+const copy = clipTranscriptionCopy.usage;
 
 /** Runs, audio minutes and estimated cost per model and prompt version, covering every owner's clips. */
 export function TranscriptionUsageTable({
@@ -15,33 +19,27 @@ export function TranscriptionUsageTable({
       <table className="rs-legend-table">
         <thead>
           <tr>
-            <th scope="col">Model</th>
-            <th scope="col">Prompt</th>
-            <th scope="col">Succeeded</th>
-            <th scope="col">Failed</th>
-            <th scope="col">Queued</th>
-            <th scope="col" title="Clips with audio but no words">
-              No speech
+            <th scope="col">{runsCopy.columns.model}</th>
+            <th scope="col">{runsCopy.columns.prompt}</th>
+            <th scope="col">{runsCopy.columns.succeeded}</th>
+            <th scope="col">{runsCopy.columns.failed}</th>
+            <th scope="col">{runsCopy.columns.queued}</th>
+            <th scope="col" title={copy.noSpeechTitle}>
+              {copy.noSpeech}
             </th>
-            <th scope="col" title="Clips without an audio track; never sent">
-              No audio
+            <th scope="col" title={copy.noAudioTitle}>
+              {copy.noAudio}
             </th>
-            <th
-              scope="col"
-              title="Runs where the model heard nothing and the fallback model was tried; in brackets, how many it found speech in"
-            >
-              Fallback
+            <th scope="col" title={copy.fallbackTitle}>
+              {copy.fallback}
             </th>
-            <th scope="col">Audio</th>
-            <th
-              scope="col"
-              title="From the model's price in ClipTranscription:CostPerMinuteUsd"
-            >
-              Est. cost
+            <th scope="col">{copy.audio}</th>
+            <th scope="col" title={copy.estCostTitle}>
+              {copy.estCost}
             </th>
-            <th scope="col">Input tokens</th>
-            <th scope="col">Output tokens</th>
-            <th scope="col">Avg time</th>
+            <th scope="col">{runsCopy.columns.inputTokens}</th>
+            <th scope="col">{runsCopy.columns.outputTokens}</th>
+            <th scope="col">{runsCopy.columns.avgTime}</th>
           </tr>
         </thead>
         <tbody>
@@ -58,14 +56,14 @@ export function TranscriptionUsageTable({
                 {row.fallbackRuns}
                 {row.fallbackRuns > 0 ? ` (${row.fallbackRecovered})` : ""}
               </td>
-              <td>{row.audioMinutes.toFixed(1)} min</td>
+              <td>{copy.audioMinutes(row.audioMinutes)}</td>
               <td>{formatCost(row.estimatedCostUsd)}</td>
               <td>{formatTokens(row.inputTokens)}</td>
               <td>{formatTokens(row.outputTokens)}</td>
               <td>
                 {row.averageDurationMs === null
                   ? "–"
-                  : `${(row.averageDurationMs / 1000).toFixed(1)}s`}
+                  : runsCopy.units.durationMs(row.averageDurationMs)}
               </td>
             </tr>
           ))}

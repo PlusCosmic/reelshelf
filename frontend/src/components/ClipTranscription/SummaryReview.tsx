@@ -3,8 +3,13 @@ import { formatDate } from "@/components/Reelshelf/reelshelf-model";
 import { ReasoningEffortSelect } from "@/components/LegendDetection/ReasoningEffortSelect";
 import { formatReasoningEffort } from "@/components/LegendDetection/legendReview";
 import { Badge, Button, Input } from "@/components/ui";
+import { clipTranscriptionCopy } from "@/copy/clipTranscription";
+import { commonCopy } from "@/copy/common";
+import { runsCopy } from "@/copy/runs";
 import { useQueueSummaryRun, useSummaryRuns } from "@/hooks/queries";
 import type { ClipSummaryRun } from "@/shared/services/clipSummary";
+
+const copy = clipTranscriptionCopy.summary;
 
 /** A clip's summaries, shown under its transcript: the chosen run's result, a re-run form and every run. */
 export function SummaryReview({ clipId }: { clipId: string }) {
@@ -19,14 +24,14 @@ export function SummaryReview({ clipId }: { clipId: string }) {
 
   return (
     <>
-      <h3 className="rs-eyebrow">Summary</h3>
+      <h3 className="rs-eyebrow">{copy.heading}</h3>
       {runsQuery.isError ? (
-        <p className="rs-legend-error">Summaries could not be loaded.</p>
+        <p className="rs-legend-error">{copy.notLoaded}</p>
       ) : run ? (
         <SummaryResult run={run} />
       ) : (
         <p className="rs-meta">
-          {runsQuery.isLoading ? "Loading…" : "Not summarised yet."}
+          {runsQuery.isLoading ? commonCopy.loading : copy.notSummarised}
         </p>
       )}
 
@@ -68,11 +73,11 @@ function SummaryResult({ run }: { run: ClipSummaryRun }) {
         <Badge tone={statusTone(run.status)}>{run.status}</Badge>
         <span className="rs-meta">
           {run.provider}/{run.model} ·{" "}
-          {formatReasoningEffort(run.reasoningEffort)} reasoning
-          {run.promptVersion ? ` · prompt ${run.promptVersion}` : ""}
-          {run.durationMs !== null
-            ? ` · took ${(run.durationMs / 1000).toFixed(1)}s`
-            : ""}
+          {runsCopy.reasoningEffort.option(
+            formatReasoningEffort(run.reasoningEffort),
+          )}
+          {run.promptVersion ? copy.promptVersion(run.promptVersion) : ""}
+          {run.durationMs !== null ? runsCopy.took(run.durationMs) : ""}
         </span>
       </div>
 
@@ -86,7 +91,7 @@ function SummaryResult({ run }: { run: ClipSummaryRun }) {
               ))}
             </div>
           ) : (
-            <p className="rs-meta">No mood tags.</p>
+            <p className="rs-meta">{copy.noMoodTags}</p>
           )}
           {run.quotes.length > 0 ? (
             <ul className="rs-summary-quotes">
@@ -96,12 +101,7 @@ function SummaryResult({ run }: { run: ClipSummaryRun }) {
             </ul>
           ) : null}
           <p className="rs-meta">
-            People:{" "}
-            {run.people.length > 0 ? run.people.join(", ") : "none mentioned"}
-            {" · "}
-            {run.hasEmbedding
-              ? `embedded with ${run.embeddingModel}`
-              : "no embedding"}
+            {copy.people(run.people, run.hasEmbedding, run.embeddingModel)}
           </p>
         </>
       ) : run.status === "failed" ? (
@@ -109,14 +109,14 @@ function SummaryResult({ run }: { run: ClipSummaryRun }) {
       ) : (
         <p className="rs-meta">
           {run.status === "pending" && run.error
-            ? `Retrying after: ${run.error}`
-            : "Waiting for a worker…"}
+            ? runsCopy.retryingAfter(run.error)
+            : runsCopy.waitingForWorker}
         </p>
       )}
 
       {run.rawResponse ? (
         <details className="rs-legend-raw">
-          <summary>Raw response</summary>
+          <summary>{runsCopy.rawResponse}</summary>
           <pre className="rs-transcript-prompt">{run.rawResponse}</pre>
         </details>
       ) : null}
@@ -146,22 +146,22 @@ function SummaryRerunForm({ clipId }: { clipId: string }) {
         compact
         value={provider}
         onChange={(event) => setProvider(event.target.value)}
-        placeholder="Provider (default if empty)"
-        aria-label="Summary provider"
+        placeholder={copy.providerPlaceholder}
+        aria-label={copy.providerLabel}
       />
       <Input
         compact
         value={model}
         onChange={(event) => setModel(event.target.value)}
-        placeholder="Model (default if empty)"
-        aria-label="Summary model"
+        placeholder={runsCopy.rerun.modelPlaceholder}
+        aria-label={copy.modelLabel}
       />
       <ReasoningEffortSelect
         value={reasoningEffort}
         onValueChange={setReasoningEffort}
       />
       <Button type="submit" size="sm" disabled={queue.isPending}>
-        {queue.isPending ? "Queueing…" : "Summarise again"}
+        {queue.isPending ? runsCopy.rerun.queueing : copy.summariseAgain}
       </Button>
       {queue.isError ? (
         <span className="rs-legend-error">{queue.error.message}</span>

@@ -3,6 +3,8 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { IconCheck, IconPlus } from "@tabler/icons-react";
 import type { Clip } from "@/api-client";
+import { collectionsCopy } from "@/copy/collections";
+import { commonCopy } from "@/copy/common";
 import {
   useAddClipToCollection,
   useCreateCollection,
@@ -11,10 +13,6 @@ import {
 import { fetchPlaylistById } from "@/shared/services/playlists";
 import { Dialog } from "../Dialog";
 import { usePlaylistsData } from "../useLibraryData";
-
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 /**
  * Put a clip in any of the viewer's collections, or take it out, or start a new collection with it.
@@ -70,21 +68,18 @@ export function AddToCollectionDialog({
 
   return (
     <Dialog
-      eyebrow="Add to collection"
+      eyebrow={collectionsCopy.addTo.eyebrow}
       title={clip.video.title}
       onClose={onClose}
     >
       {() => (
         <div className="rs-modal-panel">
           {isLoading ? (
-            <p className="rs-modal-note">Loading your collections…</p>
+            <p className="rs-modal-note">{collectionsCopy.addTo.loading}</p>
           ) : collections.length === 0 ? (
-            <p className="rs-modal-note">
-              You have no collections yet. Make one below and this clip goes in
-              first.
-            </p>
+            <p className="rs-modal-note">{collectionsCopy.addTo.none}</p>
           ) : (
-            <ul className="rs-picker" aria-label="Your collections">
+            <ul className="rs-picker" aria-label={collectionsCopy.addTo.yours}>
               {collections.map((playlist, index) => {
                 const known = details[index]?.data !== undefined;
                 const has = holds(index) ?? false;
@@ -102,7 +97,7 @@ export function AddToCollectionDialog({
                       </span>
                       <span className="rs-picker-name">{playlist.name}</span>
                       <span className="rs-picker-meta">
-                        {plural(playlist.clipCount, "clip", "clips")}
+                        {commonCopy.clips(playlist.clipCount)}
                       </span>
                     </button>
                   </li>
@@ -117,8 +112,8 @@ export function AddToCollectionDialog({
                 <input
                   value={name}
                   onChange={(event) => setName(event.currentTarget.value)}
-                  placeholder="New collection name"
-                  aria-label="New collection name"
+                  placeholder={collectionsCopy.addTo.newName}
+                  aria-label={collectionsCopy.addTo.newName}
                   maxLength={100}
                   autoFocus
                 />
@@ -128,7 +123,9 @@ export function AddToCollectionDialog({
                 type="submit"
                 disabled={!name.trim() || busy}
               >
-                {create.isPending ? "Making…" : "Make and add"}
+                {create.isPending
+                  ? collectionsCopy.addTo.making
+                  : collectionsCopy.addTo.makeAndAdd}
               </button>
             </form>
           ) : (
@@ -138,7 +135,7 @@ export function AddToCollectionDialog({
               onClick={() => setMaking(true)}
             >
               <IconPlus size={16} aria-hidden="true" />
-              New collection…
+              {collectionsCopy.addTo.newCollection}
             </button>
           )}
 
@@ -146,7 +143,7 @@ export function AddToCollectionDialog({
             <p className="rs-modal-error" role="alert">
               {error instanceof Error
                 ? error.message
-                : "That change could not be saved."}
+                : collectionsCopy.changeFailed}
             </p>
           ) : null}
         </div>

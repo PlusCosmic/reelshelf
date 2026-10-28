@@ -8,6 +8,7 @@ import {
   type ClipStage,
 } from "@/components/AddClips/addClipsModel";
 import { useUploadForClip } from "@/components/AddClips/UploadsProvider";
+import { libraryCopy } from "@/copy/library";
 import {
   bookBinding,
   categoryForClip,
@@ -52,7 +53,7 @@ export function ClipThumb({
           ? ({ background: bookBinding(category).cloth } as CSSProperties)
           : undefined
       }
-      aria-label={onClick ? `Open ${clip.video.title}` : undefined}
+      aria-label={onClick ? libraryCopy.clip.open(clip.video.title) : undefined}
     >
       {thumbnailUrl(clip) ? (
         <img
@@ -146,7 +147,11 @@ function ClipCard({
         <h3 className="rs-card-title">{clip.video.title}</h3>
       </Link>
       <div className="rs-meta">
-        <span>{category?.name ?? clip.categorySlug ?? "Uncategorized"}</span>
+        <span>
+          {category?.name ??
+            clip.categorySlug ??
+            libraryCopy.clip.uncategorized}
+        </span>
         <span className="rs-dot" />
         <span>{formatDate(clip.createdAt)}</span>
         <span className="rs-dot" />
@@ -154,7 +159,7 @@ function ClipCard({
         {!clip.isViewed ? (
           <>
             <span className="rs-dot" />
-            <span>New</span>
+            <span>{libraryCopy.clip.new}</span>
           </>
         ) : null}
         {clip.share.shared ? (
@@ -226,13 +231,17 @@ function ClipRow({
     >
       <ClipThumb clip={clip} category={category} compact stage={stage} />
       <span className="rs-row-body">
-        {current ? <span className="rs-row-now">Now playing</span> : null}
+        {current ? (
+          <span className="rs-row-now">{libraryCopy.clip.nowPlaying}</span>
+        ) : null}
         <span className="rs-row-heading">
           <strong className="rs-row-title">{clip.video.title}</strong>
           {!clip.isViewed ? (
             <>
               <StitchedDot className="rs-row-new" />
-              <span className="rs-visually-hidden">Not watched yet</span>
+              <span className="rs-visually-hidden">
+                {libraryCopy.clip.notWatched}
+              </span>
             </>
           ) : null}
         </span>
@@ -266,7 +275,7 @@ function ClipRow({
           {category?.coverUrl ? (
             <img src={category.coverUrl} alt="" loading="lazy" />
           ) : null}
-          {category?.name ?? "Game"}
+          {category?.name ?? libraryCopy.clip.game}
         </span>
       ) : null}
       {showLegend ? (
@@ -274,7 +283,9 @@ function ClipRow({
           {legend ? (
             <>
               <LegendPlate legend={legend} cloth={cloth} />
-              <span className="rs-visually-hidden">Played as </span>
+              <span className="rs-visually-hidden">
+                {libraryCopy.clip.playedAs}
+              </span>
               {legend}
             </>
           ) : null}
@@ -309,7 +320,7 @@ export function ClipGrid({
   linkSearch?: ClipLinkSearch;
 }) {
   if (clips.length === 0) {
-    return <div className="rs-empty">No clips match this view.</div>;
+    return <div className="rs-empty">{libraryCopy.list.empty}</div>;
   }
 
   if (variant === "filmstrip") {

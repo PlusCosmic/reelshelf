@@ -13,6 +13,8 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
+import { commonCopy } from "@/copy/common";
+import { landingCopy } from "@/copy/landing";
 import { Bookcase } from "./Bookcase";
 import type { GameShelfItem } from "./reelshelf-model";
 
@@ -52,8 +54,7 @@ const clothOf = (slug: string) =>
 
 const previewClips = [
   {
-    id: "arc-raiders",
-    tag: "clutch",
+    id: "arc-raiders" as const,
     duration: "0:38",
     x: -220,
     y: 20,
@@ -61,8 +62,7 @@ const previewClips = [
     width: 180,
   },
   {
-    id: "marvel-rivals",
-    tag: "fail",
+    id: "marvel-rivals" as const,
     duration: "0:47",
     x: -60,
     y: 0,
@@ -70,8 +70,7 @@ const previewClips = [
     width: 200,
   },
   {
-    id: "balatro",
-    tag: "highlight",
+    id: "balatro" as const,
     duration: "0:09",
     x: 80,
     y: 30,
@@ -79,8 +78,7 @@ const previewClips = [
     width: 170,
   },
   {
-    id: "apex-legends",
-    tag: "story",
+    id: "apex-legends" as const,
     duration: "2:04",
     x: 220,
     y: 10,
@@ -89,57 +87,27 @@ const previewClips = [
   },
 ];
 
-const features: Array<{
-  icon: ReactNode;
-  title: string;
-  copy: string;
-}> = [
+const featureIcons: Record<keyof typeof landingCopy.features.items, ReactNode> =
   {
-    icon: <IconBooks size={20} aria-hidden="true" />,
-    title: "Every game gets its own book",
-    copy: "Your library is a shelf of games with real cover art, not a folder of filenames. Pick a game, filter by tag, or search, and see what's new since you last looked.",
-  },
-  {
-    icon: <IconFolderDown size={20} aria-hidden="true" />,
-    title: "Upload a whole night at once",
-    copy: "Drag your recorder's folder onto the library and Reelshelf works out which game each clip is from. Review the queue, fix anything it got wrong, and let it run. Clips you've already uploaded are skipped.",
-  },
-  {
-    icon: <IconClock size={20} aria-hidden="true" />,
-    title: "Sessions sort themselves",
-    copy: "Clips from the same game on the same night land in one collection without you lifting a finger. Rename it, tidy it, or leave it as the record of that evening.",
-  },
-  {
-    icon: <IconUsers size={20} aria-hidden="true" />,
-    title: "Collections you build with friends",
-    copy: "Put the best moments in the order you want them watched, then invite the people who were there. They can watch everything in it and add their own clips alongside yours.",
-  },
-  {
-    icon: <IconLink size={20} aria-hidden="true" />,
-    title: "Share one clip with one link",
-    copy: "Send a link and it plays. No account needed on their end, and the clip is only visible to people who have the link.",
-  },
-  {
-    icon: <IconDownload size={20} aria-hidden="true" />,
-    title: "Your clips stay yours",
-    copy: "Download any clip back to your computer whenever you like. Reelshelf is somewhere to keep them, not somewhere they get stuck.",
-  },
-];
+    books: <IconBooks size={20} aria-hidden="true" />,
+    bulkUpload: <IconFolderDown size={20} aria-hidden="true" />,
+    sessions: <IconClock size={20} aria-hidden="true" />,
+    collections: <IconUsers size={20} aria-hidden="true" />,
+    sharing: <IconLink size={20} aria-hidden="true" />,
+    downloads: <IconDownload size={20} aria-hidden="true" />,
+  };
 
-const steps = [
-  {
-    title: "Sign in",
-    copy: "Use Discord or Twitch. There's no form to fill in and nothing to pay. Link the other one later and either login opens the same shelf.",
-  },
-  {
-    title: "Drop your clips",
-    copy: "Drag your recorder's folder onto the library. Review the queue, fix any game guesses, pick tags, and let it upload.",
-  },
-  {
-    title: "Watch, tag, share",
-    copy: "Sessions are already grouped. Build collections with friends, send one clip with one link, or download it back.",
-  },
-];
+const features = (
+  Object.keys(featureIcons) as Array<keyof typeof featureIcons>
+).map((key) => ({
+  icon: featureIcons[key],
+  ...landingCopy.features.items[key],
+}));
+
+const exampleClipCount = shelfBooks.reduce(
+  (total, book) => total + book.clipCount,
+  0,
+);
 
 export function LandingPage({
   theme,
@@ -154,20 +122,20 @@ export function LandingPage({
   return (
     <div className="rs-landing">
       <header className="rs-landing-header">
-        <div className="rs-brand" aria-label="Reelshelf">
+        <div className="rs-brand" aria-label={commonCopy.brand}>
           <BrandLogo />
         </div>
         <div className="rs-landing-header-actions">
           <Link to="/sign-in" className="rs-secondary rs-landing-header-signin">
-            Sign in
+            {landingCopy.signIn}
           </Link>
           {onToggleTheme ? (
             <button
               className="rs-icon-button"
               type="button"
               onClick={onToggleTheme}
-              aria-label={`Switch to ${nextTheme} mode`}
-              title={`Switch to ${nextTheme} mode`}
+              aria-label={commonCopy.switchTheme(nextTheme)}
+              title={commonCopy.switchTheme(nextTheme)}
             >
               {theme === "dark" ? (
                 <IconSun size={16} />
@@ -199,7 +167,9 @@ export function LandingPage({
                 }
               >
                 <div className="rs-landing-thumb">
-                  <span className="rs-tag-badge">{clip.tag}</span>
+                  <span className="rs-tag-badge">
+                    {landingCopy.previewTags[clip.id]}
+                  </span>
                   <span className="rs-duration">{clip.duration}</span>
                 </div>
               </div>
@@ -207,34 +177,28 @@ export function LandingPage({
           </div>
 
           <p className="rs-eyebrow rs-landing-eyebrow">
-            A personal clip library
+            {landingCopy.hero.eyebrow}
           </p>
           <h1 className="rs-display rs-landing-title">
-            Every clip, <em>on one shelf</em>.
+            {landingCopy.hero.title}
           </h1>
-          <p className="rs-landing-copy">
-            Reelshelf keeps your gameplay clips organised by game and by night,
-            shares them one link at a time, and lets your friends help fill the
-            shelf.
-          </p>
+          <p className="rs-landing-copy">{landingCopy.hero.copy}</p>
 
           <Link to="/sign-in" className="rs-landing-cta-button">
-            Get started
+            {landingCopy.hero.cta}
             <IconArrowRight size={18} aria-hidden="true" />
           </Link>
-          <p className="rs-landing-fineprint">
-            Free for up to 100 clips. Sign in with Discord or Twitch.
-          </p>
+          <p className="rs-landing-fineprint">{landingCopy.hero.fineprint}</p>
         </section>
 
         <section
           className="rs-landing-shelf-demo"
-          aria-label="Example shelf of games"
+          aria-label={landingCopy.shelfDemo.label}
         >
           <div className="rs-landing-shelf-demo-head">
-            <span className="rs-eyebrow">Your archive</span>
+            <span className="rs-eyebrow">{landingCopy.shelfDemo.eyebrow}</span>
             <span className="rs-landing-shelf-demo-stat">
-              415 clips across 6 games. Pull one out.
+              {landingCopy.shelfDemo.stat(exampleClipCount, shelfBooks.length)}
             </span>
           </div>
           <Bookcase
@@ -247,9 +211,9 @@ export function LandingPage({
 
         <section className="rs-landing-section" id="features">
           <div className="rs-landing-section-head">
-            <span className="rs-eyebrow">What's on the shelf</span>
+            <span className="rs-eyebrow">{landingCopy.features.eyebrow}</span>
             <h2 className="rs-display rs-landing-h2">
-              Built for the clips you <em>actually</em> go back to.
+              {landingCopy.features.title}
             </h2>
           </div>
           <div className="rs-landing-features">
@@ -265,13 +229,13 @@ export function LandingPage({
 
         <section className="rs-landing-section" id="how-it-works">
           <div className="rs-landing-section-head">
-            <span className="rs-eyebrow">How it works</span>
+            <span className="rs-eyebrow">{landingCopy.steps.eyebrow}</span>
             <h2 className="rs-display rs-landing-h2">
-              Three steps, <em>no setup</em>.
+              {landingCopy.steps.title}
             </h2>
           </div>
           <ol className="rs-landing-steps">
-            {steps.map((step, index) => (
+            {landingCopy.steps.items.map((step, index) => (
               <li className="rs-landing-step" key={step.title}>
                 <span className="rs-landing-step-number">{index + 1}</span>
                 <h3>{step.title}</h3>
@@ -283,23 +247,24 @@ export function LandingPage({
 
         <section className="rs-landing-section rs-landing-cta">
           <h2 className="rs-display rs-landing-h2">
-            Your shelf is <em>waiting</em>.
+            {landingCopy.closing.title}
           </h2>
-          <p className="rs-landing-copy">
-            Sign in, drop a folder, and the first session sorts itself.
-          </p>
+          <p className="rs-landing-copy">{landingCopy.closing.copy}</p>
           <Link to="/sign-in" className="rs-landing-cta-button">
-            Get started
+            {landingCopy.hero.cta}
             <IconArrowRight size={18} aria-hidden="true" />
           </Link>
         </section>
       </main>
 
       <footer className="rs-landing-footer">
-        for the clips worth keeping
-        <nav className="rs-landing-footer-links" aria-label="Legal">
-          <Link to="/terms">Terms</Link>
-          <Link to="/privacy">Privacy</Link>
+        {landingCopy.footer.tagline}
+        <nav
+          className="rs-landing-footer-links"
+          aria-label={commonCopy.legalNav}
+        >
+          <Link to="/terms">{landingCopy.footer.terms}</Link>
+          <Link to="/privacy">{landingCopy.footer.privacy}</Link>
         </nav>
       </footer>
     </div>

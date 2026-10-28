@@ -17,6 +17,9 @@ import {
   reviewTone,
   type ReviewFilter,
 } from "@/components/LegendDetection/legendReview";
+import { commonCopy } from "@/copy/common";
+import { legendDetectionCopy } from "@/copy/legendDetection";
+import { runsCopy } from "@/copy/runs";
 import {
   useArchiveLegendRuns,
   useBackfillLegendDetection,
@@ -29,6 +32,8 @@ import {
   isRunActive,
   type LegendDetectionReviewClip,
 } from "@/shared/services/legendDetection";
+
+const copy = legendDetectionCopy.review;
 
 type LegendDetectionSearch = {
   clip?: string;
@@ -48,13 +53,10 @@ export const Route = createFileRoute("/legend-detection")({
 function LegendDetectionRoute() {
   const { data: user, isLoading } = useCurrentUser();
 
-  if (isLoading) return <div className="rs-section rs-empty">Loading…</div>;
+  if (isLoading)
+    return <div className="rs-section rs-empty">{commonCopy.loading}</div>;
   if (!user?.isAdmin)
-    return (
-      <div className="rs-section rs-empty">
-        Legend detection review is only available to admins.
-      </div>
-    );
+    return <div className="rs-section rs-empty">{copy.adminsOnly}</div>;
   return <LegendReview />;
 }
 
@@ -131,18 +133,14 @@ function LegendReview() {
 
   function onBackfill() {
     const effort = backfillEffort
-      ? `${backfillEffort} reasoning`
-      : "the default reasoning";
-    const confirmed = window.confirm(
-      `Queue a detection run at ${effort} for every Apex Legends clip that has never had one? Each run is a paid model call.`,
-    );
+      ? runsCopy.reasoningEffort.option(backfillEffort)
+      : copy.defaultReasoning;
+    const confirmed = window.confirm(copy.confirmBackfill(effort));
     if (confirmed) backfill.mutate(backfillEffort || null);
   }
 
   function onArchive() {
-    const confirmed = window.confirm(
-      "Archive every detection run, including any still queued? Clips will show as not run and the next backfill queues them all again. Usage totals are kept.",
-    );
+    const confirmed = window.confirm(copy.confirmArchive);
     if (confirmed) archive.mutate();
   }
 
@@ -150,24 +148,24 @@ function LegendReview() {
     <div className="rs-legend-page">
       <header className="rs-legend-header">
         <div>
-          <div className="rs-eyebrow">Legend detection</div>
-          <h1 className="rs-display rs-h2">Check what the model saw.</h1>
+          <div className="rs-eyebrow">{copy.eyebrow}</div>
+          <h1 className="rs-display rs-h2">{copy.title}</h1>
         </div>
         <div className="rs-legend-backfill">
           <Link
             to="/legend-detection/baseline"
             className="rs-ui-button rs-ui-button-secondary rs-ui-button-md"
           >
-            Baseline
+            {copy.baseline}
           </Link>
           <Link
             to="/legend-detection/evals"
             className="rs-ui-button rs-ui-button-secondary rs-ui-button-md"
           >
-            Evals
+            {copy.evals}
           </Link>
           <Button onClick={onArchive} disabled={archive.isPending}>
-            {archive.isPending ? "Archiving…" : "Start fresh"}
+            {archive.isPending ? copy.archiving : copy.startFresh}
           </Button>
           <ReasoningEffortSelect
             value={backfillEffort}
@@ -178,17 +176,17 @@ function LegendReview() {
             onClick={onBackfill}
             disabled={backfill.isPending}
           >
-            {backfill.isPending ? "Queueing…" : "Backfill all clips"}
+            {backfill.isPending
+              ? runsCopy.rerun.queueing
+              : runsCopy.backfillAll}
           </Button>
           {backfill.isSuccess ? (
             <span className="rs-meta">
-              Queued {backfill.data} {backfill.data === 1 ? "clip" : "clips"}.
+              {runsCopy.queuedClips(backfill.data)}
             </span>
           ) : null}
           {archive.isSuccess ? (
-            <span className="rs-meta">
-              Archived {archive.data} {archive.data === 1 ? "run" : "runs"}.
-            </span>
+            <span className="rs-meta">{copy.archived(archive.data)}</span>
           ) : null}
           {archive.isError ? (
             <span className="rs-legend-error">{archive.error.message}</span>
@@ -211,22 +209,20 @@ function LegendReview() {
             {label} · {counts[value]}
           </Chip>
         ))}
-        <span className="rs-meta rs-legend-hint">
-          j / k to move · c marks correct
-        </span>
+        <span className="rs-meta rs-legend-hint">{copy.hint}</span>
       </div>
 
       {clipsQuery.isLoading ? (
-        <div className="rs-empty">Loading clips…</div>
+        <div className="rs-empty">{runsCopy.loadingClips}</div>
       ) : clipsQuery.isError ? (
-        <div className="rs-empty">Clips could not be loaded.</div>
+        <div className="rs-empty">{runsCopy.clipsNotLoaded}</div>
       ) : clips.length === 0 ? (
-        <div className="rs-empty">There are no Apex Legends clips.</div>
+        <div className="rs-empty">{legendDetectionCopy.noApexClips}</div>
       ) : (
         <div className="rs-legend-layout">
           <ol className="rs-legend-list">
             {visible.length === 0 ? (
-              <li className="rs-empty">No clips match this filter.</li>
+              <li className="rs-empty">{runsCopy.noClipsMatch}</li>
             ) : null}
             {visible.map((clip) => (
               <li key={clip.clipId}>
@@ -280,10 +276,10 @@ function ClipRow({
       </span>
       <span className="rs-legend-row-status">
         {run === null ? (
-          <Badge>Not run</Badge>
+          <Badge>{copy.notRun}</Badge>
         ) : run.status === "succeeded" ? (
           <Badge tone={reviewTone(run)}>
-            {run.playerLegend ?? "No legend"}{" "}
+            {run.playerLegend ?? copy.noLegend}{" "}
             {run.playerLegend
               ? formatConfidence(run.playerLegendConfidence)
               : null}
@@ -297,13 +293,13 @@ function ClipRow({
           <IconCheck
             size={16}
             className="rs-legend-verdict correct"
-            aria-label="Matches label"
+            aria-label={copy.matchesLabel}
           />
         ) : verdict === "wrong" ? (
           <IconX
             size={16}
             className="rs-legend-verdict wrong"
-            aria-label="Doesn't match label"
+            aria-label={copy.doesntMatchLabel}
           />
         ) : null}
       </span>

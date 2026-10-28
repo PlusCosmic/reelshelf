@@ -8,6 +8,9 @@ import {
 import { ClipVideoStage } from "@/components/Video/ClipVideoStage";
 import { Badge, Button } from "@/components/ui";
 import { useLegendRuns, useQueueLegendRun } from "@/hooks/queries";
+import { commonCopy } from "@/copy/common";
+import { legendDetectionCopy } from "@/copy/legendDetection";
+import { runsCopy } from "@/copy/runs";
 import { LegendLabelEditor } from "./LegendLabelEditor";
 import type {
   LegendDetectionReviewClip,
@@ -20,6 +23,8 @@ import {
   formatTokens,
 } from "./legendReview";
 import { useRunOptions } from "./RunOptionsFields";
+
+const copy = legendDetectionCopy.detail;
 
 /** One clip: the frames the model is sent, the full clip to check against, and every run's answer. */
 export function LegendReviewDetail({
@@ -54,7 +59,7 @@ export function LegendReviewDetail({
           params={{ slug: "apex-legends", clipId: clip.clipId }}
           className="rs-legend-open-clip"
         >
-          Open clip <IconExternalLink size={14} />
+          {runsCopy.openClip} <IconExternalLink size={14} />
         </Link>
       </div>
 
@@ -68,7 +73,7 @@ export function LegendReviewDetail({
         />
       </div>
 
-      <h3 className="rs-eyebrow">Frames sent to the model</h3>
+      <h3 className="rs-eyebrow">{copy.framesHeading}</h3>
       <div className="rs-legend-frames">
         {clip.frameUrls.map((url, index) => (
           <a
@@ -77,11 +82,11 @@ export function LegendReviewDetail({
             target="_blank"
             rel="noreferrer"
             className="rs-legend-frame"
-            title={`Screenshot ${index + 1}`}
+            title={copy.screenshot(index + 1)}
           >
             <img
               src={url}
-              alt={`Screenshot ${index + 1}`}
+              alt={copy.screenshot(index + 1)}
               loading="lazy"
               onError={(event) =>
                 event.currentTarget.parentElement?.classList.add("is-missing")
@@ -92,7 +97,11 @@ export function LegendReviewDetail({
         ))}
       </div>
 
-      {run ? <RunResult run={run} /> : <p className="rs-meta">Not run yet.</p>}
+      {run ? (
+        <RunResult run={run} />
+      ) : (
+        <p className="rs-meta">{runsCopy.notRunYet}</p>
+      )}
 
       {/* Re-keyed when the label or shown run changes, so the fields start from the latest values. */}
       <LegendLabelEditor
@@ -105,7 +114,7 @@ export function LegendReviewDetail({
 
       {runs.length > 0 ? (
         <>
-          <h3 className="rs-eyebrow">Runs</h3>
+          <h3 className="rs-eyebrow">{runsCopy.runsHeading}</h3>
           <ol className="rs-legend-runs">
             {runs.map((item) => (
               <li key={item.id}>
@@ -137,7 +146,7 @@ export function LegendReviewDetail({
 function RunResult({ run }: { run: LegendDetectionRun }) {
   const rows = [
     {
-      label: "You",
+      label: copy.you,
       legend: run.playerLegend,
       legendConfidence: run.playerLegendConfidence,
       name: run.playerName,
@@ -146,7 +155,7 @@ function RunResult({ run }: { run: LegendDetectionRun }) {
     ...[...(run.teammates ?? [])]
       .sort((a, b) => a.slot - b.slot)
       .map((teammate) => ({
-        label: `Teammate ${teammate.slot}`,
+        label: copy.teammate(teammate.slot),
         legend: teammate.legend,
         legendConfidence: teammate.legendConfidence,
         name: teammate.name,
@@ -157,10 +166,10 @@ function RunResult({ run }: { run: LegendDetectionRun }) {
   return (
     <div className="rs-legend-result">
       <div className="rs-legend-result-heading">
-        <h3 className="rs-eyebrow">Detected</h3>
+        <h3 className="rs-eyebrow">{copy.detected}</h3>
         <Badge tone={statusTone(run.status)}>{run.status}</Badge>
         {run.status === "succeeded" && !run.hudDetected ? (
-          <Badge tone="danger">HUD not found</Badge>
+          <Badge tone="danger">{copy.hudNotFound}</Badge>
         ) : null}
       </div>
 
@@ -169,8 +178,8 @@ function RunResult({ run }: { run: LegendDetectionRun }) {
           <thead>
             <tr>
               <th scope="col" />
-              <th scope="col">Legend</th>
-              <th scope="col">Name</th>
+              <th scope="col">{copy.legend}</th>
+              <th scope="col">{copy.name}</th>
             </tr>
           </thead>
           <tbody>
@@ -196,42 +205,42 @@ function RunResult({ run }: { run: LegendDetectionRun }) {
 
       <dl className="rs-legend-run-meta">
         <div>
-          <dt>Model</dt>
+          <dt>{runsCopy.columns.model}</dt>
           <dd>
             {run.provider} / {run.model}
           </dd>
         </div>
         <div>
-          <dt>Reasoning</dt>
+          <dt>{runsCopy.columns.reasoning}</dt>
           <dd>{formatReasoningEffort(run.reasoningEffort)}</dd>
         </div>
         <div>
-          <dt>Prompt</dt>
+          <dt>{runsCopy.columns.prompt}</dt>
           <dd>{run.promptVersion ?? "–"}</dd>
         </div>
         <div>
-          <dt>Input tokens</dt>
+          <dt>{runsCopy.columns.inputTokens}</dt>
           <dd>
             {formatTokens(run.inputTokens)}
             {run.cachedInputTokens
-              ? ` (${formatTokens(run.cachedInputTokens)} cached)`
+              ? copy.cachedTokens(formatTokens(run.cachedInputTokens))
               : ""}
           </dd>
         </div>
         <div>
-          <dt>Output tokens</dt>
+          <dt>{runsCopy.columns.outputTokens}</dt>
           <dd>{formatTokens(run.outputTokens)}</dd>
         </div>
         <div>
-          <dt>Time</dt>
+          <dt>{copy.time}</dt>
           <dd>
             {run.durationMs === null
               ? "–"
-              : `${(run.durationMs / 1000).toFixed(1)}s`}
+              : commonCopy.seconds(run.durationMs / 1000)}
           </dd>
         </div>
         <div>
-          <dt>Frames · attempts</dt>
+          <dt>{copy.framesAttempts}</dt>
           <dd>
             {run.frameCount ?? "–"} · {run.attempts}
           </dd>
@@ -240,7 +249,7 @@ function RunResult({ run }: { run: LegendDetectionRun }) {
 
       {run.rawResponse ? (
         <details className="rs-legend-raw">
-          <summary>Raw response</summary>
+          <summary>{runsCopy.rawResponse}</summary>
           <pre>{prettyJson(run.rawResponse)}</pre>
         </details>
       ) : null}
@@ -255,7 +264,8 @@ function Detected({
   value: string | null;
   confidence: number | null;
 }) {
-  if (value === null) return <span className="rs-meta">Not identified</span>;
+  if (value === null)
+    return <span className="rs-meta">{copy.notIdentified}</span>;
   return (
     <span className="rs-legend-detected">
       {value}
@@ -279,7 +289,7 @@ function RerunForm({ clipId }: { clipId: string }) {
     <form className="rs-legend-rerun" onSubmit={onSubmit}>
       {fields}
       <Button type="submit" size="sm" disabled={queue.isPending}>
-        {queue.isPending ? "Queueing…" : "Run again"}
+        {queue.isPending ? runsCopy.rerun.queueing : runsCopy.rerun.runAgain}
       </Button>
       {queue.isError ? (
         <span className="rs-legend-error">{queue.error.message}</span>

@@ -4,6 +4,8 @@ import { IconLock, IconPlus } from "@tabler/icons-react";
 import type { PlaylistSummary } from "@/api-client";
 import { useCurrentUser } from "@/hooks/auth.queries";
 import { useCreateCollection } from "@/hooks/playlists.queries";
+import { collectionsCopy } from "@/copy/collections";
+import { commonCopy } from "@/copy/common";
 import {
   gamesFromCounts,
   minutesOf,
@@ -17,10 +19,6 @@ import {
   type GameShelfItem,
 } from "./reelshelf-model";
 import { useLibraryData, usePlaylistsData } from "./useLibraryData";
-
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 /** Up to four of the collection's clips, in its order, over a strip of each game's share. */
 function Mosaic({
@@ -39,7 +37,9 @@ function Mosaic({
       data-count={shown.length}
       aria-hidden="true"
     >
-      {shown.length === 0 ? <span>Empty</span> : null}
+      {shown.length === 0 ? (
+        <span>{collectionsCopy.list.row.empty}</span>
+      ) : null}
       {/* A clip whose thumbnail doesn't exist yet keeps its tile, blank. */}
       {shown.map((clip) =>
         clip.thumbnailUrl ? (
@@ -85,8 +85,8 @@ function LedgerRow({
   );
   const clipCount =
     playlist.clipCount === 0
-      ? "No clips yet"
-      : plural(playlist.clipCount, "clip", "clips");
+      ? collectionsCopy.list.row.noClips
+      : commonCopy.clips(playlist.clipCount);
 
   return (
     <Link
@@ -140,18 +140,20 @@ function LedgerRow({
         ) : (
           <>
             <IconLock size={14} aria-hidden="true" />
-            Private
+            {collectionsCopy.private}
           </>
         )}
       </span>
       <span className="rs-ledger-count">
         <strong>{clipCount}</strong>
         {playlist.totalSeconds > 0 ? (
-          <span>{minutesOf(playlist.totalSeconds)} min</span>
+          <span>
+            {collectionsCopy.minutes(minutesOf(playlist.totalSeconds))}
+          </span>
         ) : null}
       </span>
       <span className="rs-ledger-updated">
-        <small>Updated</small>
+        <small>{collectionsCopy.list.row.updated}</small>
         {formatDate(playlist.updatedAt)}
       </span>
     </Link>
@@ -176,11 +178,13 @@ export function CollectionsPage() {
   );
 
   if (isLoading)
-    return <div className="rs-section rs-empty">Loading collections…</div>;
+    return (
+      <div className="rs-section rs-empty">{collectionsCopy.list.loading}</div>
+    );
   if (isError)
     return (
       <div className="rs-section rs-empty">
-        Collections could not be loaded.
+        {collectionsCopy.list.loadFailed}
       </div>
     );
 
@@ -195,7 +199,7 @@ export function CollectionsPage() {
   const groups = [
     {
       key: "mine",
-      title: "Made by you",
+      title: collectionsCopy.list.groups.mine.title,
       note: null,
       items: matching.filter(
         (playlist) =>
@@ -205,8 +209,7 @@ export function CollectionsPage() {
     },
     {
       key: "shared",
-      title: "Shared with you",
-      note: "Collections friends invited you to",
+      ...collectionsCopy.list.groups.shared,
       items: matching.filter(
         (playlist) =>
           !playlist.isGamingSession &&
@@ -215,8 +218,7 @@ export function CollectionsPage() {
     },
     {
       key: "sessions",
-      title: "Sessions",
-      note: "Made for you from each night of play",
+      ...collectionsCopy.list.groups.sessions,
       items: matching.filter((playlist) => playlist.isGamingSession),
     },
   ].filter((group) => group.items.length > 0);
@@ -225,15 +227,17 @@ export function CollectionsPage() {
     <main className="rs-ledger-page">
       <header className="rs-ledger-head">
         <div>
-          <div className="rs-eyebrow">Collections · {playlists.length}</div>
-          <h1 className="rs-display rs-h1">Collections</h1>
+          <div className="rs-eyebrow">
+            {collectionsCopy.list.eyebrow(playlists.length)}
+          </div>
+          <h1 className="rs-display rs-h1">{collectionsCopy.list.title}</h1>
         </div>
         <div className="rs-ledger-tools">
           {playlists.length > 0 ? (
             <SearchBox
               value={query}
               onChange={setQuery}
-              placeholder="Search collections"
+              placeholder={collectionsCopy.list.search}
             />
           ) : null}
           <button
@@ -245,15 +249,17 @@ export function CollectionsPage() {
             }}
           >
             <IconPlus size={16} aria-hidden="true" />
-            <span>New collection</span>
+            <span>{collectionsCopy.list.newCollection}</span>
           </button>
         </div>
       </header>
 
       {playlists.length === 0 ? (
-        <div className="rs-empty">No collections yet.</div>
+        <div className="rs-empty">{collectionsCopy.list.empty}</div>
       ) : groups.length === 0 ? (
-        <div className="rs-empty">No collections match “{query.trim()}”.</div>
+        <div className="rs-empty">
+          {collectionsCopy.list.noMatch(query.trim())}
+        </div>
       ) : (
         groups.map((group) => (
           <section
@@ -285,9 +291,9 @@ export function CollectionsPage() {
       )}
       {creating ? (
         <CollectionFormDialog
-          title="New collection"
-          submitLabel="Make collection"
-          savingLabel="Making…"
+          title={collectionsCopy.list.newCollection}
+          submitLabel={collectionsCopy.list.create.submit}
+          savingLabel={collectionsCopy.list.create.saving}
           saving={createCollection.isPending}
           error={createCollection.error}
           onClose={() => setCreating(false)}

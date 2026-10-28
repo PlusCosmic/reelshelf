@@ -8,6 +8,8 @@ import {
   EvalTable,
   PriceTable,
 } from "@/components/LegendDetection/Evals";
+import { commonCopy } from "@/copy/common";
+import { legendDetectionCopy } from "@/copy/legendDetection";
 import {
   useCurrentUser,
   useLegendBaseline,
@@ -15,6 +17,8 @@ import {
 } from "@/hooks/queries";
 
 type LegendEvalsSearch = { eval?: string };
+
+const copy = legendDetectionCopy.evals;
 
 export const Route = createFileRoute("/legend-detection_/evals")({
   component: LegendEvalsRoute,
@@ -26,13 +30,10 @@ export const Route = createFileRoute("/legend-detection_/evals")({
 function LegendEvalsRoute() {
   const { data: user, isLoading } = useCurrentUser();
 
-  if (isLoading) return <div className="rs-section rs-empty">Loading…</div>;
+  if (isLoading)
+    return <div className="rs-section rs-empty">{commonCopy.loading}</div>;
   if (!user?.isAdmin)
-    return (
-      <div className="rs-section rs-empty">
-        Legend evals are only available to admins.
-      </div>
-    );
+    return <div className="rs-section rs-empty">{copy.adminsOnly}</div>;
   return <LegendEvals />;
 }
 
@@ -55,20 +56,16 @@ function LegendEvals() {
     <div className="rs-legend-page">
       <header className="rs-legend-header">
         <div>
-          <div className="rs-eyebrow">Legend detection · Evals</div>
-          <h1 className="rs-display rs-h2">Which model is worth it?</h1>
-          <p className="rs-meta rs-baseline-intro">
-            Each eval runs one model on every confirmed clip and is scored
-            against the labels as they are now, so fixing a label re-scores
-            every eval. Eval runs never change a clip's legend.
-          </p>
+          <div className="rs-eyebrow">{copy.eyebrow}</div>
+          <h1 className="rs-display rs-h2">{copy.title}</h1>
+          <p className="rs-meta rs-baseline-intro">{copy.intro}</p>
         </div>
         <div className="rs-legend-backfill">
           <Link to="/legend-detection/baseline" className="rs-meta">
-            Baseline: {baselineClips} clips confirmed
+            {copy.baselineLink(baselineClips)}
           </Link>
           <Link to="/legend-detection" className="rs-meta">
-            Back to review
+            {legendDetectionCopy.backToReview}
           </Link>
         </div>
       </header>
@@ -80,13 +77,11 @@ function LegendEvals() {
       />
 
       {evalsQuery.isLoading ? (
-        <div className="rs-empty">Loading evals…</div>
+        <div className="rs-empty">{copy.loading}</div>
       ) : evalsQuery.isError ? (
-        <div className="rs-empty">Evals could not be loaded.</div>
+        <div className="rs-empty">{copy.notLoaded}</div>
       ) : evals.length === 0 ? (
-        <div className="rs-empty">
-          No evals yet. Confirm clips on the baseline, then run a model on them.
-        </div>
+        <div className="rs-empty">{copy.empty}</div>
       ) : (
         <>
           <EvalTable
@@ -96,7 +91,7 @@ function LegendEvals() {
           />
           <div className="rs-eval-columns">
             <section className="rs-eval-panel">
-              <h2 className="rs-eval-heading">Accuracy against cost</h2>
+              <h2 className="rs-eval-heading">{copy.chartHeading}</h2>
               <AccuracyCostChart
                 evals={evals}
                 selectedId={selected?.id}

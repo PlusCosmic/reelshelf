@@ -1,3 +1,5 @@
+import { legendDetectionCopy } from "@/copy/legendDetection";
+import { runsCopy } from "@/copy/runs";
 import type { LegendDetectionUsage } from "@/shared/services/legendDetection";
 import {
   cachedShare,
@@ -5,6 +7,8 @@ import {
   formatReasoningEffort,
   formatTokens,
 } from "./legendReview";
+
+const copy = legendDetectionCopy.usage;
 
 const archivedFormatter = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -25,31 +29,28 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
       <table className="rs-legend-table">
         <thead>
           <tr>
-            <th scope="col">Batch</th>
-            <th scope="col">Model</th>
-            <th scope="col">Reasoning</th>
-            <th scope="col">Prompt</th>
-            <th scope="col">Succeeded</th>
-            <th scope="col">Failed</th>
-            <th scope="col">Queued</th>
-            <th scope="col">Input tokens</th>
-            <th scope="col">Cached</th>
-            <th scope="col">Output tokens</th>
-            <th scope="col">Avg time</th>
-            <th scope="col" title="Succeeded runs on labelled clips">
-              Labelled
+            <th scope="col">{copy.batch}</th>
+            <th scope="col">{runsCopy.columns.model}</th>
+            <th scope="col">{runsCopy.columns.reasoning}</th>
+            <th scope="col">{runsCopy.columns.prompt}</th>
+            <th scope="col">{runsCopy.columns.succeeded}</th>
+            <th scope="col">{runsCopy.columns.failed}</th>
+            <th scope="col">{runsCopy.columns.queued}</th>
+            <th scope="col">{runsCopy.columns.inputTokens}</th>
+            <th scope="col">{runsCopy.columns.cached}</th>
+            <th scope="col">{runsCopy.columns.outputTokens}</th>
+            <th scope="col">{runsCopy.columns.avgTime}</th>
+            <th scope="col" title={copy.labelledTitle}>
+              {copy.labelled}
             </th>
-            <th scope="col" title="Your legend correct">
-              You
+            <th scope="col" title={copy.youTitle}>
+              {copy.you}
             </th>
-            <th
-              scope="col"
-              title="Every teammate legend correct, for prompts that ask for teammates"
-            >
-              Squad
+            <th scope="col" title={copy.squadTitle}>
+              {copy.squad}
             </th>
-            <th scope="col" title="Wrong legends reported at 80%+ confidence">
-              Confident mistakes
+            <th scope="col" title={copy.confidentMistakesTitle}>
+              {copy.confidentMistakes}
             </th>
           </tr>
         </thead>
@@ -61,8 +62,8 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
             >
               <td>
                 {row.archivedAt
-                  ? `Archived ${archivedFormatter.format(row.archivedAt)}`
-                  : "Current"}
+                  ? copy.archived(archivedFormatter.format(row.archivedAt))
+                  : copy.current}
               </td>
               <td>{row.model}</td>
               <td>{formatReasoningEffort(row.reasoningEffort)}</td>
@@ -71,12 +72,14 @@ export function LegendUsageTable({ usage }: { usage: LegendDetectionUsage[] }) {
               <td>{row.failed}</td>
               <td>{row.queued}</td>
               <td>{formatTokens(row.inputTokens)}</td>
-              <td>{Math.round(cachedShare(row) * 100)}%</td>
+              <td>
+                {runsCopy.units.percent(Math.round(cachedShare(row) * 100))}
+              </td>
               <td>{formatTokens(row.outputTokens)}</td>
               <td>
                 {row.averageDurationMs === null
                   ? "–"
-                  : `${(row.averageDurationMs / 1000).toFixed(1)}s`}
+                  : runsCopy.units.durationMs(row.averageDurationMs)}
               </td>
               <td>{row.labelled}</td>
               <td>{formatAccuracy(row.playerCorrect, row.labelled)}</td>

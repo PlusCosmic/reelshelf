@@ -7,6 +7,8 @@ import {
 } from "@/components/Reelshelf/reelshelf-model";
 import { ClipVideoStage } from "@/components/Video/ClipVideoStage";
 import { Badge, Button, Input } from "@/components/ui";
+import { clipTranscriptionCopy } from "@/copy/clipTranscription";
+import { runsCopy } from "@/copy/runs";
 import {
   useQueueTranscriptionRun,
   useTranscriptionRuns,
@@ -17,6 +19,8 @@ import type {
 } from "@/shared/services/clipTranscription";
 import { SummaryReview } from "./SummaryReview";
 import { transcriptOutcome } from "./transcriptionReview";
+
+const copy = clipTranscriptionCopy.detail;
 
 /** One clip: the full clip to check against, every run's transcript, and its summaries. */
 export function TranscriptionReviewDetail({
@@ -52,7 +56,7 @@ export function TranscriptionReviewDetail({
           params={{ slug: clip.gameSlug, clipId: clip.clipId }}
           className="rs-legend-open-clip"
         >
-          Open clip <IconExternalLink size={14} />
+          {runsCopy.openClip} <IconExternalLink size={14} />
         </Link>
       </div>
 
@@ -66,7 +70,11 @@ export function TranscriptionReviewDetail({
         />
       </div>
 
-      {run ? <RunResult run={run} /> : <p className="rs-meta">Not run yet.</p>}
+      {run ? (
+        <RunResult run={run} />
+      ) : (
+        <p className="rs-meta">{runsCopy.notRunYet}</p>
+      )}
 
       <RerunForm clipId={clip.clipId} />
 
@@ -74,7 +82,7 @@ export function TranscriptionReviewDetail({
 
       {runs.length > 0 ? (
         <>
-          <h3 className="rs-eyebrow">Runs</h3>
+          <h3 className="rs-eyebrow">{runsCopy.runsHeading}</h3>
           <ol className="rs-legend-runs">
             {runs.map((item) => (
               <li key={item.id}>
@@ -89,7 +97,7 @@ export function TranscriptionReviewDetail({
                     {item.trigger} · {formatDate(item.createdAt)}
                   </span>
                   <span className="rs-legend-run-legend">
-                    {item.transcript ? `${item.transcript.length} chars` : ""}
+                    {item.transcript ? copy.chars(item.transcript.length) : ""}
                   </span>
                 </button>
               </li>
@@ -111,48 +119,39 @@ function RunResult({ run }: { run: ClipTranscriptionRun }) {
           {run.model}
           {run.fallbackModel
             ? run.transcript
-              ? ` (heard nothing; transcript from ${run.fallbackModel})`
-              : ` (${run.fallbackModel} heard nothing either)`
+              ? copy.heardNothing(run.fallbackModel)
+              : copy.heardNothingEither(run.fallbackModel)
             : ""}
-          {run.audioSeconds !== null
-            ? ` · ${Math.round(run.audioSeconds)}s of audio`
-            : ""}
+          {run.audioSeconds !== null ? copy.audioSeconds(run.audioSeconds) : ""}
           {run.languages.length > 0 ? ` · ${run.languages.join(", ")}` : ""}
-          {run.durationMs !== null
-            ? ` · took ${(run.durationMs / 1000).toFixed(1)}s`
-            : ""}
+          {run.durationMs !== null ? runsCopy.took(run.durationMs) : ""}
         </span>
       </div>
 
       {outcome === "transcribed" ? (
         <blockquote className="rs-transcript">{run.transcript}</blockquote>
       ) : outcome === "silent" ? (
-        <p className="rs-meta">The clip has audio, but no words came back.</p>
+        <p className="rs-meta">{copy.silent}</p>
       ) : outcome === "no-audio" ? (
-        <p className="rs-meta">
-          The clip has no audio track, so nothing was sent.
-        </p>
+        <p className="rs-meta">{copy.noAudio}</p>
       ) : outcome === "failed" ? (
         <p className="rs-legend-error">{run.error}</p>
       ) : (
         <p className="rs-meta">
           {run.status === "pending" && run.error
-            ? `Retrying after: ${run.error}`
-            : "Waiting for a worker…"}
+            ? runsCopy.retryingAfter(run.error)
+            : runsCopy.waitingForWorker}
         </p>
       )}
 
       {run.prompt ? (
         <details className="rs-legend-raw">
           <summary>
-            Prompt {run.promptVersion ? `(${run.promptVersion})` : ""} and{" "}
-            {run.keywords.length} keywords
+            {copy.promptSummary(run.promptVersion, run.keywords.length)}
           </summary>
           <pre className="rs-transcript-prompt">
             {run.prompt}
-            {run.keywords.length > 0
-              ? `\n\nKeywords: ${run.keywords.join(", ")}`
-              : ""}
+            {run.keywords.length > 0 ? copy.keywords(run.keywords) : ""}
           </pre>
         </details>
       ) : null}
@@ -175,11 +174,11 @@ function RerunForm({ clipId }: { clipId: string }) {
         compact
         value={model}
         onChange={(event) => setModel(event.target.value)}
-        placeholder="Model (default if empty)"
-        aria-label="Model to run"
+        placeholder={runsCopy.rerun.modelPlaceholder}
+        aria-label={runsCopy.rerun.modelLabel}
       />
       <Button type="submit" size="sm" disabled={queue.isPending}>
-        {queue.isPending ? "Queueing…" : "Run again"}
+        {queue.isPending ? runsCopy.rerun.queueing : runsCopy.rerun.runAgain}
       </Button>
       {queue.isError ? (
         <span className="rs-legend-error">{queue.error.message}</span>

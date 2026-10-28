@@ -1,3 +1,4 @@
+import { activityCopy } from "@/copy/activity";
 import { reactionEmoji } from "@/shared/services/watchRoom";
 import type { FloatingReaction } from "./useWatchRoom";
 
@@ -34,13 +35,17 @@ export function ActivityReactionBar({
   onReact: (emoji: string) => void;
 }) {
   return (
-    <div className="rs-activity-reaction-bar" role="group" aria-label="React">
+    <div
+      className="rs-activity-reaction-bar"
+      role="group"
+      aria-label={activityCopy.reactions.label}
+    >
       {reactionEmoji.map((emoji) => (
         <button
           key={emoji}
           type="button"
           className="rs-icon-button"
-          aria-label={`React ${emoji}`}
+          aria-label={activityCopy.reactions.react(emoji)}
           onClick={() => onReact(emoji)}
         >
           {emoji}

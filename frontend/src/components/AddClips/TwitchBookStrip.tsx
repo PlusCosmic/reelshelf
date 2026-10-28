@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { IconBrandTwitch, IconX } from "@tabler/icons-react";
 import type { TwitchClipSummary } from "@/api-client";
 import { useImportTwitchClips } from "./twitchSuggestions";
+import { twitchImportCopy } from "@/copy/twitchImport";
 
 const SHOWN = 5;
 
@@ -30,24 +31,31 @@ export function TwitchBookStrip({
   );
 
   return (
-    <section className="rs-twitch-strip" aria-label="Twitch clips to bring in">
+    <section
+      className="rs-twitch-strip"
+      aria-label={twitchImportCopy.strip.label}
+    >
       <IconBrandTwitch className="rs-twitch-strip-mark" size={20} />
       <div className="rs-twitch-strip-text">
         {importing ? (
           <strong>
-            Bringing in {Math.min(done + 1, total)} of {total} Twitch clips…
+            {twitchImportCopy.strip.bringingIn(
+              Math.min(done + 1, total),
+              total,
+            )}
           </strong>
         ) : (
-          <strong>
-            {clips.length === 1
-              ? "1 of your Twitch clips is from this game"
-              : `${clips.length} of your Twitch clips are from this game`}
-          </strong>
+          <strong>{twitchImportCopy.strip.fromThisGame(clips.length)}</strong>
         )}
         <span className="rs-meta">
-          Not on your shelf yet
+          {twitchImportCopy.strip.notOnShelf}
           {newest && !importing
-            ? ` · newest ${newest.toLocaleDateString(undefined, { day: "numeric", month: "short" })}`
+            ? twitchImportCopy.strip.newest(
+                newest.toLocaleDateString(undefined, {
+                  day: "numeric",
+                  month: "short",
+                }),
+              )
             : ""}
         </span>
       </div>
@@ -71,19 +79,19 @@ export function TwitchBookStrip({
             importClips(clips);
           }}
         >
-          {clips.length === 1 ? "Bring it in" : `Bring in all ${clips.length}`}
+          {twitchImportCopy.strip.bringIn(clips.length)}
         </button>
         <Link
           to="/upload"
           search={{ source: "twitch" }}
           className="rs-secondary"
         >
-          Choose…
+          {twitchImportCopy.strip.choose}
         </Link>
         <button
           type="button"
           className="rs-icon-button"
-          aria-label="Not now"
+          aria-label={twitchImportCopy.strip.notNow}
           onClick={() => setHidden(true)}
           disabled={importing}
         >

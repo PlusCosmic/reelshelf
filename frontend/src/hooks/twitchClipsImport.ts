@@ -1,6 +1,7 @@
 import type { GameCategoryResponse } from "@/api-client";
 import type { TwitchClipSummary } from "@/shared/services/twitch";
 import { gamingSessionDate } from "./bulkUploadQueue";
+import { twitchImportCopy } from "@/copy/twitchImport";
 
 export type TwitchImportStatus =
   | "already_imported"
@@ -190,7 +191,7 @@ export function twitchGamesToAdd(rows: TwitchImportRow[]) {
     else
       games.set(igdbId, {
         igdbId,
-        name: row.clip.gameName ?? "this game",
+        name: row.clip.gameName ?? twitchImportCopy.thisGame,
         count: 1,
       });
   }

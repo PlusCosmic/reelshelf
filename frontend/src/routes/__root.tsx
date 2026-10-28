@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 import { Suspense, lazy, useEffect, useState } from "react";
+import { commonCopy } from "@/copy/common";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
 import { useCurrentUser } from "@/hooks/auth.queries";
 
@@ -153,8 +154,8 @@ function PublicShell({
         className="rs-icon-button rs-public-theme-toggle"
         type="button"
         onClick={onToggleTheme}
-        aria-label={`Switch to ${nextTheme} mode`}
-        title={`Switch to ${nextTheme} mode`}
+        aria-label={commonCopy.switchTheme(nextTheme)}
+        title={commonCopy.switchTheme(nextTheme)}
       >
         {theme === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
       </button>

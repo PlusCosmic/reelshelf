@@ -1,5 +1,8 @@
 import { EmailField } from "@/components/Reelshelf/EmailField";
 import type { CurrentUser } from "@/shared/services/user";
+import { settingsCopy } from "@/copy/settings";
+
+const copy = settingsCopy.onboarding;
 
 /**
  * First-sign-in step: confirm where account mail should go. The address a provider reported is
@@ -9,17 +12,12 @@ export function EmailOnboarding({ user }: { user: CurrentUser }) {
   return (
     <section className="rs-section rs-onboarding">
       <div className="rs-onboarding-card">
-        <div className="rs-eyebrow">One more thing</div>
-        <h1 className="rs-display rs-h1">
-          Where should we <em>reach you</em>?
-        </h1>
-        <p className="rs-sidebar-copy">
-          We email you when a new sign-in method is linked to your account and
-          when your library is nearly full. Nothing else.
-        </p>
+        <div className="rs-eyebrow">{copy.eyebrow}</div>
+        <h1 className="rs-display rs-h1">{copy.title}</h1>
+        <p className="rs-sidebar-copy">{copy.copy}</p>
         <EmailField
           initialEmail={user.suggestedEmail}
-          submitLabel="Use this address"
+          submitLabel={copy.submit}
           allowSkip
         />
       </div>

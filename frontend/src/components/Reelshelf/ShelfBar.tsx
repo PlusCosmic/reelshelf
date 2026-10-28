@@ -7,6 +7,7 @@ import {
   IconSearch,
   IconX,
 } from "@tabler/icons-react";
+import { libraryCopy } from "@/copy/library";
 import { bookBinding, type GameShelfItem } from "./reelshelf-model";
 import { StitchedDot } from "./StitchedDot";
 
@@ -22,10 +23,6 @@ type ShelfBarProps = {
   onChoose: (game: GameShelfItem | null) => void;
   onBackToShelf: () => void;
 };
-
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 /** Three books on a plank: the "All games" mark, standing in for a single game's cover. */
 function AllGamesMark() {
@@ -103,7 +100,7 @@ export function ShelfBar({
   const isOpen = open && visible;
 
   const newCount = selected ? selected.unviewedCount : unviewedTotal;
-  const name = selected?.name ?? "All games";
+  const name = selected?.name ?? libraryCopy.shelfBar.allGames;
   const choose = (game: GameShelfItem | null) => {
     setOpen(false);
     onChoose(game);
@@ -114,7 +111,7 @@ export function ShelfBar({
       <div
         className="rs-shelfbar"
         role="region"
-        aria-label="Current game"
+        aria-label={libraryCopy.shelfBar.label}
         aria-hidden={!visible}
         inert={!visible}
         style={
@@ -133,7 +130,7 @@ export function ShelfBar({
             className="rs-shelfbar-trigger"
             aria-expanded={isOpen}
             aria-controls="rs-shelfbar-games"
-            aria-label={`Showing ${name}${newCount > 0 ? `, ${newCount} new` : ""}. Change game`}
+            aria-label={libraryCopy.shelfBar.trigger(name, newCount)}
             onClick={() => setOpen((value) => !value)}
           >
             {selected ? <GameMark game={selected} /> : <AllGamesMark />}
@@ -141,7 +138,7 @@ export function ShelfBar({
             {newCount > 0 ? (
               <span className="rs-shelfbar-new">
                 <StitchedDot />
-                {newCount} new
+                {libraryCopy.newCount(newCount)}
               </span>
             ) : null}
             <IconChevronDown
@@ -162,14 +159,16 @@ export function ShelfBar({
                 id="rs-shelfbar-games"
                 className="rs-shelfbar-menu"
                 role="group"
-                aria-label="Choose a game"
+                aria-label={libraryCopy.shelfBar.chooseGame}
               >
                 <div className="rs-shelfbar-menu-head">
-                  <span className="rs-display">Choose a game</span>
+                  <span className="rs-display">
+                    {libraryCopy.shelfBar.chooseGame}
+                  </span>
                   <button
                     type="button"
                     className="rs-icon-button"
-                    aria-label="Close game list"
+                    aria-label={libraryCopy.shelfBar.closeGames}
                     onClick={() => setOpen(false)}
                   >
                     <IconX size={18} aria-hidden="true" />
@@ -182,15 +181,17 @@ export function ShelfBar({
                   onClick={() => choose(null)}
                 >
                   <AllGamesMark />
-                  <span className="rs-shelfbar-option-name">All games</span>
+                  <span className="rs-shelfbar-option-name">
+                    {libraryCopy.shelfBar.allGames}
+                  </span>
                   <span className="rs-shelfbar-option-count">
-                    {plural(clipTotal, "clip", "clips")}
+                    {libraryCopy.shelfBar.optionClips(clipTotal)}
                   </span>
                   <span className="rs-shelfbar-option-new">
                     {unviewedTotal > 0 ? (
                       <>
                         <StitchedDot />
-                        {unviewedTotal} new
+                        {libraryCopy.newCount(unviewedTotal)}
                       </>
                     ) : null}
                   </span>
@@ -215,15 +216,13 @@ export function ShelfBar({
                         {game.name}
                       </span>
                       <span className="rs-shelfbar-option-count">
-                        {game.clipCount === 0
-                          ? "No clips yet"
-                          : plural(game.clipCount, "clip", "clips")}
+                        {libraryCopy.shelfBar.optionClips(game.clipCount)}
                       </span>
                       <span className="rs-shelfbar-option-new">
                         {game.unviewedCount > 0 ? (
                           <>
                             <StitchedDot />
-                            {game.unviewedCount} new
+                            {libraryCopy.newCount(game.unviewedCount)}
                           </>
                         ) : null}
                       </span>
@@ -242,22 +241,24 @@ export function ShelfBar({
 
         <label
           className={`rs-shelfbar-search${searching ? " open" : ""}`}
-          aria-label="Search clips"
+          aria-label={libraryCopy.shelfBar.searchLabel}
         >
           <IconSearch size={16} aria-hidden="true" />
           <input
             type="search"
             value={query}
-            placeholder={
-              selected ? `Search ${selected.name} clips` : "Search every clip"
-            }
+            placeholder={libraryCopy.shelfBar.searchPlaceholder(selected?.name)}
             onChange={(event) => onQueryChange(event.target.value)}
           />
         </label>
         <button
           type="button"
           className="rs-shelfbar-search-toggle rs-icon-button"
-          aria-label={searching ? "Close search" : "Search clips"}
+          aria-label={
+            searching
+              ? libraryCopy.shelfBar.closeSearch
+              : libraryCopy.shelfBar.searchLabel
+          }
           aria-expanded={searching}
           onClick={() => setSearching((value) => !value)}
         >
@@ -274,7 +275,7 @@ export function ShelfBar({
           onClick={onBackToShelf}
         >
           <IconArrowUp size={16} aria-hidden="true" />
-          <span>Back to shelf</span>
+          <span>{libraryCopy.shelfBar.backToShelf}</span>
         </button>
       </div>
     </div>

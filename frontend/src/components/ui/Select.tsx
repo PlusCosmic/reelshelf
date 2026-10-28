@@ -8,6 +8,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { IconChevronDown } from "@tabler/icons-react";
+import { uiCopy } from "@/copy/ui";
 import { cx } from "./cx";
 
 export type SelectOption = {
@@ -44,7 +45,7 @@ export function Select({
   className,
   disabled = false,
   options,
-  placeholder = "Select",
+  placeholder = uiCopy.selectPlaceholder,
   value,
   onValueChange,
 }: SelectProps) {

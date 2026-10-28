@@ -6,6 +6,7 @@ import type {
   PlanOffer,
   PlanOfferPrice,
 } from "@/api-client";
+import { planCopy } from "@/copy/plan";
 import { apiConfig } from "../config/apiConfig";
 import {
   createBillingApi,
@@ -21,12 +22,7 @@ export type { PlanOffer, PlanOfferPrice };
 
 export type Tier = "free" | "plus" | "pro" | "unlimited";
 
-export const tierNames: Record<string, string> = {
-  free: "Free",
-  plus: "Plus",
-  pro: "Pro",
-  unlimited: "Unlimited",
-};
+export const tierNames: Record<string, string> = planCopy.tierNames;
 
 /** The signed-in account's tier, limits, usage and subscription. */
 export async function fetchPlan(): Promise<AccountPlan> {
@@ -116,8 +112,8 @@ export function formatPrice(price: PlanOfferPrice): string {
 /** "1 min", "2 min", "90 s". */
 export function formatClipLength(seconds: number): string {
   return seconds >= 60 && seconds % 60 === 0
-    ? `${seconds / 60} min`
-    : `${seconds} s`;
+    ? planCopy.clipLength.minutes(seconds / 60)
+    : planCopy.clipLength.seconds(seconds);
 }
 
 /** How far past the length cap a clip may run before the API refuses it, as containers round. */

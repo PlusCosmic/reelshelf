@@ -17,6 +17,9 @@ import {
   type BaselineGroup,
 } from "@/components/LegendDetection/legendBaseline";
 import { formatConfidence } from "@/components/LegendDetection/legendReview";
+import { commonCopy } from "@/copy/common";
+import { legendDetectionCopy } from "@/copy/legendDetection";
+import { runsCopy } from "@/copy/runs";
 import {
   useChangeBaselineLabels,
   useCurrentUser,
@@ -25,6 +28,8 @@ import {
   type BaselineLabelChange,
 } from "@/hooks/queries";
 
+const copy = legendDetectionCopy.baseline;
+
 export const Route = createFileRoute("/legend-detection_/baseline")({
   component: LegendBaselineRoute,
 });
@@ -32,13 +37,10 @@ export const Route = createFileRoute("/legend-detection_/baseline")({
 function LegendBaselineRoute() {
   const { data: user, isLoading } = useCurrentUser();
 
-  if (isLoading) return <div className="rs-section rs-empty">Loading…</div>;
+  if (isLoading)
+    return <div className="rs-section rs-empty">{commonCopy.loading}</div>;
   if (!user?.isAdmin)
-    return (
-      <div className="rs-section rs-empty">
-        The legend baseline is only available to admins.
-      </div>
-    );
+    return <div className="rs-section rs-empty">{copy.adminsOnly}</div>;
   return <LegendBaseline />;
 }
 
@@ -49,8 +51,8 @@ type UndoStep = {
 };
 
 function groupTitle(group: BaselineGroup) {
-  if (group.key === noResultKey) return "No result yet";
-  if (group.key === cantTellKey) return "Can't tell";
+  if (group.key === noResultKey) return copy.noResultGroup;
+  if (group.key === cantTellKey) return legendDetectionCopy.cantTell;
   return group.key;
 }
 
@@ -234,21 +236,18 @@ function LegendBaseline() {
     <div className="rs-legend-page">
       <header className="rs-legend-header">
         <div>
-          <div className="rs-eyebrow">Legend detection · Baseline</div>
-          <h1 className="rs-display rs-h2">Confirm every clip's legend.</h1>
-          <p className="rs-meta rs-baseline-intro">
-            Each clip starts from its label, or the current result until it has
-            one. Scan a group, fix the odd one out, confirm the rest.
-          </p>
+          <div className="rs-eyebrow">{copy.eyebrow}</div>
+          <h1 className="rs-display rs-h2">{copy.title}</h1>
+          <p className="rs-meta rs-baseline-intro">{copy.intro}</p>
         </div>
         <div className="rs-baseline-progress">
           <div className="rs-baseline-progress-text">
-            <strong>{confirmed}</strong> of {clips.length} confirmed
+            {copy.progress(<strong>{confirmed}</strong>, clips.length)}
           </div>
           <div
             className="rs-baseline-progress-track"
             role="progressbar"
-            aria-label="Clips confirmed"
+            aria-label={copy.progressLabel}
             aria-valuemin={0}
             aria-valuemax={clips.length}
             aria-valuenow={confirmed}
@@ -260,7 +259,7 @@ function LegendBaseline() {
             />
           </div>
           <Link to="/legend-detection" className="rs-meta">
-            Back to review
+            {legendDetectionCopy.backToReview}
           </Link>
         </div>
       </header>
@@ -271,37 +270,30 @@ function LegendBaseline() {
             checked={showConfirmed}
             onChange={(event) => setShowConfirmed(event.target.checked)}
           />
-          Show confirmed
+          {copy.showConfirmed}
         </label>
         <Button size="sm" onClick={undoLast} disabled={undo.length === 0}>
-          Undo <kbd>u</kbd>
+          {copy.undo}
         </Button>
         {change.isError ? (
           <span className="rs-legend-error">
-            Saving failed: {change.error.message}
+            {copy.savingFailed(change.error.message)}
           </span>
         ) : null}
-        <span className="rs-meta rs-baseline-keys">
-          <kbd>j</kbd> <kbd>k</kbd> clip · <kbd>↑</kbd> <kbd>↓</kbd> group ·{" "}
-          <kbd>Enter</kbd> change · <kbd>x</kbd> can't tell · <kbd>c</kbd>{" "}
-          confirm group · <kbd>1</kbd>–<kbd>6</kbd> frame
-        </span>
+        <span className="rs-meta rs-baseline-keys">{copy.keys}</span>
       </div>
 
       {baseline.isLoading ? (
-        <div className="rs-empty">Loading clips…</div>
+        <div className="rs-empty">{runsCopy.loadingClips}</div>
       ) : baseline.isError ? (
-        <div className="rs-empty">Clips could not be loaded.</div>
+        <div className="rs-empty">{runsCopy.clipsNotLoaded}</div>
       ) : clips.length === 0 ? (
-        <div className="rs-empty">There are no Apex Legends clips.</div>
+        <div className="rs-empty">{legendDetectionCopy.noApexClips}</div>
       ) : (
         <div className="rs-baseline-layout">
           <div className="rs-baseline-groups">
             {groups.length === 0 ? (
-              <div className="rs-empty">
-                Every clip is confirmed. Tick “Show confirmed” to check them
-                again.
-              </div>
+              <div className="rs-empty">{copy.allConfirmed}</div>
             ) : null}
             {groups.map((group) => (
               <section
@@ -318,16 +310,16 @@ function LegendBaseline() {
                   <div className="rs-baseline-group-title">
                     <h2>{groupTitle(group)}</h2>
                     <div className="rs-meta">
-                      {group.total} {group.total === 1 ? "clip" : "clips"} ·{" "}
-                      {group.done
-                        ? "All confirmed"
-                        : `${group.pending.length} to confirm`}
-                      {group.lowestConfidence !== null
-                        ? ` · lowest ${formatConfidence(group.lowestConfidence)}`
-                        : ""}
-                      {group.movedCount > 0
-                        ? ` · ${group.movedCount} relabelled`
-                        : ""}
+                      {copy.groupSummary({
+                        total: group.total,
+                        done: group.done,
+                        pending: group.pending.length,
+                        lowestConfidence:
+                          group.lowestConfidence !== null
+                            ? formatConfidence(group.lowestConfidence)
+                            : null,
+                        moved: group.movedCount,
+                      })}
                     </div>
                   </div>
                   {group.pending.length > 0 ? (
@@ -335,8 +327,10 @@ function LegendBaseline() {
                       variant="primary"
                       onClick={() => confirmGroup(group)}
                     >
-                      Confirm {group.pending.length}
-                      {group.key === noResultKey ? " as can't tell" : ""}
+                      {copy.confirm(
+                        group.pending.length,
+                        group.key === noResultKey,
+                      )}
                     </Button>
                   ) : null}
                 </header>
@@ -371,9 +365,7 @@ function LegendBaseline() {
         </div>
       )}
       <p className="rs-meta rs-baseline-footnote">
-        Results below {formatConfidence(lowConfidenceBelow)} are marked.{" "}
-        {answerLabel(null)} means the owner's own legend can't be seen in any
-        frame.
+        {copy.footnote(formatConfidence(lowConfidenceBelow), answerLabel(null))}
       </p>
     </div>
   );

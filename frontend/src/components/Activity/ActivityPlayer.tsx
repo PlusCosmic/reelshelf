@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IconVolume, IconVolume2, IconVolumeOff } from "@tabler/icons-react";
+import { activityCopy } from "@/copy/activity";
 import { activityStreamSource } from "@/shared/services/discordActivity";
 import { attachStream } from "@/shared/utils/videoStream";
 import {
@@ -250,12 +251,12 @@ export function ActivityPlayer({
             className="rs-primary rs-activity-unmute"
             onClick={() => changeVolume({ volume: volume || 1, muted: false })}
           >
-            Turn sound on
+            {activityCopy.player.turnSoundOn}
           </button>
         ) : null}
         {failed ? (
           <p className="rs-activity-player-error" role="alert">
-            This clip couldn't be played here.
+            {activityCopy.player.cantPlay}
           </p>
         ) : null}
       </div>
@@ -264,7 +265,9 @@ export function ActivityPlayer({
           <button
             type="button"
             className="rs-icon-button"
-            aria-label={silent ? "Unmute" : "Mute"}
+            aria-label={
+              silent ? activityCopy.player.unmute : activityCopy.player.mute
+            }
             aria-pressed={silent}
             onClick={() =>
               changeVolume(
@@ -287,7 +290,7 @@ export function ActivityPlayer({
             min={0}
             max={1}
             step={0.05}
-            aria-label="Volume"
+            aria-label={activityCopy.player.volume}
             value={silent ? 0 : volume}
             onChange={(event) => {
               const next = Number(event.target.value);

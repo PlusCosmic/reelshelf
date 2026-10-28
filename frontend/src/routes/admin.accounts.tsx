@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useDeferredValue, useState, type FormEvent } from "react";
+import { adminCopy } from "@/copy/admin";
+import { commonCopy } from "@/copy/common";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
 import { Badge, Button, Field, Input, Select } from "@/components/ui";
 import {
@@ -30,29 +32,23 @@ export const Route = createFileRoute("/admin/accounts")({
   }),
 });
 
-const roleNames: Record<string, string> = {
-  viewer: "Viewer",
-  editor: "Editor",
-  admin: "Admin",
-};
+const copy = adminCopy.accounts;
+const roleNames = copy.roles;
 
 const noGrant = "none";
 
 const accountStates = [
-  { value: "active", label: "Active" },
-  { value: "suspended", label: "Suspended" },
+  { value: "active", label: copy.states.active },
+  { value: "suspended", label: copy.states.suspended },
 ];
 
 function AdminAccountsRoute() {
   const { data: user, isLoading } = useCurrentUser();
 
-  if (isLoading) return <div className="rs-section rs-empty">Loading…</div>;
+  if (isLoading)
+    return <div className="rs-section rs-empty">{commonCopy.loading}</div>;
   if (!user?.isAdmin)
-    return (
-      <div className="rs-section rs-empty">
-        Accounts are only available to admins.
-      </div>
-    );
+    return <div className="rs-section rs-empty">{copy.adminsOnly}</div>;
   return <AdminAccounts currentUserId={user.id} />;
 }
 
@@ -71,18 +67,18 @@ function AdminAccounts({ currentUserId }: { currentUserId: string }) {
     <div className="rs-legend-page">
       <header className="rs-legend-header">
         <div>
-          <div className="rs-eyebrow">Accounts</div>
-          <h1 className="rs-display rs-h2">Roles and granted plans.</h1>
+          <div className="rs-eyebrow">{copy.eyebrow}</div>
+          <h1 className="rs-display rs-h2">{copy.title}</h1>
         </div>
       </header>
 
       <div className="rs-access-layout">
         <section className="rs-access-search">
-          <Field label="Find an account">
+          <Field label={copy.search.label}>
             <Input
               type="search"
               value={query}
-              placeholder="Username, display name or Discord/Twitch id"
+              placeholder={copy.search.placeholder}
               onChange={(event) => setQuery(event.target.value)}
               autoFocus
             />
@@ -98,9 +94,7 @@ function AdminAccounts({ currentUserId }: { currentUserId: string }) {
 
         <section className="rs-access-detail">
           {!search.account ? (
-            <p className="rs-meta">
-              Pick an account to see or change its role and granted plan.
-            </p>
+            <p className="rs-meta">{copy.pickAccount}</p>
           ) : selected.data ? (
             <AccountAccess
               key={selected.data.account.id}
@@ -108,9 +102,9 @@ function AdminAccounts({ currentUserId }: { currentUserId: string }) {
               isSelf={selected.data.account.id === currentUserId}
             />
           ) : selected.isError ? (
-            <p className="rs-legend-error">That account couldn't be loaded.</p>
+            <p className="rs-legend-error">{copy.loadFailed}</p>
           ) : (
-            <p className="rs-meta">Loading…</p>
+            <p className="rs-meta">{commonCopy.loading}</p>
           )}
         </section>
       </div>
@@ -132,11 +126,10 @@ function AccountResults({
   onSelect: (account: AdminAccount) => void;
 }) {
   if (query.trim().length < 2) return null;
-  if (isError)
-    return <p className="rs-legend-error">The search didn't work.</p>;
-  if (!accounts) return <p className="rs-meta">Searching…</p>;
+  if (isError) return <p className="rs-legend-error">{copy.search.failed}</p>;
+  if (!accounts) return <p className="rs-meta">{copy.search.searching}</p>;
   if (accounts.length === 0)
-    return <p className="rs-meta">No account matches.</p>;
+    return <p className="rs-meta">{copy.search.noMatch}</p>;
 
   return (
     <ul className="rs-access-results">
@@ -172,10 +165,12 @@ function AccessBadges({ account }: { account: AdminAccount }) {
       </Badge>
       {account.grantedTier ? (
         <Badge tone="accent">
-          {tierNames[account.grantedTier] ?? account.grantedTier} granted
+          {copy.granted(tierNames[account.grantedTier] ?? account.grantedTier)}
         </Badge>
       ) : null}
-      {account.suspendedAt ? <Badge tone="danger">Suspended</Badge> : null}
+      {account.suspendedAt ? (
+        <Badge tone="danger">{copy.suspendedBadge}</Badge>
+      ) : null}
     </span>
   );
 }
@@ -240,25 +235,26 @@ function AccountAccess({
           ))}
         </p>
         <p className="rs-meta">
-          On {tierNames[detail.tier] ?? detail.tier} now
-          {account.grantedTier ? ", by a grant" : ""}.
+          {copy.onTier(
+            tierNames[detail.tier] ?? detail.tier,
+            !!account.grantedTier,
+          )}
         </p>
         {/* PostHog targets a named account by this id (docs/feature-flags.md). */}
         <p className="rs-meta">
-          Account ID <code>{account.id}</code>
+          {copy.accountId} <code>{account.id}</code>
         </p>
         {account.suspendedAt ? (
           <p className="rs-legend-error">
-            Suspended since {formatDate(account.suspendedAt)}: it can't sign in
-            and its share links don't work. Its clips are kept.
+            {copy.suspendedSince(formatDate(account.suspendedAt))}
           </p>
         ) : null}
       </div>
 
       <form className="rs-access-form" onSubmit={onSubmit}>
-        <Field label="Role">
+        <Field label={copy.form.role}>
           <Select
-            aria-label="Role"
+            aria-label={copy.form.role}
             value={role}
             disabled={isSelf}
             options={accountRoles.map((value) => ({
@@ -268,12 +264,12 @@ function AccountAccess({
             onValueChange={setRole}
           />
         </Field>
-        <Field label="Granted plan">
+        <Field label={copy.form.grantedPlan}>
           <Select
-            aria-label="Granted plan"
+            aria-label={copy.form.grantedPlan}
             value={grantedTier}
             options={[
-              { value: noGrant, label: "None" },
+              { value: noGrant, label: copy.form.noGrant },
               ...grantableTiers.map((value) => ({
                 value,
                 label: tierNames[value] ?? value,
@@ -282,9 +278,9 @@ function AccountAccess({
             onValueChange={setGrantedTierValue}
           />
         </Field>
-        <Field label="Account">
+        <Field label={copy.form.account}>
           <Select
-            aria-label="Account"
+            aria-label={copy.form.account}
             value={state}
             disabled={
               isSelf || (account.role === "admin" && !account.suspendedAt)
@@ -293,22 +289,22 @@ function AccountAccess({
             onValueChange={setState}
           />
         </Field>
-        <Field label="Reason" className="rs-access-reason">
+        <Field label={copy.form.reason} className="rs-access-reason">
           <Input
             value={reason}
             maxLength={500}
-            placeholder="Why, for the record"
+            placeholder={copy.form.reasonPlaceholder}
             onChange={(event) => setReason(event.target.value)}
           />
         </Field>
         <div className="rs-meta">
           <Button variant="primary" type="submit" disabled={!canSave}>
-            {save.isPending ? "Saving…" : "Save"}
+            {save.isPending ? commonCopy.saving : commonCopy.save}
           </Button>
           {isSelf ? (
-            <span>You can't change your own role or suspend yourself.</span>
+            <span>{copy.form.cantChangeSelf}</span>
           ) : account.role === "admin" ? (
-            <span>Admins can't be suspended; change the role first.</span>
+            <span>{copy.form.cantSuspendAdmin}</span>
           ) : null}
           {save.isError ? (
             <span className="rs-legend-error">{save.error.message}</span>
@@ -323,17 +319,17 @@ function AccountAccess({
 
 function ChangeLog({ changes }: { changes: AdminAccessChange[] }) {
   if (changes.length === 0)
-    return <p className="rs-meta">No changes recorded.</p>;
+    return <p className="rs-meta">{copy.changes.empty}</p>;
 
   return (
     <div className="rs-legend-usage">
       <table className="rs-legend-table">
         <thead>
           <tr>
-            <th>When</th>
-            <th>Change</th>
-            <th>By</th>
-            <th>Reason</th>
+            <th>{copy.changes.when}</th>
+            <th>{copy.changes.change}</th>
+            <th>{copy.changes.by}</th>
+            <th>{copy.changes.reason}</th>
           </tr>
         </thead>
         <tbody>
@@ -343,9 +339,15 @@ function ChangeLog({ changes }: { changes: AdminAccessChange[] }) {
               <td>
                 {change.field === "suspended"
                   ? change.newValue
-                    ? "Suspended"
-                    : "Suspension lifted"
-                  : `${change.field === "role" ? "Role" : "Granted plan"}: ${describe(change.field, change.oldValue)} → ${describe(change.field, change.newValue)}`}
+                    ? copy.changes.suspended
+                    : copy.changes.suspensionLifted
+                  : copy.changes.changed(
+                      change.field === "role"
+                        ? copy.changes.role
+                        : copy.changes.grantedPlan,
+                      describe(change.field, change.oldValue),
+                      describe(change.field, change.newValue),
+                    )}
               </td>
               <td>{change.changedByName ?? "—"}</td>
               <td className="rs-access-change-reason">{change.reason}</td>
@@ -358,7 +360,7 @@ function ChangeLog({ changes }: { changes: AdminAccessChange[] }) {
 }
 
 function describe(field: string, value: string | null | undefined): string {
-  if (!value) return "none";
+  if (!value) return copy.changes.none;
   return field === "role"
     ? (roleNames[value] ?? value)
     : (tierNames[value] ?? value);

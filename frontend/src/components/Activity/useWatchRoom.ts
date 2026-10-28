@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HubConnection } from "@microsoft/signalr";
+import { activityCopy } from "@/copy/activity";
 import type { ActivitySessionResponse } from "@/shared/services/discordActivity";
 import {
   createWatchRoomConnection,
@@ -140,7 +141,7 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
       const message =
         failure instanceof Error
           ? failure.message.replace(/^.*HubException: /, "")
-          : "Something went wrong.";
+          : activityCopy.room.somethingWentWrong;
       setError(message);
     });
   }, []);

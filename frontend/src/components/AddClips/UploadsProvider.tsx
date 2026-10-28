@@ -27,6 +27,7 @@ import {
   isUnfinishedUpload,
   type UploadItem,
 } from "./addClipsModel";
+import { uploadCopy } from "@/copy/upload";
 
 const MAX_ACTIVE_UPLOADS = 3;
 
@@ -149,7 +150,7 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
           if (existing && existing !== item.id) {
             patch(item.id, {
               status: "duplicate",
-              error: "Already added to this book.",
+              error: uploadCopy.duplicateInBook,
             });
             return;
           }

@@ -9,7 +9,10 @@ import type {
   LegendDetectionReviewClip,
   LegendDetectionRun,
 } from "@/shared/services/legendDetection";
+import { legendDetectionCopy } from "@/copy/legendDetection";
 import { labelFromRun, labelVerdict } from "./legendReview";
+
+const copy = legendDetectionCopy.label;
 
 const none = "__none";
 
@@ -46,10 +49,10 @@ export function LegendLabelEditor({
     label: legend,
   }));
   const playerOptions = [
-    { value: none, label: "Can't tell" },
+    { value: none, label: legendDetectionCopy.cantTell },
     ...legendOptions,
   ];
-  const teammateOptions = [{ value: none, label: "None" }, ...legendOptions];
+  const teammateOptions = [{ value: none, label: copy.none }, ...legendOptions];
   const verdict = labelVerdict(succeededRun ?? null, clip.label);
   const pending = setLabel.isPending || clearLabel.isPending;
 
@@ -60,38 +63,38 @@ export function LegendLabelEditor({
   return (
     <div className="rs-legend-label">
       <div className="rs-legend-result-heading">
-        <h3 className="rs-eyebrow">Actual legends</h3>
+        <h3 className="rs-eyebrow">{copy.heading}</h3>
         {verdict === "correct" ? (
-          <Badge tone="accent">Result matches</Badge>
+          <Badge tone="accent">{copy.resultMatches}</Badge>
         ) : verdict === "wrong" ? (
-          <Badge tone="danger">Result is wrong</Badge>
+          <Badge tone="danger">{copy.resultWrong}</Badge>
         ) : clip.label ? null : (
-          <Badge>Not labelled</Badge>
+          <Badge>{copy.notLabelled}</Badge>
         )}
       </div>
       <div className="rs-legend-label-fields">
         <label>
-          <span className="rs-meta">You</span>
+          <span className="rs-meta">{copy.you}</span>
           <Select
-            aria-label="Your legend"
+            aria-label={copy.yourLegend}
             options={playerOptions}
             value={player}
             onValueChange={setPlayer}
           />
         </label>
         <label>
-          <span className="rs-meta">Teammate</span>
+          <span className="rs-meta">{copy.teammate}</span>
           <Select
-            aria-label="First teammate's legend"
+            aria-label={copy.firstTeammate}
             options={teammateOptions}
             value={teammateOne}
             onValueChange={setTeammateOne}
           />
         </label>
         <label>
-          <span className="rs-meta">Teammate</span>
+          <span className="rs-meta">{copy.teammate}</span>
           <Select
-            aria-label="Second teammate's legend"
+            aria-label={copy.secondTeammate}
             options={teammateOptions}
             value={teammateTwo}
             onValueChange={setTeammateTwo}
@@ -108,9 +111,9 @@ export function LegendLabelEditor({
               const detected = labelFromRun(succeededRun);
               save(detected.playerLegend, detected.teammateLegends);
             }}
-            title="Save the shown result as the label (c)"
+            title={copy.markCorrectTitle}
           >
-            Mark correct
+            {copy.markCorrect}
           </Button>
         ) : null}
         <Button
@@ -123,7 +126,7 @@ export function LegendLabelEditor({
             )
           }
         >
-          Save label
+          {copy.saveLabel}
         </Button>
         {clip.label ? (
           <Button
@@ -132,7 +135,7 @@ export function LegendLabelEditor({
             disabled={pending}
             onClick={() => clearLabel.mutate(clip.clipId)}
           >
-            Clear
+            {copy.clear}
           </Button>
         ) : null}
         {setLabel.isError ? (

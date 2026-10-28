@@ -2,6 +2,7 @@ import {
   clipLengthToleranceSeconds,
   formatClipLength,
 } from "@/shared/services/plans";
+import { uploadCopy } from "@/copy/upload";
 
 /**
  * Why a clip this long can't be added on a plan that keeps clips of up to `maxSeconds`, or null when it can. The API
@@ -19,7 +20,10 @@ export function clipLengthProblem(
     return null;
   }
 
-  return `This clip is ${formatClipLength(Math.round(durationSeconds))} long, and your plan keeps clips of up to ${formatClipLength(maxSeconds)}. Trim it, or upgrade for longer clips.`;
+  return uploadCopy.tooLong(
+    formatClipLength(Math.round(durationSeconds)),
+    formatClipLength(maxSeconds),
+  );
 }
 
 /** The file's length as the browser reads it, or null when it can't (an unsupported codec, say). */
