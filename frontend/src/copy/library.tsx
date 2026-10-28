@@ -16,9 +16,9 @@ const describeBook = (name: string, clips: number, unviewed: number) => {
 
 /** The library: the bookcase of games, the bar that takes over from it, and the clip list below. */
 export const libraryCopy = {
-  loading: "Loading your archive…",
-  loadFailed: "The archive could not be loaded.",
-  gameNotFound: "This game could not be found.",
+  loading: "Loading your library…",
+  loadFailed: "Your library didn't load.",
+  gameNotFound: "That game isn't on your shelf.",
   newCount: (count: number) => `${count} new`,
   noClipsYet: "No clips yet",
   /** The plural noun the clip list's "Load more" names. */
@@ -39,13 +39,21 @@ export const libraryCopy = {
     more > 0 ? `${message} ${more} more skipped.` : message,
   chooseClips: "Choose clips to add",
   greeting: {
-    eyebrow: (stats: ReactNode) => <>Your archive - {stats}</>,
-    title: (unviewed: number) => (
-      <>
-        Welcome back. <em>{unviewed || "No"} new clips</em> are waiting on the
-        shelf.
-      </>
-    ),
+    eyebrow: (stats: ReactNode) => <>Your library · {stats}</>,
+    title: (unviewed: number) =>
+      unviewed === 0 ? (
+        <>
+          Welcome back. <em>Nothing new</em> on the shelf.
+        </>
+      ) : unviewed === 1 ? (
+        <>
+          Welcome back. <em>One new clip</em> is waiting.
+        </>
+      ) : (
+        <>
+          Welcome back. <em>{unviewed} new clips</em> are waiting.
+        </>
+      ),
   },
   filters: {
     tags: "Tags",
@@ -81,16 +89,14 @@ export const libraryCopy = {
     dropOnBook: (name: string | undefined) =>
       `Drop into ${name ?? "this book"}`,
     ghostCard: {
-      meta: (count: number) =>
-        `${plural(count, "of your Twitch clips", "of your Twitch clips")} · not on your shelf yet`,
+      meta: (count: number) => `${twitchClips(count)} · not on your shelf yet`,
       add: "Add to shelf",
       dismiss: "Not interested",
     },
   },
   banner: {
-    eyebrow: (isCustom: boolean) =>
-      isCustom ? "Custom category" : "Game category",
-    empty: "No clips on this shelf yet",
+    eyebrow: (isCustom: boolean) => (isCustom ? "Category" : "Game"),
+    empty: "No clips in this book yet",
     addClips: "Add clips",
     putBack: "Put it back on the shelf",
   },
@@ -118,17 +124,17 @@ export const libraryCopy = {
     count: (legends: number) =>
       `${plural(legends, "legend", "legends")}, most played first`,
   },
-  /** The totals beside the archive and a book's banner. */
-  statLine: (clips: number, duration: string, size: string) =>
-    `${clips}\u00a0clips - ${duration} - ${size}`,
+  /** The totals beside the library's greeting and a book's banner. */
+  statLine: (clips: number, duration: string) =>
+    `${clips.toLocaleString()}\u00a0${clips === 1 ? "clip" : "clips"} · ${duration}`,
   list: {
     loading: "Loading clips…",
-    loadFailed: "Clips could not be loaded.",
-    empty: "No clips match this view.",
+    loadFailed: "Your clips didn't load.",
+    empty: "No clips match.",
   },
   clip: {
     open: (title: string) => `Open ${title}`,
-    uncategorized: "Uncategorized",
+    uncategorised: "Uncategorised",
     new: "New",
     nowPlaying: "Now playing",
     notWatched: "Not watched yet",
@@ -142,21 +148,21 @@ export const libraryCopy = {
     addToCollection: "Add to collection",
     preparingDownload: "Preparing download…",
     download: "Download",
-    confirmDelete: (title: string) =>
-      `Delete "${title}"? This removes the video and frees its storage.`,
-    deleteFailed: "The clip could not be deleted.",
+    confirmDelete: (title: string) => `Delete "${title}"? You can't undo this.`,
+    deleteFailed: "That clip wasn't deleted. Try again.",
   },
   shareDialog: {
     eyebrow: "Share clip",
-    close: "Close share dialog",
-    creating: "Creating share link…",
-    stillProcessing: "This clip is still processing and cannot be shared yet.",
-    failed: "The share link could not be created. Try again.",
+    close: "Close",
+    creating: "Making a link…",
+    stillProcessing:
+      "This clip is still processing. You can share it once it's ready.",
+    failed: "The link wasn't made. Try again.",
     retry: "Retry",
     link: "Share link",
     copied: "Copied",
     copy: "Copy",
-    note: "Anyone with this link can watch the shared clip.",
+    note: "Anyone with this link can watch this clip.",
   },
   shared: "Shared",
   backToLibrary: "Library",

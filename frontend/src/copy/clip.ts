@@ -2,8 +2,8 @@ import { commonCopy } from "./common";
 
 /** A clip's own page: the player, its details, the rest of the session and more from its game. */
 export const clipCopy = {
-  loading: "Loading player…",
-  notFound: "This clip could not be found.",
+  loading: "Loading clip…",
+  notFound: "That clip isn't here. It may have been deleted.",
   strip: {
     label: "Where this clip lives",
     backTo: "Back to",
@@ -33,7 +33,6 @@ export const clipCopy = {
     legend: "Legend",
     recorded: "Recorded",
     length: "Length",
-    size: "Size",
     watched: "Watched",
     watchedYes: "Yes",
     watchedNo: "Not yet",

@@ -5,7 +5,6 @@ import { Dialog } from "@/components/Reelshelf/Dialog";
 import { useDeleteAccount, usePlan } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 import { deleteAccountPhrase } from "@/shared/services/user";
-import { formatFileSize } from "@/shared/utils/format";
 import { commonCopy } from "@/copy/common";
 import { settingsCopy } from "@/copy/settings";
 
@@ -72,10 +71,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
               <li>
                 {copy.clips(
                   plan && plan.clipCount > 0
-                    ? copy.clipsSummary(
-                        plan.clipCount,
-                        formatFileSize(plan.storageUsedBytes),
-                      )
+                    ? copy.clipsSummary(plan.clipCount)
                     : "",
                 )}
               </li>

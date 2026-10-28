@@ -37,7 +37,6 @@ import {
   bookBinding,
   formatDate,
   formatDuration,
-  formatSize,
   makeGameShelf,
   thumbnailUrl,
   type GameShelfItem,
@@ -346,8 +345,6 @@ function ClipFacts({
         </dd>
         <dt>{clipCopy.facts.length}</dt>
         <dd>{formatDuration(clip.video.durationSeconds)}</dd>
-        <dt>{clipCopy.facts.size}</dt>
-        <dd>{formatSize(clip.video.storageBytes)}</dd>
         <dt>{clipCopy.facts.watched}</dt>
         <dd>
           {clip.isViewed ? clipCopy.facts.watchedYes : clipCopy.facts.watchedNo}
@@ -527,7 +524,6 @@ export function ClipPlayerPage({
               {formatDate(clip.createdAt)}, {formatTime(clip.createdAt)}
             </span>
             <span>{formatDuration(clip.video.durationSeconds)}</span>
-            <span>{formatSize(clip.video.storageBytes)}</span>
             {clip.isViewed ? null : (
               <strong>
                 <StitchedDot />

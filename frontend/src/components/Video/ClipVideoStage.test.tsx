@@ -48,15 +48,16 @@ describe("clipProcessingMessage", () => {
 
   it("says plainly when the encode or the upload failed", () => {
     expect(clipProcessingMessage(ClipVideoStatus.EncodeFailed, 80)).toEqual({
-      title: "This clip couldn’t be processed.",
-      detail: "Its video couldn’t be encoded. Try uploading it again.",
+      title: "This clip couldn't be processed.",
+      detail:
+        "Something went wrong getting it ready to play. Try uploading it again.",
       failed: true,
       progress: null,
     });
     expect(
       clipProcessingMessage(ClipVideoStatus.UploadFailed, 0),
     ).toMatchObject({
-      title: "This clip’s upload didn’t finish.",
+      title: "This clip's upload didn't finish.",
       failed: true,
     });
   });
@@ -123,7 +124,7 @@ describe("ClipVideoStage", () => {
       />,
     );
     expect(view.getByRole("alert").textContent).toContain(
-      "This clip couldn’t be processed.",
+      "This clip couldn't be processed.",
     );
     expect(view.container.querySelector(".rs-spinner")).toBeNull();
     expect(view.container.querySelector("video")).toBeNull();

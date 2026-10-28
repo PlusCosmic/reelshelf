@@ -76,7 +76,7 @@ describe("ClipVideoPlayer", () => {
   it("says so when the stream can't be played, until the next clip", () => {
     const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
     act(() => stream.attached[0].callbacks.onFatal());
-    expect(view.getByRole("alert").textContent).toContain("couldn't be played");
+    expect(view.getByRole("alert").textContent).toContain("didn't play");
 
     view.rerender(<ClipVideoPlayer sources={hls(second)} title="B" />);
     expect(view.queryByRole("alert")).toBeNull();
