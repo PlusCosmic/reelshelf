@@ -1,14 +1,15 @@
 import { ApiError } from "@/shared/services/api-error";
+import { uploadCopy } from "@/copy/upload";
 
 export function uploadErrorMessage(uploadError: unknown) {
   if (uploadError instanceof ApiError && uploadError.status === 409) {
-    return "This video has already been uploaded.";
+    return uploadCopy.errors.alreadyUploaded;
   }
   // A 403 from clip creation is the plan's limit; the API's detail says which and what to do.
   if (uploadError instanceof ApiError && uploadError.status === 403) {
-    return uploadError.message || "Your plan doesn't allow more clips.";
+    return uploadError.message || uploadCopy.errors.planLimit;
   }
   return uploadError instanceof Error
     ? uploadError.message
-    : "The upload failed.";
+    : uploadCopy.errors.failed;
 }

@@ -1,5 +1,6 @@
 import { IconPhoto, IconPlus, IconSearch } from "@tabler/icons-react";
 import type { GameSearchResult } from "@/api-client";
+import { addGameCopy } from "@/copy/addGame";
 
 export function GameSearchPanel({
   debouncedSearch,
@@ -21,16 +22,19 @@ export function GameSearchPanel({
   return (
     <div className="rs-modal-panel" role="tabpanel">
       <label className="rs-field">
-        <span>Game title</span>
+        <span>{addGameCopy.search.label}</span>
         <span className="rs-input-shell">
           <IconSearch size={16} />
           <input
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}
-            placeholder="Search for a game…"
+            placeholder={addGameCopy.search.placeholder}
           />
           {isSearching ? (
-            <span className="rs-spinner" aria-label="Searching" />
+            <span
+              className="rs-spinner"
+              aria-label={addGameCopy.search.searching}
+            />
           ) : null}
         </span>
       </label>
@@ -57,15 +61,11 @@ export function GameSearchPanel({
             </button>
           ))}
           {!isSearching && searchResults.length === 0 ? (
-            <p className="rs-modal-note">
-              No games found. Try another search or create a custom category.
-            </p>
+            <p className="rs-modal-note">{addGameCopy.search.noResults}</p>
           ) : null}
         </div>
       ) : (
-        <p className="rs-modal-note">
-          Search IGDB to add a game-backed book to your shelf.
-        </p>
+        <p className="rs-modal-note">{addGameCopy.search.hint}</p>
       )}
     </div>
   );

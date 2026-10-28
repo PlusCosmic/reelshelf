@@ -14,6 +14,7 @@ import {
   useGameSearch,
 } from "@/hooks/queries";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
+import { addGameCopy } from "@/copy/addGame";
 
 interface AddCategoryModalProps {
   opened: boolean;
@@ -106,17 +107,17 @@ export function AddCategoryModal({
       >
         <header className="rs-modal-header">
           <div>
-            <p className="rs-eyebrow">Bookshelf category</p>
+            <p className="rs-eyebrow">{addGameCopy.eyebrow}</p>
             <h2 className="rs-modal-title" id={titleId}>
               {pendingClipCount > 0
-                ? `Which game ${pendingClipCount === 1 ? "is this clip" : `are these ${pendingClipCount} clips`} from?`
-                : "Add a new book"}
+                ? addGameCopy.pendingTitle(pendingClipCount)
+                : addGameCopy.title}
             </h2>
           </div>
           <button
             className="rs-icon-button"
             type="button"
-            aria-label="Close modal"
+            aria-label={addGameCopy.closeLabel}
             onClick={closeModal}
             disabled={isSaving}
           >
@@ -150,7 +151,7 @@ export function AddCategoryModal({
 
         {error ? (
           <p className="rs-modal-error">
-            {error instanceof Error ? error.message : "Could not add category."}
+            {error instanceof Error ? error.message : addGameCopy.addFailed}
           </p>
         ) : null}
       </section>

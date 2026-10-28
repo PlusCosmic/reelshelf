@@ -1,5 +1,6 @@
 import type { GameCategoryResponse } from "@/api-client";
 import { gamingSessionDate } from "@/shared/utils/gamingSession";
+import { uploadCopy } from "@/copy/upload";
 
 type BulkUploadStatus =
   | "ready"
@@ -97,7 +98,7 @@ export function buildBulkUploadQueue(
         file,
         sourcePath,
         reason: "unsupported_type",
-        message: "Choose an MP4, MOV, WebM, or MKV video file.",
+        message: uploadCopy.rejected.unsupportedType,
       });
       return;
     }
@@ -107,7 +108,7 @@ export function buildBulkUploadQueue(
         file,
         sourcePath,
         reason: "file_too_large",
-        message: "This file is larger than the 4 GB upload limit.",
+        message: uploadCopy.rejected.tooLarge,
       });
       return;
     }

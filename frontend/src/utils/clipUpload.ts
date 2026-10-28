@@ -3,6 +3,7 @@ import type { CreateClipResponse } from "@/api-client";
 import { createVideoRequest } from "@/shared/services/clips";
 import { calculateFileMD5 } from "@/utils/fileHash";
 import { S3MultipartUpload } from "@/utils/s3MultipartUpload";
+import { uploadCopy } from "@/copy/upload";
 
 export type CreateVideoForUpload = (request: {
   categoryId: string;
@@ -49,7 +50,7 @@ export async function createPreparedClipUpload({
   });
 
   if (!response?.upload) {
-    throw new Error("The upload could not be prepared.");
+    throw new Error(uploadCopy.errors.notPrepared);
   }
 
   return response;
@@ -68,9 +69,7 @@ export function createTusClipUpload({
 }: TusClipUploadOptions) {
   const { upload } = response;
   if (upload.protocol !== "tus") {
-    throw new Error(
-      `The upload could not start: unsupported upload protocol "${upload.protocol}".`,
-    );
+    throw new Error(uploadCopy.errors.unsupportedProtocol(upload.protocol));
   }
 
   return new tus.Upload(file, {
@@ -104,9 +103,7 @@ export function createS3ClipUpload({
 }: S3ClipUploadOptions) {
   const { upload } = response;
   if (upload.protocol !== "s3-multipart" || !upload.multipart) {
-    throw new Error(
-      `The upload could not start: unsupported upload protocol "${upload.protocol}".`,
-    );
+    throw new Error(uploadCopy.errors.unsupportedProtocol(upload.protocol));
   }
 
   return new S3MultipartUpload({

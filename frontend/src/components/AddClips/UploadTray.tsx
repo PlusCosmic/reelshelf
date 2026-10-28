@@ -18,6 +18,7 @@ import {
   type UploadItem,
 } from "./addClipsModel";
 import { useUploads } from "./UploadsProvider";
+import { uploadCopy } from "@/copy/upload";
 
 type Line = { item: UploadItem; stage: ClipStage | null };
 
@@ -33,9 +34,9 @@ function stageOf(item: UploadItem, clip: Clip | undefined): ClipStage | null {
 }
 
 function lineLabel(line: Line) {
-  if (!line.stage) return line.item.error ?? "Couldn’t upload";
-  if (line.item.status === "queued") return "Waiting";
-  if (line.stage.kind === "ready") return "On the shelf";
+  if (!line.stage) return line.item.error ?? uploadCopy.tray.lineFailed;
+  if (line.item.status === "queued") return uploadCopy.tray.waiting;
+  if (line.stage.kind === "ready") return uploadCopy.tray.onTheShelf;
   return clipStageLabel(line.stage);
 }
 
@@ -132,29 +133,36 @@ export function UploadTray() {
         value: uploadPercent,
         title:
           books.length === 1
-            ? `Adding ${items.length} clips to ${categoryById.get(books[0])?.name ?? "a book"}`
-            : `Adding ${items.length} clips to ${books.length} books`,
-        meta: paused ? "Paused" : `${uploading.length} still uploading`,
+            ? uploadCopy.tray.addingToBook(
+                items.length,
+                categoryById.get(books[0])?.name ?? uploadCopy.tray.aBook,
+              )
+            : uploadCopy.tray.addingToBooks(items.length, books.length),
+        meta: paused
+          ? uploadCopy.tray.paused
+          : uploadCopy.tray.stillUploading(uploading.length),
       }
     : processing.length
       ? {
           tone: "process" as const,
           value: processedPercent,
-          title: `Processing ${processing.length} ${processing.length === 1 ? "clip" : "clips"}`,
-          meta: "Safe to close this tab",
+          title: uploadCopy.tray.processing(processing.length),
+          meta: uploadCopy.tray.safeToClose,
         }
       : {
           tone: "upload" as const,
           value: 100,
-          title: `${items.length - failed.length} ${items.length - failed.length === 1 ? "clip" : "clips"} added`,
-          meta: failed.length ? `${failed.length} didn’t make it` : "All done",
+          title: uploadCopy.tray.added(items.length - failed.length),
+          meta: failed.length
+            ? uploadCopy.tray.failed(failed.length)
+            : uploadCopy.tray.allDone,
         };
   const finished = !uploading.length && !processing.length;
 
   return (
     <aside
       className={`rs-tray${open ? " open" : ""}`}
-      aria-label="Clips being added"
+      aria-label={uploadCopy.tray.label}
     >
       {open ? (
         <>
@@ -166,13 +174,13 @@ export function UploadTray() {
                 className="rs-tray-text-button"
                 onClick={paused ? resumeAll : pauseAll}
               >
-                {paused ? "Resume" : "Pause"}
+                {paused ? uploadCopy.tray.resume : uploadCopy.tray.pause}
               </button>
             ) : null}
             <button
               type="button"
               className="rs-tray-icon"
-              aria-label="Collapse"
+              aria-label={uploadCopy.tray.collapse}
               onClick={() => setOpen(false)}
             >
               <IconChevronDown size={16} />
@@ -192,15 +200,15 @@ export function UploadTray() {
           </div>
           <footer className="rs-tray-foot">
             {uploading.length
-              ? "Keep this tab open until uploads finish. Processing carries on without it."
-              : "Uploads are done; you can close this tab."}
+              ? uploadCopy.tray.keepOpen
+              : uploadCopy.tray.uploadsDone}
             {finished ? (
               <button
                 type="button"
                 className="rs-tray-text-button"
                 onClick={clearFinished}
               >
-                Clear
+                {uploadCopy.tray.clear}
               </button>
             ) : null}
           </footer>
@@ -222,7 +230,7 @@ export function UploadTray() {
             <button
               type="button"
               className="rs-tray-icon"
-              aria-label="Dismiss"
+              aria-label={uploadCopy.tray.dismiss}
               onClick={clearFinished}
             >
               <IconX size={16} />
@@ -272,10 +280,10 @@ function TrayBook({
             {category.name}
           </Link>
         ) : (
-          <span>A book</span>
+          <span>{uploadCopy.tray.book.unknown}</span>
         )}
         <span className="rs-meta">
-          {done} of {lines.length} on the shelf
+          {uploadCopy.tray.book.onTheShelf(done, lines.length)}
         </span>
       </div>
       {shown.map((line) => (
@@ -293,7 +301,7 @@ function TrayBook({
               <>
                 {" · "}
                 <button type="button" onClick={() => onRetry(line.item.id)}>
-                  Retry
+                  {uploadCopy.tray.book.retry}
                 </button>
               </>
             ) : null}
@@ -306,7 +314,9 @@ function TrayBook({
           className="rs-tray-more"
           onClick={() => setExpanded((value) => !value)}
         >
-          {expanded ? "Show fewer" : `${sorted.length - SHOWN_PER_BOOK} more`}
+          {expanded
+            ? uploadCopy.tray.book.showFewer
+            : uploadCopy.tray.book.more(sorted.length - SHOWN_PER_BOOK)}
         </button>
       ) : null}
     </section>

@@ -29,6 +29,7 @@ import {
   type TwitchClipsWindow,
 } from "@/shared/services/twitch";
 import { uploadErrorMessage } from "@/utils/uploadErrorMessage";
+import { twitchImportCopy } from "@/copy/twitchImport";
 
 /** Each import streams a whole clip through the API; two at a time keeps the page responsive. */
 const MAX_ACTIVE_IMPORTS = 2;
@@ -76,7 +77,7 @@ export function useTwitchClipsImport() {
   );
   const categoryOptions = useMemo<SelectOption[]>(
     () => [
-      { label: "Choose game", value: "" },
+      { label: twitchImportCopy.chooseGame, value: "" },
       ...categories.map((category) => ({
         label: category.name,
         value: category.id,
@@ -211,7 +212,7 @@ export function useTwitchClipsImport() {
               session.rowIds.includes(row.clip.id)
                 ? {
                     ...row,
-                    error: `Added to your library, but the session collection could not be updated (${detail}).`,
+                    error: twitchImportCopy.filingFailed(detail),
                     status: "saved",
                   }
                 : row,
@@ -227,9 +228,7 @@ export function useTwitchClipsImport() {
   useBlocker({
     shouldBlockFn: () => {
       if (activeCount === 0) return false;
-      return !window.confirm(
-        "Leave while Twitch clips are still importing? Clips already copied stay in your library.",
-      );
+      return !window.confirm(twitchImportCopy.leaveWhileImporting);
     },
     enableBeforeUnload: activeCount > 0,
   });
@@ -280,7 +279,7 @@ export function useTwitchClipsImport() {
         setAddGameError(
           error instanceof ApiError
             ? error.message
-            : "The game could not be added.",
+            : twitchImportCopy.addGameFailed,
         );
       },
       onSettled: () => setAddingGame(null),
@@ -327,7 +326,7 @@ export function useTwitchClipsImport() {
 
 function importErrorMessage(error: unknown) {
   if (error instanceof ApiError && error.status === 409) {
-    return "This Twitch clip is already in your library.";
+    return twitchImportCopy.alreadyInLibrary;
   }
   if (error instanceof ApiError && error.message) {
     return error.message;
