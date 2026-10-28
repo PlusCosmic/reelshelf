@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { activityCopy } from "@/copy/activity";
 import { formatDuration } from "@/components/Reelshelf/reelshelf-model";
 import {
   activityThumbnailUrl,
@@ -86,12 +87,12 @@ export function ActivityClipPicker({
   return (
     <section className="rs-activity-picker">
       <div className="rs-activity-picker-head">
-        <h2 className="rs-activity-kicker">Add from your shelf</h2>
+        <h2 className="rs-activity-kicker">{activityCopy.picker.title}</h2>
         <label className="rs-search">
           <input
             type="search"
-            placeholder="Search your clips"
-            aria-label="Search your clips"
+            placeholder={activityCopy.picker.search}
+            aria-label={activityCopy.picker.search}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -99,11 +100,11 @@ export function ActivityClipPicker({
       </div>
 
       {state.failed ? (
-        <p className="rs-activity-role">Couldn't load your clips.</p>
+        <p className="rs-activity-role">{activityCopy.picker.failed}</p>
       ) : null}
       {!state.loading && !state.failed && state.clips.length === 0 ? (
         <p className="rs-activity-role">
-          {query ? "No clips match that search." : "Your shelf is empty."}
+          {query ? activityCopy.picker.noMatch : activityCopy.picker.empty}
         </p>
       ) : null}
 
@@ -116,7 +117,7 @@ export function ActivityClipPicker({
                 type="button"
                 className="rs-activity-clip"
                 aria-current={queued ? "true" : undefined}
-                aria-label={`Add ${clip.title} to the queue`}
+                aria-label={activityCopy.picker.add(clip.title)}
                 disabled={!clip.ready || queued}
                 onClick={() => onPick(clip)}
               >
@@ -132,12 +133,12 @@ export function ActivityClipPicker({
                 <span className="rs-activity-clip-title">{clip.title}</span>
                 <span className="rs-activity-clip-meta">
                   {queued
-                    ? "In the queue"
+                    ? activityCopy.picker.inQueue
                     : clip.ready
                       ? [clip.game, formatDuration(clip.durationSeconds)]
                           .filter(Boolean)
                           .join(" · ")
-                      : "Still encoding"}
+                      : activityCopy.picker.encoding}
                 </span>
               </button>
             </li>
@@ -146,10 +147,10 @@ export function ActivityClipPicker({
       </ul>
 
       {state.loading ? (
-        <span className="rs-spinner" aria-label="Loading clips" />
+        <span className="rs-spinner" aria-label={activityCopy.picker.loading} />
       ) : state.hasMore ? (
         <button type="button" className="rs-primary" onClick={loadMore}>
-          Load more
+          {activityCopy.picker.loadMore}
         </button>
       ) : null}
     </section>

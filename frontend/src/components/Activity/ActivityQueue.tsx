@@ -6,6 +6,7 @@ import {
   IconPlayerPlay,
   IconX,
 } from "@tabler/icons-react";
+import { activityCopy } from "@/copy/activity";
 import { formatDuration } from "@/components/Reelshelf/reelshelf-model";
 import type { WatchRoom } from "./useWatchRoom";
 
@@ -27,7 +28,8 @@ export function ActivityQueue({
     <section className="rs-activity-queue">
       <div className="rs-activity-picker-head">
         <h2 className="rs-activity-kicker">
-          Up next{locked ? " · locked" : ""}
+          {activityCopy.queue.upNext}
+          {locked ? activityCopy.queue.locked : ""}
         </h2>
         {room.isHost ? (
           <button
@@ -41,13 +43,13 @@ export function ActivityQueue({
             ) : (
               <IconLock size={14} aria-hidden="true" />
             )}
-            {locked ? "Unlock queue" : "Lock queue"}
+            {locked ? activityCopy.queue.unlock : activityCopy.queue.lock}
           </button>
         ) : null}
       </div>
 
       {queue.length === 0 ? (
-        <p className="rs-activity-role">Nothing queued yet.</p>
+        <p className="rs-activity-role">{activityCopy.queue.empty}</p>
       ) : (
         <ol className="rs-activity-queue-list">
           {queue.map((item, index) => {
@@ -60,7 +62,7 @@ export function ActivityQueue({
                   <span className="rs-activity-clip-meta">
                     {[
                       item.game,
-                      `${item.ownerName}'s shelf`,
+                      activityCopy.queue.ownerShelf(item.ownerName),
                       formatDuration(item.durationSeconds),
                     ]
                       .filter(Boolean)
@@ -73,7 +75,7 @@ export function ActivityQueue({
                       <button
                         type="button"
                         className="rs-icon-button"
-                        aria-label={`Play ${item.title} now`}
+                        aria-label={activityCopy.queue.playNow(item.title)}
                         onClick={() => room.playNow(item.itemId)}
                       >
                         <IconPlayerPlay size={16} aria-hidden="true" />
@@ -81,7 +83,7 @@ export function ActivityQueue({
                       <button
                         type="button"
                         className="rs-icon-button"
-                        aria-label={`Move ${item.title} up`}
+                        aria-label={activityCopy.queue.moveUp(item.title)}
                         disabled={index === 0}
                         onClick={() => room.moveInQueue(item.itemId, index - 1)}
                       >
@@ -90,7 +92,7 @@ export function ActivityQueue({
                       <button
                         type="button"
                         className="rs-icon-button"
-                        aria-label={`Move ${item.title} down`}
+                        aria-label={activityCopy.queue.moveDown(item.title)}
                         disabled={index === queue.length - 1}
                         onClick={() => room.moveInQueue(item.itemId, index + 1)}
                       >
@@ -102,7 +104,7 @@ export function ActivityQueue({
                     <button
                       type="button"
                       className="rs-icon-button"
-                      aria-label={`Remove ${item.title} from the queue`}
+                      aria-label={activityCopy.queue.remove(item.title)}
                       onClick={() => room.removeFromQueue(item.itemId)}
                     >
                       <IconX size={16} aria-hidden="true" />

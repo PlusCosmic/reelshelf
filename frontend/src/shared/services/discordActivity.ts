@@ -5,6 +5,7 @@ import type {
   ActivityParticipantResponse,
   ActivitySessionResponse,
 } from "@/api-client";
+import { activityCopy } from "@/copy/activity";
 import { createDiscordActivityApi } from "./apiClients";
 
 export type {
@@ -49,7 +50,7 @@ export type ActivityConnection = {
 
 export class ActivityUnavailableError extends Error {
   constructor() {
-    super("The watch room isn't switched on yet.");
+    super(activityCopy.failure.switchedOff);
     this.name = "ActivityUnavailableError";
   }
 }

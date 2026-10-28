@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { IconMaximize, IconMinimize } from "@tabler/icons-react";
+import { activityCopy } from "@/copy/activity";
+import { commonCopy } from "@/copy/common";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { defaultCloth } from "@/components/Reelshelf/reelshelf-model";
@@ -56,13 +58,13 @@ export function ActivityApp() {
         <span className="rs-brand">
           <BrandLogo />
         </span>
-        <span className="rs-activity-kicker">Watch room</span>
+        <span className="rs-activity-kicker">{activityCopy.kicker}</span>
       </header>
 
       {state.status === "connecting" ? (
         <section className="rs-public-state" aria-live="polite">
           <span className="rs-spinner" aria-hidden="true" />
-          <p>Joining the room…</p>
+          <p>{activityCopy.joining}</p>
         </section>
       ) : null}
 
@@ -77,7 +79,7 @@ export function ActivityApp() {
               setAttempt((value) => value + 1);
             }}
           >
-            Try again
+            {commonCopy.tryAgain}
           </button>
         </section>
       ) : null}
@@ -104,8 +106,8 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
       {room.status !== "connected" ? (
         <p className="rs-activity-banner" aria-live="polite">
           {room.status === "connecting"
-            ? "Connecting to the room…"
-            : "Reconnecting to the room…"}
+            ? activityCopy.room.connecting
+            : activityCopy.room.reconnecting}
         </p>
       ) : null}
 
@@ -128,16 +130,20 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
       </div>
 
       <div className="rs-activity-present">
-        <h2 className="rs-activity-kicker">In the room</h2>
+        <h2 className="rs-activity-kicker">{activityCopy.room.present}</h2>
         <ul>
           {(room.state?.participants ?? []).map((person) => (
             <li key={person.discordUserId}>
               <ParticipantAvatar person={person} size={28} />
               <span>{person.name}</span>
               {person.isHost ? (
-                <span className="rs-activity-tag">Host</span>
+                <span className="rs-activity-tag">
+                  {activityCopy.room.host}
+                </span>
               ) : !person.isMember ? (
-                <span className="rs-activity-tag is-quiet">Guest</span>
+                <span className="rs-activity-tag is-quiet">
+                  {activityCopy.room.guest}
+                </span>
               ) : null}
             </li>
           ))}
@@ -206,9 +212,17 @@ function ActivityNowPlaying({
             <button
               type="button"
               className="rs-icon-button rs-activity-expand"
-              aria-label={expanded ? "Exit full view" : "Full view"}
+              aria-label={
+                expanded
+                  ? activityCopy.nowPlaying.exitFullView
+                  : activityCopy.nowPlaying.fullView
+              }
               aria-pressed={expanded}
-              title={expanded ? "Exit full view (Esc)" : "Full view"}
+              title={
+                expanded
+                  ? activityCopy.nowPlaying.exitFullViewHint
+                  : activityCopy.nowPlaying.fullView
+              }
               onClick={() => setExpanded((value) => !value)}
             >
               {expanded ? (
@@ -236,7 +250,10 @@ function ActivityNowPlaying({
             {playback.clip.title}
           </h2>
           <p className="rs-activity-role">
-            {[playback.clip.game, `from ${playback.clip.ownerName}'s shelf`]
+            {[
+              playback.clip.game,
+              activityCopy.nowPlaying.fromShelf(playback.clip.ownerName),
+            ]
               .filter(Boolean)
               .join(" · ")}
           </p>
@@ -247,7 +264,9 @@ function ActivityNowPlaying({
             className="rs-primary"
             onClick={() => room.next(playback.itemId)}
           >
-            {queue.length > 0 ? "Skip" : "Stop"}
+            {queue.length > 0
+              ? activityCopy.nowPlaying.skip
+              : activityCopy.nowPlaying.stop}
           </button>
         ) : null}
       </div>
@@ -280,17 +299,17 @@ function describeRole(
   hostName: string | undefined,
 ): string {
   if (room.isHost) {
-    return `You're hosting. Add clips from ${participant.accountName}'s shelf below and everyone watches them with you.`;
+    return activityCopy.role.hosting(participant.accountName);
   }
   const hosting = hostName
-    ? `${hostName} is hosting.`
-    : "Nobody with a Reelshelf shelf is here yet.";
+    ? activityCopy.role.hostIs(hostName)
+    : activityCopy.role.noHost;
   if (!participant.isMember) {
-    return `${hosting} You're watching as a guest. Have a Reelshelf account? Link Discord in Settings to share your clips.`;
+    return activityCopy.role.guest(hosting);
   }
   return room.state?.queueLocked
-    ? `${hosting} They've locked the queue for now.`
-    : `${hosting} Add clips from your shelf to the queue below.`;
+    ? activityCopy.role.locked(hosting)
+    : activityCopy.role.member(hosting);
 }
 
 async function describeFailure(error: unknown): Promise<string> {
@@ -298,8 +317,8 @@ async function describeFailure(error: unknown): Promise<string> {
 
   const apiError = await toApiError(error);
   if (apiError.status === 403) {
-    return "Couldn't confirm you're in this Activity. Rejoin it from the voice channel.";
+    return activityCopy.failure.notInInstance;
   }
-  if (apiError.status === 503) return "The watch room isn't switched on yet.";
-  return "Couldn't join the room.";
+  if (apiError.status === 503) return activityCopy.failure.switchedOff;
+  return activityCopy.failure.couldNotJoin;
 }
