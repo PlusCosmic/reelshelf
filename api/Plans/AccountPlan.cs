@@ -11,6 +11,12 @@ public sealed record AccountPlan(
     long StorageUsedBytes)
 {
     /// <summary>
+    /// True when a plan that can be bought keeps more clips than this one, so offering an upgrade for room would help.
+    /// </summary>
+    public bool CanBuyMoreClips =>
+        Limits.MaxClips is { } maxClips && TierLimits.Exceeds(TierLimits.BestToBuy.MaxClips, maxClips);
+
+    /// <summary>
     /// Why a new clip can't be added, or null when it can. Clips over the limit (after a downgrade) are kept, but
     /// nothing is added until the account is back under it.
     /// </summary>
@@ -19,7 +25,7 @@ public sealed record AccountPlan(
         if (Limits.MaxClips is { } maxClips && ClipCount >= maxClips)
         {
             return $"Your plan keeps up to {maxClips:N0} clips and you have {ClipCount:N0}. " +
-                   (TierLimits.Exceeds(TierLimits.BestToBuy.MaxClips, maxClips)
+                   (CanBuyMoreClips
                        ? "Delete some, or upgrade to keep more."
                        : "Delete some to add more.");
         }
