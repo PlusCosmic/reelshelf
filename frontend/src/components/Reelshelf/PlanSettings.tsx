@@ -16,6 +16,7 @@ import {
   formatClipLength,
   formatPrice,
   tierNames,
+  upgradeKeepsMoreClips,
 } from "@/shared/services/plans";
 import { ApiError } from "@/shared/services/apiError";
 import { commonCopy } from "@/copy/common";
@@ -139,7 +140,13 @@ export function PlanSettings({
   const tierLimits: TierLimitsByName = Object.fromEntries(
     (offers.data ?? []).map((offer) => [offer.tier, offer.clipLimit]),
   );
-  const alert = planAlert(current, canUpgrade || changeable, tierLimits);
+  // Only offer an upgrade for room when a plan that can be bought keeps more clips than this one.
+  const alert = planAlert(
+    current,
+    (canUpgrade || changeable) &&
+      upgradeKeepsMoreClips(offers.data, current.clipLimit),
+    tierLimits,
+  );
   const scheduled = subscription?.scheduledTier ?? null;
   // A plan that ended can be taken up again; its card says so.
   const lapsedTier =

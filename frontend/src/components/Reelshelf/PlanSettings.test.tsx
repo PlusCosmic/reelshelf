@@ -180,7 +180,7 @@ describe("PlanSettings", () => {
     render(<PlanSettings billingReturn={undefined} />);
 
     expect(
-      screen.getByRole("heading", { name: "Plus (granted)" }),
+      screen.getByRole("heading", { name: "Plus · given by Reelshelf" }),
     ).toBeTruthy();
     expect(screen.getByText("Current plan")).toBeTruthy();
     expect(
@@ -198,8 +198,19 @@ describe("PlanSettings", () => {
     expect(screen.getByText("Your library is nearly full.")).toBeTruthy();
     expect(
       screen.getByText(
-        /At 100 you can't add more until you delete some or upgrade/,
+        /At 100 you'll need to delete some or upgrade to add more/,
       ),
+    ).toBeTruthy();
+  });
+
+  it("offers no upgrade for room when no plan to buy keeps more clips", () => {
+    mocks.plan = { ...free, tier: "pro", clipLimit: 5000, clipCount: 4700 };
+    mocks.offers = offers;
+    render(<PlanSettings billingReturn={undefined} />);
+
+    expect(screen.getByText("Your library is nearly full.")).toBeTruthy();
+    expect(
+      screen.getByText(/At 5,000 you'll need to delete some to add more\./),
     ).toBeTruthy();
   });
 
@@ -238,7 +249,7 @@ describe("PlanSettings", () => {
 
     expect(
       screen.getByText(
-        /When Pro ends on .*, 1,720 clips will be over Free's limit of 100\./,
+        /Free keeps 100 clips, so when Pro ends on .* you'll have 1,720 over\./,
       ),
     ).toBeTruthy();
     expect(screen.getByText(/deleted 14 days later/)).toBeTruthy();
@@ -417,7 +428,9 @@ describe("PlanSettings", () => {
       ),
     ).toBeTruthy();
     expect(
-      screen.getByText(/820 clips will be over its limit of 1,000\./),
+      screen.getByText(
+        /Plus keeps 1,000 clips, so from .* you'll have 820 over\./,
+      ),
     ).toBeTruthy();
     expect(screen.getByText(/^From /)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Keep Pro" }));
