@@ -148,7 +148,8 @@ export const libraryCopy = {
     addToCollection: "Add to collection",
     preparingDownload: "Preparing download…",
     download: "Download",
-    confirmDelete: (title: string) => `Delete "${title}"? You can't undo this.`,
+    confirmDelete: (title: string) =>
+      `Permanently delete "${title}"? This can't be undone.`,
     deleteFailed: "That clip wasn't deleted. Try again.",
   },
   shareDialog: {

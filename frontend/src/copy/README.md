@@ -41,6 +41,8 @@ and the race to post it; Reelshelf is about keeping clips, and it talks like it.
 
 - **British English**: organised, colour, uncategorised, theatre.
 - **Contractions** wherever they read naturally: "couldn't", "you'll", "isn't".
+- **Destructive actions say "permanently" and "can't be undone"**: deleting an account, a clip or a
+  collection uses those exact words, not a softer phrase such as "for good". Clarity beats voice here.
 - **Errors say what didn't happen, then what to do**: "Your library didn't load. Try again." Not
   "The archive could not be loaded." Say "nothing changed" or "nothing was charged" when that is
   true, because it's the first thing people want to know.

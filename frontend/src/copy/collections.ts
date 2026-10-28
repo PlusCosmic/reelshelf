@@ -52,7 +52,7 @@ export const collectionsCopy = {
     empty: "No clips here yet. Open a clip and choose Add to collection.",
     editTitle: "Edit collection",
     confirmDelete: (name: string) =>
-      `Delete "${name}"? The clips stay in your library.`,
+      `Permanently delete "${name}"? This can't be undone. The clips stay in your library.`,
   },
   form: {
     eyebrow: "Collection",
