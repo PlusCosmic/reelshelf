@@ -4,23 +4,25 @@ export const activityCopy = {
   joining: "Joining the room…",
   failure: {
     notInInstance:
-      "Couldn't confirm you're in this Activity. Rejoin it from the voice channel.",
+      "We couldn't see you in this Activity. Rejoin it from the voice channel.",
     switchedOff: "The watch room isn't switched on yet.",
-    couldNotJoin: "Couldn't join the room.",
+    couldNotJoin:
+      "Couldn't join the room. Try rejoining from the voice channel.",
   },
   room: {
     connecting: "Connecting to the room…",
     reconnecting: "Reconnecting to the room…",
-    somethingWentWrong: "Something went wrong.",
+    somethingWentWrong:
+      "Something went wrong in the room. Try rejoining from the voice channel.",
     present: "In the room",
     host: "Host",
     guest: "Guest",
   },
   role: {
-    hosting: (accountName: string | null) =>
-      `You're hosting. Add clips from ${accountName}'s shelf below and everyone watches them with you.`,
+    hosting:
+      "You're hosting. Add clips from your shelf and everyone watches along.",
     hostIs: (hostName: string) => `${hostName} is hosting.`,
-    noHost: "Nobody with a Reelshelf shelf is here yet.",
+    noHost: "Nobody with a Reelshelf account is here yet.",
     guest: (hosting: string) =>
       `${hosting} You're watching as a guest. Have a Reelshelf account? Link Discord in Settings to share your clips.`,
     locked: (hosting: string) => `${hosting} They've locked the queue for now.`,
@@ -66,7 +68,7 @@ export const activityCopy = {
     empty: "Your shelf is empty.",
     add: (title: string) => `Add ${title} to the queue`,
     inQueue: "In the queue",
-    encoding: "Still encoding",
+    encoding: "Still processing",
     loading: "Loading clips",
     loadMore: "Load more",
   },

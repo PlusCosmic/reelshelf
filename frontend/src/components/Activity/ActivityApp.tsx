@@ -299,7 +299,7 @@ function describeRole(
   hostName: string | undefined,
 ): string {
   if (room.isHost) {
-    return activityCopy.role.hosting(participant.accountName);
+    return activityCopy.role.hosting;
   }
   const hosting = hostName
     ? activityCopy.role.hostIs(hostName)
