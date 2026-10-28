@@ -69,70 +69,71 @@ const stack = (...books: Array<[number, number, string]>): Stack => ({
 });
 
 /**
- * The left bookcase's shelves, top first. The inner end, beside the content, is on the right; the
- * window's edge crops the other, so a book leans toward the content and its support is never cut off.
+ * The left bookcase's shelves, top first, packed against the window's left edge. The end beside the
+ * content fades out and is cropped where the margin is narrow, so a book leans toward the window edge
+ * and the upright holding it up always shows.
  */
 export const leftShelves: SideShelfBook[][] = [
   [
-    up(34, 208, cloths.tan),
-    up(28, 226, cloths.teal),
-    up(40, 196, cloths.slate),
-    up(30, 234, cloths.brick),
-    up(38, 214, cloths.blue),
-    up(26, 188, cloths.grass),
-    lean("right", 32, 196, cloths.rust),
     up(44, 222, cloths.ink),
+    lean("left", 32, 196, cloths.rust),
+    up(26, 188, cloths.grass),
+    up(38, 214, cloths.blue),
+    up(30, 234, cloths.brick),
+    up(40, 196, cloths.slate),
+    up(28, 226, cloths.teal),
+    up(34, 208, cloths.tan),
   ],
   [
+    up(28, 192, cloths.moss),
+    up(34, 226, cloths.slate),
+    up(42, 204, cloths.tan),
+    up(26, 232, cloths.brick),
+    up(30, 218, cloths.wine),
     stack(
       [150, 24, cloths.teal],
       [136, 20, cloths.olive],
       [144, 26, cloths.ink],
     ),
-    up(30, 218, cloths.wine),
-    up(26, 232, cloths.brick),
-    up(42, 204, cloths.tan),
-    up(34, 226, cloths.slate),
-    up(28, 192, cloths.moss),
   ],
   [
-    up(36, 230, cloths.rust),
-    up(30, 206, cloths.slate),
-    up(40, 236, cloths.teal),
-    lean("right", 28, 200, cloths.olive),
-    up(38, 220, cloths.plum),
-    up(32, 198, cloths.grass),
     up(26, 228, cloths.blue),
+    up(32, 198, cloths.grass),
+    up(38, 220, cloths.plum),
+    lean("left", 28, 200, cloths.olive),
+    up(40, 236, cloths.teal),
+    up(30, 206, cloths.slate),
+    up(36, 230, cloths.rust),
   ],
 ];
 
-/** The right bookcase's shelves, top first, the mirror of the left: the inner end is on the left. */
+/** The right bookcase's shelves, top first, the mirror of the left: packed against the right edge. */
 export const rightShelves: SideShelfBook[][] = [
   [
-    up(36, 228, cloths.wine),
-    up(30, 210, cloths.plum),
-    up(42, 236, cloths.grass),
-    up(28, 198, cloths.brick),
-    up(34, 220, cloths.ink),
     stack([140, 22, cloths.rust], [128, 26, cloths.tan]),
+    up(34, 220, cloths.ink),
+    up(28, 198, cloths.brick),
+    up(42, 236, cloths.grass),
+    up(30, 210, cloths.plum),
+    up(36, 228, cloths.wine),
   ],
   [
-    up(40, 226, cloths.slate),
-    lean("left", 30, 194, cloths.tan),
-    up(28, 214, cloths.moss),
-    up(36, 232, cloths.olive),
-    up(32, 200, cloths.rust),
-    up(44, 224, cloths.ink),
     up(26, 190, cloths.teal),
+    up(44, 224, cloths.ink),
+    up(32, 200, cloths.rust),
+    up(36, 232, cloths.olive),
+    up(28, 214, cloths.moss),
+    lean("right", 30, 194, cloths.tan),
+    up(40, 226, cloths.slate),
   ],
   [
-    up(34, 216, cloths.olive),
-    up(28, 234, cloths.ink),
-    up(40, 206, cloths.wine),
-    up(30, 226, cloths.grass),
-    lean("left", 32, 198, cloths.blue),
-    up(38, 230, cloths.brick),
     stack([146, 24, cloths.plum], [132, 20, cloths.rust]),
+    up(38, 230, cloths.brick),
+    lean("right", 32, 198, cloths.blue),
+    up(30, 226, cloths.grass),
+    up(40, 206, cloths.wine),
+    up(28, 234, cloths.ink),
+    up(34, 216, cloths.olive),
   ],
 ];
 

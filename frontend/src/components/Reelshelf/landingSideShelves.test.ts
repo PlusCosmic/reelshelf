@@ -31,13 +31,13 @@ describe("landing side shelves", () => {
     }
   });
 
-  it("leans every book toward the content, away from the cropped window edge", () => {
+  it("leans every book toward the window edge, away from the cropped end beside the content", () => {
     const leans = (shelves: SideShelfBook[][]) =>
       shelves
         .flat()
         .flatMap((book) => (book.kind === "leaning" ? [book.toward] : []));
-    expect(leans(leftShelves)).not.toContain("left");
-    expect(leans(rightShelves)).not.toContain("right");
+    expect(leans(leftShelves)).not.toContain("right");
+    expect(leans(rightShelves)).not.toContain("left");
   });
 
   it("finds no support when a book leans into empty space", () => {
