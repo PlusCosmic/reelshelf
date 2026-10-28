@@ -13,6 +13,9 @@ import {
   transcriptionFilters,
   type TranscriptionFilter,
 } from "@/components/ClipTranscription/transcriptionReview";
+import { clipTranscriptionCopy } from "@/copy/clipTranscription";
+import { commonCopy } from "@/copy/common";
+import { runsCopy } from "@/copy/runs";
 import {
   useBackfillClipSummary,
   useBackfillClipTranscription,
@@ -26,6 +29,8 @@ import {
   isTranscriptionActive,
   type ClipTranscriptionReviewClip,
 } from "@/shared/services/clipTranscription";
+
+const copy = clipTranscriptionCopy;
 
 type ClipTranscriptionSearch = {
   clip?: string;
@@ -47,13 +52,10 @@ export const Route = createFileRoute("/clip-transcription")({
 function ClipTranscriptionRoute() {
   const { data: user, isLoading } = useCurrentUser();
 
-  if (isLoading) return <div className="rs-section rs-empty">Loading…</div>;
+  if (isLoading)
+    return <div className="rs-section rs-empty">{commonCopy.loading}</div>;
   if (!user?.isAdmin)
-    return (
-      <div className="rs-section rs-empty">
-        Transcription review is only available to admins.
-      </div>
-    );
+    return <div className="rs-section rs-empty">{copy.adminsOnly}</div>;
   return <TranscriptionReview />;
 }
 
@@ -121,23 +123,17 @@ function TranscriptionReview() {
   }, [selectedId]);
 
   function onBackfill() {
-    const confirmed = window.confirm(
-      "Queue a transcription run for every encoded clip of a whitelisted owner that has never had one? Each run is a paid model call.",
-    );
+    const confirmed = window.confirm(copy.confirmBackfill);
     if (confirmed) backfill.mutate();
   }
 
   function onRetryEmpty() {
-    const confirmed = window.confirm(
-      "Transcribe again, with the configured model, every clip that came back with no speech from another model? Each run is a paid model call.",
-    );
+    const confirmed = window.confirm(copy.confirmRetryEmpty);
     if (confirmed) retryEmpty.mutate();
   }
 
   function onBackfillSummaries() {
-    const confirmed = window.confirm(
-      "Queue a summary for every transcribed clip that has never had one, with the configured model? Each run is a paid model call.",
-    );
+    const confirmed = window.confirm(copy.confirmBackfillSummaries);
     if (confirmed) backfillSummaries.mutate(null);
   }
 
@@ -145,41 +141,43 @@ function TranscriptionReview() {
     <div className="rs-legend-page">
       <header className="rs-legend-header">
         <div>
-          <div className="rs-eyebrow">Transcription</div>
-          <h1 className="rs-display rs-h2">Check what the model heard.</h1>
+          <div className="rs-eyebrow">{copy.eyebrow}</div>
+          <h1 className="rs-display rs-h2">{copy.title}</h1>
         </div>
         <div className="rs-legend-backfill">
           <Button
             onClick={onBackfillSummaries}
             disabled={backfillSummaries.isPending}
           >
-            {backfillSummaries.isPending ? "Queueing…" : "Backfill summaries"}
+            {backfillSummaries.isPending
+              ? runsCopy.rerun.queueing
+              : copy.backfillSummaries}
           </Button>
           <Button onClick={onRetryEmpty} disabled={retryEmpty.isPending}>
-            {retryEmpty.isPending ? "Queueing…" : "Retry no-speech clips"}
+            {retryEmpty.isPending
+              ? runsCopy.rerun.queueing
+              : copy.retryNoSpeech}
           </Button>
           <Button
             variant="primary"
             onClick={onBackfill}
             disabled={backfill.isPending}
           >
-            {backfill.isPending ? "Queueing…" : "Backfill all clips"}
+            {backfill.isPending
+              ? runsCopy.rerun.queueing
+              : runsCopy.backfillAll}
           </Button>
           {backfill.isSuccess ? (
             <span className="rs-meta">
-              Queued {backfill.data} {backfill.data === 1 ? "clip" : "clips"}.
+              {runsCopy.queuedClips(backfill.data)}
             </span>
           ) : null}
           {retryEmpty.isSuccess ? (
-            <span className="rs-meta">
-              Retrying {retryEmpty.data}{" "}
-              {retryEmpty.data === 1 ? "clip" : "clips"}.
-            </span>
+            <span className="rs-meta">{copy.retrying(retryEmpty.data)}</span>
           ) : null}
           {backfillSummaries.isSuccess ? (
             <span className="rs-meta">
-              Summarising {backfillSummaries.data}{" "}
-              {backfillSummaries.data === 1 ? "clip" : "clips"}.
+              {copy.summarising(backfillSummaries.data)}
             </span>
           ) : null}
           {backfillSummaries.isError ? (
@@ -209,20 +207,20 @@ function TranscriptionReview() {
             {label} · {counts[value]}
           </Chip>
         ))}
-        <span className="rs-meta rs-legend-hint">j / k to move</span>
+        <span className="rs-meta rs-legend-hint">{runsCopy.moveHint}</span>
       </div>
 
       {clipsQuery.isLoading ? (
-        <div className="rs-empty">Loading clips…</div>
+        <div className="rs-empty">{runsCopy.loadingClips}</div>
       ) : clipsQuery.isError ? (
-        <div className="rs-empty">Clips could not be loaded.</div>
+        <div className="rs-empty">{runsCopy.clipsNotLoaded}</div>
       ) : clips.length === 0 ? (
-        <div className="rs-empty">No whitelisted owner has any clips yet.</div>
+        <div className="rs-empty">{copy.noClips}</div>
       ) : (
         <div className="rs-legend-layout">
           <ol className="rs-legend-list">
             {visible.length === 0 ? (
-              <li className="rs-empty">No clips match this filter.</li>
+              <li className="rs-empty">{runsCopy.noClipsMatch}</li>
             ) : null}
             {visible.map((clip) => (
               <li key={clip.clipId}>
@@ -244,12 +242,12 @@ function TranscriptionReview() {
 }
 
 const outcomeBadges = {
-  transcribed: { tone: "accent", label: "Transcribed" },
-  silent: { tone: "neutral", label: "No speech" },
-  "no-audio": { tone: "neutral", label: "No audio" },
-  failed: { tone: "danger", label: "Failed" },
-  queued: { tone: "neutral", label: "Queued" },
-  "not-run": { tone: "neutral", label: "Not run" },
+  transcribed: { tone: "accent", label: copy.outcomes.transcribed },
+  silent: { tone: "neutral", label: copy.outcomes.silent },
+  "no-audio": { tone: "neutral", label: copy.outcomes.noAudio },
+  failed: { tone: "danger", label: copy.outcomes.failed },
+  queued: { tone: "neutral", label: copy.outcomes.queued },
+  "not-run": { tone: "neutral", label: copy.outcomes.notRun },
 } as const;
 
 function ClipRow({

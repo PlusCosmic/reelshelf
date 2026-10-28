@@ -1,4 +1,5 @@
 import { Select } from "@/components/ui";
+import { runsCopy } from "@/copy/runs";
 import { useLegendReasoningEfforts } from "@/hooks/queries";
 
 /** Picks a reasoning effort for new runs; the empty value is the configured default. */
@@ -13,14 +14,14 @@ export function ReasoningEffortSelect({
   return (
     <Select
       className="rs-legend-effort"
-      aria-label="Reasoning effort"
+      aria-label={runsCopy.reasoningEffort.label}
       value={value}
       onValueChange={onValueChange}
       options={[
-        { value: "", label: "Default reasoning" },
+        { value: "", label: runsCopy.reasoningEffort.default },
         ...(efforts.data ?? []).map((effort) => ({
           value: effort,
-          label: `${effort} reasoning`,
+          label: runsCopy.reasoningEffort.option(effort),
         })),
       ]}
     />

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Input, Select } from "@/components/ui";
+import { runsCopy } from "@/copy/runs";
 import { useLegendProviders } from "@/hooks/queries";
 import {
   decisionsProviders,
@@ -30,8 +31,8 @@ export function useRunOptions() {
           compact
           value={model}
           onChange={(event) => setModel(event.target.value)}
-          placeholder="Model (default if empty)"
-          aria-label="Model to run"
+          placeholder={runsCopy.rerun.modelPlaceholder}
+          aria-label={runsCopy.rerun.modelLabel}
         />
         {takesEffort ? (
           <ReasoningEffortSelect
@@ -56,11 +57,11 @@ function ProviderSelect({
   return (
     <Select
       className="rs-legend-effort"
-      aria-label="Provider"
+      aria-label={runsCopy.provider.label}
       value={value}
       onValueChange={onValueChange}
       options={[
-        { value: "", label: "Default provider" },
+        { value: "", label: runsCopy.provider.default },
         ...(providers.data ?? []).map((provider) => ({
           value: provider,
           label: provider,

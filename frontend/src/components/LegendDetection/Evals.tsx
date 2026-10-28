@@ -2,6 +2,9 @@ import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { IconTrash } from "@tabler/icons-react";
 import { Button, Input, Select } from "@/components/ui";
+import { commonCopy } from "@/copy/common";
+import { legendDetectionCopy } from "@/copy/legendDetection";
+import { runsCopy } from "@/copy/runs";
 import {
   useChangeBaselineLabels,
   useLegendCascade,
@@ -36,6 +39,9 @@ import {
 import { formatConfidence } from "./legendReview";
 import { useRunOptions } from "./RunOptionsFields";
 
+const copy = legendDetectionCopy.evals;
+const { percent } = runsCopy.units;
+
 /** Starts an eval on every clip in the baseline, with an estimate from the last eval of the same model. */
 export function EvalForm({
   evals,
@@ -54,15 +60,20 @@ export function EvalForm({
       : null;
   const estimateText =
     !provider || !model
-      ? "Pick a provider and model to see an estimate."
+      ? copy.form.pickModel
       : estimate === null
-        ? "No finished eval of this model to estimate from."
-        : `About ${estimate.costUsd === null ? "an unknown cost" : formatUsd(estimate.costUsd)}${estimate.wallSeconds === null ? "" : ` and ${formatWall(estimate.wallSeconds)}`}, from its last eval.`;
+        ? copy.form.noEstimate
+        : copy.form.estimate(
+            estimate.costUsd === null ? null : formatUsd(estimate.costUsd),
+            estimate.wallSeconds === null
+              ? null
+              : formatWall(estimate.wallSeconds),
+          );
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     const confirmed = window.confirm(
-      `Run ${options.model ?? "the default model"} on all ${baselineClips} baseline clips? Each run is a paid model call.`,
+      copy.form.confirm(options.model, baselineClips),
     );
     if (confirmed)
       create.mutate(options, { onSuccess: (evalId) => onCreated(evalId) });
@@ -77,9 +88,7 @@ export function EvalForm({
         variant="primary"
         disabled={create.isPending || baselineClips === 0}
       >
-        {create.isPending
-          ? "Starting…"
-          : `Run on baseline (${baselineClips} clips)`}
+        {create.isPending ? copy.form.starting : copy.form.run(baselineClips)}
       </Button>
       {create.isError ? (
         <span className="rs-legend-error">{create.error.message}</span>
@@ -117,25 +126,25 @@ export function EvalTable({
       <table className="rs-legend-table rs-eval-table">
         <thead>
           <tr>
-            <th scope="col">Model</th>
+            <th scope="col">{runsCopy.columns.model}</th>
             <th
               scope="col"
-              title={`Bars run from ${Math.round(scaleFrom * 100)}% to 100%`}
+              title={copy.table.scaleTitle(Math.round(scaleFrom * 100))}
             >
-              Accuracy (95% range)
+              {copy.table.accuracy}
             </th>
-            <th scope="col">Answered</th>
-            <th scope="col" title="Wrong legends given at 80%+ confidence">
-              Confident wrong
+            <th scope="col">{copy.table.answered}</th>
+            <th scope="col" title={copy.table.confidentWrongTitle}>
+              {copy.table.confidentWrong}
             </th>
-            <th scope="col">Cost</th>
-            <th scope="col">Per 1k clips</th>
-            <th scope="col" title="The model call alone, for succeeded runs">
-              Latency p50 / p95
+            <th scope="col">{copy.table.cost}</th>
+            <th scope="col">{runsCopy.columns.perThousandClips}</th>
+            <th scope="col" title={copy.table.latencyTitle}>
+              {copy.table.latency}
             </th>
-            <th scope="col">Wall time</th>
+            <th scope="col">{copy.table.wallTime}</th>
             <th scope="col">
-              <span className="rs-visually-hidden">Delete</span>
+              <span className="rs-visually-hidden">{commonCopy.delete}</span>
             </th>
           </tr>
         </thead>
@@ -167,7 +176,10 @@ export function EvalTable({
                   <div className="rs-meta">
                     {evaluation.provider}
                     {evaluation.queued > 0
-                      ? ` · running ${evaluation.runs - evaluation.queued}/${evaluation.runs}`
+                      ? copy.table.progress(
+                          evaluation.runs - evaluation.queued,
+                          evaluation.runs,
+                        )
                       : ""}
                   </div>
                 </th>
@@ -192,7 +204,7 @@ export function EvalTable({
                           style={{ left: onScale(share) }}
                         />
                       </span>
-                      <strong>{(share * 100).toFixed(1)}%</strong>
+                      <strong>{percent((share * 100).toFixed(1))}</strong>
                       <span className="rs-meta">
                         ±{(((high - low) / 2) * 100).toFixed(1)}
                       </span>
@@ -203,8 +215,7 @@ export function EvalTable({
                   {evaluation.succeeded} / {evaluation.runs}
                   {evaluation.failed > 0 ? (
                     <span className="rs-legend-error">
-                      {" "}
-                      · {evaluation.failed} failed
+                      {copy.table.failed(evaluation.failed)}
                     </span>
                   ) : null}
                 </td>
@@ -212,7 +223,7 @@ export function EvalTable({
                 <td>
                   {evaluation.costUsd === null ? (
                     evaluation.succeeded > 0 ? (
-                      <a href="#prices">Set price</a>
+                      <a href="#prices">{copy.table.setPrice}</a>
                     ) : (
                       "—"
                     )
@@ -220,7 +231,7 @@ export function EvalTable({
                     <>
                       {formatUsd(evaluation.costUsd)}
                       {evaluation.costBilled ? (
-                        <span className="rs-meta"> billed</span>
+                        <span className="rs-meta"> {copy.table.billed}</span>
                       ) : null}
                     </>
                   )}
@@ -232,21 +243,21 @@ export function EvalTable({
                 </td>
                 <td>
                   {evaluation.queued > 0
-                    ? "running"
+                    ? copy.table.running
                     : formatWall(evaluation.wallSeconds)}
                 </td>
                 <td>
                   <Button
                     size="sm"
                     variant="ghost"
-                    aria-label={`Delete ${evalName(evaluation)} eval`}
-                    title="Delete eval"
+                    aria-label={copy.table.deleteLabel(evalName(evaluation))}
+                    title={copy.table.deleteTitle}
                     disabled={remove.isPending}
                     onClick={(event) => {
                       event.stopPropagation();
                       if (
                         window.confirm(
-                          `Delete the ${evalName(evaluation)} eval and its runs? Queued runs are cancelled.`,
+                          copy.table.confirmDelete(evalName(evaluation)),
                         )
                       )
                         remove.mutate(evaluation.id);
@@ -287,12 +298,7 @@ export function AccuracyCostChart({
       ? []
       : [{ evaluation, share, perThousand }];
   });
-  if (points.length === 0)
-    return (
-      <p className="rs-meta">
-        Costed evals appear here once they have results and a price.
-      </p>
-    );
+  if (points.length === 0) return <p className="rs-meta">{copy.chart.empty}</p>;
 
   const lowest = Math.min(...points.map((point) => point.share));
   const floor = Math.max(0, Math.floor((lowest - 0.01) * 20) / 20);
@@ -313,7 +319,7 @@ export function AccuracyCostChart({
       <div
         className="rs-eval-chart-plot"
         role="img"
-        aria-label="Accuracy against cost per 1,000 clips for each eval"
+        aria-label={copy.chart.label}
       >
         {yTicks.map((tick) => (
           <span key={tick}>
@@ -326,7 +332,7 @@ export function AccuracyCostChart({
               className="rs-eval-chart-ytick"
               style={{ bottom: `${y(tick)}%` }}
             >
-              {Math.round(tick * 100)}%
+              {percent(Math.round(tick * 100))}
             </span>
           </span>
         ))}
@@ -336,7 +342,7 @@ export function AccuracyCostChart({
             className="rs-eval-chart-xtick"
             style={{ left: `${x(tick)}%` }}
           >
-            ${tick}
+            {runsCopy.units.usd(tick)}
           </span>
         ))}
         {points.map(({ evaluation, share, perThousand }) => (
@@ -345,7 +351,12 @@ export function AccuracyCostChart({
             type="button"
             className={`rs-eval-chart-point${evaluation.id === selectedId ? " selected" : ""}`}
             style={{ left: `${x(perThousand)}%`, bottom: `${y(share)}%` }}
-            title={`${evalName(evaluation)}: ${(share * 100).toFixed(1)}% at ${formatUsd(perThousand)} per 1k clips, p50 ${formatSeconds(evaluation.p50DurationMs)}`}
+            title={copy.chart.point(
+              evalName(evaluation),
+              (share * 100).toFixed(1),
+              formatUsd(perThousand),
+              formatSeconds(evaluation.p50DurationMs),
+            )}
             onClick={() => onSelect(evaluation.id)}
           >
             <span className="rs-eval-chart-dot" aria-hidden="true" />
@@ -353,10 +364,7 @@ export function AccuracyCostChart({
           </button>
         ))}
       </div>
-      <figcaption className="rs-meta">
-        Accuracy against cost per 1,000 clips, log scale. Up and to the left is
-        better.
-      </figcaption>
+      <figcaption className="rs-meta">{copy.chart.caption}</figcaption>
     </figure>
   );
 }
@@ -367,20 +375,17 @@ export function PriceTable() {
   if (!prices.data || prices.data.length === 0) return null;
   return (
     <section id="prices" className="rs-eval-panel">
-      <h2 className="rs-eval-heading">Prices, $ per million tokens</h2>
-      <p className="rs-meta">
-        Used for evals the provider doesn't bill per run. Cached and cache-write
-        prices fall back to input when empty.
-      </p>
+      <h2 className="rs-eval-heading">{copy.prices.heading}</h2>
+      <p className="rs-meta">{copy.prices.intro}</p>
       <div className="rs-legend-usage">
         <table className="rs-legend-table">
           <thead>
             <tr>
-              <th scope="col">Model</th>
-              <th scope="col">Input</th>
-              <th scope="col">Cached</th>
-              <th scope="col">Cache write</th>
-              <th scope="col">Output</th>
+              <th scope="col">{runsCopy.columns.model}</th>
+              <th scope="col">{copy.prices.input}</th>
+              <th scope="col">{runsCopy.columns.cached}</th>
+              <th scope="col">{copy.prices.cacheWrite}</th>
+              <th scope="col">{copy.prices.output}</th>
             </tr>
           </thead>
           <tbody>
@@ -398,10 +403,10 @@ export function PriceTable() {
 }
 
 const priceFields = [
-  ["inputPerMtok", "input"],
-  ["cachedInputPerMtok", "cached input"],
-  ["cacheWritePerMtok", "cache write"],
-  ["outputPerMtok", "output"],
+  ["inputPerMtok", copy.prices.fields.input],
+  ["cachedInputPerMtok", copy.prices.fields.cachedInput],
+  ["cacheWritePerMtok", copy.prices.fields.cacheWrite],
+  ["outputPerMtok", copy.prices.fields.output],
 ] as const;
 
 function PriceRow({ price }: { price: LegendModelPrice }) {
@@ -435,7 +440,7 @@ function PriceRow({ price }: { price: LegendModelPrice }) {
             compact
             className="rs-eval-price"
             inputMode="decimal"
-            aria-label={`${price.model} ${label} price`}
+            aria-label={copy.prices.fieldLabel(price.model, label)}
             value={draft[field]}
             placeholder="—"
             onChange={(event) =>
@@ -469,16 +474,19 @@ export function EvalMisses({ evaluation }: { evaluation: LegendEval }) {
   return (
     <section className="rs-eval-panel">
       <h2 className="rs-eval-heading">
-        Wrong answers · {evalName(evaluation)}
+        {copy.misses.heading(evalName(evaluation))}
         <span className="rs-meta">
           {" "}
-          {evaluation.scored - evaluation.correct} of {evaluation.scored}
+          {copy.misses.count(
+            evaluation.scored - evaluation.correct,
+            evaluation.scored,
+          )}
         </span>
       </h2>
       {misses.isLoading ? (
-        <div className="rs-empty">Loading…</div>
+        <div className="rs-empty">{commonCopy.loading}</div>
       ) : (misses.data ?? []).length === 0 ? (
-        <div className="rs-empty">No wrong answers in this eval.</div>
+        <div className="rs-empty">{copy.misses.empty}</div>
       ) : (
         <div className="rs-eval-misses-layout">
           <div className="rs-eval-misses">
@@ -488,7 +496,7 @@ export function EvalMisses({ evaluation }: { evaluation: LegendEval }) {
                 <div className="rs-eval-miss-answers">
                   {miss.status === "failed" ? (
                     <div className="rs-legend-error" title={miss.error ?? ""}>
-                      Failed: {miss.error ?? "no error recorded"}
+                      {copy.misses.failed(miss.error)}
                     </div>
                   ) : (
                     <div className="rs-eval-miss-said">
@@ -498,7 +506,9 @@ export function EvalMisses({ evaluation }: { evaluation: LegendEval }) {
                         size={28}
                       />
                       <span>
-                        Said <strong>{answerLabel(miss.playerLegend)}</strong>
+                        {copy.misses.said(
+                          <strong>{answerLabel(miss.playerLegend)}</strong>,
+                        )}
                         {miss.confidence !== null && miss.playerLegend ? (
                           <span className="rs-meta">
                             {" "}
@@ -515,7 +525,9 @@ export function EvalMisses({ evaluation }: { evaluation: LegendEval }) {
                       size={28}
                     />
                     <span>
-                      Baseline <strong>{answerLabel(miss.labelLegend)}</strong>
+                      {copy.misses.baseline(
+                        <strong>{answerLabel(miss.labelLegend)}</strong>,
+                      )}
                     </span>
                   </div>
                 </div>
@@ -543,7 +555,7 @@ export function EvalMisses({ evaluation }: { evaluation: LegendEval }) {
                         })
                       }
                     >
-                      Model is right
+                      {copy.misses.modelIsRight}
                     </Button>
                   ) : null}
                 </div>
@@ -552,7 +564,7 @@ export function EvalMisses({ evaluation }: { evaluation: LegendEval }) {
           </div>
           {pairs.length > 0 ? (
             <aside className="rs-eval-pairs">
-              <h3 className="rs-eyebrow">Most common mix-ups</h3>
+              <h3 className="rs-eyebrow">{copy.misses.mixUps}</h3>
               <ol>
                 {pairs.map((pair) => (
                   <li key={`${pair.label}→${pair.said}`}>
@@ -611,7 +623,7 @@ export function CascadePanel({ evals }: { evals: LegendEval[] }) {
 
   const options = finished.map((evaluation) => ({
     value: evaluation.id,
-    label: `${evalName(evaluation)} (${evaluation.provider})`,
+    label: copy.cascade.option(evalName(evaluation), evaluation.provider),
   }));
   const clips = cascade.data?.clips ?? [];
   const current = cascade.data?.currentEscalateBelow ?? 0.9;
@@ -623,26 +635,22 @@ export function CascadePanel({ evals }: { evals: LegendEval[] }) {
 
   return (
     <section className="rs-eval-panel">
-      <h2 className="rs-eval-heading">Cascade</h2>
-      <p className="rs-meta">
-        Run the first model on every clip and send the answers it is unsure of
-        to the second, as production's escalation does. Worked out from both
-        evals' answers on the same clips, so nothing is run again.
-      </p>
+      <h2 className="rs-eval-heading">{copy.cascade.heading}</h2>
+      <p className="rs-meta">{copy.cascade.intro}</p>
       <div className="rs-eval-cascade-controls">
         <label>
-          <span className="rs-meta">First</span>
+          <span className="rs-meta">{copy.cascade.first}</span>
           <Select
-            aria-label="First model"
+            aria-label={copy.cascade.firstLabel}
             options={options}
             value={first?.id ?? ""}
             onValueChange={setFirstId}
           />
         </label>
         <label>
-          <span className="rs-meta">Escalate to</span>
+          <span className="rs-meta">{copy.cascade.escalateTo}</span>
           <Select
-            aria-label="Escalation model"
+            aria-label={copy.cascade.escalationLabel}
             options={options}
             value={escalation?.id ?? ""}
             onValueChange={setEscalationId}
@@ -650,8 +658,10 @@ export function CascadePanel({ evals }: { evals: LegendEval[] }) {
         </label>
         <label className="rs-eval-cascade-threshold">
           <span className="rs-meta">
-            Escalate below {formatConfidence(picked)} (production:{" "}
-            {formatConfidence(current)})
+            {copy.cascade.threshold(
+              formatConfidence(picked),
+              formatConfidence(current),
+            )}
           </span>
           <input
             type="range"
@@ -664,15 +674,13 @@ export function CascadePanel({ evals }: { evals: LegendEval[] }) {
         </label>
       </div>
       {first === escalation ? (
-        <div className="rs-empty">Pick two different evals.</div>
+        <div className="rs-empty">{copy.cascade.pickTwo}</div>
       ) : cascade.isLoading ? (
-        <div className="rs-empty">Loading…</div>
+        <div className="rs-empty">{commonCopy.loading}</div>
       ) : cascade.isError ? (
         <div className="rs-legend-error">{cascade.error.message}</div>
       ) : clips.length === 0 ? (
-        <div className="rs-empty">
-          These evals have no finished clips in common.
-        </div>
+        <div className="rs-empty">{copy.cascade.noCommonClips}</div>
       ) : (
         <>
           <CascadeSummary
@@ -684,12 +692,12 @@ export function CascadePanel({ evals }: { evals: LegendEval[] }) {
             <table className="rs-legend-table">
               <thead>
                 <tr>
-                  <th scope="col">Escalate below</th>
-                  <th scope="col">Escalated</th>
-                  <th scope="col">Accuracy</th>
-                  <th scope="col">Wrong</th>
-                  <th scope="col">Per 1k clips</th>
-                  <th scope="col">Mean time</th>
+                  <th scope="col">{copy.cascade.escalateBelow}</th>
+                  <th scope="col">{copy.cascade.escalated}</th>
+                  <th scope="col">{copy.cascade.accuracy}</th>
+                  <th scope="col">{copy.cascade.wrong}</th>
+                  <th scope="col">{runsCopy.columns.perThousandClips}</th>
+                  <th scope="col">{copy.cascade.meanTime}</th>
                 </tr>
               </thead>
               <tbody>
@@ -726,39 +734,50 @@ function CascadeSummary({
   const alone = (evaluation: LegendEval) => {
     const value = accuracy(evaluation);
     const cost = costPerThousand(evaluation);
-    return `${value === null ? "—" : `${(value * 100).toFixed(1)}%`} at ${cost === null ? "unknown cost" : formatUsd(cost)}`;
+    return copy.cascade.alone(
+      value === null ? "—" : percent((value * 100).toFixed(1)),
+      cost === null ? null : formatUsd(cost),
+    );
   };
   return (
     <div className="rs-eval-cascade-summary">
       <div>
-        <div className="rs-eyebrow">Accuracy</div>
-        <strong>{(share * 100).toFixed(1)}%</strong>
+        <div className="rs-eyebrow">{copy.cascade.accuracy}</div>
+        <strong>{percent((share * 100).toFixed(1))}</strong>
         <span className="rs-meta">
           {" "}
           ±{(((high - low) / 2) * 100).toFixed(1)}
         </span>
       </div>
       <div>
-        <div className="rs-eyebrow">Escalated</div>
-        <strong>{((result.escalated / result.clips) * 100).toFixed(1)}%</strong>
+        <div className="rs-eyebrow">{copy.cascade.escalated}</div>
+        <strong>
+          {percent(((result.escalated / result.clips) * 100).toFixed(1))}
+        </strong>
         <span className="rs-meta">
           {" "}
-          {result.escalated} of {result.clips}
+          {copy.cascade.escalatedOf(result.escalated, result.clips)}
         </span>
       </div>
       <div>
-        <div className="rs-eyebrow">Per 1k clips</div>
+        <div className="rs-eyebrow">{runsCopy.columns.perThousandClips}</div>
         <strong>
-          {perThousand === null ? "Set prices" : formatUsd(perThousand)}
+          {perThousand === null
+            ? copy.cascade.setPrices
+            : formatUsd(perThousand)}
         </strong>
       </div>
       <div>
-        <div className="rs-eyebrow">Mean time</div>
+        <div className="rs-eyebrow">{copy.cascade.meanTime}</div>
         <strong>{formatSeconds(result.meanLatencyMs)}</strong>
       </div>
       <p className="rs-meta">
-        Alone, {evalName(first)} is {alone(first)} and {evalName(escalation)} is{" "}
-        {alone(escalation)} per 1k clips.
+        {copy.cascade.aloneSummary(
+          evalName(first),
+          alone(first),
+          evalName(escalation),
+          alone(escalation),
+        )}
       </p>
     </div>
   );
@@ -788,10 +807,10 @@ function CascadeRow({
     >
       <th scope="row">{formatConfidence(row.threshold)}</th>
       <td>
-        {((row.escalated / row.clips) * 100).toFixed(1)}%
+        {percent(((row.escalated / row.clips) * 100).toFixed(1))}
         <span className="rs-meta"> ({row.escalated})</span>
       </td>
-      <td>{((row.correct / row.clips) * 100).toFixed(1)}%</td>
+      <td>{percent(((row.correct / row.clips) * 100).toFixed(1))}</td>
       <td>{row.clips - row.correct}</td>
       <td>
         {row.costUsd === null

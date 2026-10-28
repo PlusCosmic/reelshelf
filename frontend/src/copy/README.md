@@ -10,16 +10,22 @@ this folder: text, strings or templates in `{...}`, and strings given to attribu
 
 One module per area of the site, named after it, exporting one object named `<area>Copy`:
 
-| Module                                  | Covers                                                                               |
-| --------------------------------------- | ------------------------------------------------------------------------------------ |
-| `common.ts`                             | Words used everywhere: brand, Loading…, Cancel, Close, the theme switch, clip counts |
-| `planLimits.ts`                         | The plan limits copy quotes (mirrors `TierLimits`; not copy, but read by it)         |
-| `landing.tsx`, `signIn.tsx`             | The signed-out front page and sign-in                                                |
-| `legal.tsx`, `terms.tsx`, `privacy.tsx` | The legal pages' frame and their full text                                           |
-| other modules                           | One per area of the signed-in app and the internal tools                             |
+| Module                                                                | Covers                                                                               |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `common.ts`, `plural.ts`                                              | Words used everywhere: brand, Loading…, Cancel, Close, the theme switch, clip counts |
+| `planLimits.ts`                                                       | The plan limits copy quotes (mirrors `TierLimits`; not copy, but read by it)         |
+| `landing.tsx`, `signIn.tsx`                                           | The signed-out front page and sign-in                                                |
+| `legal.tsx`, `terms.tsx`, `privacy.tsx`                               | The legal pages' frame and their full text                                           |
+| `shell.ts`, `ui.ts`                                                   | The signed-in app's chrome (nav, profile menu) and the generic UI components         |
+| `library.tsx`, `clip.ts`, `video.ts`                                  | The shelf and library, the clip page, and the player's states                        |
+| `collections.ts`, `share.tsx`, `reportReasons.ts`                     | Collections, the share page and its report form                                      |
+| `upload.ts`, `twitchImport.tsx`, `addGame.ts`                         | Uploading, Twitch import and adding a game                                           |
+| `plan.tsx`, `settings.tsx`                                            | Settings, the plan and billing, `/plan`                                              |
+| `activity.ts`                                                         | The Discord Activity watch room                                                      |
+| `admin.tsx`, `legendDetection.tsx`, `clipTranscription.ts`, `runs.ts` | The admin pages and internal review tools (`runs.ts` holds words both tools share)   |
 
 Import a module directly (`import { libraryCopy } from "@/copy/library"`). There is no index file,
-so the front page's chunk only pulls in the front page's copy.
+so each chunk only pulls in the copy of the components it uses.
 
 ## Writing entries
 

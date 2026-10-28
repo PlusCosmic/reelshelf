@@ -5,6 +5,10 @@ import type {
   LegendDetectionUsage,
 } from "@/shared/services/legendDetection";
 import { isRunActive } from "@/shared/services/legendDetection";
+import { legendDetectionCopy } from "@/copy/legendDetection";
+import { runsCopy } from "@/copy/runs";
+
+const filterCopy = legendDetectionCopy.review.filters;
 
 /** Below this, a detection is worth checking by eye. Matches the prompt's bar for a confident answer. */
 export const reviewConfidence = 0.9;
@@ -20,14 +24,14 @@ export type ReviewFilter =
   | "wrong";
 
 export const reviewFilters: Array<{ value: ReviewFilter; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "needs-review", label: "Needs review" },
-  { value: "confident", label: "Confident" },
-  { value: "failed", label: "Failed" },
-  { value: "active", label: "In progress" },
-  { value: "not-run", label: "Not run" },
-  { value: "unlabelled", label: "Unlabelled" },
-  { value: "wrong", label: "Labelled wrong" },
+  { value: "all", label: runsCopy.filters.all },
+  { value: "needs-review", label: filterCopy.needsReview },
+  { value: "confident", label: filterCopy.confident },
+  { value: "failed", label: runsCopy.filters.failed },
+  { value: "active", label: filterCopy.active },
+  { value: "not-run", label: runsCopy.filters.notRun },
+  { value: "unlabelled", label: filterCopy.unlabelled },
+  { value: "wrong", label: filterCopy.wrong },
 ];
 
 /**
@@ -138,19 +142,23 @@ export function reviewTone(run: LegendDetectionRun): ConfidenceTone {
 }
 
 export function formatConfidence(confidence: number | null) {
-  return confidence === null ? "–" : `${Math.round(confidence * 100)}%`;
+  return confidence === null
+    ? "–"
+    : runsCopy.units.percent(Math.round(confidence * 100));
 }
 
 export function formatTokens(tokens: number | null) {
   if (tokens === null) return "–";
   return tokens >= 10_000
-    ? `${(tokens / 1000).toFixed(0)}k`
+    ? runsCopy.units.thousandTokens((tokens / 1000).toFixed(0))
     : tokens.toLocaleString();
 }
 
 /** "92%" for 46 correct of 50 labelled runs; a dash until anything is labelled. */
 export function formatAccuracy(correct: number, labelled: number) {
-  return labelled > 0 ? `${Math.round((correct / labelled) * 100)}%` : "–";
+  return labelled > 0
+    ? runsCopy.units.percent(Math.round((correct / labelled) * 100))
+    : "–";
 }
 
 /** Share of input tokens the provider served from its prompt cache. */
@@ -164,5 +172,5 @@ export function cachedShare(
 
 /** A run's reasoning effort, where null is the model's default. */
 export function formatReasoningEffort(effort: string | null | undefined) {
-  return effort ?? "default";
+  return effort ?? runsCopy.defaultEffort;
 }
