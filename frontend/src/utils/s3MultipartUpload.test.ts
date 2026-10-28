@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { UploadedPart } from "@/api-client";
+import { uploadCopy } from "@/copy/upload";
 import { ApiError } from "@/shared/services/api-error";
 import {
   localResumeStore,
@@ -201,7 +202,7 @@ describe("S3MultipartUpload", () => {
 
     upload.start();
 
-    expect((await finished)?.message).toBe("Part 3 was refused (500).");
+    expect((await finished)?.message).toBe(uploadCopy.errors.partFailed);
     expect(api.complete).not.toHaveBeenCalled();
   });
 

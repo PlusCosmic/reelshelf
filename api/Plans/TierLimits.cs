@@ -29,6 +29,15 @@ public sealed record TierLimits(int? MaxClips, int? MaxClipSeconds, int? MaxNewC
         _ => new TierLimits(null, null, null)
     };
 
+    /// <summary>
+    /// The limits of the best plan that can be bought. Refusals offer an upgrade only when these go further than the
+    /// account's own, so nobody already on the best paid plan is told to upgrade.
+    /// </summary>
+    public static TierLimits BestToBuy => For(BillingPlans.HighestTier);
+
+    /// <summary>True when a plan that can be bought allows more than <paramref name="limit"/>; null is no limit.</summary>
+    internal static bool Exceeds(int? better, int limit) => better is not { } value || value > limit;
+
     /// <summary>Transcripts (and the summaries made from them) are for Pro and Unlimited.</summary>
     public static bool HasTranscripts(AccountTier tier) => tier >= AccountTier.Pro;
 
@@ -41,8 +50,14 @@ public sealed record TierLimits(int? MaxClips, int? MaxClipSeconds, int? MaxNewC
             return null;
         }
 
-        return $"This clip is {FormatSeconds(duration)} long, and your plan keeps clips of up to {FormatSeconds(max)}. " +
-               "Trim it, or upgrade for longer clips.";
+        if (BestToBuy.MaxClipSeconds is { } longer && longer > max)
+        {
+            return $"This clip is {FormatSeconds(duration)}. Your plan keeps clips up to {FormatSeconds(max)}, so " +
+                   $"trim it or upgrade for clips up to {FormatSeconds(longer)}.";
+        }
+
+        return $"This clip is {FormatSeconds(duration)}, and clips can be up to {FormatSeconds(max)}. " +
+               "Trim it, then add it again.";
     }
 
     internal static string FormatSeconds(double seconds)

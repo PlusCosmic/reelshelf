@@ -2,6 +2,7 @@ import {
   clipLengthToleranceSeconds,
   formatClipLength,
 } from "@/shared/services/plans";
+import { planLimits } from "@/copy/planLimits";
 import { uploadCopy } from "@/copy/upload";
 
 /**
@@ -20,9 +21,15 @@ export function clipLengthProblem(
     return null;
   }
 
+  // Only offer an upgrade when a plan that can be bought keeps longer clips; Unlimited is only ever granted.
+  const longest = Math.max(
+    planLimits.plus.maxClipSeconds,
+    planLimits.pro.maxClipSeconds,
+  );
   return uploadCopy.tooLong(
     formatClipLength(Math.round(durationSeconds)),
     formatClipLength(maxSeconds),
+    longest > maxSeconds ? formatClipLength(longest) : null,
   );
 }
 

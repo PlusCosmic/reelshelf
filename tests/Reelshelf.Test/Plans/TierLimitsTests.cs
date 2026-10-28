@@ -36,21 +36,24 @@ public class TierLimitsTests
     }
 
     [Fact]
-    public void Free_RefusesALongerClip_SayingHowLongEachIs()
+    public void Free_RefusesALongerClip_OfferingTheLengthAnUpgradeKeeps()
     {
         string? problem = TierLimits.For(AccountTier.Free).LengthProblem(95.4);
 
-        Assert.Equal("This clip is 95 s long, and your plan keeps clips of up to 1 min. Trim it, or upgrade for longer clips.",
+        Assert.Equal("This clip is 95 s. Your plan keeps clips up to 1 min, so trim it or upgrade for clips up to 2 min.",
             problem);
     }
 
-    [Fact]
-    public void Paid_KeepsTwoMinutes()
+    [Theory]
+    [InlineData(AccountTier.Plus)]
+    [InlineData(AccountTier.Pro)]
+    public void Paid_KeepsTwoMinutes_AndOffersNoUpgradeForLonger(AccountTier tier)
     {
-        TierLimits plus = TierLimits.For(AccountTier.Plus);
+        TierLimits limits = TierLimits.For(tier);
 
-        Assert.Null(plus.LengthProblem(120.5));
-        Assert.Contains("up to 2 min", plus.LengthProblem(150));
+        Assert.Null(limits.LengthProblem(120.5));
+        Assert.Equal("This clip is 150 s, and clips can be up to 2 min. Trim it, then add it again.",
+            limits.LengthProblem(150));
     }
 
     [Fact]
@@ -80,6 +83,20 @@ public class TierLimitsTests
         {
             Assert.StartsWith(expected, problem);
         }
+    }
+
+    [Theory]
+    [InlineData(AccountTier.Free, 100, 0, "Delete some, or upgrade to keep more.")]
+    [InlineData(AccountTier.Plus, 1_000, 0, "Delete some, or upgrade to keep more.")]
+    [InlineData(AccountTier.Pro, 5_000, 0, "Delete some to add more.")]
+    [InlineData(AccountTier.Plus, 0, 2_000, "Try again later, or upgrade.")]
+    [InlineData(AccountTier.Pro, 0, 10_000, "Try again later.")]
+    public void ANewClipRefusal_OffersAnUpgradeOnlyBelowTheBestPlanToBuy(
+        AccountTier tier, int clipCount, int newClips, string ending)
+    {
+        AccountPlan plan = new(tier, TierLimits.For(tier), clipCount, newClips, 0);
+
+        Assert.EndsWith(ending, plan.NewClipProblem());
     }
 
     [Fact]

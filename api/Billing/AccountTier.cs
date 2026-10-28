@@ -32,6 +32,9 @@ public static class BillingPlans
         new("pro_yearly", AccountTier.Pro, Yearly)
     ];
 
+    /// <summary>The best tier a plan can be bought for; anything above it is only ever granted.</summary>
+    public static AccountTier HighestTier => All.Max(plan => plan.Tier);
+
     public static BillingPlan? Find(string? lookupKey)
     {
         return All.FirstOrDefault(plan => string.Equals(plan.LookupKey, lookupKey, StringComparison.Ordinal));

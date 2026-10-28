@@ -206,13 +206,16 @@ export function useTwitchClipsImport() {
           void queryClient.invalidateQueries({ queryKey: ["playlists"] });
         } catch (error) {
           // The clips are in the library; only the collection filing failed, and the library still shows them.
-          const detail = uploadErrorMessage(error);
+          console.warn(
+            "Filing imported Twitch clips into their session failed",
+            error,
+          );
           setRows((current) =>
             current.map((row) =>
               session.rowIds.includes(row.clip.id)
                 ? {
                     ...row,
-                    error: twitchImportCopy.filingFailed(detail),
+                    error: twitchImportCopy.filingFailed,
                     status: "saved",
                   }
                 : row,

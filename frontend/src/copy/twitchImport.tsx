@@ -24,14 +24,14 @@ export const twitchImportCopy = {
     loadFailed: "Your Twitch clips could not be loaded.",
     tryAgain: "Try again",
     notLinked: {
-      title: "Link Twitch to import your clips.",
-      copy: "Once your Twitch account is linked, Reelshelf can list the clips from your channel and copy the ones you pick straight into your library. No downloading and re-uploading.",
+      title: "Link Twitch to bring your clips over.",
+      copy: "Pick clips from your channel and they copy straight into your library.",
       action: "Link Twitch",
     },
     needsAuthorization: {
-      title: "Reconnect Twitch to allow clip downloads.",
+      title: "Reconnect Twitch to bring clips over.",
       copy: (login: string | null | undefined) =>
-        `Your Twitch account${login ? ` (@${login})` : ""} is linked, but Reelshelf needs permission to fetch your clips. Reconnecting takes you through Twitch once more and changes nothing else on your account.`,
+        `Twitch${login ? ` (@${login})` : ""} is linked, but Reelshelf needs one more permission to copy your clips. Reconnecting changes nothing else.`,
       action: "Reconnect Twitch",
     },
     manageAccounts: (settings: ReactNode) => (
@@ -52,18 +52,18 @@ export const twitchImportCopy = {
       all: "All time",
     },
     refresh: "Refresh",
-    gamesToAdd: "Twitch tagged some clips with games not in your library yet.",
+    gamesToAdd:
+      "Some of these clips are from games that aren't on your shelf yet.",
     addingGame: (game: string) => `Adding ${game}…`,
     addGame: (game: string, clips: number) => `Add ${game} (${clips})`,
     actionsLabel: "Twitch import actions",
     selected: (selected: number, total: number) =>
       `${selected} of ${total} selected`,
-    needGame: (count: number) => `${count} need game`,
+    needGame: (count: number) => `${count} need a game`,
     importing: (count: number) => `${count} importing`,
     saved: (count: number) => `${count} saved`,
     addToLibrary: (count: number) => `Add ${count} to library`,
-    empty:
-      "No clips found on your channel for this period. Try a longer window.",
+    empty: "No clips from your channel in that time. Try a longer window.",
     loadMoreLabel: "clips",
   },
   card: {
@@ -86,15 +86,14 @@ export const twitchImportCopy = {
     filing: "filing",
     saved: "saved",
     duplicate: "in library",
-    error: "error",
+    error: "failed",
   },
   chooseGame: "Choose game",
   /** The game a clip Twitch tagged was from, when Twitch didn't name it. */
   thisGame: "this game",
-  filingFailed: (detail: string) =>
-    `Added to your library, but the session collection could not be updated (${detail}).`,
+  filingFailed: "Added to your library, but it didn't go into its session.",
   leaveWhileImporting:
     "Leave while Twitch clips are still importing? Clips already copied stay in your library.",
-  addGameFailed: "The game could not be added.",
+  addGameFailed: "Couldn't add that game. Try again.",
   alreadyInLibrary: "This Twitch clip is already in your library.",
 } as const;
