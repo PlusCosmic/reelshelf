@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  hashKey,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { ApiError } from "@/shared/services/apiError";
 import { logout } from "@/shared/services/auth";
 import {
@@ -27,6 +33,19 @@ export const planOffersQueryKey = ["plans"] as const;
 export const overLimitQueryKey = ["user", "me", "over-limit"] as const;
 export const exportsQueryKey = ["user", "me", "exports"] as const;
 export const linkedIdentitiesQueryKey = ["user", "me", "identities"] as const;
+
+/**
+ * Forgets the signed-in account. `clear()` alone removes the queries without telling their
+ * observers, so the root shell would keep showing the app until a reload; setting the current user
+ * to null re-renders it as signed out, and everything else the account owned is then dropped.
+ */
+function forgetSignedInUser(queryClient: QueryClient) {
+  queryClient.setQueryData(currentUserQueryKey, null);
+  const currentUserHash = hashKey(currentUserQueryKey);
+  queryClient.removeQueries({
+    predicate: (query) => query.queryHash !== currentUserHash,
+  });
+}
 
 export function useCurrentUser() {
   return useQuery({
@@ -198,7 +217,7 @@ export function useLogout() {
   return useMutation({
     mutationFn: logout,
     onSuccess: () => {
-      queryClient.clear();
+      forgetSignedInUser(queryClient);
     },
   });
 }
@@ -210,7 +229,7 @@ export function useDeleteAccount() {
     mutationFn: deleteAccount,
     onSuccess: () => {
       // The session is gone along with the account, so nothing cached belongs to anyone any more.
-      queryClient.clear();
+      forgetSignedInUser(queryClient);
     },
   });
 }
