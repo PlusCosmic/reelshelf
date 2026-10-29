@@ -27,3 +27,11 @@ Reelshelf only knew Discord: the user table was `discord_user`, its natural key 
 - Provider failures and cancelled consent screens redirect back to the app with `auth_error` (sign-in) or `link_error` (linking) instead of surfacing as a 500.
 - Deployments need a Twitch application with `/auth/twitch/callback` registered and `TwitchClientId` / `TwitchClientSecret` set. Discord configuration is unchanged.
 - IGDB authenticates with a Twitch application's client credentials, so game search uses the same `TwitchClientId` / `TwitchClientSecret` rather than separate IGDB settings. One application means one secret to rotate, and the startup check on the Twitch credentials covers IGDB too.
+
+## Amendment: Google sign-in, chosen usernames and required email (2026-10-29)
+
+- Google is a third provider (`openid email profile`, `GoogleClientId` / `GoogleClientSecret`, callback `/auth/google/callback`), required at startup like the other two. Its addresses are kept only when Google reports them verified.
+- Google has no usernames. A Google identity's `username` is its address, which tells the owner which Google account is linked, and is never copied onto the account, whose username is visible to collaborators. A new Google account starts with a username made from its name, which the owner confirms or changes before using the app.
+- An account whose primary identity is Google, or whose owner has already chosen a username, sets its own (`PUT /api/me/username`). Chosen usernames follow Discord's shape (2 to 32 of `a-z0-9_.`) and may not match another account's, ignoring case, because collaborators are added by username. Once chosen (`app_user.username_chosen_at`), no provider sign-in overwrites it; display name and avatar still follow the primary identity.
+- Every account now needs an email address. The onboarding step can no longer be skipped, accounts that skipped it before are asked again, and the address can be changed but not cleared.
+- The Discord Activity still signs people in by their Discord identity, so an account with only Twitch or Google joins it as a guest until Discord is linked.

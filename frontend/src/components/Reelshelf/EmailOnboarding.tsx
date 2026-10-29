@@ -6,7 +6,8 @@ const copy = settingsCopy.onboarding;
 
 /**
  * First-sign-in step: confirm where account mail should go. The address a provider reported is
- * prefilled; the user can change it, or skip and set one later in Settings.
+ * prefilled; the user can change it, but every account needs one, so there is no skipping it. Accounts
+ * that skipped it before it was required are asked again.
  */
 export function EmailOnboarding({ user }: { user: CurrentUser }) {
   return (
@@ -18,7 +19,6 @@ export function EmailOnboarding({ user }: { user: CurrentUser }) {
         <EmailField
           initialEmail={user.suggestedEmail}
           submitLabel={copy.submit}
-          allowSkip
         />
       </div>
     </section>

@@ -6,6 +6,8 @@ namespace Reelshelf.Users;
 ///
 /// The oldest linked identity is the account's <b>primary</b> identity: the account's username, display name
 /// and avatar follow it. Signing in with a secondary identity refreshes only that identity's own profile.
+/// A primary identity without a username of its own (Google) leaves the account's username alone, and once the
+/// owner has chosen a username no provider overwrites it (<see cref="Usernames"/>).
 /// The account email is the user's own choice and is never overwritten by a provider.
 /// </summary>
 public sealed class AccountLinkingService(IUserIdentityStore store)
@@ -28,7 +30,11 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
                 // Unlinked between the lookup and the lock: treat it as a first sign-in.
             }
 
-            UserStatements.UserRow? created = await store.CreateUserWithIdentity(identity);
+            // A Google account starts with a username made from its name, which the owner confirms or changes
+            // before using the app.
+            string accountUsername = AccountUsername(identity.Provider, identity.Username)
+                                     ?? Usernames.Suggest(identity.DisplayName);
+            UserStatements.UserRow? created = await store.CreateUserWithIdentity(identity, accountUsername);
             if (created is not null)
             {
                 return new SignInOutcome(created, Created: true);
@@ -59,7 +65,8 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
         await store.UpdateIdentityProfile(current.Id, identity);
         if (identities[0].Id == current.Id)
         {
-            await store.UpdateUserProfile(existing.UserId, identity.Username, identity.DisplayName, identity.AvatarUrl);
+            await store.UpdateUserProfile(existing.UserId, AccountUsername(identity.Provider, identity.Username),
+                identity.DisplayName, identity.AvatarUrl);
         }
 
         UserStatements.UserRow user = await store.GetUserById(existing.UserId)
@@ -128,11 +135,18 @@ public sealed class AccountLinkingService(IUserIdentityStore store)
         {
             // The next-oldest identity becomes primary and the account profile follows it.
             UserStatements.UserIdentityRow successor = identities[1];
-            await store.UpdateUserProfile(userId, successor.Username, successor.DisplayName, successor.AvatarUrl);
+            await store.UpdateUserProfile(userId, AccountUsername(successor.Provider, successor.Username),
+                successor.DisplayName, successor.AvatarUrl);
         }
 
         await scope.CommitAsync();
         return UnlinkOutcome.Unlinked;
+    }
+
+    /// <summary>The username the account takes from an identity, or null when the provider has none (Google).</summary>
+    private static string? AccountUsername(string provider, string identityUsername)
+    {
+        return AuthProvider.ProvidesUsername(provider) ? identityUsername : null;
     }
 
     public async Task<List<LinkedIdentity>> GetLinkedIdentities(Guid userId)
@@ -175,14 +189,18 @@ public interface IUserIdentityStore
     Task<UserStatements.UserIdentityRow?> GetIdentity(string provider, string providerUserId);
     Task<List<UserStatements.UserIdentityRow>> GetIdentitiesForUser(Guid userId);
     /// <summary>Null when the identity already exists; nothing is left behind in that case.</summary>
-    Task<UserStatements.UserRow?> CreateUserWithIdentity(ExternalIdentity identity);
+    Task<UserStatements.UserRow?> CreateUserWithIdentity(ExternalIdentity identity, string accountUsername);
     /// <summary>Null when the identity already exists for some account.</summary>
     Task<UserStatements.UserIdentityRow?> LinkIdentity(Guid userId, ExternalIdentity identity);
 
     /// <summary>Serialises identity changes for one account; dispose without committing to roll back.</summary>
     Task<IAccountScope> LockAccount(Guid userId);
     Task UpdateIdentityProfile(Guid identityId, ExternalIdentity identity);
-    Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl);
+    /// <summary>
+    /// Copies a primary identity's profile onto the account. A null <paramref name="username"/>, or a username the
+    /// owner has chosen, leaves the account's username as it is.
+    /// </summary>
+    Task UpdateUserProfile(Guid userId, string? username, string? globalName, string? avatarUrl);
     Task DeleteIdentity(Guid identityId);
 }
 

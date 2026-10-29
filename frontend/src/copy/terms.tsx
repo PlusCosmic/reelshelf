@@ -9,7 +9,7 @@ import { legalGoverningLaw, legalOperator } from "./legal";
  */
 export const termsCopy = {
   title: "Terms of service",
-  updated: "28 October 2026",
+  updated: "29 October 2026",
 } as const;
 
 export function TermsText() {
@@ -24,9 +24,10 @@ export function TermsText() {
 
       <h2>Your account</h2>
       <p>
-        You sign in with Discord or Twitch, so you must meet their minimum age
-        and follow their terms. You're responsible for what happens on your
-        account. Each linked sign-in opens the same account.
+        You sign in with Discord, Twitch or Google, so you must meet their
+        minimum age and follow their terms. You give us an email address we can
+        reach you at about your account. You're responsible for what happens on
+        your account. Each linked sign-in opens the same account.
       </p>
 
       <h2>Your clips</h2>

@@ -94,10 +94,13 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
               </span>
               <span className="rs-linked-sub">
                 <span>
-                  {copy.handle(
-                    providerLabel(identity.provider),
-                    identity.username,
-                  )}
+                  {/* Google has no usernames; its identity's username is the address shown beside it. */}
+                  {identity.provider === "google"
+                    ? providerLabel(identity.provider)
+                    : copy.handle(
+                        providerLabel(identity.provider),
+                        identity.username,
+                      )}
                 </span>
                 {identity.email ? <span>{identity.email}</span> : null}
               </span>

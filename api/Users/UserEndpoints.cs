@@ -19,6 +19,7 @@ public static class UserEndpoints
 
         meGroup.MapGet("/", GetMe).WithName("GetMe");
         meGroup.MapPut("/email", SetEmail).WithName("SetMyEmail");
+        meGroup.MapPut("/username", SetUsername).WithName("SetMyUsername");
         meGroup.MapGet("/plan", GetPlan).WithName("GetMyPlan");
         meGroup.MapGet("/features", GetFeatures).WithName("GetMyFeatures");
         meGroup.MapGet("/identities", GetLinkedIdentities).WithName("GetMyLinkedIdentities");
@@ -32,14 +33,16 @@ public static class UserEndpoints
 
     private static async Task<Ok<CurrentUserResponse>> GetMe(AuthenticatedUser user, UserStatements userStatements)
     {
-        // Until the user has chosen an address, offer the one their providers reported (primary identity first).
+        // Until the user has given an address, offer the one their providers reported (primary identity first).
         string? suggestedEmail = null;
-        if (!user.OnboardingCompleted)
+        if (user.Email is null)
         {
             List<UserStatements.UserIdentityRow> identities = await userStatements.GetIdentitiesForUser(user.Id);
             suggestedEmail = identities.Select(identity => identity.Email).FirstOrDefault(email => !string.IsNullOrEmpty(email));
         }
 
+        // Every account gives an email address, and one signed in with Google confirms its username, before the
+        // app is theirs to use.
         return TypedResults.Ok(new CurrentUserResponse(
             user.Id,
             user.Username,
@@ -47,7 +50,9 @@ public static class UserEndpoints
             user.AvatarUrl,
             user.Email,
             suggestedEmail,
-            NeedsOnboarding: !user.OnboardingCompleted,
+            NeedsOnboarding: user.Email is null || user.NeedsUsername,
+            NeedsUsername: user.NeedsUsername,
+            CanSetUsername: user.CanSetUsername,
             IsAdmin: user.HasPermission(Permissions.AdminUsers)));
     }
 
@@ -56,12 +61,40 @@ public static class UserEndpoints
         SetEmailRequest request,
         UserStatements userStatements)
     {
-        if (!EmailAddress.TryNormalize(request.Email, out string? email))
+        if (!EmailAddress.TryNormalize(request.Email, out string? email) || email is null)
         {
-            return TypedResults.BadRequest("Enter a valid email address, or leave it empty.");
+            return TypedResults.BadRequest("Enter a valid email address.");
         }
 
         await userStatements.SetUserEmail(user.Id, email);
+        return TypedResults.NoContent();
+    }
+
+    /// <summary>
+    /// Sets the username of an account whose owner chooses it (<see cref="AuthenticatedUser.CanSetUsername"/>);
+    /// every other account's follows its primary sign-in, so this is a 400 for them.
+    /// </summary>
+    private static async Task<Results<NoContent, BadRequest<string>, Conflict<string>>> SetUsername(
+        AuthenticatedUser user,
+        SetUsernameRequest request,
+        UserStatements userStatements)
+    {
+        if (!user.CanSetUsername)
+        {
+            return TypedResults.BadRequest("Your username comes from your primary sign-in.");
+        }
+
+        if (!Usernames.TryNormalize(request.Username, out string username))
+        {
+            return TypedResults.BadRequest(
+                $"Use {Usernames.MinLength} to {Usernames.MaxLength} letters, numbers, underscores or full stops.");
+        }
+
+        if (!await userStatements.SetChosenUsername(user.Id, username))
+        {
+            return TypedResults.Conflict("Someone already has that username.");
+        }
+
         return TypedResults.NoContent();
     }
 
@@ -184,10 +217,14 @@ public sealed record CurrentUserResponse(
     string? Email,
     string? SuggestedEmail,
     bool NeedsOnboarding,
+    bool NeedsUsername,
+    bool CanSetUsername,
     bool IsAdmin);
 
-/// <summary>An empty or null email clears the address; onboarding still counts as completed.</summary>
+/// <summary>Every account needs an address, so an empty one is refused.</summary>
 public sealed record SetEmailRequest(string? Email);
+
+public sealed record SetUsernameRequest(string? Username);
 
 /// <summary><see cref="Confirmation"/> must be the phrase the user was asked to type.</summary>
 public sealed record DeleteAccountRequest(string? Confirmation);

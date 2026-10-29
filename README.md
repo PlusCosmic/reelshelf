@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://reelshelf.app"><strong>reelshelf.app</strong></a> · free, with 25 GB of clip storage · sign in with Discord or Twitch
+  <a href="https://reelshelf.app"><strong>reelshelf.app</strong></a> · free, with 25 GB of clip storage · sign in with Discord, Twitch or Google
 </p>
 
 ---
@@ -62,7 +62,7 @@ Download any clip back to your computer whenever you like. Reelshelf is somewher
 
 ## Getting started
 
-1. Go to [reelshelf.app](https://reelshelf.app) and sign in with Discord or Twitch. There's no form to fill in and nothing to pay. Link the other one later and either login opens the same shelf.
+1. Go to [reelshelf.app](https://reelshelf.app) and sign in with Discord, Twitch or Google. There's nothing to pay. Link the others later and any of them opens the same shelf.
 2. Drag your recorder's folder onto the library. Review the queue, fix any game guesses, pick tags, and let it upload.
 3. Sessions are already grouped. Build collections with friends, send one clip with one link, or download it back.
 

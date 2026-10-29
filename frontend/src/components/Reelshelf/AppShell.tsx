@@ -15,6 +15,7 @@ import { UploadTray } from "@/components/AddClips/UploadTray";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
+import { UsernameOnboarding } from "@/components/Reelshelf/UsernameOnboarding";
 import { PlanMeter } from "@/components/Reelshelf/PlanMeter";
 import { shellCopy } from "@/copy/shell";
 import { useLogout, usePlan } from "@/hooks/queries";
@@ -192,7 +193,13 @@ export function AppShell({
       </header>
       <UploadsProvider>
         <main>
-          {user.needsOnboarding ? <EmailOnboarding user={user} /> : <Outlet />}
+          {user.needsUsername ? (
+            <UsernameOnboarding user={user} />
+          ) : user.needsOnboarding ? (
+            <EmailOnboarding user={user} />
+          ) : (
+            <Outlet />
+          )}
         </main>
         <UploadTray />
       </UploadsProvider>

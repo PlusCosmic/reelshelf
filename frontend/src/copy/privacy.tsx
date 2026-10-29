@@ -7,7 +7,7 @@ import { legalOperator } from "./legal";
  */
 export const privacyCopy = {
   title: "Privacy policy",
-  updated: "28 October 2026",
+  updated: "29 October 2026",
 } as const;
 
 export function PrivacyText() {
@@ -22,9 +22,15 @@ export function PrivacyText() {
       <h2>What we collect</h2>
       <ul>
         <li>
-          <strong>From Discord or Twitch when you sign in:</strong> your account
-          ID, username, display name, avatar, and email address if verified. You
-          can change or clear the email in Settings.
+          <strong>From Discord, Twitch or Google when you sign in:</strong> your
+          account ID, username, display name, avatar, and email address if
+          verified. Google has no usernames, so if you sign up with Google you
+          choose one.
+        </li>
+        <li>
+          <strong>Your email address:</strong> every account needs one for
+          account mail. We suggest the one your sign-in gave us, and you can
+          change it in Settings.
         </li>
         <li>
           <strong>Twitch access tokens</strong>, stored encrypted, so we can
@@ -106,8 +112,8 @@ export function PrivacyText() {
           for streaming, in the EU, and keeps nothing afterwards.
         </li>
         <li>
-          <strong>Discord and Twitch</strong> handle sign-in, Twitch clip import
-          and the Discord Activity.
+          <strong>Discord, Twitch and Google</strong> handle sign-in. Twitch
+          also handles clip import, and Discord the Discord Activity.
         </li>
         <li>
           <strong>Stripe</strong>, through its Link service, sells paid plans as
@@ -145,10 +151,10 @@ export function PrivacyText() {
         Clips in our own pipeline are stored by Cloudflare in the US (eastern
         North America); some older clips are stored by Bunny.net in Germany.
         Clips that Google Cloud encodes are processed in the EU. Cloudflare,
-        Discord, Twitch, Stripe, OpenAI, Anthropic, OpenRouter and Resend are
-        based in the US, so data they handle leaves the UK and EU. We rely on
-        their standard data protection terms, such as standard contractual
-        clauses or the UK–US data bridge, to protect it.
+        Discord, Twitch, Google, Stripe, OpenAI, Anthropic, OpenRouter and
+        Resend are based in the US, so data they handle leaves the UK and EU. We
+        rely on their standard data protection terms, such as standard
+        contractual clauses or the UK–US data bridge, to protect it.
       </p>
 
       <h2>Sharing and visibility</h2>
@@ -204,7 +210,7 @@ export function PrivacyText() {
       <h2>Children</h2>
       <p>
         Reelshelf isn't meant for children under 13, or under the minimum age
-        for Discord or Twitch in your country.
+        for Discord, Twitch or Google in your country.
       </p>
 
       <h2>Changes and contact</h2>

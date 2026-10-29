@@ -20,6 +20,7 @@ import type {
   FeatureFlagsResponse,
   LinkedIdentity,
   SetEmailRequest,
+  SetUsernameRequest,
   UserProfile,
 } from "../models/index";
 import {
@@ -35,6 +36,8 @@ import {
   LinkedIdentityToJSON,
   SetEmailRequestFromJSON,
   SetEmailRequestToJSON,
+  SetUsernameRequestFromJSON,
+  SetUsernameRequestToJSON,
   UserProfileFromJSON,
   UserProfileToJSON,
 } from "../models/index";
@@ -49,6 +52,10 @@ export interface DeleteMyAccountRequest {
 
 export interface SetMyEmailRequest {
   setEmailRequest: SetEmailRequest;
+}
+
+export interface SetMyUsernameRequest {
+  setUsernameRequest: SetUsernameRequest;
 }
 
 export interface UnlinkMyIdentityRequest {
@@ -373,6 +380,50 @@ export class UserEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.setMyEmailRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   */
+  async setMyUsernameRaw(
+    requestParameters: SetMyUsernameRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["setUsernameRequest"] == null) {
+      throw new runtime.RequiredError(
+        "setUsernameRequest",
+        'Required parameter "setUsernameRequest" was null or undefined when calling setMyUsername().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/me/username`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "PUT",
+        headers: headerParameters,
+        query: queryParameters,
+        body: SetUsernameRequestToJSON(requestParameters["setUsernameRequest"]),
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async setMyUsername(
+    requestParameters: SetMyUsernameRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.setMyUsernameRaw(requestParameters, initOverrides);
   }
 
   /**

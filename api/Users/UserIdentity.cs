@@ -5,8 +5,30 @@ public static class AuthProvider
 {
     public const string Discord = "discord";
     public const string Twitch = "twitch";
+    public const string Google = "google";
 
-    public static readonly IReadOnlyList<string> All = [Discord, Twitch];
+    public static readonly IReadOnlyList<string> All = [Discord, Twitch, Google];
+
+    /// <summary>The provider's name as people know it, for mail and messages.</summary>
+    public static string Label(string provider)
+    {
+        return provider switch
+        {
+            Twitch => "Twitch",
+            Google => "Google",
+            _ => "Discord"
+        };
+    }
+
+    /// <summary>
+    /// Whether the provider has usernames of its own. Google doesn't: its identity's username is the account's
+    /// email address, which must never become the account's (public) username, so an account whose primary
+    /// identity is Google picks its own instead (<see cref="Usernames"/>).
+    /// </summary>
+    public static bool ProvidesUsername(string provider)
+    {
+        return provider != Google;
+    }
 
     public static bool IsKnown(string? provider)
     {
