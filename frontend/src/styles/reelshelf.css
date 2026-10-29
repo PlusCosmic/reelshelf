@@ -807,11 +807,17 @@ a {
   text-underline-offset: 2px;
 }
 
+.rs-landing-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin-top: 8px;
+}
+
 .rs-landing-footer-links {
   display: flex;
-  justify-content: center;
   gap: 16px;
-  margin-top: 8px;
 }
 
 .rs-landing-footer-links a:hover {

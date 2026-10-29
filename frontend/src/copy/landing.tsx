@@ -94,6 +94,7 @@ export const landingCopy = {
   },
   footer: {
     tagline: "for the clips worth keeping",
+    copyright: (year: number) => `© ${year} Reelshelf. All rights reserved.`,
     terms: "Terms",
     privacy: "Privacy",
   },
