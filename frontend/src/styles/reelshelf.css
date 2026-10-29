@@ -827,8 +827,11 @@ a {
 }
 
 .rs-landing-footer-copyright .rs-brand-logo-mark {
+  /* The tile's own corners all but vanish this small, so round it more than its drawing does. */
   width: 16px;
   height: 16px;
+  overflow: hidden;
+  border-radius: 3.5px;
 }
 
 .rs-landing-footer-links {
