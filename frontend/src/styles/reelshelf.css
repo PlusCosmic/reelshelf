@@ -390,6 +390,24 @@ a {
   --provider-shadow-hover: rgba(145, 70, 255, 0.38);
 }
 
+/* Google's own light button: white, with its four-colour mark (ProviderIcon) and a grey outline. */
+.rs-provider-login[data-provider="google"] {
+  --provider: #ffffff;
+  --provider-shadow: rgba(31, 31, 31, 0.12);
+  --provider-shadow-hover: rgba(31, 31, 31, 0.24);
+  color: #1f1f1f;
+  box-shadow:
+    inset 0 0 0 1px #747775,
+    0 4px 14px var(--provider-shadow);
+}
+
+.rs-provider-login[data-provider="google"]:hover,
+.rs-provider-login[data-provider="google"][data-hover="true"] {
+  box-shadow:
+    inset 0 0 0 1px #747775,
+    0 10px 28px var(--provider-shadow-hover);
+}
+
 .rs-provider-login:hover,
 .rs-provider-login[data-hover="true"] {
   box-shadow: 0 10px 28px var(--provider-shadow-hover);
@@ -440,6 +458,11 @@ a {
 
 .rs-linked-provider[data-provider="twitch"] {
   background: #9146ff;
+}
+
+.rs-linked-provider[data-provider="google"] {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .rs-linked-meta {
@@ -5465,6 +5488,13 @@ html:has(.rs-library-route) {
   font-weight: 700;
   letter-spacing: 0.7px;
   text-transform: uppercase;
+}
+
+.rs-field-hint {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .rs-field input:focus,

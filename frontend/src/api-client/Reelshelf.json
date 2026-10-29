@@ -2836,6 +2836,49 @@
         }
       }
     },
+    "/api/me/username": {
+      "put": {
+        "tags": [
+          "UserEndpoints"
+        ],
+        "operationId": "SetMyUsername",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUsernameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/me/plan": {
       "get": {
         "tags": [
@@ -5428,6 +5471,8 @@
           "email",
           "suggested_email",
           "needs_onboarding",
+          "needs_username",
+          "can_set_username",
           "is_admin"
         ],
         "type": "object",
@@ -5464,6 +5509,12 @@
             ]
           },
           "needs_onboarding": {
+            "type": "boolean"
+          },
+          "needs_username": {
+            "type": "boolean"
+          },
+          "can_set_username": {
             "type": "boolean"
           },
           "is_admin": {
@@ -7633,6 +7684,20 @@
             "items": {
               "$ref": "#/components/schemas/LegendPlayerLabel"
             }
+          }
+        }
+      },
+      "SetUsernameRequest": {
+        "required": [
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

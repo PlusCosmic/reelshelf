@@ -112,6 +112,7 @@ export * from "./SetEmailRequest";
 export * from "./SetGrantedTierRequest";
 export * from "./SetLegendDetectionLabelRequest";
 export * from "./SetLegendDetectionPlayerLabelsRequest";
+export * from "./SetUsernameRequest";
 export * from "./SharedClipResponse";
 export * from "./StartCheckoutRequest";
 export * from "./TopTag";

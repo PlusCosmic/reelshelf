@@ -218,11 +218,11 @@ public class ActivitySignInTests
             Task.FromResult(provider == AuthProvider.Discord ? _identities.GetValueOrDefault(providerUserId) : null);
 
         public Task<List<UserStatements.UserIdentityRow>> GetIdentitiesForUser(Guid userId) => throw new NotSupportedException();
-        public Task<UserStatements.UserRow?> CreateUserWithIdentity(ExternalIdentity identity) => throw new NotSupportedException();
+        public Task<UserStatements.UserRow?> CreateUserWithIdentity(ExternalIdentity identity, string accountUsername) => throw new NotSupportedException();
         public Task<UserStatements.UserIdentityRow?> LinkIdentity(Guid userId, ExternalIdentity identity) => throw new NotSupportedException();
         public Task<IAccountScope> LockAccount(Guid userId) => throw new NotSupportedException();
         public Task UpdateIdentityProfile(Guid identityId, ExternalIdentity identity) => throw new NotSupportedException();
-        public Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl) => throw new NotSupportedException();
+        public Task UpdateUserProfile(Guid userId, string? username, string? globalName, string? avatarUrl) => throw new NotSupportedException();
         public Task DeleteIdentity(Guid identityId) => throw new NotSupportedException();
     }
 }

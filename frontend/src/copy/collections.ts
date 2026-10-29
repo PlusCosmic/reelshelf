@@ -97,7 +97,7 @@ export const collectionsCopy = {
     confirmLeave: (name: string) =>
       `Leave "${name}"? You'll need inviting back.`,
     invite: "Invite",
-    usernamePlaceholder: "Their Discord or Twitch username",
+    usernamePlaceholder: "Their Reelshelf username",
     usernameLabel: "Username to invite",
     inviting: "Inviting…",
     note: "People you invite can watch everything in it and add their own clips.",

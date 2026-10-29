@@ -6,7 +6,8 @@ namespace Reelshelf.Users;
 public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector tokenProtector)
     : IUserIdentityStore, IProviderTokenStore, Plans.IClipLimitWarningStore
 {
-    private const string UserColumns = "id, username, global_name, avatar_url, email, onboarding_completed_at, role, granted_tier, suspended_at";
+    private const string UserColumns =
+        "id, username, username_chosen_at, global_name, avatar_url, email, onboarding_completed_at, role, granted_tier, suspended_at";
 
     private const string IdentityColumns =
         "id, user_id, provider, provider_user_id, username, display_name, avatar_url, email, linked_at";
@@ -71,7 +72,7 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
     /// Creates an account owning <paramref name="identity"/>. Returns null when the identity already exists,
     /// i.e. a concurrent first sign-in won; the account row inserted here is rolled back with the transaction.
     /// </summary>
-    public async Task<UserRow?> CreateUserWithIdentity(ExternalIdentity identity)
+    public async Task<UserRow?> CreateUserWithIdentity(ExternalIdentity identity, string accountUsername)
     {
         if (connection.State != System.Data.ConnectionState.Open)
         {
@@ -87,7 +88,7 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
 
         UserRow user = await connection.QuerySingleAsync<UserRow>(
             insertUser,
-            new { username = identity.Username, globalName = identity.DisplayName, avatarUrl = identity.AvatarUrl },
+            new { username = accountUsername, globalName = identity.DisplayName, avatarUrl = identity.AvatarUrl },
             transaction);
 
         try
@@ -290,11 +291,11 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         public string? TokenScopes { get; set; }
     }
 
-    public async Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl)
+    public async Task UpdateUserProfile(Guid userId, string? username, string? globalName, string? avatarUrl)
     {
         const string sql = @"
             UPDATE app_user
-            SET username = @username,
+            SET username = CASE WHEN @username IS NULL OR username_chosen_at IS NOT NULL THEN username ELSE @username END,
                 global_name = @globalName,
                 avatar_url = @avatarUrl
             WHERE id = @userId";
@@ -335,8 +336,42 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         await connection.ExecuteAsync(sql, new { userId, thresholdClips });
     }
 
-    /// <summary>Records the address the user chose for account mail (null when they skipped) and marks onboarding done.</summary>
-    public async Task SetUserEmail(Guid userId, string? email)
+    /// <summary>
+    /// Gives the account the username its owner chose, unless another account (one being deleted aside) already
+    /// has it, ignoring case; false then. Concurrent choices of the same name are serialised by an advisory lock
+    /// on it. Provider sign-ins can still rename an account onto a taken name, as they always could.
+    /// </summary>
+    public async Task<bool> SetChosenUsername(Guid userId, string username)
+    {
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+        }
+
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync(
+            "SELECT pg_advisory_xact_lock(hashtext(@key))",
+            new { key = $"username:{username.ToLowerInvariant()}" },
+            transaction);
+
+        const string sql = @"
+            UPDATE app_user
+            SET username = @username,
+                username_chosen_at = now()
+            WHERE id = @userId
+              AND NOT EXISTS (
+                  SELECT 1 FROM app_user other
+                  WHERE other.id <> @userId
+                    AND lower(other.username) = lower(@username)
+                    AND other.deletion_requested_at IS NULL)";
+
+        int updated = await connection.ExecuteAsync(sql, new { userId, username }, transaction);
+        await transaction.CommitAsync();
+        return updated == 1;
+    }
+
+    /// <summary>Records the address the user chose for account mail and marks onboarding done.</summary>
+    public async Task SetUserEmail(Guid userId, string email)
     {
         const string sql = @"
             UPDATE app_user
@@ -420,6 +455,10 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
     {
         public Guid Id { get; set; }
         public string Username { get; set; } = string.Empty;
+
+        /// <summary>Set once the owner has chosen the username; provider sign-ins no longer change it.</summary>
+        public DateTimeOffset? UsernameChosenAt { get; set; }
+
         public string? GlobalName { get; set; }
         public string? AvatarUrl { get; set; }
         public string? Email { get; set; }

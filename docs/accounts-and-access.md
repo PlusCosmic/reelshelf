@@ -9,7 +9,7 @@ Roles and tiers are independent: an Admin has no tier unless one is granted, and
 
 ## Changing access
 
-Admins use **Accounts** in the profile menu (`/admin/accounts`): find someone by username, display name or their exact Discord or Twitch id, then set their role or granted plan with a reason. The change takes effect on their next request.
+Admins use **Accounts** in the profile menu (`/admin/accounts`): find someone by username, display name or their exact Discord, Twitch or Google id, then set their role or granted plan with a reason. The change takes effect on their next request.
 
 `AccountAccessService` is the only code that writes either column, and each change is recorded in `account_access_change` (who, when, old and new value, reason). The change log is deleted with the account. An admin can't change their own role, and the last Admin can't be demoted.
 

@@ -8,7 +8,12 @@ export interface CurrentUser {
   avatar: string | null;
   email: string | null;
   suggestedEmail: string | null;
+  /** True until the account has an email address and, when it picks its own username, a confirmed one. */
   needsOnboarding: boolean;
+  /** The account's username is a stand-in (a Google sign-in has none) that its owner must confirm or change. */
+  needsUsername: boolean;
+  /** The owner sets the username here; otherwise it follows the primary sign-in. */
+  canSetUsername: boolean;
   isAdmin: boolean;
 }
 
@@ -27,9 +32,14 @@ export async function unlinkIdentity(provider: string): Promise<void> {
   await createUserApi().unlinkMyIdentity({ provider });
 }
 
-/** Stores the address account mail goes to. An empty string clears it and still completes onboarding. */
+/** Stores the address account mail goes to. Every account needs one, so the API refuses an empty one. */
 export async function setEmail(email: string): Promise<void> {
   await createUserApi().setMyEmail({ setEmailRequest: { email } });
+}
+
+/** Sets a username the owner chooses; the API refuses one another account has (409). */
+export async function setUsername(username: string): Promise<void> {
+  await createUserApi().setMyUsername({ setUsernameRequest: { username } });
 }
 
 /** The phrase the user types to confirm; the API checks it too. */
@@ -51,6 +61,8 @@ function fromCurrentUserResponse(user: CurrentUserResponse): CurrentUser {
     email: user.email ?? null,
     suggestedEmail: user.suggestedEmail ?? null,
     needsOnboarding: user.needsOnboarding,
+    needsUsername: user.needsUsername,
+    canSetUsername: user.canSetUsername,
     isAdmin: user.isAdmin,
   };
 }

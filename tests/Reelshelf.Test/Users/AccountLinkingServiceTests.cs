@@ -11,6 +11,67 @@ public class AccountLinkingServiceTests
     private static readonly ExternalIdentity TwitchHarry =
         new(AuthProvider.Twitch, "2002", "harry_tv", "HarryTV", "https://static-cdn.jtvnw.net/harry.png", "harry@twitch.example");
 
+    private static readonly ExternalIdentity GoogleHarry =
+        new(AuthProvider.Google, "3003", "harry@gmail.example", "Harry Smith", "https://lh3.googleusercontent.com/a/harry", "harry@gmail.example");
+
+    [Fact]
+    public async Task SignIn_WithGoogle_StartsWithAUsernameFromTheNameNotTheAddress()
+    {
+        FakeStore store = new();
+        AccountLinkingService service = new(store);
+
+        SignInOutcome outcome = await service.SignIn(GoogleHarry);
+
+        Assert.True(outcome.Created);
+        Assert.Equal("harrysmith", outcome.User.Username);
+        Assert.Equal("Harry Smith", outcome.User.GlobalName);
+        Assert.Equal("harry@gmail.example", Assert.Single(store.Identities.Values).Username);
+    }
+
+    [Fact]
+    public async Task SignIn_WithGooglePrimary_KeepsTheAccountUsername()
+    {
+        FakeStore store = new();
+        AccountLinkingService service = new(store);
+        SignInOutcome created = await service.SignIn(GoogleHarry);
+        store.Users[created.User.Id].Username = "harry";
+
+        SignInOutcome again = await service.SignIn(GoogleHarry with { DisplayName = "Harry S" });
+
+        Assert.Equal("harry", again.User.Username);
+        Assert.Equal("Harry S", again.User.GlobalName);
+    }
+
+    [Fact]
+    public async Task SignIn_AfterChoosingAUsername_ProviderNoLongerRenamesTheAccount()
+    {
+        FakeStore store = new();
+        AccountLinkingService service = new(store);
+        SignInOutcome created = await service.SignIn(DiscordHarry);
+        store.Users[created.User.Id].Username = "chosen";
+        store.Users[created.User.Id].UsernameChosenAt = DateTimeOffset.UtcNow;
+
+        SignInOutcome again = await service.SignIn(DiscordHarry with { Username = "harry2", DisplayName = "Harry II" });
+
+        Assert.Equal("chosen", again.User.Username);
+        Assert.Equal("Harry II", again.User.GlobalName);
+    }
+
+    [Fact]
+    public async Task Unlink_PrimaryIdentity_PromotingGoogle_KeepsTheAccountUsername()
+    {
+        FakeStore store = new();
+        AccountLinkingService service = new(store);
+        SignInOutcome harry = await service.SignIn(DiscordHarry);
+        await service.Link(harry.User.Id, GoogleHarry);
+
+        Assert.Equal(UnlinkOutcome.Unlinked, await service.Unlink(harry.User.Id, AuthProvider.Discord));
+
+        UserStatements.UserRow user = store.Users[harry.User.Id];
+        Assert.Equal("harry", user.Username);
+        Assert.Equal("Harry Smith", user.GlobalName);
+    }
+
     [Fact]
     public async Task SignIn_CreatesAccountForUnknownIdentity()
     {
@@ -225,7 +286,7 @@ public class AccountLinkingServiceTests
                 .ToList());
         }
 
-        public Task<UserStatements.UserRow?> CreateUserWithIdentity(ExternalIdentity identity)
+        public Task<UserStatements.UserRow?> CreateUserWithIdentity(ExternalIdentity identity, string accountUsername)
         {
             if (_activeScopes > 0)
             {
@@ -242,7 +303,7 @@ public class AccountLinkingServiceTests
             UserStatements.UserRow user = new()
             {
                 Id = Guid.NewGuid(),
-                Username = identity.Username,
+                Username = accountUsername,
                 GlobalName = identity.DisplayName,
                 AvatarUrl = identity.AvatarUrl
             };
@@ -291,10 +352,14 @@ public class AccountLinkingServiceTests
             return Task.CompletedTask;
         }
 
-        public Task UpdateUserProfile(Guid userId, string username, string? globalName, string? avatarUrl)
+        public Task UpdateUserProfile(Guid userId, string? username, string? globalName, string? avatarUrl)
         {
             UserStatements.UserRow user = Users[userId];
-            user.Username = username;
+            if (username is not null && user.UsernameChosenAt is null)
+            {
+                user.Username = username;
+            }
+
             user.GlobalName = globalName;
             user.AvatarUrl = avatarUrl;
             return Task.CompletedTask;

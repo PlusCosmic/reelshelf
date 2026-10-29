@@ -59,7 +59,7 @@ public class AuthenticatedUserMiddleware(RequestDelegate next)
                 dbUser.GlobalName,
                 dbUser.AvatarUrl,
                 dbUser.Email,
-                dbUser.OnboardingCompletedAt is not null,
+                dbUser.UsernameChosenAt is not null,
                 UserRoles.Parse(dbUser.Role),
                 GrantedTiers.Parse(dbUser.GrantedTier),
                 identities);

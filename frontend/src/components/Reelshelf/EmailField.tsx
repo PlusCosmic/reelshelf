@@ -9,16 +9,15 @@ const copy = settingsCopy.email;
 
 /**
  * Lets the user choose where account mail goes. Used both for the first-sign-in step and in Settings.
+ * Every account needs an address, so it can be changed but not cleared.
  */
 export function EmailField({
   initialEmail,
   submitLabel = commonCopy.save,
-  allowSkip = false,
   onSaved,
 }: {
   initialEmail: string | null;
   submitLabel?: string;
-  allowSkip?: boolean;
   onSaved?: () => void;
 }) {
   const [value, setValue] = useState(initialEmail ?? "");
@@ -30,10 +29,11 @@ export function EmailField({
     setValue(initialEmail ?? "");
   }, [initialEmail]);
 
-  const submit = (email: string) => {
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     setError(null);
     setSaved(false);
-    setEmail.mutate(email, {
+    setEmail.mutate(value, {
       onSuccess: () => {
         setSaved(true);
         onSaved?.();
@@ -46,11 +46,6 @@ export function EmailField({
     });
   };
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    submit(value);
-  };
-
   return (
     <form className="rs-form rs-email-form" onSubmit={handleSubmit}>
       <div className="rs-field">
@@ -61,6 +56,7 @@ export function EmailField({
           name="email"
           autoComplete="email"
           placeholder={copy.placeholder}
+          required
           value={value}
           onChange={(event) => setValue(event.target.value)}
           disabled={setEmail.isPending}
@@ -84,16 +80,6 @@ export function EmailField({
         >
           {submitLabel}
         </button>
-        {allowSkip ? (
-          <button
-            className="rs-secondary"
-            type="button"
-            disabled={setEmail.isPending}
-            onClick={() => submit("")}
-          >
-            {copy.skip}
-          </button>
-        ) : null}
       </div>
     </form>
   );

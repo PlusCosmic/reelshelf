@@ -8,7 +8,7 @@ export const signInCopy = {
       Open your <em>shelf</em>.
     </>
   ),
-  intro: `Choose Discord or Twitch. If you're new, that makes your account, free for up to ${formatCount(planLimits.free.clips)} clips. You can link the other one later.`,
+  intro: `Choose Discord, Twitch or Google. If you're new, that makes your account, free for up to ${formatCount(planLimits.free.clips)} clips. You can link the others later.`,
   continueWith: (provider: string) => `Continue with ${provider}`,
   accountDeleted:
     "Your account has been deleted. We're removing its clips now.",

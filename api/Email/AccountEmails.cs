@@ -126,12 +126,12 @@ public static class AccountEmails
         string text =
             "Your Reelshelf account and everything in it, including your clips, collections and share links, " +
             "are being permanently deleted. This can't be undone.\n\n" +
-            "If you didn't ask for this, someone may have got into your Discord or Twitch account. Secure it now.\n";
+            "If you didn't ask for this, someone may have got into your Discord, Twitch or Google account. Secure it now.\n";
 
         return new EmailMessage(to, subject, text, Wrap(subject,
             "<p>Your Reelshelf account and everything in it, including your clips, collections and share links, " +
             "are being permanently deleted. This can't be undone.</p>" +
-            "<p>If you didn't ask for this, someone may have got into your Discord or Twitch account. Secure it now.</p>",
+            "<p>If you didn't ask for this, someone may have got into your Discord, Twitch or Google account. Secure it now.</p>",
             footer: "Sent by Reelshelf."));
     }
 

@@ -55,7 +55,7 @@ public static class AdminAccountEndpoints
         group.MapPut("{userId:guid}/suspension", SetSuspension).WithName("SetAdminAccountSuspension");
     }
 
-    /// <summary>Accounts matching a username, display name or Discord or Twitch id; nothing under two characters.</summary>
+    /// <summary>Accounts matching a username, display name or exact sign-in id (Discord, Twitch or Google); nothing under two characters.</summary>
     private static async Task<Ok<List<AdminAccount>>> FindAccounts(IAccountAccessStore store, string? query)
     {
         string trimmed = query?.Trim() ?? "";

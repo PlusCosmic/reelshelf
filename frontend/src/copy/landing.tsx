@@ -13,7 +13,7 @@ export const landingCopy = {
     ),
     copy: "Your gameplay clips, sorted by game and by night. Share one with a link, or watch them back with friends on Discord.",
     cta: "Start your shelf",
-    fineprint: `Free for up to ${formatCount(planLimits.free.clips)} clips. Sign in with Discord or Twitch.`,
+    fineprint: `Free for up to ${formatCount(planLimits.free.clips)} clips. Sign in with Discord, Twitch or Google.`,
   },
   /** Tags on the example clips floating over the hero, by the example game's slug. */
   previewTags: {
@@ -72,7 +72,7 @@ export const landingCopy = {
     items: [
       {
         title: "Sign in",
-        copy: "With Discord or Twitch. No form, no card.",
+        copy: "With Discord, Twitch or Google. No card needed.",
       },
       {
         title: "Drop your clips",

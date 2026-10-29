@@ -66,6 +66,18 @@ export interface CurrentUserResponse {
    * @type {boolean}
    * @memberof CurrentUserResponse
    */
+  needsUsername: boolean;
+  /**
+   *
+   * @type {boolean}
+   * @memberof CurrentUserResponse
+   */
+  canSetUsername: boolean;
+  /**
+   *
+   * @type {boolean}
+   * @memberof CurrentUserResponse
+   */
   isAdmin: boolean;
 }
 
@@ -84,6 +96,10 @@ export function instanceOfCurrentUserResponse(
   if (!("suggestedEmail" in value) || value["suggestedEmail"] === undefined)
     return false;
   if (!("needsOnboarding" in value) || value["needsOnboarding"] === undefined)
+    return false;
+  if (!("needsUsername" in value) || value["needsUsername"] === undefined)
+    return false;
+  if (!("canSetUsername" in value) || value["canSetUsername"] === undefined)
     return false;
   if (!("isAdmin" in value) || value["isAdmin"] === undefined) return false;
   return true;
@@ -108,6 +124,8 @@ export function CurrentUserResponseFromJSONTyped(
     email: json["email"],
     suggestedEmail: json["suggested_email"],
     needsOnboarding: json["needs_onboarding"],
+    needsUsername: json["needs_username"],
+    canSetUsername: json["can_set_username"],
     isAdmin: json["is_admin"],
   };
 }
@@ -132,6 +150,8 @@ export function CurrentUserResponseToJSONTyped(
     email: value["email"],
     suggested_email: value["suggestedEmail"],
     needs_onboarding: value["needsOnboarding"],
+    needs_username: value["needsUsername"],
+    can_set_username: value["canSetUsername"],
     is_admin: value["isAdmin"],
   };
 }

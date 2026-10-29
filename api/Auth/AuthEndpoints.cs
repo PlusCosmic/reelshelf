@@ -181,7 +181,7 @@ public static class AuthEndpoints
             return;
         }
 
-        string providerLabel = identity.Provider == AuthProvider.Twitch ? "Twitch" : "Discord";
+        string providerLabel = AuthProvider.Label(identity.Provider);
         string settingsUrl = _frontendOrigin.TrimEnd('/') + SettingsPath;
         await emailSender.SendAsync(AccountEmails.IdentityLinked(user.Email, providerLabel, identity.Username, settingsUrl));
     }

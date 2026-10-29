@@ -20,7 +20,7 @@ export type AccountRole = (typeof accountRoles)[number];
 export const grantableTiers = ["plus", "pro", "unlimited"] as const;
 export type GrantableTier = (typeof grantableTiers)[number];
 
-/** Accounts matching a username, display name or exact Discord or Twitch id. */
+/** Accounts matching a username, display name or exact Discord, Twitch or Google id. */
 export async function findAccounts(query: string): Promise<AdminAccount[]> {
   return createAdminAccountApi().findAdminAccounts({ query });
 }

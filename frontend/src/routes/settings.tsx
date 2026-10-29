@@ -6,6 +6,7 @@ import {
 } from "@/components/Reelshelf/LinkedAccounts";
 import { DeleteAccount } from "@/components/Reelshelf/DeleteAccount";
 import { EmailField } from "@/components/Reelshelf/EmailField";
+import { UsernameField } from "@/components/Reelshelf/UsernameField";
 import {
   type BillingReturn,
   PlanSettings,
@@ -66,6 +67,13 @@ function SettingsRoute() {
           <h2 className="rs-eyebrow">{sections.plan}</h2>
           <PlanSettings billingReturn={billingReturn} />
         </div>
+        {user?.canSetUsername ? (
+          <div className="rs-settings-section">
+            <h2 className="rs-eyebrow">{sections.username.title}</h2>
+            <p className="rs-sidebar-copy">{sections.username.copy}</p>
+            <UsernameField initialUsername={user.username} />
+          </div>
+        ) : null}
         <div className="rs-settings-section">
           <h2 className="rs-eyebrow">{sections.email.title}</h2>
           <p className="rs-sidebar-copy">{sections.email.copy}</p>

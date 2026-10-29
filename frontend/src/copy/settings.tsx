@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/** The Settings page, the first-sign-in email step, linked accounts and deleting the account. */
+/** The Settings page, the first-sign-in username and email steps, linked accounts and deleting the account. */
 export const settingsCopy = {
   eyebrow: "Settings",
   title: (name: string) => (
@@ -12,9 +12,13 @@ export const settingsCopy = {
   yourAccount: "your account",
   sections: {
     plan: "Plan",
+    username: {
+      title: "Username",
+      copy: "How people find you to add you to a collection, and what they see beside your clips.",
+    },
     email: {
       title: "Account email",
-      copy: "For things about your account, like a new sign-in being linked or a warning before any clips are deleted. No newsletters. Leave it empty and we won't email you, warnings included.",
+      copy: "For things about your account, like a new sign-in being linked or a warning before any clips are deleted. No newsletters.",
     },
     linkedAccounts: {
       title: "Linked accounts",
@@ -42,7 +46,26 @@ export const settingsCopy = {
     placeholder: "you@example.com",
     saveFailed: "Couldn't save that address.",
     saved: "Saved.",
-    skip: "Skip for now",
+  },
+
+  /** The username of an account that picks its own, in Settings and on first sign-in. */
+  username: {
+    label: "Username",
+    hint: "2 to 32 letters, numbers, underscores or full stops.",
+    saveFailed: "Couldn't save that username.",
+    saved: "Saved.",
+  },
+
+  /** The first-sign-in step for a Google account, which has no username of its own. */
+  usernameOnboarding: {
+    eyebrow: "Welcome to Reelshelf",
+    title: (
+      <>
+        Pick a <em>username</em>.
+      </>
+    ),
+    copy: "Google doesn't give you one, so we made this from your name. Keep it or choose your own. It's how friends find you to add you to a collection.",
+    submit: "Use this username",
   },
 
   /** The first-sign-in step asking for an email address. */
@@ -94,7 +117,7 @@ export const settingsCopy = {
     collections:
       "your share links, and the collections you made, including for their collaborators",
     paidPlan: "your paid plan, which is cancelled straight away",
-    signIns: "your linked Discord and Twitch sign-ins",
+    signIns: "your linked Discord, Twitch and Google sign-ins",
     confirm: (phrase: string) => (
       <>
         Type <strong>{phrase}</strong> to confirm

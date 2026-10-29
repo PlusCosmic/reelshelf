@@ -37,7 +37,8 @@ internal static class AuthenticationSetup
 
         ProviderCredentials discord = ProviderCredentials.Read(configuration, "DiscordClientId", "DiscordClientSecret");
         ProviderCredentials twitch = ProviderCredentials.Read(configuration, "TwitchClientId", "TwitchClientSecret");
-        RequireCredentials(builder.Environment, discord, twitch);
+        ProviderCredentials google = ProviderCredentials.Read(configuration, "GoogleClientId", "GoogleClientSecret");
+        RequireCredentials(builder.Environment, discord, twitch, google);
 
         builder.Services.AddAuthentication(options =>
             {
@@ -170,6 +171,48 @@ internal static class AuthenticationSetup
                 });
 
                 options.SaveTokens = true;
+            })
+            .AddOAuth(AuthProvider.Google, options =>
+            {
+                options.SignInScheme = ExternalScheme;
+                options.AuthorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
+                options.TokenEndpoint = "https://oauth2.googleapis.com/token";
+                options.UserInformationEndpoint = "https://openidconnect.googleapis.com/v1/userinfo";
+
+                options.ClientId = google.ClientId;
+                options.ClientSecret = google.ClientSecret;
+
+                options.CallbackPath = new PathString("/auth/google/callback");
+
+                options.Scope.Add("openid");
+                options.Scope.Add("email");
+                options.Scope.Add("profile");
+
+                options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "sub");
+                options.ClaimActions.MapJsonKey(DisplayNameClaim, "name");
+                options.ClaimActions.MapJsonKey(AvatarUrlClaim, "picture");
+
+                options.Events = ProviderEvents(async context =>
+                {
+                    using JsonDocument user = await FetchUser(context, addClientIdHeader: false);
+                    context.RunClaimActions(user.RootElement);
+
+                    // Google has no usernames. The identity's username is its address, which tells the owner which
+                    // Google account is linked; it never becomes the account's username (AuthProvider.ProvidesUsername).
+                    string? email = user.RootElement.GetStringOrNull("email");
+                    bool verified = user.RootElement.TryGetProperty("email_verified", out JsonElement verifiedElement) &&
+                                    verifiedElement.ValueKind == JsonValueKind.True;
+                    string? username = string.IsNullOrEmpty(email) ? user.RootElement.GetStringOrNull("sub") : email;
+                    if (!string.IsNullOrEmpty(username))
+                    {
+                        context.Identity?.AddClaim(new Claim(ClaimTypes.Name, username));
+                    }
+
+                    if (verified && !string.IsNullOrEmpty(email))
+                    {
+                        context.Identity?.AddClaim(new Claim(EmailClaim, email));
+                    }
+                });
             });
 
         builder.Services.AddAuthorization();

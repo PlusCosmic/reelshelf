@@ -1,6 +1,6 @@
 import { HttpError } from "./http";
 
-export type AuthProvider = "discord" | "twitch";
+export type AuthProvider = "discord" | "twitch" | "google";
 
 export const authProviders: ReadonlyArray<{
   id: AuthProvider;
@@ -8,6 +8,7 @@ export const authProviders: ReadonlyArray<{
 }> = [
   { id: "discord", label: "Discord" },
   { id: "twitch", label: "Twitch" },
+  { id: "google", label: "Google" },
 ];
 
 export function providerLabel(provider: string): string {

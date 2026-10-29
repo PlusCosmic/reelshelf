@@ -24,6 +24,7 @@ import {
   fetchLinkedIdentities,
   fetchMe,
   setEmail,
+  setUsername,
   unlinkIdentity,
 } from "@/shared/services/user";
 
@@ -205,6 +206,17 @@ export function useSetEmail() {
 
   return useMutation({
     mutationFn: setEmail,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: currentUserQueryKey });
+    },
+  });
+}
+
+export function useSetUsername() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: setUsername,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: currentUserQueryKey });
     },
