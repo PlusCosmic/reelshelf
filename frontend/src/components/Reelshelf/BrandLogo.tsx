@@ -1,7 +1,10 @@
 import { commonCopy } from "@/copy/common";
 
-/** The Reelshelf tile beside the wordmark; `.rs-brand-logo-mark` lifts the tile in dark theme so it stays visible. */
-export function BrandLogo() {
+/**
+ * The Reelshelf tile beside the wordmark; `.rs-brand-logo-mark` lifts the tile in dark theme so it stays visible.
+ * Leave the wordmark out where the name is already written beside it.
+ */
+export function BrandLogo({ wordmark = true }: { wordmark?: boolean }) {
   return (
     <span className="rs-brand-logo" aria-hidden="true">
       <svg className="rs-brand-logo-mark" viewBox="0 0 512 512">
@@ -49,7 +52,9 @@ export function BrandLogo() {
           rx="17"
         />
       </svg>
-      <span className="rs-brand-logo-word">{commonCopy.brand}</span>
+      {wordmark ? (
+        <span className="rs-brand-logo-word">{commonCopy.brand}</span>
+      ) : null}
     </span>
   );
 }

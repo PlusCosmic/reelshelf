@@ -261,13 +261,19 @@ export function LandingPage({
 
       <footer className="rs-landing-footer">
         {landingCopy.footer.tagline}
-        <nav
-          className="rs-landing-footer-links"
-          aria-label={commonCopy.legalNav}
-        >
-          <Link to="/terms">{landingCopy.footer.terms}</Link>
-          <Link to="/privacy">{landingCopy.footer.privacy}</Link>
-        </nav>
+        <div className="rs-landing-footer-row">
+          <span className="rs-landing-footer-copyright">
+            <BrandLogo wordmark={false} />
+            {landingCopy.footer.copyright(new Date().getFullYear())}
+          </span>
+          <nav
+            className="rs-landing-footer-links"
+            aria-label={commonCopy.legalNav}
+          >
+            <Link to="/terms">{landingCopy.footer.terms}</Link>
+            <Link to="/privacy">{landingCopy.footer.privacy}</Link>
+          </nav>
+        </div>
       </footer>
     </div>
   );
