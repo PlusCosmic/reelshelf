@@ -810,9 +810,25 @@ a {
 .rs-landing-footer-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
   gap: 4px 16px;
   margin-top: 8px;
+}
+
+.rs-landing-footer-copyright {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rs-landing-footer-copyright .rs-brand-logo {
+  height: auto;
+}
+
+.rs-landing-footer-copyright .rs-brand-logo-mark {
+  width: 16px;
+  height: 16px;
 }
 
 .rs-landing-footer-links {
