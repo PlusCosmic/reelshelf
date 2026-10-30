@@ -190,7 +190,6 @@ export function LandingPage({
             {landingCopy.hero.cta}
             <IconArrowRight size={18} aria-hidden="true" />
           </Link>
-          <p className="rs-landing-fineprint">{landingCopy.hero.fineprint}</p>
         </section>
 
         <section
@@ -213,7 +212,6 @@ export function LandingPage({
 
         <section className="rs-landing-section" id="features">
           <div className="rs-landing-section-head">
-            <span className="rs-eyebrow">{landingCopy.features.eyebrow}</span>
             <h2 className="rs-display rs-landing-h2">
               {landingCopy.features.title}
             </h2>
@@ -231,7 +229,6 @@ export function LandingPage({
 
         <section className="rs-landing-section" id="how-it-works">
           <div className="rs-landing-section-head">
-            <span className="rs-eyebrow">{landingCopy.steps.eyebrow}</span>
             <h2 className="rs-display rs-landing-h2">
               {landingCopy.steps.title}
             </h2>
@@ -251,7 +248,6 @@ export function LandingPage({
           <h2 className="rs-display rs-landing-h2">
             {landingCopy.closing.title}
           </h2>
-          <p className="rs-landing-copy">{landingCopy.closing.copy}</p>
           <Link to="/sign-in" className="rs-landing-cta-button">
             {landingCopy.hero.cta}
             <IconArrowRight size={18} aria-hidden="true" />
