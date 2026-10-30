@@ -1,3 +1,5 @@
+import { plural } from "./plural";
+
 /** The Discord Activity's watch room, in the order it reads. */
 export const activityCopy = {
   kicker: "Watch room",
@@ -63,6 +65,15 @@ export const activityCopy = {
   picker: {
     title: "Add from your shelf",
     search: "Search your clips",
+    games: "Filter by game",
+    allGames: "All games",
+    spine: (game: string, count: number) =>
+      `${game}, ${plural(count, "clip", "clips")}`,
+    sort: "Sort clips",
+    newest: "Newest",
+    oldest: "Oldest",
+    today: "Today",
+    yesterday: "Yesterday",
     failed: "Couldn't load your clips.",
     noMatch: "No clips match that search.",
     empty: "Your shelf is empty.",

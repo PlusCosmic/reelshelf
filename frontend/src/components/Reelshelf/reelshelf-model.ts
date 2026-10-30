@@ -90,7 +90,9 @@ function contrast(a: number, b: number) {
  * How a game's book is bound. Custom categories and games whose cover has not been read yet have
  * no cloth colour, and take a default cloth instead.
  */
-export function bookBinding(game: GameCategoryResponse): BookBinding {
+export function bookBinding(
+  game: Pick<GameCategoryResponse, "id" | "clothColor">,
+): BookBinding {
   const cloth =
     game.clothColor && /^#[0-9a-f]{6}$/i.test(game.clothColor)
       ? game.clothColor

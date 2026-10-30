@@ -16,6 +16,7 @@ import * as runtime from "../runtime";
 import type {
   ActivityClipsResponse,
   ActivityConfigResponse,
+  ActivityGamesResponse,
   ActivityParticipantResponse,
   ActivitySessionResponse,
   ActivityTokenRequest,
@@ -26,6 +27,8 @@ import {
   ActivityClipsResponseToJSON,
   ActivityConfigResponseFromJSON,
   ActivityConfigResponseToJSON,
+  ActivityGamesResponseFromJSON,
+  ActivityGamesResponseToJSON,
   ActivityParticipantResponseFromJSON,
   ActivityParticipantResponseToJSON,
   ActivitySessionResponseFromJSON,
@@ -43,6 +46,8 @@ export interface ExchangeActivityTokenRequest {
 export interface GetActivityClipsRequest {
   search?: string;
   page?: number;
+  categoryId?: string;
+  sortOrder?: number;
 }
 
 /**
@@ -103,6 +108,41 @@ export class DiscordActivityEndpointsApi extends runtime.BaseAPI {
 
   /**
    */
+  async getActivityClipGamesRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityGamesResponse>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/activity/clips/games`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ActivityGamesResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async getActivityClipGames(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ActivityGamesResponse> {
+    const response = await this.getActivityClipGamesRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
   async getActivityClipsRaw(
     requestParameters: GetActivityClipsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -115,6 +155,14 @@ export class DiscordActivityEndpointsApi extends runtime.BaseAPI {
 
     if (requestParameters["page"] != null) {
       queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["categoryId"] != null) {
+      queryParameters["categoryId"] = requestParameters["categoryId"];
+    }
+
+    if (requestParameters["sortOrder"] != null) {
+      queryParameters["sortOrder"] = requestParameters["sortOrder"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};

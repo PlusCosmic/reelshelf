@@ -20,7 +20,15 @@ public sealed record ActivityClip(
 
 public sealed record ActivityClipsResponse(List<ActivityClip> Clips, bool HasMore);
 
-/// <summary>Lists a room member's own clips for the Activity, newest first.</summary>
+/// <summary>
+/// A game on a room member's shelf, as the picker's spine for it shows it: its cloth colour (null for a custom
+/// game, which the Activity colours itself) and how many clips the member has in it.
+/// </summary>
+public sealed record ActivityGame(Guid Id, string Name, string? ClothColor, int ClipCount);
+
+public sealed record ActivityGamesResponse(List<ActivityGame> Games);
+
+/// <summary>Lists a room member's own clips for the Activity, newest first unless asked otherwise, and the games they are in.</summary>
 public sealed class ActivityClipService(
     ClipsStatements clips,
     GameCategoryStatements gameCategories,
@@ -28,13 +36,19 @@ public sealed class ActivityClipService(
 {
     public const int PageSize = 24;
 
-    public async Task<ActivityClipsResponse> GetOwnClips(Guid accountId, string? search, int page)
+    public async Task<ActivityClipsResponse> GetOwnClips(
+        Guid accountId,
+        string? search,
+        int page,
+        Guid? categoryId = null,
+        ClipSortOrder sortOrder = ClipSortOrder.DateDescending)
     {
         page = Math.Max(page, 1);
         ClipsStatements.PagedClipWithTagsRows rows = await clips.GetClipsWithTags(
             accountId,
-            gameCategoryId: null,
+            gameCategoryId: categoryId,
             search: search,
+            sortOrder: sortOrder,
             limit: PageSize,
             offset: (page - 1) * PageSize);
 
@@ -54,5 +68,30 @@ public sealed class ActivityClipService(
             .ToList();
 
         return new ActivityClipsResponse(items, page * PageSize < rows.TotalCount);
+    }
+
+    /// <summary>
+    /// Every game the member has clips in, most clips first, so the picker's spines stay in one order while
+    /// the member switches between them. Counts cover every clip, as the unfiltered list does.
+    /// </summary>
+    public async Task<ActivityGamesResponse> GetOwnGames(Guid accountId)
+    {
+        List<ClipsStatements.CategoryTotalsRow> totals = await clips.GetCategoryTotalsByOwner(accountId);
+        Dictionary<Guid, GameCategory> categories = (await gameCategories.GetByIdsAsync(
+                totals.Select(total => total.GameCategoryId).ToList()))
+            .ToDictionary(category => category.Id);
+
+        List<ActivityGame> games = totals
+            .Where(total => total.ClipCount > 0 && categories.ContainsKey(total.GameCategoryId))
+            .Select(total =>
+            {
+                GameCategory category = categories[total.GameCategoryId];
+                return new ActivityGame(category.Id, category.Name, category.ClothColor, (int)total.ClipCount);
+            })
+            .OrderByDescending(game => game.ClipCount)
+            .ThenBy(game => game.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new ActivityGamesResponse(games);
     }
 }

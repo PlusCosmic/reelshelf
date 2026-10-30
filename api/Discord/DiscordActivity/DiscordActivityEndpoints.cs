@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Reelshelf.Core;
 
 namespace Reelshelf.Discord.DiscordActivity;
 
@@ -27,6 +28,8 @@ public static class DiscordActivityEndpoints
         group.MapGet("/me", GetMe).WithName("GetActivityParticipant")
             .RequireAuthorization(RoomTokenAuthentication.Policy);
         group.MapGet("/clips", GetOwnClips).WithName("GetActivityClips")
+            .RequireAuthorization(RoomTokenAuthentication.Policy);
+        group.MapGet("/clips/games", GetOwnGames).WithName("GetActivityClipGames")
             .RequireAuthorization(RoomTokenAuthentication.Policy);
     }
 
@@ -92,30 +95,75 @@ public static class DiscordActivityEndpoints
         return TypedResults.Ok(await signIn.DescribeAsync(participant.DiscordUserId, participant.Name, participant.AvatarUrl));
     }
 
-    /// <summary>The caller's own clips to pick from. Only room members have a shelf; guests are refused.</summary>
+    /// <summary>
+    /// The caller's own clips to pick from, optionally from one game and oldest first. Only room members have a
+    /// shelf; guests are refused.
+    /// </summary>
     private static async Task<Results<Ok<ActivityClipsResponse>, UnauthorizedHttpResult, ProblemHttpResult>> GetOwnClips(
         ActivitySignInService signIn,
         ActivityClipService activityClips,
         HttpContext context,
         string? search = null,
-        int page = 1)
+        int page = 1,
+        Guid? categoryId = null,
+        ClipSortOrder sortOrder = ClipSortOrder.DateDescending)
     {
-        RoomParticipant? participant = RoomTokenAuthentication.ReadParticipant(context.User);
-        if (participant is null)
+        (bool signedIn, Guid? accountId) = await ResolveOwnShelf(signIn, context);
+        if (!signedIn)
         {
             return TypedResults.Unauthorized();
         }
 
-        ActivityParticipantResponse described =
-            await signIn.DescribeAsync(participant.DiscordUserId, participant.Name, participant.AvatarUrl);
-        if (described.AccountId is not { } accountId)
+        if (accountId is not { } ownerId)
         {
-            return TypedResults.Problem("Link Discord to a Reelshelf account to play your clips",
-                statusCode: StatusCodes.Status403Forbidden);
+            return NotLinked();
         }
 
-        return TypedResults.Ok(await activityClips.GetOwnClips(accountId, search, page));
+        return TypedResults.Ok(await activityClips.GetOwnClips(ownerId, search, page, categoryId, sortOrder));
     }
+
+    /// <summary>The games on the caller's shelf with a clip count each, for the picker's game filter.</summary>
+    private static async Task<Results<Ok<ActivityGamesResponse>, UnauthorizedHttpResult, ProblemHttpResult>> GetOwnGames(
+        ActivitySignInService signIn,
+        ActivityClipService activityClips,
+        HttpContext context)
+    {
+        (bool signedIn, Guid? accountId) = await ResolveOwnShelf(signIn, context);
+        if (!signedIn)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (accountId is not { } ownerId)
+        {
+            return NotLinked();
+        }
+
+        return TypedResults.Ok(await activityClips.GetOwnGames(ownerId));
+    }
+
+    /// <summary>
+    /// Whether the caller holds a room token and, when they do, the Reelshelf account linked to their Discord
+    /// identity (null for a guest).
+    /// </summary>
+    private static async Task<(bool SignedIn, Guid? AccountId)> ResolveOwnShelf(
+        ActivitySignInService signIn,
+        HttpContext context)
+    {
+        RoomParticipant? participant = RoomTokenAuthentication.ReadParticipant(context.User);
+        if (participant is null)
+        {
+            return (false, null);
+        }
+
+        ActivityParticipantResponse described =
+            await signIn.DescribeAsync(participant.DiscordUserId, participant.Name, participant.AvatarUrl);
+        return (true, described.AccountId);
+    }
+
+    private static ProblemHttpResult NotLinked() =>
+        TypedResults.Problem("Link Discord to a Reelshelf account to play your clips",
+            statusCode: StatusCodes.Status403Forbidden);
 }
 
 public static class DiscordActivitySetup
