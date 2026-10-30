@@ -3689,6 +3689,22 @@
               "format": "int32",
               "default": 1
             }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "default": 0,
+              "$ref": "#/components/schemas/ClipSortOrder"
+            }
           }
         ],
         "responses": {
@@ -3698,6 +3714,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ActivityClipsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activity/clips/games": {
+      "get": {
+        "tags": [
+          "DiscordActivityEndpoints"
+        ],
+        "operationId": "GetActivityClipGames",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityGamesResponse"
                 }
               }
             }
@@ -3897,6 +3933,48 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ActivityGame": {
+        "required": [
+          "id",
+          "name",
+          "cloth_color",
+          "clip_count"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cloth_color": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clip_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ActivityGamesResponse": {
+        "required": [
+          "games"
+        ],
+        "type": "object",
+        "properties": {
+          "games": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityGame"
+            }
           }
         }
       },

@@ -4,6 +4,8 @@ export * from "./AccountPlanResponse";
 export * from "./ActivityClip";
 export * from "./ActivityClipsResponse";
 export * from "./ActivityConfigResponse";
+export * from "./ActivityGame";
+export * from "./ActivityGamesResponse";
 export * from "./ActivityMedia";
 export * from "./ActivityParticipantResponse";
 export * from "./ActivitySessionResponse";

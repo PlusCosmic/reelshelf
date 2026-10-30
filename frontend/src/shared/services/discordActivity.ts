@@ -2,6 +2,7 @@ import { DiscordSDK } from "@discord/embedded-app-sdk";
 import type {
   ActivityClip,
   ActivityClipsResponse,
+  ActivityGame,
   ActivityParticipantResponse,
   ActivitySessionResponse,
 } from "@/api-client";
@@ -11,6 +12,7 @@ import { createDiscordActivityApi } from "./apiClients";
 export type {
   ActivityClip,
   ActivityClipsResponse,
+  ActivityGame,
   ActivityParticipantResponse,
   ActivitySessionResponse,
 };
@@ -32,15 +34,36 @@ export {
   activityThumbnailUrl,
 } from "@/shared/utils/clipMediaUrls";
 
-/** A room member's own clips, newest first; guests are refused with a 403. */
+/** `ClipSortOrder` on the API: the generated client only knows it as a number. */
+const sortOrder = { newest: 0, oldest: 1 } as const;
+
+export type ActivityClipOrder = keyof typeof sortOrder;
+
+/** A room member's own clips, newest first unless asked otherwise; guests are refused with a 403. */
 export async function fetchOwnClips(
   roomToken: string,
-  options: { search?: string; page?: number },
+  options: {
+    search?: string;
+    page?: number;
+    gameId?: string | null;
+    order?: ActivityClipOrder;
+  },
 ): Promise<ActivityClipsResponse> {
   return createDiscordActivityApi(roomToken).getActivityClips({
     search: options.search || undefined,
     page: options.page ?? 1,
+    categoryId: options.gameId ?? undefined,
+    sortOrder: sortOrder[options.order ?? "newest"],
   });
+}
+
+/** The games a room member has clips in, most clips first, with a count each. */
+export async function fetchOwnGames(
+  roomToken: string,
+): Promise<ActivityGame[]> {
+  const response =
+    await createDiscordActivityApi(roomToken).getActivityClipGames();
+  return response.games;
 }
 
 export type ActivityConnection = {

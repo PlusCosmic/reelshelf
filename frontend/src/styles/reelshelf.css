@@ -4832,10 +4832,15 @@ html:has(.rs-library-route) {
   opacity: 1;
 }
 
+/* At least a screen tall, so whenever the shelf is in view there is room below it and switching to a game
+   with fewer clips never shortens the page under the reader and pulls the shelf down the screen. */
 .rs-activity-picker {
   display: grid;
   gap: 14px;
   justify-items: start;
+  align-content: start;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .rs-activity-picker-head {
@@ -4847,26 +4852,233 @@ html:has(.rs-library-route) {
   flex-wrap: wrap;
 }
 
+/* Every spine is the same height, so each run of spines is one shelf and the planks are drawn behind the
+   list at fixed intervals, full width, however the spines wrap. A spine lifts into the space above it. */
+.rs-activity-shelf {
+  --spine-h: 132px;
+  --spine-lift: 8px;
+  --plank: 5px;
+  --shelf-gap: 12px;
+  --shelf-line: calc(var(--spine-h) + var(--spine-lift));
+  width: 100%;
+  margin: 0;
+  padding: 0 0 var(--plank);
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 4px;
+  row-gap: calc(var(--plank) + var(--shelf-gap));
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 var(--shelf-line),
+    var(--plank-top) var(--shelf-line) calc(var(--shelf-line) + var(--plank)),
+    transparent calc(var(--shelf-line) + var(--plank))
+      calc(var(--shelf-line) + var(--plank) + var(--shelf-gap))
+  );
+}
+
+.rs-activity-shelf li {
+  display: flex;
+  height: var(--shelf-line);
+  align-items: flex-end;
+}
+
+.rs-activity-spine {
+  --cloth: var(--fg-soft);
+  --ink: var(--bg);
+  height: var(--spine-h);
+  min-width: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 9px 6px 7px;
+  border: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--cloth);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow:
+    inset -4px 0 0 rgba(0, 0, 0, 0.13),
+    inset 2px 0 0 rgba(255, 255, 255, 0.07);
+  transition: transform 0.15s ease;
+}
+
+.rs-activity-spine.all {
+  --cloth: var(--fg);
+}
+
+.rs-activity-spine:hover {
+  transform: translateY(-3px);
+}
+
+.rs-activity-spine[aria-pressed="true"] {
+  transform: translateY(calc(-1 * var(--spine-lift)));
+  box-shadow:
+    inset -4px 0 0 rgba(0, 0, 0, 0.13),
+    inset 2px 0 0 rgba(255, 255, 255, 0.07),
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--accent);
+}
+
+.rs-activity-spine:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A name too long for the spine wraps onto another line of it, widening the spine, instead of being cut. */
+.rs-activity-spine-title {
+  height: calc(var(--spine-h) - 36px);
+  display: flex;
+  flex-direction: column;
+  writing-mode: vertical-rl;
+  text-align: center;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.rs-activity-spine-series {
+  margin-left: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.rs-activity-spine-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.rs-activity-spine-count {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-activity-spine {
+    transition: none;
+  }
+
+  .rs-activity-spine:hover {
+    transform: none;
+  }
+}
+
+.rs-activity-picker-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rs-activity-picker-game {
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.rs-activity-sort {
+  flex: none;
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+}
+
+.rs-activity-sort-option {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-soft);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rs-activity-sort-option[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 1px 2px color-mix(in oklab, var(--shadow) 14%, transparent);
+}
+
+.rs-activity-sort-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.rs-activity-days {
+  width: 100%;
+  display: grid;
+  gap: 18px;
+  transition: opacity 0.15s ease;
+}
+
+/* A new game, order or search is loading over the old list. */
+.rs-activity-days[aria-busy="true"] {
+  opacity: 0.5;
+}
+
+.rs-activity-day {
+  display: grid;
+  gap: 4px;
+}
+
+.rs-activity-day-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+}
+
 .rs-activity-clips {
   width: 100%;
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 14px;
 }
 
 .rs-activity-clip {
   width: 100%;
   display: grid;
-  gap: 4px;
-  padding: 0;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 6px 4px;
   border: 0;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--fg);
   text-align: left;
   cursor: pointer;
+}
+
+.rs-activity-clip:hover:not(:disabled) {
+  background: var(--bg-soft);
+}
+
+.rs-activity-clip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* A clip whose thumbnail doesn't exist yet gets the same box, empty. */
@@ -4878,14 +5090,12 @@ html:has(.rs-library-route) {
   object-fit: cover;
   border-radius: var(--radius);
   background: var(--bg-soft);
-  outline: 2px solid transparent;
-  outline-offset: 2px;
 }
 
-.rs-activity-clip:hover img,
-.rs-activity-clip:focus-visible img,
-.rs-activity-clip[aria-current="true"] img {
-  outline-color: var(--accent);
+.rs-activity-clip-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
 }
 
 .rs-activity-clip:disabled {
@@ -4903,6 +5113,11 @@ html:has(.rs-library-route) {
 .rs-activity-clip-meta {
   color: var(--fg-soft);
   font-size: 13px;
+}
+
+.rs-activity-clip[aria-current="true"] .rs-activity-clip-meta {
+  color: var(--accent-ink);
+  font-weight: 600;
 }
 
 .rs-row-title {
