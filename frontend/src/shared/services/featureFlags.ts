@@ -3,9 +3,12 @@ import { createUserApi } from "./apiClients";
 /**
  * Every feature flag the frontend checks (ADR-0009), mirroring `FeatureFlagKeys` in the API. A flag is temporary:
  * removing its key here makes every `useFeature` call for it a type error, so the gated code goes with it.
- * Add a key here and in `FeatureFlagKeys.All` together, e.g. `["new-uploader"] as const`.
+ * Add a key here and in `FeatureFlagKeys.All` together.
  */
-export const featureFlagKeys = [] as const;
+export const featureFlagKeys = [
+  /** Buying a paid plan; the API folds it into `billing_enabled` and the plans' prices, so nothing checks it here yet. */
+  "paid-plans",
+] as const;
 
 export type FeatureFlagKey = (typeof featureFlagKeys)[number];
 

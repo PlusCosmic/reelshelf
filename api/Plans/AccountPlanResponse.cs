@@ -7,7 +7,9 @@ namespace Reelshelf.Plans;
 /// limits are no limit. <see cref="GrantedTier"/> is the tier an admin granted, if any (ADR-0008).
 /// <see cref="FreeClipLimit"/> and <see cref="OverLimitGraceDays"/> let the page say what ending a plan would cost:
 /// the clips over Free's limit, deleted that many days after it ends (null while <c>Plans:Enforce</c> is off, when
-/// nothing is deleted).
+/// nothing is deleted). <see cref="BillingEnabled"/> is whether this account can buy or change a paid plan: billing is
+/// on and the <c>paid-plans</c> flag is on for it. <see cref="CanManageBilling"/> needs billing alone, so a subscriber
+/// the flag is off for can still open the Customer Portal.
 /// </summary>
 public sealed record AccountPlanResponse(
     string Tier,
@@ -29,7 +31,7 @@ public sealed record AccountPlanResponse(
     string? GrantedTier)
 {
     public static AccountPlanResponse From(AccountPlan plan, IReadOnlyList<BillingSubscription> subscriptions,
-        bool billingEnabled, bool hasCustomer, DateTimeOffset? overLimitDeletesAt = null,
+        bool billingEnabled, bool paidPlansOffered, bool hasCustomer, DateTimeOffset? overLimitDeletesAt = null,
         TimeSpan? overLimitGrace = null, bool canChangePlan = false, AccountTier? grantedTier = null)
     {
         // The subscription that grants the tier, else the latest one that could still bill (unpaid, paused), else
@@ -50,14 +52,14 @@ public sealed record AccountPlanResponse(
             plan.Limits.MaxClipSeconds,
             plan.StorageUsedBytes,
             TierLimits.HasTranscripts(plan.Tier),
-            billingEnabled,
+            billingEnabled && paidPlansOffered,
             billingEnabled && hasCustomer,
             shown is null ? null : PlanSubscription.From(shown),
             plan.Limits.MaxClips is { } limit ? Math.Max(0, plan.ClipCount - limit) : 0,
             overLimitDeletesAt,
             TierLimits.For(AccountTier.Free).MaxClips,
             overLimitGrace is { } grace ? (int)Math.Ceiling(grace.TotalDays) : null,
-            billingEnabled && canChangePlan,
+            billingEnabled && paidPlansOffered && canChangePlan,
             grantedTier is { } granted ? BillingStatements.TierName(granted) : null);
     }
 }
