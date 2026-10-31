@@ -32,7 +32,6 @@ Your library is a shelf of games with real cover art, not a folder of filenames.
 
 Clips from the same game on the same night land in one collection without you lifting a finger. Rename it, tidy it, or leave it as the record of that evening. Upload more from the same night later and they join the same collection.
 
-
 ### Share one clip with one link
 
 Send a link and it plays. No account needed on their end, and the clip is only visible to people who have the link.
