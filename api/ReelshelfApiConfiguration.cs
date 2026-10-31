@@ -22,6 +22,7 @@ using Reelshelf.Users;
 using Reelshelf.Exceptions;
 using Reelshelf.FFmpeg;
 using Reelshelf.Games;
+using Reelshelf.LandingShelf;
 using Reelshelf.Moderation;
 using Reelshelf.Playlists;
 using Reelshelf.QueueMetrics;
@@ -93,6 +94,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapFFmpegEndpoints();
         apiGroup.MapBunnyWebhookEndpoints();
         apiGroup.MapGameCategoryEndpoints();
+        apiGroup.MapLandingShelfEndpoints();
         apiGroup.MapLegendDetectionEndpoints();
         apiGroup.MapClipTranscriptionEndpoints();
         apiGroup.MapClipSummaryEndpoints();
@@ -310,6 +312,13 @@ internal static class ReelshelfApiConfiguration
             client => client.Timeout = TimeSpan.FromSeconds(15));
         builder.Services.AddScoped<GameCoverColors>();
 
+        // The landing page's example shelf: IGDB's most popular games, fetched daily into memory.
+        builder.Services.Configure<LandingShelfOptions>(
+            builder.Configuration.GetSection(LandingShelfOptions.SectionName));
+        builder.Services.AddSingleton<IPopularGameSource>(sp => sp.GetRequiredService<IgdbService>());
+        builder.Services.AddSingleton<LandingShelfCache>();
+        builder.Services.AddScoped<LandingShelfRefresher>();
+
         // Legend detection stays idle until a provider API key and model are configured.
         builder.Services.Configure<LegendDetectionOptions>(
             builder.Configuration.GetSection(LegendDetectionOptions.SectionName));
@@ -356,6 +365,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<ClipStatusRefreshService>();
             builder.Services.AddHostedService<GameCategoryAssetRefreshService>();
             builder.Services.AddHostedService<GameCategoryClothColorService>();
+            builder.Services.AddHostedService<LandingShelfRefreshService>();
             builder.Services.AddHostedService<LegendDetectionBackgroundService>();
             builder.Services.AddHostedService<ClipTranscriptionBackgroundService>();
             builder.Services.AddHostedService<ClipSummaryBackgroundService>();

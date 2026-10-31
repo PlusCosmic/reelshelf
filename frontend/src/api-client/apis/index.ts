@@ -11,6 +11,7 @@ export * from "./ContentReportEndpointsApi";
 export * from "./DiscordActivityEndpointsApi";
 export * from "./FFmpegEndpointsApi";
 export * from "./GameCategoryEndpointsApi";
+export * from "./LandingShelfEndpointsApi";
 export * from "./LegendDetectionEndpointsApi";
 export * from "./MultipartUploadEndpointsApi";
 export * from "./OverLimitEndpointsApi";

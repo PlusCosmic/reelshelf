@@ -61,6 +61,8 @@ export * from "./GameCategoryResponse";
 export * from "./GameSearchResult";
 export * from "./ImportTwitchClipRequest";
 export * from "./ImportedTwitchClipResponse";
+export * from "./LandingShelfGame";
+export * from "./LandingShelfResponse";
 export * from "./LegendBaselineClip";
 export * from "./LegendBaselineLabel";
 export * from "./LegendBaselineResult";

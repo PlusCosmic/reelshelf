@@ -78,6 +78,9 @@ export const libraryCopy = {
     addGame: "Add a game or category",
     newBook: "New book",
     addGameShort: "Add a game",
+    /** IGDB's terms ask for this credit wherever its covers and game data appear. */
+    igdbCredit: (igdb: ReactNode) => <>Game covers and data from {igdb}</>,
+    igdb: "IGDB",
     scrollLeft: "Scroll the shelf left",
     scrollRight: "Scroll the shelf right",
     tipClips: (count: number) =>

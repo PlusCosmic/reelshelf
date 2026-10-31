@@ -27,6 +27,10 @@ export const landingCopy = {
     eyebrow: "Your library",
     stat: (clips: number, games: number) =>
       `${commonCopy.clips(clips)} across ${games} games. Pull one out.`,
+    /** Under the shelf: the book that's out, and why these games are on it. */
+    popularToday: "Popular today",
+    stop: "Stop the shelf moving",
+    start: "Let the shelf move again",
   },
   features: {
     eyebrow: "What's on the shelf",

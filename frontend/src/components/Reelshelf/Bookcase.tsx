@@ -1,4 +1,4 @@
-import type { CSSProperties, DragEvent } from "react";
+import type { CSSProperties, DragEvent, ReactNode } from "react";
 import {
   useCallback,
   useEffect,
@@ -41,7 +41,11 @@ type BookcaseProps = {
   onAddGhost?: (ghost: TwitchGhost) => void;
   onDismissGhost?: (ghost: TwitchGhost) => void;
   onDropOnGhost?: (ghost: TwitchGhost, data: DataTransfer) => void;
+  /** Shown under the shelf, beside the IGDB credit, like the landing page's caption. */
+  footer?: ReactNode;
 };
+
+const igdbUrl = "https://www.igdb.com";
 
 type Tip = { game: GameShelfItem; left: number; top: number };
 type GhostCard = { ghost: TwitchGhost; left: number; top: number };
@@ -254,6 +258,7 @@ export function Bookcase({
   onAddGhost,
   onDismissGhost,
   onDropOnGhost,
+  footer,
 }: BookcaseProps) {
   const caseRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
@@ -536,6 +541,18 @@ export function Bookcase({
         </button>
       ) : null}
       <div className="rs-bookcase-plank" aria-hidden="true" />
+      {/* IGDB's terms ask for credit wherever its covers and data appear. The library scrolls without
+          end, so the credit sits under the shelf rather than in a footer nobody reaches. */}
+      <div className="rs-bookcase-under">
+        {footer ? <div className="rs-bookcase-footer">{footer}</div> : null}
+        <p className="rs-igdb-credit">
+          {libraryCopy.bookcase.igdbCredit(
+            <a href={igdbUrl} target="_blank" rel="noopener noreferrer">
+              {libraryCopy.bookcase.igdb}
+            </a>,
+          )}
+        </p>
+      </div>
       {tip ? (
         <div
           className="rs-book-tip"

@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   IconArrowRight,
@@ -9,20 +9,28 @@ import {
   IconFolderDown,
   IconLink,
   IconMoon,
+  IconPlayerPause,
+  IconPlayerPlay,
   IconSun,
   IconUsers,
 } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { commonCopy } from "@/copy/common";
 import { landingCopy } from "@/copy/landing";
+import { useLandingShelf } from "@/hooks/landingShelf.queries";
 import { Bookcase } from "./Bookcase";
 import { LandingSideShelves } from "./LandingSideShelves";
+import { shelfCycleMs, shelfFromPopularGames } from "./landingShelf";
 import type { GameShelfItem } from "./reelshelf-model";
+import { useShelfCycle } from "./useShelfCycle";
 
 const igdbCover = (id: string) =>
   `https://images.igdb.com/igdb/image/upload/t_cover_big/${id}.jpg`;
 
-/** Example games for the shelf, bound in the cloth Reelshelf takes from each real cover. */
+/**
+ * Example games, bound in the cloth Reelshelf takes from each real cover. The polaroids above the shelf use their
+ * colours, and the shelf falls back to them when today's popular games can't be had.
+ */
 const shelfBooks: GameShelfItem[] = (
   [
     ["Apex Legends", 142, 31, "#b06c51", "coa93z"],
@@ -105,10 +113,91 @@ const features = (
   ...landingCopy.features.items[key],
 }));
 
-const exampleClipCount = shelfBooks.reduce(
-  (total, book) => total + book.clipCount,
-  0,
-);
+/**
+ * The example shelf: a random dozen of today's popular games from IGDB, a different dozen on each visit, pulling
+ * out one book after another. Until they load it stands empty (it is below the fold), and if they can't be had it
+ * shows the built-in books instead.
+ */
+function ShelfDemo() {
+  const popular = useLandingShelf();
+  const popularGames = popular.data;
+  const fromPopular = (popularGames?.length ?? 0) > 0;
+  const shelf = useMemo(
+    () =>
+      popularGames && popularGames.length > 0
+        ? shelfFromPopularGames(popularGames)
+        : null,
+    [popularGames],
+  );
+  const books = shelf ?? (popular.isPending ? [] : shelfBooks);
+  const ids = useMemo(() => books.map((book) => book.id), [books]);
+  const cycle = useShelfCycle(ids, shelfCycleMs);
+  const selected = books.find((book) => book.id === cycle.selectedId);
+  const clipCount = books.reduce((total, book) => total + book.clipCount, 0);
+
+  return (
+    <section
+      className="rs-landing-shelf-demo"
+      aria-label={landingCopy.shelfDemo.label}
+    >
+      <div className="rs-landing-shelf-demo-head">
+        <span className="rs-eyebrow">{landingCopy.shelfDemo.eyebrow}</span>
+        {books.length > 0 ? (
+          <span className="rs-landing-shelf-demo-stat">
+            {landingCopy.shelfDemo.stat(clipCount, books.length)}
+          </span>
+        ) : null}
+      </div>
+      <div {...cycle.holdProps}>
+        <Bookcase
+          shelf={books}
+          selectedId={cycle.selectedId}
+          onSelect={(game) => cycle.select(game.id)}
+          onPutBack={cycle.putBack}
+          footer={
+            <>
+              {cycle.canMove ? (
+                <button
+                  type="button"
+                  className="rs-icon-button rs-landing-shelf-toggle"
+                  onClick={cycle.toggleStopped}
+                  aria-label={
+                    cycle.stopped
+                      ? landingCopy.shelfDemo.start
+                      : landingCopy.shelfDemo.stop
+                  }
+                  title={
+                    cycle.stopped
+                      ? landingCopy.shelfDemo.start
+                      : landingCopy.shelfDemo.stop
+                  }
+                >
+                  {cycle.stopped ? (
+                    <IconPlayerPlay size={14} aria-hidden="true" />
+                  ) : (
+                    <IconPlayerPause size={14} aria-hidden="true" />
+                  )}
+                </button>
+              ) : null}
+              {selected ? (
+                <span className="rs-landing-shelf-caption" key={selected.id}>
+                  <span className="rs-display rs-landing-shelf-caption-name">
+                    {selected.name}
+                  </span>
+                  {fromPopular ? (
+                    <span className="rs-landing-shelf-caption-meta">
+                      {landingCopy.shelfDemo.popularToday}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+            </>
+          }
+        />
+      </div>
+    </section>
+  );
+}
 
 export function LandingPage({
   theme,
@@ -118,7 +207,6 @@ export function LandingPage({
   onToggleTheme?: () => void;
 }) {
   const nextTheme = theme === "dark" ? "light" : "dark";
-  const [pulledOut, setPulledOut] = useState<string | null>("apex-legends");
 
   return (
     <div className="rs-landing">
@@ -192,23 +280,7 @@ export function LandingPage({
           </Link>
         </section>
 
-        <section
-          className="rs-landing-shelf-demo"
-          aria-label={landingCopy.shelfDemo.label}
-        >
-          <div className="rs-landing-shelf-demo-head">
-            <span className="rs-eyebrow">{landingCopy.shelfDemo.eyebrow}</span>
-            <span className="rs-landing-shelf-demo-stat">
-              {landingCopy.shelfDemo.stat(exampleClipCount, shelfBooks.length)}
-            </span>
-          </div>
-          <Bookcase
-            shelf={shelfBooks}
-            selectedId={pulledOut}
-            onSelect={(game) => setPulledOut(game.id)}
-            onPutBack={() => setPulledOut(null)}
-          />
-        </section>
+        <ShelfDemo />
 
         <section className="rs-landing-section" id="features">
           <div className="rs-landing-section-head">
