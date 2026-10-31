@@ -9,6 +9,7 @@ import {
   DiscordActivityEndpointsApi,
   UserEndpointsApi,
   GameCategoryEndpointsApi,
+  LandingShelfEndpointsApi,
   LegendDetectionEndpointsApi,
   MultipartUploadEndpointsApi,
   OverLimitEndpointsApi,
@@ -36,6 +37,10 @@ export function createSharedClipsApi() {
 
 export function createGameCategoryApi() {
   return new GameCategoryEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createLandingShelfApi() {
+  return new LandingShelfEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
 export function createUserApi() {

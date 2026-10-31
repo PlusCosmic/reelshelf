@@ -851,6 +851,26 @@
         }
       }
     },
+    "/api/landing/shelf": {
+      "get": {
+        "tags": [
+          "LandingShelfEndpoints"
+        ],
+        "operationId": "GetLandingShelf",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandingShelfResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/user/{userId}": {
       "get": {
         "tags": [
@@ -5856,6 +5876,59 @@
           }
         }
       },
+      "LandingShelfGame": {
+        "required": [
+          "igdb_id",
+          "name",
+          "slug",
+          "cover_url",
+          "cloth_color"
+        ],
+        "type": "object",
+        "properties": {
+          "igdb_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": "string"
+          },
+          "cloth_color": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "LandingShelfResponse": {
+        "required": [
+          "games",
+          "updated_at"
+        ],
+        "type": "object",
+        "properties": {
+          "games": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LandingShelfGame"
+            }
+          },
+          "updated_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "LegendBaselineClip": {
         "required": [
           "clip_id",
@@ -8135,6 +8208,9 @@
     },
     {
       "name": "ContentReportEndpoints"
+    },
+    {
+      "name": "LandingShelfEndpoints"
     },
     {
       "name": "UserEndpoints"

@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
 using Reelshelf.Exceptions;
+using Reelshelf.LandingShelf;
 
 namespace Reelshelf.Games;
 
@@ -13,7 +14,7 @@ namespace Reelshelf.Games;
 /// is capped process-wide. IGDB enforces a small per-application rate limit, so without this one account
 /// could exhaust it for everyone now that sign-up is open.
 /// </summary>
-public class IgdbService
+public class IgdbService : IPopularGameSource
 {
     private const int DefaultMaxConcurrentUpstreamCalls = 4;
     // IGDB allows 4 requests per second per application. Pace the aggregate across all users to that.
@@ -95,6 +96,50 @@ public class IgdbService
         }
 
         return details;
+    }
+
+    /// <summary>
+    /// The <paramref name="count"/> games ranked highest by one of IGDB's popularity primitives (a
+    /// <c>popularity_types</c> id: 1 is IGDB page visits, 5 is Steam's 24-hour peak players), best first, leaving out
+    /// games without a cover. Two upstream calls: the ranking, then the games it names.
+    /// </summary>
+    public async Task<IReadOnlyList<PopularGame>> GetPopularGamesAsync(int popularityType, int count)
+    {
+        // Ask for more than needed, since some ranked games have no cover and are left out.
+        var ranking = await QueryUpstreamAsync<IgdbPopularityPrimitive>(
+            "popularity_primitives",
+            $"fields game_id,value; where popularity_type = {popularityType}; sort value desc; limit {Math.Min(500, count * 2)};"
+        );
+
+        List<long> gameIds = ranking.Select(p => p.GameId).OfType<long>().Distinct().ToList();
+        if (gameIds.Count == 0) return [];
+
+        var games = await QueryUpstreamAsync<IgdbGameDetails>(
+            IGDBClient.Endpoints.Games,
+            $"""
+            where id = ({string.Join(",", gameIds)}) & cover != null;
+            fields name,slug,cover.image_id,cover.url;
+            limit {gameIds.Count};
+            """
+        );
+
+        Dictionary<long, IgdbGameDetails> byId = games
+            .Where(g => g.Id is not null)
+            .GroupBy(g => g.Id!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        List<PopularGame> popular = [];
+        foreach (long id in gameIds)
+        {
+            if (!byId.TryGetValue(id, out IgdbGameDetails? game)) continue;
+            string? coverUrl = GetCoverUrl(game.Cover);
+            if (coverUrl is null || string.IsNullOrWhiteSpace(game.Name)) continue;
+
+            popular.Add(new PopularGame(id, game.Name, game.Slug ?? "", coverUrl));
+            if (popular.Count == count) break;
+        }
+
+        return popular;
     }
 
     /// <summary>
@@ -314,6 +359,15 @@ public class IgdbService
 
         [JsonProperty("summary")]
         public string? Summary { get; init; }
+    }
+
+    private sealed class IgdbPopularityPrimitive
+    {
+        [JsonProperty("game_id")]
+        public long? GameId { get; init; }
+
+        [JsonProperty("value")]
+        public double? Value { get; init; }
     }
 
     private sealed class IgdbArtwork : IgdbImage

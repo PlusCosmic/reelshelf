@@ -602,6 +602,43 @@ a {
   justify-content: center;
 }
 
+/* The book that's out, named under the shelf as the shelf works through its books. */
+.rs-landing-shelf-caption {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  animation: rs-landing-caption-in 0.4s ease;
+}
+
+.rs-landing-shelf-caption-name {
+  overflow: hidden;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rs-landing-shelf-caption-meta {
+  color: var(--fg-soft);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+@keyframes rs-landing-caption-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-landing-shelf-caption {
+    animation: none;
+  }
+}
+
 .rs-landing-section {
   padding: 88px 0 0;
 }
@@ -1860,6 +1897,44 @@ html:has(.rs-library-route) {
     color-mix(in oklab, var(--shadow) 55%, transparent);
 }
 
+/* Under the plank: the IGDB credit, with room on its left for a caption such as the landing page's. */
+.rs-bookcase-under {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+  min-height: 36px;
+  padding: 10px 2px 0;
+}
+
+.rs-bookcase-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rs-igdb-credit {
+  margin: 0 0 0 auto;
+  color: var(--fg-soft);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.rs-igdb-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--fg-soft) 50%, transparent);
+  text-underline-offset: 2px;
+}
+
+.rs-igdb-credit a:hover,
+.rs-igdb-credit a:focus-visible {
+  color: var(--fg);
+  text-decoration-color: currentColor;
+}
+
 /* A spine: the game's cloth with its cover woven faintly in. */
 .rs-book-spine {
   position: relative;
@@ -1971,7 +2046,10 @@ html:has(.rs-library-route) {
 .rs-book-title {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* Each line runs the length of the space, so a name too long for the spine ends in an ellipsis
+     instead of overflowing both ends; short names are centred within it. */
+  align-items: stretch;
+  text-align: center;
   max-height: calc((var(--book-h) - 104px) * var(--book-scale));
   overflow: hidden;
   writing-mode: vertical-rl;
@@ -1982,6 +2060,8 @@ html:has(.rs-library-route) {
 }
 
 .rs-book-series {
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-left: 5px;
   font-size: calc(11px * var(--book-scale));
   font-weight: 600;
