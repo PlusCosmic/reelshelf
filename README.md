@@ -51,7 +51,7 @@ Download any clip back to your computer whenever you like. Reelshelf is somewher
 2. Drag your recorder's folder onto the library. Review the queue, fix any game guesses, pick tags, and let it upload.
 3. Sessions are already grouped. Build collections with friends, send one clip with one link, or download it back.
 
-Everyone gets 25 GB of clip storage on the free tier.
+Everyone can upload and keep 100 clips on the free tier.
 
 ---
 
