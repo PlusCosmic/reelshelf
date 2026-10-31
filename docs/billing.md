@@ -13,6 +13,18 @@ Paid plans are sold through Stripe Managed Payments, with Stripe (as Link) as th
 
 With `Billing:SecretKey` unset, all three endpoints answer 404 and every account is Free or Unlimited.
 
+## Rolling out paid plans
+
+Buying a plan is behind the `paid-plans` feature flag ([runbook](feature-flags.md)). While it is off for an account:
+
+- `POST /api/billing/checkout` and `POST /api/billing/plan` answer 404;
+- `GET /api/plans` lists every tier's limits but no prices, so Settings shows no plan cards and `/plan` offers no upgrade;
+- `GET /api/me/plan` answers `billing_enabled: false` and `can_change_plan: false`, so Settings, `/plan` and the uploader don't suggest upgrading.
+
+Nothing else changes. A subscriber the flag is off for keeps their plan, Manage billing (`can_manage_billing` and `POST /api/billing/portal` need billing alone) and the Keep button for a waiting downgrade, and the webhook syncs every account. The flag only hides buying: the tier still comes from the subscription. The signed-out landing page and the terms quote the plans' limits from `copy/planLimits.ts` whatever the flag says.
+
+Dev has no PostHog, so it needs `FeatureFlags__Overrides__paid-plans=true` to show paid plans.
+
 ## Configuration
 
 | Setting                                  |                                                                                                                                                                              |

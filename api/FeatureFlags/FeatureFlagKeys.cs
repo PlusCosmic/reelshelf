@@ -7,11 +7,17 @@ namespace Reelshelf.FeatureFlags;
 /// </summary>
 public static class FeatureFlagKeys
 {
-    // Add a flag as a constant here and in All, e.g.
-    // public const string NewUploader = "new-uploader";
+    // Add a flag as a constant here and in All.
+
+    /// <summary>
+    /// Buying a paid plan: Checkout, changing plan, and the prices and upgrades Settings, <c>/plan</c> and the uploader
+    /// offer. Off leaves an account as it is: a subscriber keeps their plan and Manage billing, and Stripe's webhook
+    /// still syncs it.
+    /// </summary>
+    public const string PaidPlans = "paid-plans";
 
     /// <summary>The flags <c>GET /api/me/features</c> answers about; a key PostHog has but this list lacks is ignored.</summary>
-    public static readonly IReadOnlyList<string> All = [];
+    public static readonly IReadOnlyList<string> All = [PaidPlans];
 
     public static bool IsKnown(string key)
     {

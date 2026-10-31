@@ -120,6 +120,7 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
           const lengthProblem = clipLengthProblem(
             await readVideoDuration(item.file),
             plan.maxClipSeconds,
+            plan.billingEnabled,
           );
           if (lengthProblem) {
             patch(item.id, { status: "error", error: lengthProblem });

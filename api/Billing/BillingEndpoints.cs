@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
+using Reelshelf.FeatureFlags;
 using Stripe;
 
 namespace Reelshelf.Billing;
@@ -13,9 +14,12 @@ public static class BillingEndpoints
     {
         RouteGroupBuilder group = app.MapGroup("billing");
 
+        // Buying and changing a plan are rolled out behind a flag; the portal and dropping a waiting downgrade aren't,
+        // so a subscriber the flag is off for can still manage, cancel or keep what they have.
         group.MapPost("/checkout", StartCheckout)
             .WithName("StartCheckout")
             .RequireAuthorization()
+            .RequireFeature(FeatureFlagKeys.PaidPlans)
             .RequireRateLimiting(RateLimitPolicies.Billing);
         group.MapPost("/portal", OpenPortal)
             .WithName("OpenBillingPortal")
@@ -24,6 +28,7 @@ public static class BillingEndpoints
         group.MapPost("/plan", ChangePlan)
             .WithName("ChangePlan")
             .RequireAuthorization()
+            .RequireFeature(FeatureFlagKeys.PaidPlans)
             .RequireRateLimiting(RateLimitPolicies.Billing);
         group.MapDelete("/plan/scheduled", KeepPlan)
             .WithName("KeepPlan")

@@ -351,6 +351,25 @@ describe("PlanSettings", () => {
     expect(screen.queryByRole("button", { name: /Upgrade/ })).toBeNull();
   });
 
+  it("keeps Manage billing but offers no plans to a subscriber who can't buy one", () => {
+    // The paid-plans flag off for this account: the API says billing isn't on for buying, but the portal still is.
+    mocks.plan = {
+      ...free,
+      tier: "plus",
+      clipLimit: 1000,
+      billingEnabled: false,
+      canManageBilling: true,
+      canChangePlan: false,
+      subscription: subscription({}),
+    };
+    mocks.offers = offers;
+    render(<PlanSettings billingReturn={undefined} />);
+
+    expect(screen.getByRole("button", { name: "Manage billing" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Upgrade/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Switch/ })).toBeNull();
+  });
+
   it("lets a subscriber upgrade from the cards, confirmed at Stripe", () => {
     mocks.plan = {
       ...free,

@@ -8,10 +8,12 @@ import { uploadCopy } from "@/copy/upload";
 /**
  * Why a clip this long can't be added on a plan that keeps clips of up to `maxSeconds`, or null when it can. The API
  * checks the uploaded file again when the upload completes; this only spares uploading a file it would refuse.
+ * `canUpgrade` is the plan's `billingEnabled`: whether this account can buy a plan at all.
  */
 export function clipLengthProblem(
   durationSeconds: number | null,
   maxSeconds: number | null | undefined,
+  canUpgrade: boolean,
 ): string | null {
   if (
     maxSeconds == null ||
@@ -29,7 +31,7 @@ export function clipLengthProblem(
   return uploadCopy.tooLong(
     formatClipLength(Math.round(durationSeconds)),
     formatClipLength(maxSeconds),
-    longest > maxSeconds ? formatClipLength(longest) : null,
+    canUpgrade && longest > maxSeconds ? formatClipLength(longest) : null,
   );
 }
 

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Reelshelf.Auth;
 using Reelshelf.Billing;
+using Reelshelf.FeatureFlags;
 
 namespace Reelshelf.Plans;
 
@@ -12,15 +14,19 @@ public static class PlanEndpoints
 
     /// <summary>
     /// Every tier's limits, and each paid one's prices as Stripe has them (in the price's own currency; Checkout
-    /// shows the customer's). Paid tiers carry no prices while billing is off or Stripe can't be reached.
+    /// shows the customer's). Paid tiers carry no prices while billing is off, the <c>paid-plans</c> flag is off for the
+    /// caller, or Stripe can't be reached, so nothing offers an upgrade then.
     /// </summary>
     private static async Task<Ok<List<PlanOffer>>> GetPlans(
+        AuthenticatedUser user,
+        FeatureFlagService featureFlags,
         HttpContext context,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
         IReadOnlyDictionary<string, StripePlanPrice> prices = new Dictionary<string, StripePlanPrice>();
-        if (context.RequestServices.GetService<BillingService>() is { } billing)
+        if (context.RequestServices.GetService<BillingService>() is { } billing &&
+            await featureFlags.IsEnabledAsync(FeatureFlagKeys.PaidPlans, user, cancellationToken))
         {
             try
             {

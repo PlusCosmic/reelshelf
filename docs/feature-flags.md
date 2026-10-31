@@ -11,6 +11,12 @@ How to add, roll out and remove a feature flag. The decision and its reasons are
 
 A project token without the secret key fails startup, because the SDK would otherwise ask PostHog on every check.
 
+## Flags in use
+
+| Key          | What it rolls out                                                              |
+| ------------ | ------------------------------------------------------------------------------ |
+| `paid-plans` | Buying and changing a paid plan ([billing](billing.md#rolling-out-paid-plans)) |
+
 ## Adding a flag
 
 1. Pick a key in kebab case, such as `new-uploader`.

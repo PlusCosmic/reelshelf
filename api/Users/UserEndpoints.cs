@@ -105,15 +105,20 @@ public static class UserEndpoints
         IBillingStore billingStore,
         IPlanEnforcementStore accounts,
         IOptionsMonitor<PlanOptions> planOptions,
+        FeatureFlagService featureFlags,
         HttpContext context)
     {
         AccountPlan plan = await planService.GetPlan(user);
         OverLimitState overLimit = await accounts.GetState(user.Id);
         List<BillingSubscription> subscriptions = await billingStore.GetSubscriptions(user.Id);
         bool billingEnabled = context.RequestServices.GetService<BillingService>() is not null;
+        bool paidPlansOffered = billingEnabled &&
+                                await featureFlags.IsEnabledAsync(FeatureFlagKeys.PaidPlans, user,
+                                    context.RequestAborted);
         bool hasCustomer = await billingStore.GetCustomerId(user.Id) is not null;
         PlanOptions options = planOptions.CurrentValue;
-        return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, hasCustomer,
+        return TypedResults.Ok(AccountPlanResponse.From(plan, subscriptions, billingEnabled, paidPlansOffered,
+            hasCustomer,
             overLimit.OverLimitSince + options.GracePeriod, options.Enforce ? options.GracePeriod : null,
             context.RequestServices.GetService<BillingOptions>()?.CanChangePlan ?? false, user.GrantedTier));
     }
