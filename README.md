@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/library.webp" alt="The Reelshelf library: a shelf of games with cover art, and the clips waiting on it" width="100%">
+  <img src="docs/screenshots/library.png" alt="The Reelshelf library: a shelf of games with cover art, and the clips waiting on it" width="100%">
 </p>
 
 <h1 align="center">Reelshelf</h1>
@@ -28,25 +28,10 @@ Reelshelf is the shelf those clips should have been on all along. Every game get
 
 Your library is a shelf of games with real cover art, not a folder of filenames. Pick a game, filter by tag, or search, and see what's new since you last looked.
 
-### Upload a whole night at once
-
-Drag your recorder's folder onto the library. Reelshelf reads the game from each filename, groups the clips into the session they came from, and lets you fix guesses, add tags, and pick a collection before anything uploads. Three clips upload at a time, resumable, with pause and resume per clip or for the whole queue.
-
-<p align="center">
-  <img src="docs/screenshots/upload-queue.webp" alt="The bulk upload review queue, with games matched from filenames and clips grouped by session" width="100%">
-</p>
-
 ### Sessions file themselves
 
 Clips from the same game on the same night land in one collection without you lifting a finger. Rename it, tidy it, or leave it as the record of that evening. Upload more from the same night later and they join the same collection.
 
-### Collections you build with friends
-
-Put the best moments in the order you want them watched, then invite the people who were there. They can watch everything in it and add their own clips alongside yours.
-
-<p align="center">
-  <img src="docs/screenshots/collections.webp" alt="The collections page: curated shelves and shared playlists" width="100%">
-</p>
 
 ### Share one clip with one link
 
