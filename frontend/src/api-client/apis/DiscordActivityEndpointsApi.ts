@@ -48,6 +48,8 @@ export interface GetActivityClipsRequest {
   page?: number;
   categoryId?: string;
   sortOrder?: number;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 /**
@@ -163,6 +165,14 @@ export class DiscordActivityEndpointsApi extends runtime.BaseAPI {
 
     if (requestParameters["sortOrder"] != null) {
       queryParameters["sortOrder"] = requestParameters["sortOrder"];
+    }
+
+    if (requestParameters["startDate"] != null) {
+      queryParameters["startDate"] = requestParameters["startDate"];
+    }
+
+    if (requestParameters["endDate"] != null) {
+      queryParameters["endDate"] = requestParameters["endDate"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { activityCopy } from "@/copy/activity";
-import { clipDayLabel, groupClipsByDay } from "./clipDays";
+import {
+  clipDayLabel,
+  dayRangeBounds,
+  dayRangeLabel,
+  groupClipsByDay,
+} from "./clipDays";
 
 const now = new Date(2026, 9, 30, 21, 0);
 const at = (month: number, day: number, hour = 12, year = 2026) =>
@@ -56,5 +61,54 @@ describe("groupClipsByDay", () => {
     expect(groupClipsByDay(clips, now).map((day) => day.clips.length)).toEqual([
       2, 1,
     ]);
+  });
+});
+
+describe("dayRangeBounds", () => {
+  it("covers the first day from midnight to the last moment of the last day", () => {
+    const { start, end } = dayRangeBounds("2026-10-12", "2026-10-31");
+    expect(start).toEqual(new Date(2026, 9, 12));
+    expect(end).toEqual(new Date(new Date(2026, 10, 1).getTime() - 1));
+  });
+
+  it("covers one whole day when both ends are the same day", () => {
+    const { start, end } = dayRangeBounds("2026-10-31", "2026-10-31");
+    expect(start).toEqual(new Date(2026, 9, 31));
+    expect(end!.getTime() - start!.getTime()).toBe(86_400_000 - 1);
+  });
+
+  it("leaves an empty or malformed end open", () => {
+    expect(dayRangeBounds("", "2026-10-31").start).toBeNull();
+    expect(dayRangeBounds("2026-10-12", "").end).toBeNull();
+    expect(dayRangeBounds("nonsense", "")).toEqual({ start: null, end: null });
+  });
+
+  it("swaps days given the wrong way round", () => {
+    const { start, end } = dayRangeBounds("2026-10-31", "2026-10-12");
+    expect(start).toEqual(new Date(2026, 9, 12));
+    expect(end).toEqual(new Date(new Date(2026, 10, 1).getTime() - 1));
+  });
+});
+
+describe("dayRangeLabel", () => {
+  const short = new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+
+  it("names both ends, either end alone, or nothing", () => {
+    expect(dayRangeLabel("2026-10-12", "2026-10-31", now)).toBe(
+      activityCopy.picker.dates.between(
+        short.format(at(9, 12)),
+        short.format(at(9, 31)),
+      ),
+    );
+    expect(dayRangeLabel("2026-10-12", "", now)).toBe(
+      activityCopy.picker.dates.since(short.format(at(9, 12))),
+    );
+    expect(dayRangeLabel("", "2026-10-31", now)).toBe(
+      activityCopy.picker.dates.until(short.format(at(9, 31))),
+    );
+    expect(dayRangeLabel("", "", now)).toBeNull();
   });
 });

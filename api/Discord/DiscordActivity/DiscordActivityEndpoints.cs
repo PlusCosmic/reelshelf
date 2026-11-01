@@ -96,18 +96,25 @@ public static class DiscordActivityEndpoints
     }
 
     /// <summary>
-    /// The caller's own clips to pick from, optionally from one game and oldest first. Only room members have a
-    /// shelf; guests are refused.
+    /// The caller's own clips to pick from, optionally from one game, made between two instants (either end
+    /// optional, both inclusive) and oldest first. Only room members have a shelf; guests are refused.
     /// </summary>
-    private static async Task<Results<Ok<ActivityClipsResponse>, UnauthorizedHttpResult, ProblemHttpResult>> GetOwnClips(
+    private static async Task<Results<Ok<ActivityClipsResponse>, BadRequest<string>, UnauthorizedHttpResult, ProblemHttpResult>> GetOwnClips(
         ActivitySignInService signIn,
         ActivityClipService activityClips,
         HttpContext context,
         string? search = null,
         int page = 1,
         Guid? categoryId = null,
-        ClipSortOrder sortOrder = ClipSortOrder.DateDescending)
+        ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
+        DateTimeOffset? startDate = null,
+        DateTimeOffset? endDate = null)
     {
+        if (startDate > endDate)
+        {
+            return TypedResults.BadRequest("The start date must not be after the end date");
+        }
+
         (bool signedIn, Guid? accountId) = await ResolveOwnShelf(signIn, context);
         if (!signedIn)
         {
@@ -119,7 +126,7 @@ public static class DiscordActivityEndpoints
             return NotLinked();
         }
 
-        return TypedResults.Ok(await activityClips.GetOwnClips(ownerId, search, page, categoryId, sortOrder));
+        return TypedResults.Ok(await activityClips.GetOwnClips(ownerId, search, page, categoryId, sortOrder, startDate, endDate));
     }
 
     /// <summary>The games on the caller's shelf with a clip count each, for the picker's game filter.</summary>

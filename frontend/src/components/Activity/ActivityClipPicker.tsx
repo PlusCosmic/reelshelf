@@ -14,13 +14,18 @@ import {
   type ActivityClipOrder,
   type ActivityGame,
 } from "@/shared/services/discordActivity";
-import { clipTime, groupClipsByDay } from "./clipDays";
+import {
+  clipTime,
+  dayRangeBounds,
+  dayRangeLabel,
+  groupClipsByDay,
+} from "./clipDays";
 
 type PickerState = {
   clips: ActivityClip[];
   hasMore: boolean;
   page: number;
-  /** "replace" while a new search, game or order loads over the old list; "more" while a page is added. */
+  /** "replace" while a new search, game, order or date range loads over the old list; "more" while a page is added. */
   loading: "replace" | "more" | null;
   failed: boolean;
 };
@@ -46,9 +51,13 @@ export function ActivityClipPicker({
   const [query, setQuery] = useState("");
   const [gameId, setGameId] = useState<string | null>(null);
   const [order, setOrder] = useState<ActivityClipOrder>("newest");
+  // The date inputs' values ("2026-10-31", or "" for an open end), each a whole local day.
+  const [fromDay, setFromDay] = useState("");
+  const [toDay, setToDay] = useState("");
+  const [datesOpen, setDatesOpen] = useState(false);
   const [games, setGames] = useState<ActivityGame[]>([]);
   const [state, setState] = useState<PickerState>(initialState);
-  // Each new search, game or order starts a new list; a page that lands after one does is dropped.
+  // Each new search, game, order or date range starts a new list; a page that lands after one does is dropped.
   const listVersion = useRef(0);
 
   // Search as the user pauses typing rather than on every key.
@@ -72,6 +81,10 @@ export function ActivityClipPicker({
     };
   }, [roomToken]);
 
+  const range = useMemo(() => dayRangeBounds(fromDay, toDay), [fromDay, toDay]);
+  const rangeStart = range.start?.getTime() ?? null;
+  const rangeEnd = range.end?.getTime() ?? null;
+
   useEffect(() => {
     const version = ++listVersion.current;
     // The old list stays up, dimmed, until the new one arrives, so switching games doesn't empty the page.
@@ -80,7 +93,13 @@ export function ActivityClipPicker({
       loading: "replace",
       failed: false,
     }));
-    fetchOwnClips(roomToken, { search: query, page: 1, gameId, order })
+    fetchOwnClips(roomToken, {
+      search: query,
+      page: 1,
+      gameId,
+      order,
+      ...rangeOptions(rangeStart, rangeEnd),
+    })
       .then((response) => {
         if (version !== listVersion.current) return;
         setState({
@@ -95,13 +114,19 @@ export function ActivityClipPicker({
         if (version === listVersion.current)
           setState({ ...initialState, loading: null, failed: true });
       });
-  }, [roomToken, query, gameId, order]);
+  }, [roomToken, query, gameId, order, rangeStart, rangeEnd]);
 
   const loadMore = () => {
     const version = listVersion.current;
     const next = state.page + 1;
     setState((current) => ({ ...current, loading: "more" }));
-    fetchOwnClips(roomToken, { search: query, page: next, gameId, order })
+    fetchOwnClips(roomToken, {
+      search: query,
+      page: next,
+      gameId,
+      order,
+      ...rangeOptions(rangeStart, rangeEnd),
+    })
       .then((response) => {
         if (version !== listVersion.current) return;
         setState((current) => ({
@@ -124,6 +149,8 @@ export function ActivityClipPicker({
   );
   const selectedGame = games.find((game) => game.id === gameId) ?? null;
   const settled = state.loading === null && !state.failed;
+  const rangeLabel = dayRangeLabel(fromDay, toDay, new Date());
+  const today = localDayValue(new Date());
 
   return (
     <section className="rs-activity-picker">
@@ -148,31 +175,93 @@ export function ActivityClipPicker({
         <p className="rs-activity-picker-game">
           {selectedGame?.name ?? activityCopy.picker.allGames}
         </p>
-        <div
-          className="rs-activity-sort"
-          role="group"
-          aria-label={activityCopy.picker.sort}
-        >
-          {(["newest", "oldest"] as const).map((option) => (
-            <button
-              key={option}
-              type="button"
-              className="rs-activity-sort-option"
-              aria-pressed={order === option}
-              onClick={() => setOrder(option)}
-            >
-              {activityCopy.picker[option]}
-            </button>
-          ))}
+        <div className="rs-activity-picker-tools">
+          <button
+            type="button"
+            className="rs-activity-dates-toggle"
+            aria-expanded={datesOpen}
+            aria-controls="rs-activity-dates"
+            aria-label={
+              rangeLabel
+                ? `${activityCopy.picker.dates.toggleLabel}: ${rangeLabel}`
+                : activityCopy.picker.dates.toggleLabel
+            }
+            data-active={rangeLabel ? "true" : undefined}
+            onClick={() => setDatesOpen((open) => !open)}
+          >
+            {rangeLabel ?? activityCopy.picker.dates.toggle}
+          </button>
+          <div
+            className="rs-activity-sort"
+            role="group"
+            aria-label={activityCopy.picker.sort}
+          >
+            {(["newest", "oldest"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                className="rs-activity-sort-option"
+                aria-pressed={order === option}
+                onClick={() => setOrder(option)}
+              >
+                {activityCopy.picker[option]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {datesOpen ? (
+        <div
+          id="rs-activity-dates"
+          className="rs-activity-dates"
+          role="group"
+          aria-label={activityCopy.picker.dates.toggleLabel}
+        >
+          <label className="rs-activity-date">
+            <span>{activityCopy.picker.dates.from}</span>
+            <input
+              type="date"
+              value={fromDay}
+              max={toDay || today}
+              onChange={(event) => setFromDay(event.target.value)}
+            />
+          </label>
+          <label className="rs-activity-date">
+            <span>{activityCopy.picker.dates.to}</span>
+            <input
+              type="date"
+              value={toDay}
+              min={fromDay || undefined}
+              max={today}
+              onChange={(event) => setToDay(event.target.value)}
+            />
+          </label>
+          {fromDay || toDay ? (
+            <button
+              type="button"
+              className="rs-activity-sort-option"
+              onClick={() => {
+                setFromDay("");
+                setToDay("");
+              }}
+            >
+              {activityCopy.picker.dates.clear}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {state.failed ? (
         <p className="rs-activity-role">{activityCopy.picker.failed}</p>
       ) : null}
       {settled && state.clips.length === 0 ? (
         <p className="rs-activity-role">
-          {query ? activityCopy.picker.noMatch : activityCopy.picker.empty}
+          {query
+            ? activityCopy.picker.noMatch
+            : rangeLabel
+              ? activityCopy.picker.noneInRange
+              : activityCopy.picker.empty}
         </p>
       ) : null}
 
@@ -206,6 +295,20 @@ export function ActivityClipPicker({
       ) : null}
     </section>
   );
+}
+
+/** The range's ends, kept as times so the list reloads only when a day really changes. */
+function rangeOptions(start: number | null, end: number | null) {
+  return {
+    from: start === null ? null : new Date(start),
+    to: end === null ? null : new Date(end),
+  };
+}
+
+/** A date input's value for the local day containing `date`. */
+function localDayValue(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 function PickerRow({

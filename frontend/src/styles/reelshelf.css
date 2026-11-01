@@ -5055,6 +5055,7 @@ html:has(.rs-library-route) {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .rs-activity-picker-game {
@@ -5064,6 +5065,73 @@ html:has(.rs-library-route) {
   font-size: 17px;
   font-weight: 500;
   overflow-wrap: anywhere;
+}
+
+.rs-activity-picker-tools {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rs-activity-dates-toggle {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+  color: var(--fg-soft);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rs-activity-dates-toggle[aria-expanded="true"],
+.rs-activity-dates-toggle[data-active="true"] {
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.rs-activity-dates-toggle[data-active="true"] {
+  border-color: var(--accent);
+}
+
+.rs-activity-dates-toggle:focus-visible,
+.rs-activity-date input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* The two days of the date filter, below the bar; they stack on a narrow Activity window. */
+.rs-activity-dates {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rs-activity-date {
+  display: grid;
+  gap: 4px;
+  color: var(--fg-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rs-activity-date input {
+  min-width: 150px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+}
+
+.rs-activity-dates .rs-activity-sort-option {
+  padding: 8px 12px;
 }
 
 .rs-activity-sort {
