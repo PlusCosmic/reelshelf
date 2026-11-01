@@ -14,6 +14,15 @@ const datedYearFormatter = new Intl.DateTimeFormat(undefined, {
   month: "long",
   year: "numeric",
 });
+const shortDateFormatter = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "short",
+});
+const shortDatedYearFormatter = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
   hour: "numeric",
   minute: "2-digit",
@@ -65,4 +74,52 @@ export function groupClipsByDay<T extends { createdAt: Date }>(
       });
   }
   return days;
+}
+
+/** A date input's value ("2026-10-31") as the local midnight it starts at, or null when empty or malformed. */
+function parseDay(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const day = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
+  return Number.isNaN(day.getTime()) ? null : day;
+}
+
+/**
+ * The instants a range of local days covers, for the API: from the first day's midnight to the last moment of
+ * the last day, both inclusive. Either day may be empty to leave that end open, and days given the wrong way
+ * round are swapped, so a range is never empty by mistake.
+ */
+export function dayRangeBounds(from: string, to: string) {
+  let first = parseDay(from);
+  let last = parseDay(to);
+  if (first && last && first > last) [first, last] = [last, first];
+  const end = last
+    ? new Date(
+        new Date(
+          last.getFullYear(),
+          last.getMonth(),
+          last.getDate() + 1,
+        ).getTime() - 1,
+      )
+    : null;
+  return { start: first, end };
+}
+
+/** The range as the picker's bar names it: "12 Oct – 31 Oct", "From 12 Oct", "Until 31 Oct", or null. */
+export function dayRangeLabel(from: string, to: string, now: Date) {
+  const { start, end } = dayRangeBounds(from, to);
+  const format = (date: Date) =>
+    (date.getFullYear() === now.getFullYear()
+      ? shortDateFormatter
+      : shortDatedYearFormatter
+    ).format(date);
+  if (start && end)
+    return activityCopy.picker.dates.between(format(start), format(end));
+  if (start) return activityCopy.picker.dates.since(format(start));
+  if (end) return activityCopy.picker.dates.until(format(end));
+  return null;
 }

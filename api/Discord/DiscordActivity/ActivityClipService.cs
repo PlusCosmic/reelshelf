@@ -28,7 +28,10 @@ public sealed record ActivityGame(Guid Id, string Name, string? ClothColor, int 
 
 public sealed record ActivityGamesResponse(List<ActivityGame> Games);
 
-/// <summary>Lists a room member's own clips for the Activity, newest first unless asked otherwise, and the games they are in.</summary>
+/// <summary>
+/// Lists a room member's own clips for the Activity, newest first unless asked otherwise and optionally only those
+/// made between two instants, and the games they are in.
+/// </summary>
 public sealed class ActivityClipService(
     ClipsStatements clips,
     GameCategoryStatements gameCategories,
@@ -41,13 +44,17 @@ public sealed class ActivityClipService(
         string? search,
         int page,
         Guid? categoryId = null,
-        ClipSortOrder sortOrder = ClipSortOrder.DateDescending)
+        ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
+        DateTimeOffset? startDate = null,
+        DateTimeOffset? endDate = null)
     {
         page = Math.Max(page, 1);
         ClipsStatements.PagedClipWithTagsRows rows = await clips.GetClipsWithTags(
             accountId,
             gameCategoryId: categoryId,
             search: search,
+            startDate: startDate,
+            endDate: endDate,
             sortOrder: sortOrder,
             limit: PageSize,
             offset: (page - 1) * PageSize);

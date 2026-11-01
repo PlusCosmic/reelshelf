@@ -47,6 +47,10 @@ export async function fetchOwnClips(
     page?: number;
     gameId?: string | null;
     order?: ActivityClipOrder;
+    /** Only clips made at or after this instant. */
+    from?: Date | null;
+    /** Only clips made at or before this instant. */
+    to?: Date | null;
   },
 ): Promise<ActivityClipsResponse> {
   return createDiscordActivityApi(roomToken).getActivityClips({
@@ -54,6 +58,8 @@ export async function fetchOwnClips(
     page: options.page ?? 1,
     categoryId: options.gameId ?? undefined,
     sortOrder: sortOrder[options.order ?? "newest"],
+    startDate: options.from ?? undefined,
+    endDate: options.to ?? undefined,
   });
 }
 
