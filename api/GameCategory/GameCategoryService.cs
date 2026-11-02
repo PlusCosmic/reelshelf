@@ -110,9 +110,21 @@ public partial class GameCategoryService(
         return ToResponse(category);
     }
 
-    public async Task<bool> RemoveUserCategoryAsync(Guid userId, Guid categoryId)
+    public Task<RemoveShelfBookResult> RemoveUserCategoryAsync(Guid userId, Guid categoryId) =>
+        statements.RemoveUserCategoryAsync(userId, categoryId);
+
+    /// <summary>
+    /// Arranges the owner's shelf. Every id must be a book on it, once; false (and nothing changed) otherwise, as
+    /// when another tab took a book off meanwhile.
+    /// </summary>
+    public async Task<bool> SetShelfOrderAsync(Guid userId, IReadOnlyList<Guid> categoryIds)
     {
-        await statements.RemoveUserCategoryAsync(userId, categoryId);
+        if (categoryIds.Count == 0 || categoryIds.Distinct().Count() != categoryIds.Count) return false;
+
+        var shelf = (await statements.GetLibraryCategoriesAsync(userId)).Select(category => category.Id).ToHashSet();
+        if (!categoryIds.All(shelf.Contains)) return false;
+
+        await statements.SetShelfOrderAsync(userId, categoryIds);
         return true;
     }
 

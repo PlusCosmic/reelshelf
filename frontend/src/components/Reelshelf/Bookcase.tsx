@@ -1,8 +1,16 @@
-import type { CSSProperties, DragEvent, ReactNode } from "react";
+import type {
+  CSSProperties,
+  DragEvent,
+  FocusEvent,
+  KeyboardEvent,
+  PointerEvent,
+  ReactNode,
+} from "react";
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -11,6 +19,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconPlus,
+  IconX,
 } from "@tabler/icons-react";
 import type { TwitchGhost } from "@/components/AddClips/addClipsModel";
 import { libraryCopy } from "@/copy/library";
@@ -43,6 +52,14 @@ type BookcaseProps = {
   onDropOnGhost?: (ghost: TwitchGhost, data: DataTransfer) => void;
   /** Shown under the shelf, beside the IGDB credit, like the landing page's caption. */
   footer?: ReactNode;
+  /**
+   * The owner is arranging the shelf: every book stands spine-out, drags along the shelf (or moves with
+   * the arrow keys) and empty ones carry a button that takes them off. Twitch books and Add a game wait.
+   */
+  arranging?: boolean;
+  /** A move finished: the shelf's books, left to right. */
+  onReorder?: (ids: string[]) => void;
+  onRemoveBook?: (game: GameShelfItem) => void;
 };
 
 const igdbUrl = "https://www.igdb.com";
@@ -50,6 +67,27 @@ const igdbUrl = "https://www.igdb.com";
 type Tip = { game: GameShelfItem; left: number; top: number };
 type GhostCard = { ghost: TwitchGhost; left: number; top: number };
 type DropTarget = { key: string; left: number; top: number };
+
+/** A book being dragged along the shelf while it is arranged. */
+type Drag = {
+  id: string;
+  pointerId: number;
+  startX: number;
+  clientX: number;
+  /** Where on the book it was picked up, so it stays under the pointer. */
+  grabOffset: number;
+  moved: boolean;
+  order: string[];
+  frame: number | null;
+};
+
+/** An order being shown ahead of the shelf it was made from, until the shelf catches up. */
+type Arrangement = { ids: string[]; shelf: GameShelfItem[] };
+
+// A pointer that moves less than this is a press, not a drag.
+const DRAG_SLOP = 6;
+// How close to either end of the case a dragged book starts scrolling the shelf.
+const SCROLL_EDGE = 56;
 
 /** Drag handlers that make an element take dropped files, marking it while files are over it. */
 function dropHandlers(
@@ -98,6 +136,15 @@ function reducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+type ArrangeHandlers = {
+  label: string;
+  onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void;
+  onPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
+  onPointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
+  onPointerCancel: (event: PointerEvent<HTMLButtonElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+};
+
 function Spine({
   game,
   returning,
@@ -108,6 +155,7 @@ function Spine({
   onShowTip,
   onHideTip,
   itemRef,
+  arrange,
 }: {
   game: GameShelfItem;
   returning: boolean;
@@ -117,7 +165,9 @@ function Spine({
   onSelect: () => void;
   onShowTip: (element: HTMLElement) => void;
   onHideTip: () => void;
-  itemRef: (element: HTMLElement | null) => void;
+  itemRef?: (element: HTMLElement | null) => void;
+  /** Set while the shelf is arranged: the book moves rather than opens. */
+  arrange?: ArrangeHandlers;
 }) {
   const binding = bookBinding(game);
   const { width, height } = bookSize(game);
@@ -142,18 +192,31 @@ function Spine({
           "--title-size": `${titleSize}px`,
         } as CSSProperties
       }
-      onClick={onSelect}
-      onPointerEnter={(event) => onShowTip(event.currentTarget)}
-      onPointerLeave={onHideTip}
-      onFocus={(event) => onShowTip(event.currentTarget)}
-      onBlur={onHideTip}
-      aria-label={libraryCopy.bookcase.spine(
-        game.name,
-        game.clipCount,
-        game.unviewedCount,
-        twitchCount,
-      )}
-      {...drop}
+      {...(arrange
+        ? {
+            onPointerDown: arrange.onPointerDown,
+            onPointerMove: arrange.onPointerMove,
+            onPointerUp: arrange.onPointerUp,
+            onPointerCancel: arrange.onPointerCancel,
+            onKeyDown: arrange.onKeyDown,
+            "aria-label": arrange.label,
+          }
+        : {
+            onClick: onSelect,
+            onPointerEnter: (event: PointerEvent<HTMLElement>) =>
+              onShowTip(event.currentTarget),
+            onPointerLeave: onHideTip,
+            onFocus: (event: FocusEvent<HTMLElement>) =>
+              onShowTip(event.currentTarget),
+            onBlur: onHideTip,
+            "aria-label": libraryCopy.bookcase.spine(
+              game.name,
+              game.clipCount,
+              game.unviewedCount,
+              twitchCount,
+            ),
+            ...drop,
+          })}
     >
       {twitchCount > 0 ? (
         <span className="rs-book-ribbon" aria-hidden="true" />
@@ -259,9 +322,13 @@ export function Bookcase({
   onDismissGhost,
   onDropOnGhost,
   footer,
+  arranging = false,
+  onReorder,
+  onRemoveBook,
 }: BookcaseProps) {
   const caseRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
   const items = useRef(new Map<string, HTMLElement>());
   const offsets = useRef(new Map<string, number>());
@@ -285,14 +352,42 @@ export function Bookcase({
   };
   const [overflow, setOverflow] = useState({ left: false, right: false });
 
+  // Arranging stands every book spine-out, the pulled-out one included.
+  const shownSelectedId = arranging ? null : selectedId;
+
   // The book that was pulled out until this render goes back with its own little turn. Worked
   // out while rendering, so the spine carries its class from the moment it reappears.
-  const [previousId, setPreviousId] = useState(selectedId);
+  const [previousId, setPreviousId] = useState(shownSelectedId);
   const [returningId, setReturningId] = useState<string | null>(null);
-  if (previousId !== selectedId) {
-    setPreviousId(selectedId);
+  if (previousId !== shownSelectedId) {
+    setPreviousId(shownSelectedId);
     setReturningId(previousId);
   }
+
+  // While a book is dragged, and from a move until the library hands back a shelf in that order, the
+  // books stand in the order being made. Any new shelf ends it: the saved order, or the old one back.
+  const [arrangement, setArrangement] = useState<Arrangement | null>(null);
+  if (arrangement && arrangement.shelf !== shelf) setArrangement(null);
+  const books = useMemo(() => {
+    if (!arrangement || arrangement.shelf !== shelf) return shelf;
+    const byId = new Map(shelf.map((game) => [game.id, game]));
+    return arrangement.ids
+      .map((id) => byId.get(id))
+      .filter((game): game is GameShelfItem => game !== undefined);
+  }, [arrangement, shelf]);
+  const drag = useRef<Drag | null>(null);
+  // Where a dropped book was last seen, so it settles into its place from there.
+  const settling = useRef<{ id: string; left: number } | null>(null);
+  const focusAfterMove = useRef<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+
+  // Leaving arrange mode mid-drag drops the drag where it is, without a move.
+  useEffect(() => {
+    if (arranging) return;
+    const state = drag.current;
+    drag.current = null;
+    if (state?.frame != null) cancelAnimationFrame(state.frame);
+  }, [arranging]);
 
   const itemRef = useCallback(
     (key: string) => (element: HTMLElement | null) => {
@@ -302,6 +397,17 @@ export function Bookcase({
     [],
   );
 
+  /** Keeps the dragged book under the pointer, wherever its slot on the shelf is now. */
+  const placeDragged = useCallback(() => {
+    const state = drag.current;
+    const row = rowRef.current;
+    const element = state ? items.current.get(state.id) : undefined;
+    if (!state?.moved || !row || !element) return;
+    const left =
+      state.clientX - row.getBoundingClientRect().left - state.grabOffset;
+    element.style.translate = `${left - element.offsetLeft}px 0`;
+  }, []);
+
   // Slide the books from where they stood to where they stand now. Offsets are measured within
   // the row, so scrolling the shelf between choices never counts as movement.
   useLayoutEffect(() => {
@@ -310,24 +416,40 @@ export function Bookcase({
     for (const [key, element] of items.current)
       next.set(key, element.offsetLeft);
     offsets.current = next;
-    if (previous.size === 0 || reducedMotion()) return;
-    for (const [key, element] of items.current) {
-      const before = previous.get(key);
-      const after = next.get(key);
-      if (before === undefined || after === undefined || before === after)
-        continue;
-      element.animate(
-        [{ translate: `${before - after}px 0` }, { translate: "0 0" }],
-        { duration: SHIFT_MS, easing: EASE },
-      );
+    const held = drag.current?.moved ? drag.current.id : null;
+    const settled = settling.current;
+    settling.current = null;
+    if (!reducedMotion()) {
+      for (const [key, element] of items.current) {
+        const after = next.get(key);
+        const before = settled?.id === key ? settled.left : previous.get(key);
+        if (key === held || before === undefined || after === undefined)
+          continue;
+        if (before === after) continue;
+        element.animate(
+          [{ translate: `${before - after}px 0` }, { translate: "0 0" }],
+          { duration: SHIFT_MS, easing: EASE },
+        );
+      }
     }
-  }, [selectedId, shelf]);
+    placeDragged();
+    // A book moved from the keyboard keeps focus, and stays in view, in its new place.
+    const focusId = focusAfterMove.current;
+    focusAfterMove.current = null;
+    const moved = focusId ? items.current.get(focusId) : undefined;
+    const spine = moved?.querySelector<HTMLElement>(".rs-book-spine");
+    if (spine && document.activeElement !== spine)
+      spine.focus({ preventScroll: true });
+    moved?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [shownSelectedId, books, arranging, placeDragged]);
 
   // Keep the pulled-out book wholly in view, on arrival and whenever another is chosen.
   const firstScroll = useRef(true);
   useLayoutEffect(() => {
     const back = backRef.current;
-    const face = selectedId ? items.current.get(selectedId) : undefined;
+    const face = shownSelectedId
+      ? items.current.get(shownSelectedId)
+      : undefined;
     if (!back || !face) return;
     const margin = 24;
     const start = face.offsetLeft - margin;
@@ -342,7 +464,7 @@ export function Bookcase({
         behavior: firstScroll.current || reducedMotion() ? "auto" : "smooth",
       });
     firstScroll.current = false;
-  }, [selectedId]);
+  }, [shownSelectedId]);
 
   // Which ends of the shelf run past the case.
   useEffect(() => {
@@ -377,6 +499,193 @@ export function Bookcase({
       behavior: reducedMotion() ? "auto" : "smooth",
     });
   };
+
+  /** Where the dragged book would stand: past the middle of every book its middle has crossed. */
+  const dropIndex = (state: Drag) => {
+    const row = rowRef.current;
+    const dragged = items.current.get(state.id);
+    if (!row || !dragged) return state.order.indexOf(state.id);
+    const width = dragged.offsetWidth;
+    const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+    const middle =
+      state.clientX -
+      row.getBoundingClientRect().left -
+      state.grabOffset +
+      width / 2;
+    const from = state.order.indexOf(state.id);
+    let index = 0;
+    state.order.forEach((id, at) => {
+      const element = items.current.get(id);
+      if (id === state.id || !element) return;
+      // Measured as if the dragged book were lifted out, so its own width never flips the answer.
+      const left =
+        at > from ? element.offsetLeft - width - gap : element.offsetLeft;
+      if (left + element.offsetWidth / 2 < middle) index += 1;
+    });
+    return index;
+  };
+
+  const followPointer = () => {
+    const state = drag.current;
+    if (!state) return;
+    const index = dropIndex(state);
+    const others = state.order.filter((id) => id !== state.id);
+    const order = [...others.slice(0, index), state.id, ...others.slice(index)];
+    if (order.join() === state.order.join()) return placeDragged();
+    state.order = order;
+    setArrangement({ ids: order, shelf });
+  };
+
+  // Near either end of the case, a dragged book scrolls the shelf, faster the closer it gets.
+  const scrollWhileDragging = () => {
+    const state = drag.current;
+    const back = backRef.current;
+    if (!state?.moved || !back) return;
+    const box = back.getBoundingClientRect();
+    const delta =
+      state.clientX < box.left + SCROLL_EDGE
+        ? -Math.ceil((box.left + SCROLL_EDGE - state.clientX) / 4)
+        : state.clientX > box.right - SCROLL_EDGE
+          ? Math.ceil((state.clientX - box.right + SCROLL_EDGE) / 4)
+          : 0;
+    if (delta) {
+      back.scrollLeft += delta;
+      followPointer();
+    }
+    state.frame = requestAnimationFrame(scrollWhileDragging);
+  };
+
+  const endDrag = (commit: boolean) => {
+    const state = drag.current;
+    drag.current = null;
+    if (!state) return;
+    if (state.frame !== null) cancelAnimationFrame(state.frame);
+    if (!state.moved) return;
+    const element = items.current.get(state.id);
+    if (element) {
+      settling.current = {
+        id: state.id,
+        left: element.offsetLeft + (parseFloat(element.style.translate) || 0),
+      };
+      element.style.translate = "";
+      element.classList.remove("dragging");
+    }
+    const ids = shelf.map((game) => game.id);
+    if (!commit || state.order.join() === ids.join()) {
+      setArrangement(null);
+      // Nothing re-rendered the books if they never left their places; settle the dropped one here.
+      if (settling.current && element && !reducedMotion()) {
+        const from = settling.current.left - element.offsetLeft;
+        settling.current = null;
+        if (from)
+          element.animate(
+            [{ translate: `${from}px 0` }, { translate: "0 0" }],
+            {
+              duration: SHIFT_MS,
+              easing: EASE,
+            },
+          );
+      }
+      return;
+    }
+    setArrangement({ ids: state.order, shelf });
+    const game = shelf.find((item) => item.id === state.id);
+    if (game)
+      setAnnouncement(
+        libraryCopy.bookcase.arrange.moved(
+          game.name,
+          state.order.indexOf(state.id) + 1,
+          state.order.length,
+        ),
+      );
+    onReorder?.(state.order);
+  };
+
+  const moveFromKeyboard = (game: GameShelfItem, to: number) => {
+    const ids = books.map((item) => item.id);
+    const from = ids.indexOf(game.id);
+    const target = Math.max(0, Math.min(ids.length - 1, to));
+    if (from === target) return;
+    ids.splice(from, 1);
+    ids.splice(target, 0, game.id);
+    focusAfterMove.current = game.id;
+    setArrangement({ ids, shelf });
+    setAnnouncement(
+      libraryCopy.bookcase.arrange.moved(game.name, target + 1, ids.length),
+    );
+    onReorder?.(ids);
+  };
+
+  const arrangeHandlers = (
+    game: GameShelfItem,
+    index: number,
+  ): ArrangeHandlers => ({
+    label: libraryCopy.bookcase.arrange.spine(
+      game.name,
+      game.clipCount,
+      game.unviewedCount,
+      index + 1,
+      books.length,
+    ),
+    onPointerDown: (event) => {
+      if (event.button !== 0 || drag.current) return;
+      const slot = items.current.get(game.id);
+      if (!slot) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      drag.current = {
+        id: game.id,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        clientX: event.clientX,
+        grabOffset: event.clientX - slot.getBoundingClientRect().left,
+        moved: false,
+        order: books.map((item) => item.id),
+        frame: null,
+      };
+    },
+    onPointerMove: (event) => {
+      const state = drag.current;
+      if (!state || state.pointerId !== event.pointerId) return;
+      state.clientX = event.clientX;
+      if (!state.moved) {
+        if (Math.abs(event.clientX - state.startX) < DRAG_SLOP) return;
+        state.moved = true;
+        items.current.get(state.id)?.classList.add("dragging");
+        state.frame = requestAnimationFrame(scrollWhileDragging);
+      }
+      followPointer();
+    },
+    onPointerUp: (event) => {
+      if (drag.current?.pointerId === event.pointerId) endDrag(true);
+    },
+    onPointerCancel: (event) => {
+      if (drag.current?.pointerId === event.pointerId) endDrag(false);
+    },
+    onKeyDown: (event) => {
+      const at = books.indexOf(game);
+      const to =
+        event.key === "ArrowLeft"
+          ? at - 1
+          : event.key === "ArrowRight"
+            ? at + 1
+            : event.key === "Home"
+              ? 0
+              : event.key === "End"
+                ? books.length - 1
+                : null;
+      if (to !== null) {
+        event.preventDefault();
+        moveFromKeyboard(game, to);
+      } else if (
+        (event.key === "Delete" || event.key === "Backspace") &&
+        game.clipCount === 0 &&
+        onRemoveBook
+      ) {
+        event.preventDefault();
+        onRemoveBook(game);
+      }
+    },
+  });
 
   // The label lives outside the scrolling shelf, so neither end of the case can clip it.
   const showTip = (game: GameShelfItem) => (element: HTMLElement) => {
@@ -417,7 +726,10 @@ export function Bookcase({
   }, [tip]);
 
   return (
-    <div className="rs-bookcase" ref={caseRef}>
+    <div
+      className={`rs-bookcase${arranging ? " arranging" : ""}`}
+      ref={caseRef}
+    >
       <div
         className="rs-bookcase-back"
         role="region"
@@ -425,9 +737,37 @@ export function Bookcase({
         ref={backRef}
         onScroll={hideTip}
       >
-        <div className="rs-bookcase-row">
-          {shelf.map((game) =>
-            game.id === selectedId ? (
+        <div className="rs-bookcase-row" ref={rowRef}>
+          {books.map((game, index) =>
+            arranging ? (
+              <span
+                key={game.id}
+                className="rs-book-slot"
+                ref={itemRef(game.id)}
+              >
+                <Spine
+                  game={game}
+                  returning={game.id === returningId}
+                  dropTarget={false}
+                  twitchCount={0}
+                  drop={{}}
+                  onSelect={() => {}}
+                  onShowTip={() => {}}
+                  onHideTip={() => {}}
+                  arrange={arrangeHandlers(game, index)}
+                />
+                {game.clipCount === 0 && onRemoveBook ? (
+                  <button
+                    type="button"
+                    className="rs-book-remove"
+                    onClick={() => onRemoveBook(game)}
+                    aria-label={libraryCopy.bookcase.arrange.remove(game.name)}
+                  >
+                    <IconX size={14} aria-hidden="true" />
+                  </button>
+                ) : null}
+              </span>
+            ) : game.id === shownSelectedId ? (
               <FaceOutBook
                 key={game.id}
                 game={game}
@@ -456,10 +796,10 @@ export function Bookcase({
               />
             ),
           )}
-          {ghosts.length ? (
+          {ghosts.length && !arranging ? (
             <span className="rs-shelf-divider" aria-hidden="true" />
           ) : null}
-          {ghosts.map((ghost) => {
+          {(arranging ? [] : ghosts).map((ghost) => {
             const size = ghostSize(ghost);
             const key = `ghost-${ghost.igdbId}`;
             return (
@@ -501,7 +841,7 @@ export function Bookcase({
               </button>
             );
           })}
-          {onAddGame ? (
+          {onAddGame && !arranging ? (
             <button
               type="button"
               ref={itemRef(ADD_KEY)}
@@ -553,7 +893,10 @@ export function Bookcase({
           )}
         </p>
       </div>
-      {tip ? (
+      <p className="rs-visually-hidden" aria-live="polite">
+        {announcement}
+      </p>
+      {tip && !arranging ? (
         <div
           className="rs-book-tip"
           ref={tipRef}

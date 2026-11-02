@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { libraryCopy } from "@/copy/library";
 import { StitchedDot } from "./StitchedDot";
 import { StatLine, type ClipTotals } from "./primitives/Stats";
@@ -10,6 +10,8 @@ type GameBannerProps = {
   totals: ClipTotals;
   onUpload: () => void;
   onPutBack: () => void;
+  /** Offered only for an empty book: takes it off the shelf. */
+  onRemove?: () => void;
 };
 
 /**
@@ -21,6 +23,7 @@ export function GameBanner({
   totals,
   onUpload,
   onPutBack,
+  onRemove,
 }: GameBannerProps) {
   const binding = bookBinding(game);
   const withArt = Boolean(game.keyArtUrl);
@@ -80,6 +83,16 @@ export function GameBanner({
         >
           {libraryCopy.banner.putBack}
         </button>
+        {onRemove && game.clipCount === 0 ? (
+          <button
+            type="button"
+            className="rs-game-banner-back rs-game-banner-remove"
+            onClick={onRemove}
+          >
+            <IconTrash size={16} aria-hidden="true" />
+            {libraryCopy.banner.removeBook}
+          </button>
+        ) : null}
       </div>
     </section>
   );

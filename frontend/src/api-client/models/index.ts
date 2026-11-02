@@ -116,6 +116,7 @@ export * from "./SetEmailRequest";
 export * from "./SetGrantedTierRequest";
 export * from "./SetLegendDetectionLabelRequest";
 export * from "./SetLegendDetectionPlayerLabelsRequest";
+export * from "./SetShelfOrderRequest";
 export * from "./SetUsernameRequest";
 export * from "./SharedClipResponse";
 export * from "./StartCheckoutRequest";

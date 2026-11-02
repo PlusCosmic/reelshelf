@@ -1,6 +1,7 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { DragEvent } from "react";
+import { IconArrowsHorizontal, IconCheck } from "@tabler/icons-react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { GameCategoryResponse } from "@/api-client";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
@@ -13,7 +14,11 @@ import {
 import { useUploads } from "@/components/AddClips/UploadsProvider";
 import type { BulkUploadFileInput } from "@/hooks/bulkUploadQueue";
 import { libraryCopy } from "@/copy/library";
-import { useAddGameFromIgdb } from "@/hooks/queries";
+import {
+  useAddGameFromIgdb,
+  useRemoveShelfBook,
+  useSetShelfOrder,
+} from "@/hooks/queries";
 import { useClipLegends, useTopTags } from "@/hooks/clips.queries";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import {
@@ -24,6 +29,7 @@ import { Bookcase } from "./Bookcase";
 import { GameBanner } from "./GameBanner";
 import { ShelfBar } from "./ShelfBar";
 import { LegendPicker } from "./LegendPicker";
+import { RemoveBookDialog } from "./RemoveBookDialog";
 import {
   Chip,
   PagedClipGrid,
@@ -105,6 +111,12 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
   // Clips dropped on New book wait here while their game is chosen.
   const [pendingClips, setPendingClips] = useState<BulkUploadFileInput[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [arranging, setArranging] = useState(false);
+  const [removing, setRemoving] = useState<GameShelfItem | null>(null);
+  // The book vanishing says it went; a screen reader hears it here.
+  const [shelfStatus, setShelfStatus] = useState("");
+  const setShelfOrder = useSetShelfOrder();
+  const removeShelfBook = useRemoveShelfBook();
   const { categories, categoryTotals, totals, isLoading, isError } =
     useLibraryData();
   const [state, dispatch] = useReducer(libraryReducer, {
@@ -174,6 +186,16 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     return () => observer.disconnect();
   }, [topSection]);
 
+  // Escape puts the shelf down, unless a dialog over it has the key.
+  useEffect(() => {
+    if (!arranging || removing) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setArranging(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [arranging, removing]);
+
   // A game chosen from the bar opens at the top of its clips rather than back up at the shelf.
   // The list's scroll-margin keeps it clear of the topbar and the bar; waiting a frame lets the
   // new game's shelf and header lay out first.
@@ -218,6 +240,55 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     dispatch({ type: "setTag", value: null });
     void navigate({ to: "/" });
   };
+
+  const reorderShelf = (ids: string[]) =>
+    setShelfOrder.mutate(ids, {
+      onSuccess: () => setNotice(null),
+      onError: () => setNotice(libraryCopy.bookcase.arrange.orderFailed),
+    });
+
+  /** Takes an empty book off the shelf; on its own page, the library is shown first. */
+  const removeBook = async (game: GameShelfItem) => {
+    if (game.id === selectedId) await navigate({ to: "/" });
+    await removeShelfBook.mutateAsync(game.id);
+    setShelfStatus(libraryCopy.removeBook.removed(game.name));
+    // A book with Twitch clips waiting comes back as a Twitch book.
+    void queryClient.invalidateQueries({ queryKey: twitchSuggestionsKey });
+  };
+
+  // Arranging only appears once there is something to arrange: two books, or an empty one.
+  const canArrange =
+    shelf.length > 1 || shelf.some((game) => game.clipCount === 0);
+  const shelfFooter = !canArrange ? null : arranging ? (
+    <>
+      <p className="rs-bookcase-arrange-hint">
+        {libraryCopy.bookcase.arrange.hint}
+        {shelf.some((game) => game.clipCount === 0)
+          ? ` ${libraryCopy.bookcase.arrange.removeHint}`
+          : null}
+      </p>
+      <button
+        type="button"
+        className="rs-bookcase-arrange done"
+        onClick={() => setArranging(false)}
+      >
+        <IconCheck size={16} aria-hidden="true" />
+        {libraryCopy.bookcase.arrange.done}
+      </button>
+    </>
+  ) : (
+    <button
+      type="button"
+      className="rs-bookcase-arrange"
+      onClick={() => {
+        setNotice(null);
+        setArranging(true);
+      }}
+    >
+      <IconArrowsHorizontal size={16} aria-hidden="true" />
+      {libraryCopy.bookcase.arrange.start}
+    </button>
+  );
 
   const twitchCounts = new Map(
     [...twitch.byCategory].map(([id, clips]) => [id, clips.length]),
@@ -369,7 +440,14 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
             endDrag();
             void readDrop(data).then((inputs) => addGhost(ghost, inputs));
           }}
+          footer={shelfFooter}
+          arranging={arranging && canArrange}
+          onReorder={reorderShelf}
+          onRemoveBook={setRemoving}
         />
+        <p className="rs-visually-hidden" role="status">
+          {shelfStatus}
+        </p>
         {notice ? (
           <p className="rs-drop-notice" role="status">
             {notice}
@@ -382,6 +460,7 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
             totals={categoryTotalsFor(categoryTotals, selected.id)}
             onUpload={() => fileInputRef.current?.click()}
             onPutBack={putBack}
+            onRemove={() => setRemoving(selected)}
           />
         ) : null}
         {selected && twitch.byCategory.get(selected.id)?.length ? (
@@ -464,6 +543,15 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
           </section>
         </>
       )}
+
+      {removing ? (
+        <RemoveBookDialog
+          game={removing}
+          pending={removeShelfBook.isPending}
+          onConfirm={() => removeBook(removing)}
+          onClose={() => setRemoving(null)}
+        />
+      ) : null}
 
       <AddCategoryModal
         opened={state.addCategoryOpen}

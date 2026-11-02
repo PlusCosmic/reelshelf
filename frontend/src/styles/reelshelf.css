@@ -8246,6 +8246,144 @@ html:has(.rs-library-route) {
   }
 }
 
+/* ---- Arranging the shelf: books drag along it, empty ones come off ---- */
+
+.rs-bookcase-arrange {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-soft);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rs-bookcase-arrange:hover,
+.rs-bookcase-arrange:focus-visible {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.rs-bookcase-arrange.done {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.rs-bookcase-arrange-hint {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.rs-bookcase.arranging .rs-bookcase-back {
+  box-shadow: inset 0 0 0 2px
+    color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+.rs-bookcase.arranging .rs-bookcase-footer {
+  flex-wrap: wrap;
+}
+
+/* While arranging, each book stands in a slot that carries it, and its remove button, as it moves. */
+.rs-book-slot {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+}
+
+.rs-bookcase.arranging .rs-book-spine {
+  cursor: grab;
+  /* The pointer drags the book; the browser mustn't take it for a scroll or a selection. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.rs-book-slot.dragging {
+  z-index: 6;
+}
+
+.rs-book-slot.dragging .rs-book-spine {
+  cursor: grabbing;
+  transform: translateY(-14px);
+  box-shadow:
+    inset -7px 0 0 rgba(0, 0, 0, 0.13),
+    0 18px 24px -10px color-mix(in oklab, var(--shadow) 70%, transparent);
+}
+
+.rs-book-slot.dragging .rs-book-spine.empty {
+  box-shadow: 0 18px 24px -10px
+    color-mix(in oklab, var(--shadow) 50%, transparent);
+}
+
+.rs-book-remove {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid var(--case-back);
+  border-radius: 50%;
+  background: var(--danger);
+  color: #ffffff;
+  cursor: pointer;
+  translate: -50% 0;
+  box-shadow: 0 4px 10px -4px
+    color-mix(in oklab, var(--shadow) 70%, transparent);
+}
+
+.rs-book-remove:hover,
+.rs-book-remove:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
+.rs-book-slot:hover .rs-book-remove,
+.rs-book-slot:focus-within .rs-book-remove {
+  top: -24px;
+}
+
+.rs-book-slot.dragging .rs-book-remove {
+  top: -28px;
+}
+
+.rs-game-banner-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+@media (max-width: 720px) {
+  .rs-bookcase-under {
+    padding: 10px 16px 0;
+  }
+
+  .rs-book-remove,
+  .rs-book-slot:hover .rs-book-remove,
+  .rs-book-slot:focus-within .rs-book-remove {
+    top: -16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-book-slot.dragging .rs-book-spine {
+    transform: none;
+  }
+}
+
 /* ---- Adding clips: drops on the shelf, ghost books, the tray ---- */
 
 .rs-book-spine.drop-target {

@@ -1813,8 +1813,18 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "No Content"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -1921,6 +1931,39 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/games/categories/order": {
+      "put": {
+        "tags": [
+          "GameCategoryEndpoints"
+        ],
+        "operationId": "SetShelfOrder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetShelfOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "400": {
             "description": "Bad Request",
@@ -7860,6 +7903,21 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LegendPlayerLabel"
+            }
+          }
+        }
+      },
+      "SetShelfOrderRequest": {
+        "required": [
+          "category_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "category_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
             }
           }
         }

@@ -33,6 +33,7 @@ public class GameCategoryStatements(NpgsqlConnection connection)
     /// <summary>
     /// Categories that belong in a user's library: the ones they added, plus any they already have clips in.
     /// Never the global list, so one account's custom categories do not appear in (or slow down) everyone's library.
+    /// In shelf order: the books the owner arranged, then the rest by name.
     /// </summary>
     public async Task<List<GameCategory>> GetLibraryCategoriesAsync(Guid userId)
     {
@@ -40,14 +41,39 @@ public class GameCategoryStatements(NpgsqlConnection connection)
             SELECT gc.id, gc.igdb_id, gc.name, gc.slug, gc.cover_url, gc.key_art_url, gc.game_logo_url, gc.cloth_color, gc.is_custom,
                    gc.created_at, gc.updated_at
             FROM game_category gc
-            WHERE EXISTS (SELECT 1 FROM user_game_category ugc
-                          WHERE ugc.game_category_id = gc.id AND ugc.user_id = @UserId)
+            LEFT JOIN user_game_category ugc ON ugc.game_category_id = gc.id AND ugc.user_id = @UserId
+            WHERE ugc.user_id IS NOT NULL
                OR EXISTS (SELECT 1 FROM clip c
                           WHERE c.game_category_id = gc.id AND c.owner_id = @UserId)
-            ORDER BY gc.name
+            ORDER BY ugc.shelf_position NULLS LAST, gc.name, gc.id
             """;
         var results = await connection.QueryAsync<GameCategory>(sql, new { UserId = userId });
         return results.ToList();
+    }
+
+    /// <summary>
+    /// Puts the owner's books in the given order, left to right, in one transaction. A book listed here that is on
+    /// the shelf only because it holds clips gets a row; the owner's other rows lose their position and follow.
+    /// </summary>
+    public async Task SetShelfOrderAsync(Guid userId, IReadOnlyList<Guid> categoryIds)
+    {
+        if (connection.State != System.Data.ConnectionState.Open) await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync("""
+            UPDATE user_game_category SET shelf_position = NULL
+            WHERE user_id = @UserId AND shelf_position IS NOT NULL AND NOT (game_category_id = ANY(@Ids))
+            """, new { UserId = userId, Ids = categoryIds.ToArray() }, transaction);
+        await connection.ExecuteAsync("""
+            INSERT INTO user_game_category (user_id, game_category_id, shelf_position)
+            SELECT @UserId, ids.id, (ids.ord - 1)::int
+            FROM unnest(@Ids) WITH ORDINALITY AS ids(id, ord)
+            -- Still on the shelf: a book another tab took off since the order was checked stays off.
+            WHERE EXISTS (SELECT 1 FROM user_game_category ugc
+                          WHERE ugc.user_id = @UserId AND ugc.game_category_id = ids.id)
+               OR EXISTS (SELECT 1 FROM clip c WHERE c.owner_id = @UserId AND c.game_category_id = ids.id)
+            ON CONFLICT (user_id, game_category_id) DO UPDATE SET shelf_position = EXCLUDED.shelf_position
+            """, new { UserId = userId, Ids = categoryIds.ToArray() }, transaction);
+        await transaction.CommitAsync();
     }
 
     public async Task<GameCategory?> GetByIdAsync(Guid id)
@@ -194,12 +220,36 @@ public class GameCategoryStatements(NpgsqlConnection connection)
         await connection.ExecuteAsync(sql, new { UserId = userId, CategoryId = categoryId });
     }
 
-    public async Task RemoveUserCategoryAsync(Guid userId, Guid categoryId)
+    /// <summary>
+    /// Takes an empty book off the owner's shelf. A book that still holds any of the owner's clips (a reserved
+    /// upload included) stays, since the shelf shows every game with clips; the result says which happened.
+    /// </summary>
+    public async Task<RemoveShelfBookResult> RemoveUserCategoryAsync(Guid userId, Guid categoryId)
     {
         const string sql = """
-            DELETE FROM user_game_category
-            WHERE user_id = @UserId AND game_category_id = @CategoryId
+            WITH has_clips AS (
+                SELECT EXISTS (SELECT 1 FROM clip WHERE owner_id = @UserId AND game_category_id = @CategoryId) AS found
+            ),
+            removed AS (
+                DELETE FROM user_game_category
+                WHERE user_id = @UserId AND game_category_id = @CategoryId
+                  AND NOT (SELECT found FROM has_clips)
+                RETURNING 1
+            )
+            SELECT (SELECT found FROM has_clips) AS has_clips, EXISTS (SELECT 1 FROM removed) AS removed
             """;
-        await connection.ExecuteAsync(sql, new { UserId = userId, CategoryId = categoryId });
+        var row = await connection.QuerySingleAsync<(bool HasClips, bool Removed)>(
+            sql, new { UserId = userId, CategoryId = categoryId });
+        return row.HasClips ? RemoveShelfBookResult.HasClips
+            : row.Removed ? RemoveShelfBookResult.Removed
+            : RemoveShelfBookResult.NotOnShelf;
     }
+}
+
+public enum RemoveShelfBookResult
+{
+    Removed,
+    /// <summary>The owner has clips in it, so it stays on the shelf.</summary>
+    HasClips,
+    NotOnShelf
 }
