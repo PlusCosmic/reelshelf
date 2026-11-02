@@ -39,20 +39,17 @@ export function RemoveBookDialog({
   };
 
   return (
-    <Dialog
-      eyebrow={copy.eyebrow}
-      title={copy.title(game.name)}
-      busy={pending}
-      onClose={onClose}
-    >
+    <Dialog title={copy.title(game.name)} busy={pending} onClose={onClose}>
       {() => (
         <form className="rs-modal-panel" onSubmit={submit}>
-          <p className="rs-modal-note">{copy.body}</p>
+          {/* Once the API has refused, "It has no clips" is no longer true. */}
           {error ? (
             <p className="rs-modal-error rs-modal-error-inline" role="alert">
               {error}
             </p>
-          ) : null}
+          ) : (
+            <p className="rs-modal-note">{copy.body}</p>
+          )}
           <div className="rs-modal-actions">
             <button
               className="rs-secondary"

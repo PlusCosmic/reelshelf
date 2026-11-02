@@ -67,7 +67,7 @@ function renderShelf(arranging: boolean) {
 describe("Bookcase arranging", () => {
   it("leaves the shelf as it is until it is arranged", () => {
     renderShelf(false);
-    expect(screen.queryByRole("button", { name: /off the shelf/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
     expect(screen.getByRole("button", { name: "Add a game or category" }));
     // The open book stands face-out.
     expect(screen.getByRole("button", { pressed: true }).textContent).toBe(
@@ -82,10 +82,10 @@ describe("Bookcase arranging", () => {
       screen.queryByRole("button", { name: "Add a game or category" }),
     ).toBeNull();
     const removes = screen.getAllByRole("button", {
-      name: /^Take .* off the shelf$/,
+      name: /^Remove /,
     });
     expect(removes.map((button) => button.getAttribute("aria-label"))).toEqual([
-      "Take Celeste off the shelf",
+      "Remove Celeste",
     ]);
   });
 
@@ -112,9 +112,7 @@ describe("Bookcase arranging", () => {
   it("takes an empty book off with its button or Delete, never a full one", () => {
     const { onRemoveBook } = renderShelf(true);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Take Celeste off the shelf" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Remove Celeste" }));
     expect(onRemoveBook).toHaveBeenCalledWith(shelf[1]);
 
     fireEvent.keyDown(screen.getByRole("button", { name: /^Doom/ }), {
