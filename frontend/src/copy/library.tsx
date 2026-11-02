@@ -96,12 +96,43 @@ export const libraryCopy = {
       add: "Add to shelf",
       dismiss: "Not interested",
     },
+    arrange: {
+      start: "Arrange shelf",
+      done: "Done",
+      hint: "Drag a book to move it, or use the arrow keys.",
+      removeHint: "Empty books can come off the shelf.",
+      /** A book as a screen reader hears it while the shelf is being arranged. */
+      spine: (
+        name: string,
+        clips: number,
+        unviewed: number,
+        position: number,
+        total: number,
+      ) =>
+        `${describeBook(name, clips, unviewed)}. Book ${position} of ${total}. Arrow keys move it${clips === 0 ? ", Delete takes it off the shelf" : ""}`,
+      moved: (name: string, position: number, total: number) =>
+        `${name} moved to ${position} of ${total}`,
+      remove: (name: string) => `Take ${name} off the shelf`,
+      orderFailed: "Your shelf's new order wasn't saved. Try again.",
+    },
+  },
+  removeBook: {
+    eyebrow: "Remove book",
+    title: (name: string) => `Take ${name} off your shelf?`,
+    body: "It has no clips, so nothing is lost. You can put it back any time with Add a game.",
+    confirm: "Take it off",
+    removing: "Taking it off…",
+    hasClips: (name: string) =>
+      `${name} has clips in it now, so it stays on the shelf.`,
+    failed: (name: string) => `${name} wasn't taken off the shelf. Try again.`,
+    removed: (name: string) => `${name} is off the shelf.`,
   },
   banner: {
     eyebrow: (isCustom: boolean) => (isCustom ? "Category" : "Game"),
     empty: "No clips in this book yet",
     addClips: "Add clips",
     putBack: "Put it back on the shelf",
+    removeBook: "Remove book",
   },
   shelfBar: {
     allGames: "All games",

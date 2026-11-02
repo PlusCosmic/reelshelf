@@ -18,6 +18,7 @@ import type {
   AddGameFromIgdbRequest,
   GameCategoryResponse,
   GameSearchResult,
+  SetShelfOrderRequest,
 } from "../models/index";
 import {
   AddCustomCategoryRequestFromJSON,
@@ -28,6 +29,8 @@ import {
   GameCategoryResponseToJSON,
   GameSearchResultFromJSON,
   GameSearchResultToJSON,
+  SetShelfOrderRequestFromJSON,
+  SetShelfOrderRequestToJSON,
 } from "../models/index";
 
 export interface AddCustomCategoryOperationRequest {
@@ -48,6 +51,10 @@ export interface RemoveGameCategoryRequest {
 
 export interface SearchGamesRequest {
   query: string;
+}
+
+export interface SetShelfOrderOperationRequest {
+  setShelfOrderRequest: SetShelfOrderRequest;
 }
 
 /**
@@ -338,5 +345,51 @@ export class GameCategoryEndpointsApi extends runtime.BaseAPI {
       initOverrides,
     );
     return await response.value();
+  }
+
+  /**
+   */
+  async setShelfOrderRaw(
+    requestParameters: SetShelfOrderOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["setShelfOrderRequest"] == null) {
+      throw new runtime.RequiredError(
+        "setShelfOrderRequest",
+        'Required parameter "setShelfOrderRequest" was null or undefined when calling setShelfOrder().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/games/categories/order`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "PUT",
+        headers: headerParameters,
+        query: queryParameters,
+        body: SetShelfOrderRequestToJSON(
+          requestParameters["setShelfOrderRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async setShelfOrder(
+    requestParameters: SetShelfOrderOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.setShelfOrderRaw(requestParameters, initOverrides);
   }
 }

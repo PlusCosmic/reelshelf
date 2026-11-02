@@ -27,3 +27,13 @@ export async function addCustomCategory(
     addCustomCategoryRequest: { name, coverUrl: coverUrl ?? null },
   });
 }
+
+/** Puts the books on the caller's shelf in this order, left to right. */
+export async function setShelfOrder(categoryIds: string[]): Promise<void> {
+  return getApi().setShelfOrder({ setShelfOrderRequest: { categoryIds } });
+}
+
+/** Takes an empty book off the caller's shelf; a 409 means it holds clips. */
+export async function removeShelfBook(categoryId: string): Promise<void> {
+  return getApi().removeGameCategory({ categoryId });
+}

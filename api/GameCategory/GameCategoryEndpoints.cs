@@ -18,6 +18,7 @@ public static class GameCategoryEndpoints
             .RequireRateLimiting(RateLimitPolicies.Igdb);
         group.MapPost("/categories/custom", AddCustomCategory).WithName("AddCustomCategory");
         group.MapDelete("/categories/{categoryId:guid}", RemoveCategory).WithName("RemoveGameCategory");
+        group.MapPut("/categories/order", SetShelfOrder).WithName("SetShelfOrder");
     }
 
     private static async Task<Ok<List<GameCategoryResponse>>>
@@ -73,10 +74,30 @@ public static class GameCategoryEndpoints
         return TypedResults.Ok(category);
     }
 
-    private static async Task<Ok>
+    /// <summary>Takes an empty book off the shelf; 409 while it holds any of the caller's clips.</summary>
+    private static async Task<Results<NoContent, Conflict<string>>>
         RemoveCategory(GameCategoryService service, AuthenticatedUser user, Guid categoryId)
     {
-        await service.RemoveUserCategoryAsync(user.Id, categoryId);
-        return TypedResults.Ok();
+        var result = await service.RemoveUserCategoryAsync(user.Id, categoryId);
+        if (result == RemoveShelfBookResult.HasClips)
+            return TypedResults.Conflict("This book still has clips in it");
+
+        // A book that was never on the shelf is already off it.
+        return TypedResults.NoContent();
+    }
+
+    private const int MaxShelfBooks = 1000;
+
+    /// <summary>Arranges the caller's shelf: every id a book on it, once each.</summary>
+    private static async Task<Results<NoContent, BadRequest<string>>>
+        SetShelfOrder(GameCategoryService service, AuthenticatedUser user, SetShelfOrderRequest request)
+    {
+        if (request.CategoryIds is not { Count: > 0 and <= MaxShelfBooks })
+            return TypedResults.BadRequest("List the books on your shelf");
+
+        if (!await service.SetShelfOrderAsync(user.Id, request.CategoryIds))
+            return TypedResults.BadRequest("Every book must be on your shelf, once");
+
+        return TypedResults.NoContent();
     }
 }

@@ -54,3 +54,6 @@ public record GameDetails(
 public record AddGameFromIgdbRequest(long IgdbId);
 
 public record AddCustomCategoryRequest(string Name, string? CoverUrl);
+
+/// <summary>The owner's books, left to right as they should stand on the shelf.</summary>
+public record SetShelfOrderRequest(List<Guid> CategoryIds);
