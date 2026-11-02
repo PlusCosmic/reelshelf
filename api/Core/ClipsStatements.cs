@@ -186,37 +186,19 @@ public class ClipsStatements(NpgsqlConnection connection)
                     {ClipVideoColumns.ThumbnailsReadySql("c")}
                 FROM clip c
                 WHERE {where}
-            ),
-            tagged AS (
-                SELECT
-                    f.id,
-                    f.owner_id,
-                    f.video_id,
-                    f.game_category_id,
-                    f.md5_hash,
-                    f.created_at,
-                    f.title,
-                    f.length,
-                    f.thumbnail_file_name,
-                    f.date_uploaded,
-                    f.storage_size,
-                    f.video_state,
-                    f.video_host,
-                    f.video_version,
-                    f.video_codecs,
-                    f.video_height,
-                    f.encode_progress,
-                    f.thumbnails_ready,
-                    STRING_AGG(t.name, ',' ORDER BY t.name) as tag_names
-                FROM filtered f
-                LEFT JOIN clip_tag ct ON f.id = ct.clip_id
-                LEFT JOIN tag t ON ct.tag_id = t.id
-                GROUP BY f.id, f.owner_id, f.video_id, f.game_category_id, f.md5_hash, f.created_at, f.title, f.length, f.thumbnail_file_name, f.date_uploaded, f.storage_size, f.video_state, f.video_host, f.video_version, f.video_codecs, f.video_height, f.encode_progress, f.thumbnails_ready
+                ORDER BY {orderBy}
+                LIMIT @limit OFFSET @offset
             )
-            SELECT tagged.*, {PlayerLegendSql("tagged")} AS player_legend
-            FROM tagged
-            ORDER BY {orderBy}
-            LIMIT @limit OFFSET @offset;
+            -- The page is cut first, so tags and the legend are only worked out for the clips it shows.
+            SELECT
+                page.*,
+                (SELECT STRING_AGG(t.name, ',' ORDER BY t.name)
+                 FROM clip_tag ct
+                 INNER JOIN tag t ON ct.tag_id = t.id
+                 WHERE ct.clip_id = page.id) AS tag_names,
+                {PlayerLegendSql("page")} AS player_legend
+            FROM filtered page
+            ORDER BY {orderBy};
 
             SELECT COUNT(*)
             FROM clip c
