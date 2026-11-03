@@ -216,8 +216,11 @@ internal static class ReelshelfApiConfiguration
 
         if (!string.IsNullOrEmpty(connectionString))
         {
+            // Its own named pool, as before (the connection-string overload made an unnamed one), so Npgsql's pool
+            // metrics never carry the connection string.
+            NpgsqlDataSource healthCheckDataSource = ReelshelfDataSource.CreateHealthCheck(connectionString);
             healthChecksBuilder.AddNpgSql(
-                connectionString,
+                _ => healthCheckDataSource,
                 name: "database",
                 timeout: TimeSpan.FromSeconds(3),
                 tags: ["ready"]);
