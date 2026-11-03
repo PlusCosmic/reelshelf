@@ -1,10 +1,18 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Link,
+  useNavigate,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import type { CSSProperties, MouseEvent } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import {
+  IconArrowBackUp,
+  IconCheck,
   IconChevronLeft,
   IconChevronRight,
+  IconTrash,
   IconLayoutSidebarRight,
   IconRectangle,
   IconStack2,
@@ -19,12 +27,27 @@ import {
   useClipSession,
   useClipsInfinite,
 } from "@/hooks/clips.queries";
-import { useClip, useMarkAsViewed } from "@/hooks/queries";
+import { useClip, useCurrentUser, useMarkAsViewed } from "@/hooks/queries";
+import { useRestoreClips } from "@/hooks/bin.queries";
+import { binCopy } from "@/copy/bin";
 import { clipCopy } from "@/copy/clip";
 import { commonCopy } from "@/copy/common";
 import { ClipVideoStage } from "@/components/Video/ClipVideoStage";
 import { fetchPlaylistById } from "@/shared/services/playlists";
+import { binDaysLeft } from "./binModel";
+import { useBin } from "./BinToast";
 import { collectionClips } from "./collections-model";
+import {
+  librarySearchOf,
+  listFiltersFor,
+  type ClipListSearch,
+} from "./libraryList";
+import {
+  isShortcutKey,
+  readSortTally,
+  recordSort,
+  type SortTally,
+} from "./sortThrough";
 import type { ClipLinkSearch } from "./primitives/ClipViews";
 import {
   ClipGrid,
@@ -105,12 +128,17 @@ type PlayThrough = {
 function GameStrip({
   game,
   slug,
+  list,
+  onBack,
   playThrough,
   theatre,
   onToggleTheatre,
 }: {
   game: GameShelfItem | undefined;
   slug: string;
+  list: ClipListSearch;
+  /** Goes back to the list the clip was opened from, where it was; the link is the fallback. */
+  onBack: (event: MouseEvent) => void;
   playThrough: PlayThrough | null;
   theatre: boolean;
   onToggleTheatre: () => void;
@@ -134,8 +162,27 @@ function GameStrip({
             <span className="rs-display">{playThrough.playlist.name}</span>
           </span>
         </Link>
+      ) : list.from === "library" ? (
+        <Link
+          to="/"
+          search={librarySearchOf(list)}
+          className="rs-watch-back"
+          onClick={onBack}
+        >
+          <IconChevronLeft size={18} aria-hidden="true" />
+          <span>
+            <small>{clipCopy.strip.backTo}</small>
+            <span className="rs-display">{clipCopy.strip.theLibrary}</span>
+          </span>
+        </Link>
       ) : (
-        <Link to="/games/$slug" params={{ slug }} className="rs-watch-back">
+        <Link
+          to="/games/$slug"
+          params={{ slug }}
+          search={librarySearchOf(list)}
+          className="rs-watch-back"
+          onClick={onBack}
+        >
           <IconChevronLeft size={18} aria-hidden="true" />
           {game?.coverUrl ? <img src={game.coverUrl} alt="" /> : null}
           <span>
@@ -185,11 +232,17 @@ function NeighbourLink({
   clip,
   direction,
   inCollection,
+  list,
+  fromList,
 }: {
   clip: Clip | null | undefined;
   direction: "older" | "newer";
   /** Playing through a collection, the neighbours are the clips before and after in its order. */
   inCollection?: string;
+  /** The library list the clip was opened from, which stepping walks through. */
+  list?: ClipListSearch;
+  /** Stepping replaces this clip in the history, so back still returns to the list. */
+  fromList?: boolean;
 }) {
   const label = inCollection
     ? direction === "older"
@@ -209,7 +262,9 @@ function NeighbourLink({
     <Link
       to="/games/$slug/$clipId"
       params={{ slug: clip.categorySlug, clipId: clip.clipId }}
-      search={inCollection ? { collection: inCollection } : undefined}
+      search={inCollection ? { collection: inCollection } : list}
+      replace={fromList}
+      state={fromList ? { fromList: true } : undefined}
       className={`rs-watch-neighbour ${direction}`}
       aria-label={clipCopy.neighbour.label(label, clip.video.title)}
     >
@@ -361,6 +416,87 @@ function ClipFacts({
 }
 
 /**
+ * How long the bin keeps a clip, for the note on a binned clip's page. The bin page reads the API's own figure; this
+ * one only words the note, and `Bin:Retention` keeps to it unless changed.
+ */
+const BIN_RETENTION_DAYS = 30;
+
+/**
+ * Sorting through a list: keep (K) or bin (X) this clip and move on to the next, with a running tally. At the end of
+ * the list it says how it went and goes back.
+ */
+function SortBar({
+  tally,
+  done,
+  binning,
+  canBin,
+  onKeep,
+  onBin,
+  onStop,
+}: {
+  tally: SortTally;
+  done: boolean;
+  binning: boolean;
+  canBin: boolean;
+  onKeep: () => void;
+  onBin: () => void;
+  onStop: () => void;
+}) {
+  const copy = binCopy.sort;
+  if (done)
+    return (
+      <div className="rs-sort-bar done" role="status">
+        <span>
+          <strong className="rs-display">{copy.doneTitle}</strong>{" "}
+          {copy.doneBody(tally.kept, tally.binned)}
+        </span>
+        <span className="rs-sort-actions">
+          <Link to="/bin" className="rs-small-button">
+            <IconTrash size={13} aria-hidden="true" />
+            {binCopy.toast.openBin}
+          </Link>
+          <button type="button" className="rs-small-button" onClick={onStop}>
+            <IconChevronLeft size={13} aria-hidden="true" />
+            {copy.backToList}
+          </button>
+        </span>
+      </div>
+    );
+  return (
+    <div className="rs-sort-bar" role="group" aria-label={copy.label}>
+      <span className="rs-sort-tally">
+        <small className="rs-eyebrow">{copy.label}</small>
+        {copy.tally(tally.kept, tally.binned)}
+      </span>
+      <span className="rs-sort-actions">
+        <button
+          type="button"
+          className="rs-small-button rs-sort-keep"
+          onClick={onKeep}
+        >
+          <IconCheck size={13} aria-hidden="true" />
+          {copy.keep}
+          <kbd>{copy.keepKey}</kbd>
+        </button>
+        <button
+          type="button"
+          className="rs-small-button rs-small-button-danger rs-sort-bin"
+          onClick={onBin}
+          disabled={!canBin || binning}
+        >
+          <IconTrash size={13} aria-hidden="true" />
+          {copy.bin}
+          <kbd>{copy.binKey}</kbd>
+        </button>
+        <button type="button" className="rs-small-button" onClick={onStop}>
+          {copy.stop}
+        </button>
+      </span>
+    </div>
+  );
+}
+
+/**
  * One clip: the player, what it is, the rest of that night's session, and more from its game.
  * Theatre mode widens the player onto a stage in the game's cloth and moves everything else below.
  * Both layouts are the same elements rearranged by CSS, so switching never reloads the video.
@@ -369,14 +505,27 @@ export function ClipPlayerPage({
   slug,
   clipId,
   collectionId,
+  list = {},
 }: {
   slug: string;
   clipId: string;
   /** Set when the clip is being played as part of a collection, in the collection's order. */
   collectionId?: string;
+  /** The library list the clip was opened from: back returns to it, and stepping on walks through it. */
+  list?: ClipListSearch;
 }) {
   const { data: clip, isLoading, isError } = useClip(clipId);
   const navigate = useNavigate();
+  const router = useRouter();
+  const fromList = useRouterState({
+    select: (state) => !!state.location.state.fromList,
+  });
+  const { bin, pending: binning } = useBin();
+  const restore = useRestoreClips();
+  const currentUserId = useCurrentUser().data?.id;
+  const [tally, setTally] = useState<SortTally>(readSortTally);
+  // Sorting reached the end of the list.
+  const [sortDone, setSortDone] = useState(false);
   const { data: playlist } = useQuery({
     queryKey: ["playlists", collectionId],
     queryFn: () => fetchPlaylistById(collectionId!),
@@ -413,7 +562,102 @@ export function ClipPlayerPage({
       : undefined;
   const { data: sessionData } = useClipSession(clip);
   const session = useMemo(() => sessionData?.clips ?? [], [sessionData]);
-  const { data: neighbours } = useClipNeighbours(clip);
+  const neighboursQuery = useClipNeighbours(
+    clip,
+    collectionId ? undefined : listFiltersFor(list, clip?.gameCategoryId),
+  );
+  const neighbours = neighboursQuery.data;
+
+  /** Back to the list the clip was opened from: the history entry itself where it is the one before, so it opens where it was left. */
+  const backToList = () => {
+    if (fromList) {
+      router.history.back();
+      return;
+    }
+    const search = librarySearchOf(list);
+    void (list.from === "library"
+      ? navigate({ to: "/", search })
+      : navigate({
+          to: "/games/$slug",
+          params: { slug: clip?.categorySlug ?? slug },
+          search,
+        }));
+  };
+  const onBack = (event: MouseEvent) => {
+    if (!fromList || event.metaKey || event.ctrlKey || event.button !== 0)
+      return;
+    event.preventDefault();
+    router.history.back();
+  };
+
+  /** Moves on in the list (down it, to older clips; else up it), replacing this clip so back still returns to the list. */
+  const stepOn = async (current: Clip) => {
+    // A key pressed before this clip's neighbours arrived waits for them, rather than taking it for the list's end.
+    const around =
+      neighboursQuery.data ?? (await neighboursQuery.refetch()).data;
+    const target = around?.older ?? (list.sort ? null : around?.newer);
+    if (!target || target.clipId === current.clipId) {
+      if (list.sort) setSortDone(true);
+      else backToList();
+      return;
+    }
+    void navigate({
+      to: "/games/$slug/$clipId",
+      params: { slug: target.categorySlug, clipId: target.clipId },
+      search: list,
+      replace: true,
+      state: { fromList },
+    });
+  };
+
+  /** Bins this clip and moves on; the undo note brings it back, and brings this page back to it. */
+  const binAndStepOn = async (current: Clip) => {
+    if (binning || current.binnedAt) return;
+    try {
+      await bin(
+        { clipIds: [current.clipId] },
+        {
+          onUndone: () =>
+            void navigate({
+              to: "/games/$slug/$clipId",
+              params: { slug: current.categorySlug, clipId: current.clipId },
+              search: list,
+              replace: true,
+              state: { fromList },
+            }),
+        },
+      );
+    } catch {
+      return;
+    }
+    if (list.sort) setTally(recordSort("binned"));
+    if (collectionId) backToList();
+    else await stepOn(current);
+  };
+
+  const keep = (current: Clip) => {
+    setTally(recordSort("kept"));
+    void stepOn(current);
+  };
+
+  // X bins the clip and moves on; while sorting through, K keeps it and moves on.
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    if (!clip || !isShortcutKey(event) || sortDone) return;
+    const key = event.key.toLowerCase();
+    const owner = clip.ownerId === currentUserId;
+    if ((key === "x" || key === "delete") && owner && !clip.binnedAt) {
+      event.preventDefault();
+      void binAndStepOn(clip);
+    } else if (key === "k" && list.sort) {
+      event.preventDefault();
+      keep(clip);
+    }
+  });
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => onKey(event);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
   // The first page of the game's clips is plenty for "more from", and it shares its cache with the
   // game's own list.
   const { data: gameClips } = useClipsInfinite(
@@ -458,6 +702,8 @@ export function ClipPlayerPage({
       <GameStrip
         game={game}
         slug={clip.categorySlug}
+        list={list}
+        onBack={onBack}
         playThrough={playThrough}
         theatre={theatre}
         onToggleTheatre={toggleTheatre}
@@ -472,6 +718,8 @@ export function ClipPlayerPage({
             clip={previous}
             direction="older"
             inCollection={collectionSearch?.collection}
+            list={list}
+            fromList={fromList}
           />
           {/* The thumbnail sits behind the video so loading looks like the video arriving; the
               cloth gradient underneath covers a missing thumbnail. Until the video is ready, its
@@ -507,10 +755,45 @@ export function ClipPlayerPage({
             clip={next}
             direction="newer"
             inCollection={collectionSearch?.collection}
+            list={list}
+            fromList={fromList}
           />
         </section>
 
         <section className="rs-watch-details" ref={trackDetailsHeight}>
+          {clip.binnedAt ? (
+            <div className="rs-watch-binned" role="status">
+              <IconTrash size={16} aria-hidden="true" />
+              <span>
+                <strong>{clipCopy.binned.title}</strong>{" "}
+                {clipCopy.binned.body(
+                  binDaysLeft(new Date(clip.binnedAt), BIN_RETENTION_DAYS),
+                )}
+              </span>
+              <button
+                type="button"
+                className="rs-small-button"
+                onClick={() => restore.mutate([clip.clipId])}
+                disabled={restore.isPending}
+              >
+                <IconArrowBackUp size={13} aria-hidden="true" />
+                {restore.isPending
+                  ? clipCopy.binned.restoring
+                  : clipCopy.binned.restore}
+              </button>
+            </div>
+          ) : null}
+          {list.sort && !playThrough ? (
+            <SortBar
+              tally={tally}
+              done={sortDone}
+              binning={binning}
+              canBin={clip.ownerId === currentUserId && !clip.binnedAt}
+              onKeep={() => keep(clip)}
+              onBin={() => void binAndStepOn(clip)}
+              onStop={backToList}
+            />
+          ) : null}
           <h1 className="rs-display rs-watch-title">{clip.video.title}</h1>
           <div className="rs-watch-meta">
             {clip.legend ? (
@@ -542,7 +825,11 @@ export function ClipPlayerPage({
             </div>
           ) : null}
           <div className="rs-player-actions">
-            <PlayerActions clip={clip} />
+            <PlayerActions
+              clip={clip}
+              onBin={() => void binAndStepOn(clip)}
+              binning={binning}
+            />
           </div>
         </section>
 

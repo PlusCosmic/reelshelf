@@ -1,0 +1,202 @@
+import { Link } from "@tanstack/react-router";
+import { IconArrowBackUp, IconTrash, IconX } from "@tabler/icons-react";
+import type { ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { binCopy } from "@/copy/bin";
+import { useBinClips, useRestoreClips } from "@/hooks/bin.queries";
+import type { BinTarget } from "@/shared/services/bin";
+
+const copy = binCopy.toast;
+/** How long the undo note stays, unless it is being pointed at or has focus. */
+const NOTICE_MS = 10_000;
+
+type Notice =
+  | {
+      kind: "binned";
+      clipIds: string[];
+      /** Runs after an undo puts the clips back, such as returning to the clip that was binned. */
+      onUndone?: (clipIds: string[]) => void;
+    }
+  | { kind: "restored"; count: number }
+  | { kind: "error"; message: string };
+
+type BinOptions = { onUndone?: (clipIds: string[]) => void };
+
+type BinActions = {
+  /** Moves clips to the bin and offers to undo it; resolves with the clips moved. */
+  bin: (target: BinTarget, options?: BinOptions) => Promise<string[]>;
+  /** Says clips were put back, after the bin page restores some. */
+  announceRestored: (count: number) => void;
+  pending: boolean;
+};
+
+const BinContext = createContext<BinActions | null>(null);
+
+export function useBin(): BinActions {
+  const actions = useContext(BinContext);
+  if (!actions) throw new Error("useBin needs a BinProvider");
+  return actions;
+}
+
+function isTyping(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+  );
+}
+
+/**
+ * Deleting clips puts them in the bin, and this note, at the foot of every signed-in page, offers to undo it for a
+ * few seconds (Ctrl+Z or ⌘Z does the same). It outlives the page the clips were binned from, so binning a clip and
+ * moving on to the next can still be undone.
+ */
+export function BinProvider({ children }: { children: ReactNode }) {
+  const binClips = useBinClips();
+  const restoreClips = useRestoreClips();
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [held, setHeld] = useState(false);
+  const noticeId = useRef(0);
+  const [shownId, setShownId] = useState(0);
+
+  const show = useCallback((next: Notice) => {
+    noticeId.current += 1;
+    setShownId(noticeId.current);
+    setNotice(next);
+  }, []);
+
+  const bin = useCallback(
+    async (target: BinTarget, options?: BinOptions) => {
+      try {
+        const result = await binClips.mutateAsync(target);
+        if (result.clipIds.length > 0)
+          show({
+            kind: "binned",
+            clipIds: result.clipIds,
+            onUndone: options?.onUndone,
+          });
+        return result.clipIds;
+      } catch (error) {
+        show({ kind: "error", message: copy.binFailed });
+        throw error;
+      }
+    },
+    [binClips, show],
+  );
+
+  const announceRestored = useCallback(
+    (count: number) => show({ kind: "restored", count }),
+    [show],
+  );
+
+  const undo = useEffectEvent(async () => {
+    if (notice?.kind !== "binned" || restoreClips.isPending) return;
+    try {
+      const result = await restoreClips.mutateAsync(notice.clipIds);
+      notice.onUndone?.(result.clipIds);
+      show({ kind: "restored", count: result.clipIds.length });
+    } catch {
+      show({ kind: "error", message: copy.undoFailed });
+    }
+  });
+
+  // The note goes after a while, but never from under a pointer or keyboard focus.
+  useEffect(() => {
+    if (!notice || held) return;
+    const timer = window.setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [notice, held, shownId]);
+
+  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if (notice?.kind !== "binned" || isTyping(event.target)) return;
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      !event.shiftKey &&
+      event.key.toLowerCase() === "z"
+    ) {
+      event.preventDefault();
+      void undo();
+    }
+  });
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => onKeyDown(event);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
+
+  const actions = useMemo(
+    () => ({ bin, announceRestored, pending: binClips.isPending }),
+    [bin, announceRestored, binClips.isPending],
+  );
+
+  return (
+    <BinContext.Provider value={actions}>
+      {children}
+      <div
+        className="rs-bin-toast-layer"
+        role="status"
+        aria-live="polite"
+        onPointerEnter={() => setHeld(true)}
+        onPointerLeave={() => setHeld(false)}
+        onFocus={() => setHeld(true)}
+        onBlur={() => setHeld(false)}
+      >
+        {notice ? (
+          <div
+            key={shownId}
+            className={`rs-bin-toast${notice.kind === "error" ? " error" : ""}`}
+          >
+            {notice.kind === "binned" ? (
+              <IconTrash size={16} aria-hidden="true" />
+            ) : null}
+            <span className="rs-bin-toast-message">
+              {notice.kind === "binned"
+                ? copy.binned(notice.clipIds.length)
+                : notice.kind === "restored"
+                  ? copy.restored(notice.count)
+                  : notice.message}
+            </span>
+            {notice.kind === "binned" ? (
+              <>
+                <button
+                  type="button"
+                  className="rs-bin-toast-action"
+                  onClick={() => void undo()}
+                  disabled={restoreClips.isPending}
+                >
+                  <IconArrowBackUp size={15} aria-hidden="true" />
+                  {restoreClips.isPending ? copy.undoing : copy.undo}
+                  <kbd>{copy.undoHint}</kbd>
+                </button>
+                <Link
+                  to="/bin"
+                  className="rs-bin-toast-link"
+                  onClick={() => setNotice(null)}
+                >
+                  {copy.openBin}
+                </Link>
+              </>
+            ) : null}
+            <button
+              type="button"
+              className="rs-icon-button rs-bin-toast-close"
+              aria-label={copy.dismiss}
+              onClick={() => setNotice(null)}
+            >
+              <IconX size={14} />
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </BinContext.Provider>
+  );
+}

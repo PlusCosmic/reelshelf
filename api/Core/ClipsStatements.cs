@@ -90,7 +90,168 @@ public class ClipsStatements(NpgsqlConnection connection)
         Guid? viewedByUserId = null,
         int limit = 50,
         int offset = 0,
-        string? legend = null)
+        string? legend = null,
+        bool binned = false)
+    {
+        (StringBuilder where, DynamicParameters parameters) = ClipFilter(ownerId, gameCategoryId, tags, search,
+            startDate, endDate, unviewedOnly, viewedByUserId, legend, binned);
+        parameters.Add("limit", limit);
+        parameters.Add("offset", offset);
+
+        // The bin lists what went in last first; everything else is in date order.
+        string orderBy = binned
+            ? "binned_at DESC, id DESC"
+            : sortOrder == ClipSortOrder.DateAscending
+                ? "created_at ASC, id ASC"
+                : "created_at DESC, id DESC";
+
+        string sql = $"""
+            WITH filtered AS (
+                SELECT
+                    c.id,
+                    c.owner_id,
+                    c.video_id,
+                    c.game_category_id,
+                    c.md5_hash,
+                    c.created_at,
+                    c.title,
+                    c.length,
+                    c.thumbnail_file_name,
+                    c.date_uploaded,
+                    c.storage_size,
+                    c.video_state,
+                    c.video_host,
+                    c.video_version,
+                    c.video_codecs,
+                    c.video_height,
+                    c.encode_progress,
+                    c.binned_at,
+                    {ClipVideoColumns.ThumbnailsReadySql("c")}
+                FROM clip c
+                WHERE {where}
+                ORDER BY {orderBy}
+                LIMIT @limit OFFSET @offset
+            )
+            -- The page is cut first, so tags and the legend are only worked out for the clips it shows.
+            SELECT
+                page.*,
+                (SELECT STRING_AGG(t.name, ',' ORDER BY t.name)
+                 FROM clip_tag ct
+                 INNER JOIN tag t ON ct.tag_id = t.id
+                 WHERE ct.clip_id = page.id) AS tag_names,
+                {PlayerLegendSql("page")} AS player_legend
+            FROM filtered page
+            ORDER BY {orderBy};
+
+            SELECT COUNT(*)
+            FROM clip c
+            WHERE {where};
+            """;
+
+        using SqlMapper.GridReader results = await connection.QueryMultipleAsync(sql, parameters);
+        List<ClipWithTagsRow> rows = (await results.ReadAsync<ClipWithTagsRow>()).ToList();
+        int totalCount = await results.ReadSingleAsync<int>();
+        return new PagedClipWithTagsRows(rows, totalCount);
+    }
+
+    /// <summary>
+    /// Puts the owner's clips matching a filter (as <see cref="GetClipsWithTags"/> reads it) in the bin, every match
+    /// rather than a page of them, and returns the ones it binned. Clips already in the bin are left as they are.
+    /// </summary>
+    public async Task<List<Guid>> BinMatchingClips(
+        Guid ownerId,
+        Guid? gameCategoryId,
+        List<string>? tags,
+        string? search,
+        string? legend,
+        bool unviewedOnly)
+    {
+        (StringBuilder where, DynamicParameters parameters) = ClipFilter(ownerId, gameCategoryId, tags, search,
+            null, null, unviewedOnly, ownerId, legend, binned: false);
+        string sql = $"""
+            UPDATE clip c SET binned_at = now()
+            WHERE {where}
+            RETURNING c.id
+            """;
+        return (await connection.QueryAsync<Guid>(sql, parameters)).ToList();
+    }
+
+    /// <summary>Puts the owner's clips with these ids in the bin and returns the ones it binned.</summary>
+    public async Task<List<Guid>> BinClips(Guid ownerId, IReadOnlyCollection<Guid> clipIds)
+    {
+        const string sql = """
+            UPDATE clip SET binned_at = now()
+            WHERE owner_id = @ownerId AND id = ANY(@clipIds) AND binned_at IS NULL
+            RETURNING id
+            """;
+        return (await connection.QueryAsync<Guid>(sql, new { ownerId, clipIds = clipIds.ToArray() })).ToList();
+    }
+
+    /// <summary>Takes the owner's clips with these ids out of the bin and returns the ones it restored.</summary>
+    public async Task<List<Guid>> RestoreClips(Guid ownerId, IReadOnlyCollection<Guid> clipIds)
+    {
+        const string sql = """
+            UPDATE clip SET binned_at = NULL
+            WHERE owner_id = @ownerId AND id = ANY(@clipIds) AND binned_at IS NOT NULL
+            RETURNING id
+            """;
+        return (await connection.QueryAsync<Guid>(sql, new { ownerId, clipIds = clipIds.ToArray() })).ToList();
+    }
+
+    /// <summary>The owner's binned clips with these ids, or every one when <paramref name="clipIds"/> is null, oldest first.</summary>
+    public async Task<List<Guid>> GetBinnedClipIds(Guid ownerId, IReadOnlyCollection<Guid>? clipIds, int limit)
+    {
+        const string sql = """
+            SELECT id FROM clip
+            WHERE owner_id = @ownerId AND binned_at IS NOT NULL
+              AND (@clipIds::uuid[] IS NULL OR id = ANY(@clipIds))
+            ORDER BY binned_at, id
+            LIMIT @limit
+            """;
+        return (await connection.QueryAsync<Guid>(sql,
+            new { ownerId, clipIds = clipIds?.ToArray(), limit })).ToList();
+    }
+
+    public async Task<int> CountBinnedClips(Guid ownerId)
+    {
+        const string sql = "SELECT COUNT(*)::int FROM clip WHERE owner_id = @ownerId AND binned_at IS NOT NULL";
+        return await connection.QuerySingleAsync<int>(sql, new { ownerId });
+    }
+
+    /// <summary>
+    /// Clips that have been in the bin since before <paramref name="binnedBefore"/>, oldest first, but for
+    /// <paramref name="skip"/>.
+    /// </summary>
+    public async Task<List<BinnedClipRow>> GetClipsDueFromBin(DateTimeOffset binnedBefore, int limit,
+        IReadOnlyCollection<Guid> skip)
+    {
+        const string sql = """
+            SELECT id, owner_id FROM clip
+            WHERE binned_at IS NOT NULL AND binned_at < @binnedBefore AND NOT (id = ANY(@skip))
+            ORDER BY binned_at, id
+            LIMIT @limit
+            """;
+        return (await connection.QueryAsync<BinnedClipRow>(sql,
+            new { binnedBefore, limit, skip = skip.ToArray() })).ToList();
+    }
+
+    public sealed record BinnedClipRow(Guid Id, Guid OwnerId);
+
+    /// <summary>
+    /// The WHERE clause and its parameters for a filtered list of the owner's clips: in the bin when
+    /// <paramref name="binned"/>, else out of it, which is every list but the bin's.
+    /// </summary>
+    private static (StringBuilder Where, DynamicParameters Parameters) ClipFilter(
+        Guid ownerId,
+        Guid? gameCategoryId,
+        List<string>? tags,
+        string? search,
+        DateTimeOffset? startDate,
+        DateTimeOffset? endDate,
+        bool unviewedOnly,
+        Guid? viewedByUserId,
+        string? legend,
+        bool binned)
     {
         DynamicParameters parameters = new();
         parameters.Add("ownerId", ownerId);
@@ -99,11 +260,10 @@ public class ClipsStatements(NpgsqlConnection connection)
         parameters.Add("startDate", startDate);
         parameters.Add("endDate", endDate);
         parameters.Add("viewedByUserId", viewedByUserId);
-        parameters.Add("limit", limit);
-        parameters.Add("offset", offset);
 
-        StringBuilder where = new("""
+        StringBuilder where = new($"""
             c.owner_id = @ownerId
+            AND c.binned_at IS {(binned ? "NOT NULL" : "NULL")}
             AND (@gameCategoryId::uuid IS NULL OR c.game_category_id = @gameCategoryId)
             AND (@search::text IS NULL OR c.title ILIKE @search ESCAPE '\' OR EXISTS (
                 SELECT 1
@@ -159,56 +319,7 @@ public class ClipsStatements(NpgsqlConnection connection)
             """);
         }
 
-        string orderBy = sortOrder == ClipSortOrder.DateAscending
-            ? "created_at ASC, id ASC"
-            : "created_at DESC, id DESC";
-
-        string sql = $"""
-            WITH filtered AS (
-                SELECT
-                    c.id,
-                    c.owner_id,
-                    c.video_id,
-                    c.game_category_id,
-                    c.md5_hash,
-                    c.created_at,
-                    c.title,
-                    c.length,
-                    c.thumbnail_file_name,
-                    c.date_uploaded,
-                    c.storage_size,
-                    c.video_state,
-                    c.video_host,
-                    c.video_version,
-                    c.video_codecs,
-                    c.video_height,
-                    c.encode_progress,
-                    {ClipVideoColumns.ThumbnailsReadySql("c")}
-                FROM clip c
-                WHERE {where}
-                ORDER BY {orderBy}
-                LIMIT @limit OFFSET @offset
-            )
-            -- The page is cut first, so tags and the legend are only worked out for the clips it shows.
-            SELECT
-                page.*,
-                (SELECT STRING_AGG(t.name, ',' ORDER BY t.name)
-                 FROM clip_tag ct
-                 INNER JOIN tag t ON ct.tag_id = t.id
-                 WHERE ct.clip_id = page.id) AS tag_names,
-                {PlayerLegendSql("page")} AS player_legend
-            FROM filtered page
-            ORDER BY {orderBy};
-
-            SELECT COUNT(*)
-            FROM clip c
-            WHERE {where};
-            """;
-
-        using SqlMapper.GridReader results = await connection.QueryMultipleAsync(sql, parameters);
-        List<ClipWithTagsRow> rows = (await results.ReadAsync<ClipWithTagsRow>()).ToList();
-        int totalCount = await results.ReadSingleAsync<int>();
-        return new PagedClipWithTagsRows(rows, totalCount);
+        return (where, parameters);
     }
 
     public async Task<HashSet<Guid>> GetViewedClipIds(Guid userId, List<Guid> clipIds)
@@ -394,7 +505,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 COALESCE(SUM({StorageBytesExpression}), 0) AS storage_bytes
             FROM clip c
             LEFT JOIN clip_view cv ON cv.clip_id = c.id AND cv.user_id = @ownerId
-            WHERE c.owner_id = @ownerId
+            WHERE c.owner_id = @ownerId AND c.binned_at IS NULL
             GROUP BY c.game_category_id
             """;
 
@@ -487,12 +598,13 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.encode_progress,
                 {ClipVideoColumns.ThumbnailsReadySql("c")},
                 {PlayerLegendSql("c")} AS player_legend,
+                c.binned_at,
                 STRING_AGG(t.name, ',') as tag_names
             FROM clip c
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
             LEFT JOIN tag t ON ct.tag_id = t.id
             WHERE c.id = @clipId
-            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress
+            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress, c.binned_at
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ClipWithTagsRow>(sql, new { clipId });
@@ -577,7 +689,7 @@ public class ClipsStatements(NpgsqlConnection connection)
                 SELECT {PlayerLegendSql("c")} AS legend
                 FROM clip c
                 JOIN game_category apex ON apex.id = c.game_category_id AND apex.slug = 'apex-legends'
-                WHERE c.owner_id = @ownerId
+                WHERE c.owner_id = @ownerId AND c.binned_at IS NULL
             ) legends
             WHERE legend IS NOT NULL
             GROUP BY legend
@@ -595,7 +707,7 @@ public class ClipsStatements(NpgsqlConnection connection)
             FROM tag t
             JOIN clip_tag ct ON ct.tag_id = t.id
             JOIN clip c ON c.id = ct.clip_id
-            WHERE c.owner_id = @ownerId
+            WHERE c.owner_id = @ownerId AND c.binned_at IS NULL
               AND (@gameCategoryId::uuid IS NULL OR c.game_category_id = @gameCategoryId)
             GROUP BY t.name
             ORDER BY count DESC, t.name ASC
@@ -648,7 +760,9 @@ public class ClipsStatements(NpgsqlConnection connection)
                 SELECT 1
                 FROM playlist_clips pc
                 JOIN playlists p ON p.id = pc.playlist_id
-                WHERE pc.clip_id = @clipId
+                JOIN clip c ON c.id = pc.clip_id
+                -- A binned clip is out of its collections; only its owner can still open it.
+                WHERE pc.clip_id = @clipId AND c.binned_at IS NULL
                   AND (p.creator_user_id = @userId
                        OR EXISTS (SELECT 1 FROM playlist_collaborators col
                                   WHERE col.playlist_id = p.id AND col.user_id = @userId))
@@ -706,6 +820,8 @@ public class ClipsStatements(NpgsqlConnection connection)
             INNER JOIN clip c ON c.id = cs.clip_id
             INNER JOIN game_category gc ON gc.id = c.game_category_id
             WHERE cs.token = @token AND cs.revoked_at IS NULL
+              -- A binned clip's link works again if it is restored.
+              AND c.binned_at IS NULL
               AND {ContentReportStatements.ShareableSql("c")}
             LIMIT 1
             """;
@@ -744,12 +860,13 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.bunny_video_id,
                 {ClipVideoColumns.ThumbnailsReadySql("c")},
                 {PlayerLegendSql("c")} AS player_legend,
+                c.binned_at,
                 STRING_AGG(t.name, ',') as tag_names
             FROM clip c
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
             LEFT JOIN tag t ON ct.tag_id = t.id
             WHERE c.id = @clipId AND c.owner_id = @ownerId
-            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress, c.bunny_video_id
+            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress, c.bunny_video_id, c.binned_at
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ClipWithTagsRow>(sql, new { clipId, ownerId });
@@ -1172,6 +1289,9 @@ public class ClipsStatements(NpgsqlConnection connection)
 
         /// <summary>The owner's legend in an Apex Legends clip (<see cref="PlayerLegendSql"/>); null otherwise.</summary>
         public string? PlayerLegend { get; set; }
+
+        /// <summary>When the owner put the clip in the bin; null while it is in their library.</summary>
+        public DateTimeOffset? BinnedAt { get; set; }
 
         /// <summary>
         /// A migrated clip's Bunny copy waiting out its grace period, so deleting the clip deletes it too. Only

@@ -40,4 +40,16 @@ public class OverLimitTests
         Assert.Empty(OverLimit.Split(clips, 2).Over);
         Assert.Empty(OverLimit.Split(clips, null).Over);
     }
+
+    [Fact]
+    public void BinnedClipsGoFirst_EvenPickedOrNewest()
+    {
+        OwnedClip old = Clip(1), binnedNewest = Clip(9) with { BinnedAt = Day.AddDays(10) },
+            binnedPicked = Clip(8, pickedDay: 12) with { BinnedAt = Day.AddDays(13) };
+
+        (List<OwnedClip> kept, List<OwnedClip> over) = OverLimit.Split([binnedNewest, binnedPicked, old], 1);
+
+        Assert.Equal([old], kept);
+        Assert.Equal([binnedPicked, binnedNewest], over);
+    }
 }

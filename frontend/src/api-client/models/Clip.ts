@@ -106,6 +106,12 @@ export interface Clip {
    * @memberof Clip
    */
   legend: string | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Clip
+   */
+  binnedAt?: Date | null;
 }
 
 /**
@@ -154,6 +160,8 @@ export function ClipFromJSONTyped(
     share: ClipShareSummaryFromJSON(json["share"]),
     gameMetadata: json["game_metadata"],
     legend: json["legend"],
+    binnedAt:
+      json["binned_at"] == null ? undefined : new Date(json["binned_at"]),
   };
 }
 
@@ -182,5 +190,9 @@ export function ClipToJSONTyped(
     share: ClipShareSummaryToJSON(value["share"]),
     game_metadata: value["gameMetadata"],
     legend: value["legend"],
+    binned_at:
+      value["binnedAt"] == null
+        ? value["binnedAt"]
+        : value["binnedAt"].toISOString(),
   };
 }

@@ -166,8 +166,8 @@ export function PrivacyText() {
         in a Discord watch room when you play a clip there. Watch rooms aren't
         saved; they end when everyone leaves. Treat clips as unlisted rather
         than private: anyone given the address of a clip's video can watch it. A
-        share link keeps working until you delete the clip, or until we take the
-        clip down after a report.
+        share link keeps working until you delete the clip (it stops while the
+        clip is in your bin), or until we take the clip down after a report.
       </p>
 
       <h2>How long we keep it</h2>
@@ -176,13 +176,15 @@ export function PrivacyText() {
         you upload is deleted once it's been converted for streaming, and only
         the converted video is kept. When we move a clip from one storage
         provider to another, the old copy is deleted within 7 days. Deleting a
-        clip removes its video, and any older copy, from storage and deletes its
-        tags, detections and transcripts. Unlinking a sign-in method deletes its
-        stored tokens. You can delete your whole account in Settings: it stops
-        working straight away, and its clips are removed from storage and the
-        rest of its data deleted shortly after. Any paid plan is cancelled
-        first, though Stripe keeps its records of past payments for as long as
-        the law requires. Collections you made go with it, including for their
+        clip moves it to your bin, where only you can see it and can put it
+        back, for 30 days, or until you empty the bin sooner. Then its video,
+        and any older copy, is removed from storage and its tags, detections and
+        transcripts are deleted. Unlinking a sign-in method deletes its stored
+        tokens. You can delete your whole account in Settings: it stops working
+        straight away, and its clips are removed from storage and the rest of
+        its data deleted shortly after. Any paid plan is cancelled first, though
+        Stripe keeps its records of past payments for as long as the law
+        requires. Collections you made go with it, including for their
         collaborators. If your account has more clips than its plan keeps, for
         example after a paid plan ends, the clips over the limit are deleted 14
         days later, and a download of them is kept for 28 days after that, then

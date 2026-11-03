@@ -9,7 +9,7 @@ import { legalGoverningLaw, legalOperator } from "./legal";
  */
 export const termsCopy = {
   title: "Terms of service",
-  updated: "29 October 2026",
+  updated: "3 November 2026",
 } as const;
 
 export function TermsText() {
@@ -38,7 +38,8 @@ export function TermsText() {
         run automated analysis, such as recognising the Apex Legends character
         on screen or transcribing speech for search. The{" "}
         <Link to="/privacy">privacy policy</Link> explains how that works. This
-        permission ends when you delete the clip.
+        permission ends when the clip is permanently deleted: a deleted clip
+        waits in your bin for 30 days first, unless you empty it sooner.
       </p>
       <p>
         Share links and shared collections let anyone with the link watch those

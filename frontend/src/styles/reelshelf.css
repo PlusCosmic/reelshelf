@@ -9296,3 +9296,413 @@ html:has(.rs-library-route) {
     grid-template-columns: 1fr;
   }
 }
+
+/*
+ * The bin (V55): choosing clips in the library list, the bar that bins them, the undo note, sorting through a list
+ * and the bin's own page.
+ */
+.rs-list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rs-small-button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.rs-small-button kbd,
+.rs-bin-toast kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg-soft);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* A choosable row: its check sits over the thumbnail, shown on hover or focus, and always while choosing. */
+.rs-row-select {
+  position: relative;
+}
+
+.rs-row-select:has(+ .rs-month) .rs-row {
+  border-bottom: 0;
+}
+
+.rs-row-check {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1.5px solid color-mix(in oklab, var(--fg) 55%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+  color: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.rs-row-select > .rs-row-check {
+  position: absolute;
+  top: 22px;
+  left: 8px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.rs-row-select:hover > .rs-row-check,
+.rs-row-select:focus-within > .rs-row-check,
+.rs-row-select.choosing > .rs-row-check {
+  opacity: 1;
+}
+
+.rs-row-check[aria-checked="true"],
+.rs-month-check.chosen {
+  border-color: var(--fill);
+  background: var(--fill);
+  color: var(--fill-ink);
+}
+
+.rs-month-check.partly {
+  border-color: var(--fill);
+  color: var(--fill);
+}
+
+.rs-row-check:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rs-row-select.chosen .rs-row {
+  background: color-mix(in oklab, var(--accent) 9%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* While choosing, a click chooses: the title no longer looks like a link. */
+.rs-row-select.choosing .rs-row:hover .rs-row-title {
+  text-decoration: none;
+}
+
+.rs-month .rs-month-check {
+  align-self: center;
+  width: 20px;
+  height: 20px;
+}
+
+/* The bar that bins the chosen clips; it rides the foot of the screen while the list is in view. */
+.rs-selection-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  margin: 0 32px 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 14px 34px -14px
+    color-mix(in oklab, var(--shadow) 60%, transparent);
+}
+
+.rs-selection-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.rs-selection-all {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rs-selection-hint {
+  flex: 1;
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 12px;
+}
+
+.rs-selection-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.rs-selection-bin:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
+
+/* The undo note after a delete, at the foot of every signed-in page. */
+.rs-bin-toast-layer {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: 45;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+}
+
+.rs-bin-toast {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 10px 10px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 14px;
+  box-shadow: 0 18px 40px -12px
+    color-mix(in oklab, var(--shadow) 65%, transparent);
+  animation: rs-bin-toast-in 160ms ease-out;
+}
+
+.rs-bin-toast.error {
+  background: var(--danger);
+  color: #fff;
+}
+
+.rs-bin-toast-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in oklab, var(--bg) 40%, transparent);
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rs-bin-toast kbd {
+  border-color: color-mix(in oklab, var(--bg) 40%, transparent);
+  background: transparent;
+  color: inherit;
+}
+
+.rs-bin-toast-link {
+  color: inherit;
+  font-size: 13px;
+  text-underline-offset: 3px;
+}
+
+.rs-bin-toast-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+@keyframes rs-bin-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-bin-toast {
+    animation: none;
+  }
+}
+
+/* On a binned clip's page, above its title. */
+.rs-watch-binned,
+.rs-sort-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.rs-watch-binned {
+  border-color: color-mix(in oklab, var(--danger) 45%, var(--line));
+  background: color-mix(in oklab, var(--danger) 8%, var(--surface));
+}
+
+.rs-watch-binned > span {
+  flex: 1;
+  min-width: 200px;
+}
+
+.rs-sort-bar {
+  justify-content: space-between;
+  border-color: color-mix(
+    in oklab,
+    var(--cloth, var(--accent)) 55%,
+    var(--line)
+  );
+}
+
+.rs-sort-tally {
+  display: grid;
+  gap: 2px;
+}
+
+.rs-sort-tally .rs-eyebrow {
+  margin: 0;
+}
+
+.rs-sort-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rs-sort-keep {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.rs-sort-bar.done .rs-display {
+  font-size: 16px;
+}
+
+/* The bin's own page. */
+.rs-bin-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 18px;
+  color: var(--fg-soft);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.rs-bin-back:hover {
+  color: var(--fg);
+}
+
+.rs-bin-intro {
+  max-width: 60ch;
+  margin: 10px 0 0;
+  color: var(--fg-soft);
+}
+
+.rs-bin-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.rs-bin-count {
+  font-weight: 600;
+}
+
+.rs-bin-rows {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-bin-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rs-bin-row.chosen {
+  background: color-mix(in oklab, var(--accent) 9%, transparent);
+}
+
+.rs-bin-row-clip {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.rs-bin-row-clip:hover .rs-row-title {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.rs-bin-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rs-bin-page .rs-selection-bar {
+  margin: 0 32px 16px;
+}
+
+/* The keys only help with a keyboard: not on a phone, or wherever there's no pointer to hover with. */
+@media (hover: none) {
+  .rs-selection-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .rs-selection-bar {
+    margin: 0 12px 12px;
+  }
+
+  .rs-selection-hint {
+    display: none;
+  }
+
+  .rs-row-select > .rs-row-check {
+    top: 18px;
+    left: 6px;
+  }
+
+  .rs-bin-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .rs-bin-row-clip {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+
+  .rs-bin-row-left,
+  .rs-bin-row-actions {
+    grid-column: 2;
+  }
+}

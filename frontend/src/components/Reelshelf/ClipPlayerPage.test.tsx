@@ -8,14 +8,32 @@ import { ClipPlayerPage } from "./ClipPlayerPage";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  back: vi.fn(),
   markViewed: vi.fn(),
+  bin: vi.fn(async (target: { clipIds: string[] }) => target.clipIds),
   clips: new Map<string, unknown>(),
   playlist: null as unknown,
+  neighbours: undefined as unknown,
+  fromList: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
   useNavigate: () => mocks.navigate,
+  useRouter: () => ({ history: { back: mocks.back } }),
+  useRouterState: ({
+    select,
+  }: {
+    select: (state: { location: { state: object } }) => unknown;
+  }) => select({ location: { state: { fromList: mocks.fromList } } }),
+}));
+
+vi.mock("./BinToast", () => ({
+  useBin: () => ({ bin: mocks.bin, pending: false }),
+}));
+
+vi.mock("@/hooks/bin.queries", () => ({
+  useRestoreClips: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock("@/hooks/queries", () => ({
@@ -25,10 +43,14 @@ vi.mock("@/hooks/queries", () => ({
     isError: false,
   }),
   useMarkAsViewed: () => ({ mutate: mocks.markViewed, isPending: false }),
+  useCurrentUser: () => ({ data: { id: "owner" } }),
 }));
 
 vi.mock("@/hooks/clips.queries", () => ({
-  useClipNeighbours: () => ({ data: undefined }),
+  useClipNeighbours: () => ({
+    data: mocks.neighbours,
+    refetch: async () => ({ data: mocks.neighbours }),
+  }),
   useClipSession: () => ({ data: undefined }),
   useClipsInfinite: () => ({ data: undefined }),
 }));
@@ -57,6 +79,7 @@ vi.mock("@/shared/utils/videoStream", () => ({
 function clip(clipId: string, isViewed = false): Clip {
   return {
     clipId,
+    ownerId: "owner",
     categorySlug: "apex-legends",
     gameCategoryId: "game",
     createdAt: new Date("2026-10-01T20:00:00Z"),
@@ -93,7 +116,11 @@ function collection(...clips: Clip[]): PlaylistWithDetails {
   } as unknown as PlaylistWithDetails;
 }
 
-function renderPage(clipId: string, collectionId?: string) {
+function renderPage(
+  clipId: string,
+  collectionId?: string,
+  list?: Record<string, unknown>,
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -103,6 +130,7 @@ function renderPage(clipId: string, collectionId?: string) {
         slug="apex-legends"
         clipId={clipId}
         collectionId={collectionId}
+        list={list}
       />
     </QueryClientProvider>,
   );
@@ -130,6 +158,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  mocks.neighbours = undefined;
+  mocks.fromList = false;
   cleanup();
   vi.clearAllMocks();
   vi.unstubAllGlobals();
@@ -252,5 +282,66 @@ describe("ClipPlayerPage", () => {
     view.rerender(page());
     expect(view.container.querySelector("video")).not.toBeNull();
     expect(view.queryByRole("status")).toBeNull();
+  });
+
+  it("bins the clip with X and moves on down its list, keeping back for the list", async () => {
+    mocks.fromList = true;
+    mocks.neighbours = { older: mocks.clips.get("b"), newer: null };
+    renderPage("a", undefined, { tag: "whiff" });
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "x" }));
+    await vi.waitFor(() => expect(mocks.navigate).toHaveBeenCalled());
+
+    expect(mocks.bin).toHaveBeenCalledWith(
+      { clipIds: ["a"] },
+      expect.objectContaining({ onUndone: expect.any(Function) }),
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/games/$slug/$clipId",
+      params: { slug: "apex-legends", clipId: "b" },
+      search: { tag: "whiff" },
+      replace: true,
+      state: { fromList: true },
+    });
+  });
+
+  it("goes back to the list once the last clip in it is binned", async () => {
+    mocks.fromList = true;
+    mocks.neighbours = { older: null, newer: null };
+    renderPage("a");
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "x" }));
+
+    await vi.waitFor(() => expect(mocks.back).toHaveBeenCalled());
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("keeps a clip with K while sorting through, and says when the list is done", async () => {
+    window.sessionStorage.clear();
+    mocks.neighbours = { older: mocks.clips.get("b"), newer: null };
+    const view = renderPage("a", undefined, { sort: true });
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "k" }));
+    expect(mocks.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { slug: "apex-legends", clipId: "b" },
+        search: { sort: true },
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(view.container.textContent).toContain("1 kept · 0 binned"),
+    );
+
+    mocks.navigate.mockClear();
+    mocks.neighbours = { older: null, newer: mocks.clips.get("c") };
+    view.rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <ClipPlayerPage slug="apex-legends" clipId="b" list={{ sort: true }} />
+      </QueryClientProvider>,
+    );
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "k" }));
+
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(await view.findByText("That's the lot.")).toBeTruthy();
   });
 });

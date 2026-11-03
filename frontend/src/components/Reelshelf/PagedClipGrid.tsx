@@ -2,7 +2,11 @@ import type { GameCategoryResponse } from "@/api-client";
 import { LoadMore } from "@/components/ui";
 import { libraryCopy } from "@/copy/library";
 import { useClipsInfinite, type ClipsFilters } from "@/hooks/clips.queries";
-import { ClipGrid } from "./primitives/ClipViews";
+import {
+  ClipGrid,
+  type ClipLinkSearch,
+  type ClipListChoosing,
+} from "./primitives/ClipViews";
 
 /** Placeholder rows shaped like the filmstrip, shown while a page of clips is on its way. */
 function SkeletonRows({ count }: { count: number }) {
@@ -32,6 +36,8 @@ export function PagedClipGrid({
   enabled = true,
   groupByMonth = false,
   showGame = true,
+  linkSearch,
+  choosing,
 }: {
   filters: ClipsFilters;
   categories: GameCategoryResponse[];
@@ -39,6 +45,9 @@ export function PagedClipGrid({
   enabled?: boolean;
   groupByMonth?: boolean;
   showGame?: boolean;
+  /** The list's filters, carried on each clip's link so the clip page can go back to them. */
+  linkSearch?: ClipLinkSearch;
+  choosing?: ClipListChoosing;
 }) {
   const query = useClipsInfinite(filters, enabled);
   const clips = query.data?.pages.flatMap((page) => page.clips) ?? [];
@@ -62,6 +71,9 @@ export function PagedClipGrid({
         variant={variant}
         groupByMonth={groupByMonth}
         showGame={showGame}
+        linkSearch={linkSearch}
+        choosing={choosing}
+        fromList={rows}
       />
       {rows && query.isFetchingNextPage ? <SkeletonRows count={3} /> : null}
       <LoadMore label={libraryCopy.clipsNoun} query={query} />

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   IconChevronLeft,
   IconCopy,
@@ -10,44 +10,37 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Clip } from "@/api-client";
-import { commonCopy } from "@/copy/common";
 import { libraryCopy } from "@/copy/library";
-import { useCurrentUser, useDeleteClip, useShareClip } from "@/hooks/queries";
+import { useCurrentUser, useShareClip } from "@/hooks/queries";
 import { apiConfig } from "@/shared/config/apiConfig";
 import { ApiError } from "@/shared/services/apiError";
 import { isHlsSource } from "@/shared/utils/videoStream";
 import { AddToCollectionDialog } from "../collections/AddToCollectionDialog";
 
-export function PlayerActions({ clip }: { clip: Clip }) {
+/**
+ * The clip page's actions. Deleting moves the clip to the bin with no question asked, since it can be undone; the page
+ * says what happens next (`onBin`: the next clip in its list, or back to the list).
+ */
+export function PlayerActions({
+  clip,
+  onBin,
+  binning = false,
+}: {
+  clip: Clip;
+  onBin?: () => void;
+  binning?: boolean;
+}) {
   const [shareOpen, setShareOpen] = useState(false);
   const [collectOpen, setCollectOpen] = useState(false);
   const [preparing, setPreparing] = useState(false);
-  const navigate = useNavigate();
-  const deleteClip = useDeleteClip();
   const { data: currentUser } = useCurrentUser();
   // Only the owner can share or delete; collaborators and share viewers see the clip but not these
   // actions, and the API rejects them for anyone else anyway.
   const isOwner = currentUser?.id === clip.ownerId;
   const canShare = isOwner;
-  const canDelete = isOwner;
+  // A clip already in the bin is put back from the note above the player instead.
+  const canDelete = isOwner && !!onBin && !clip.binnedAt;
   const remuxesDownload = clip.video.sources.some(isHlsSource);
-
-  function handleDelete() {
-    if (deleteClip.isPending) return;
-    const confirmed = window.confirm(
-      libraryCopy.actions.confirmDelete(clip.video.title),
-    );
-    if (!confirmed) return;
-
-    deleteClip.mutate(clip.clipId, {
-      onSuccess: () => {
-        void navigate({
-          to: "/games/$slug",
-          params: { slug: clip.categorySlug },
-        });
-      },
-    });
-  }
 
   return (
     <>
@@ -94,21 +87,17 @@ export function PlayerActions({ clip }: { clip: Clip }) {
           <button
             className="rs-small-button rs-small-button-danger"
             type="button"
-            onClick={handleDelete}
-            disabled={deleteClip.isPending}
+            onClick={onBin}
+            disabled={binning}
           >
             <IconTrash size={13} />
-            {deleteClip.isPending ? commonCopy.deleting : commonCopy.delete}
+            {binning
+              ? libraryCopy.actions.moving
+              : libraryCopy.actions.moveToBin}
+            <kbd>{libraryCopy.actions.moveToBinKey}</kbd>
           </button>
         ) : null}
       </div>
-      {deleteClip.isError ? (
-        <div className="rs-upload-error" role="alert">
-          {deleteClip.error instanceof Error
-            ? deleteClip.error.message
-            : libraryCopy.actions.deleteFailed}
-        </div>
-      ) : null}
       {shareOpen ? (
         <ShareClipDialog clip={clip} onClose={() => setShareOpen(false)} />
       ) : null}
