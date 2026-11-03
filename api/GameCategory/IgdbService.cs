@@ -81,10 +81,11 @@ public class IgdbService : IPopularGameSource
         return results;
     }
 
-    public async Task<GameDetails?> GetGameByIdAsync(long igdbId)
+    /// <summary>The game's details, from memory for up to six hours unless <paramref name="refresh"/> asks IGDB again.</summary>
+    public async Task<GameDetails?> GetGameByIdAsync(long igdbId, bool refresh = false)
     {
         string cacheKey = $"igdb:game:{igdbId}";
-        if (_cache.TryGetValue(cacheKey, out GameDetails? cached) && cached is not null)
+        if (!refresh && _cache.TryGetValue(cacheKey, out GameDetails? cached) && cached is not null)
         {
             return cached;
         }

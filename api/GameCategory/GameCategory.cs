@@ -6,9 +6,16 @@ public class GameCategory
     public long? IgdbId { get; init; }
     public string Name { get; init; } = string.Empty;
     public string Slug { get; init; } = string.Empty;
+    /// <summary>The cover's source: IGDB's URL for an IGDB game, or whatever a custom category's creator gave.</summary>
     public string? CoverUrl { get; init; }
     public string? KeyArtUrl { get; init; }
     public string? GameLogoUrl { get; init; }
+    /// <summary>Our copy of <see cref="CoverUrl"/> in R2 (<see cref="GameArtKeys"/>); null until copied.</summary>
+    public string? CoverKey { get; init; }
+    public string? KeyArtKey { get; init; }
+    public string? GameLogoKey { get; init; }
+    /// <summary>When the category was last read from IGDB; null before V56 or for custom categories.</summary>
+    public DateTimeOffset? IgdbCheckedAt { get; init; }
     /// <summary>The book's cloth on the library shelf as #rrggbb, from the cover; null until worked out.</summary>
     public string? ClothColor { get; init; }
     public bool IsCustom { get; init; }

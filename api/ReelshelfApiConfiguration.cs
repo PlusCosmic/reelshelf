@@ -320,6 +320,16 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddHttpClient(GameCoverColors.HttpClientName,
             client => client.Timeout = TimeSpan.FromSeconds(15));
         builder.Services.AddScoped<GameCoverColors>();
+        // Copies of IGDB categories' images in R2, served from the media domain; without R2, IGDB's own URLs.
+        builder.Services.AddSingleton(provider =>
+            new GameArtUrls(provider.GetService<R2Options>()?.MediaBaseUrl));
+        builder.Services.AddHttpClient(GameArtMirror.HttpClientName,
+            client => client.Timeout = TimeSpan.FromSeconds(30));
+        builder.Services.AddScoped(provider => new GameArtMirror(
+            provider.GetService<R2Storage>() is { } r2 ? new R2GameArtStore(r2) : null,
+            provider.GetRequiredService<GameCategoryStatements>(),
+            provider.GetRequiredService<IHttpClientFactory>(),
+            provider.GetRequiredService<ILogger<GameArtMirror>>()));
 
         // The landing page's example shelf: IGDB's most popular games, fetched daily into memory.
         builder.Services.Configure<LandingShelfOptions>(
