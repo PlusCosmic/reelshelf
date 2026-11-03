@@ -6,6 +6,7 @@ using OpenTelemetry.Resources;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
+using Reelshelf.Core;
 using Reelshelf.Video.Transcoding.Overflow;
 
 namespace Reelshelf.QueueMetrics;
@@ -31,6 +32,22 @@ public static class QueueMetricsSetup
     public static readonly RunTableQueue ClipSummaryQueue = new("clip_summary", "clip_summary_run",
         ClipSummaryService.RetryAfter, ClipSummaryService.StaleAfter,
         [ClipSummaryStatements.AutoTrigger, ClipSummaryStatements.ManualTrigger, ClipSummaryStatements.RetryTrigger]);
+
+    /// <summary>
+    /// .NET's own meters, exported with Reelshelf's when <c>QueueMetrics:Exporter=otlp</c>: requests handled (by route
+    /// and status), unhandled exceptions, rate-limit rejections, requests to other services (by host), the runtime
+    /// (memory, GC, thread pool) and Npgsql's pools (<see cref="ReelshelfDataSource.PoolName"/>). They need no
+    /// instrumentation package: ASP.NET Core, HttpClient, the runtime and Npgsql publish them themselves.
+    /// </summary>
+    public static readonly string[] PlatformMeters =
+    [
+        "Microsoft.AspNetCore.Hosting",
+        "Microsoft.AspNetCore.Diagnostics",
+        "Microsoft.AspNetCore.RateLimiting",
+        "System.Net.Http",
+        "System.Runtime",
+        "Npgsql"
+    ];
 
     /// <summary>
     /// Registers the run queues' gauges, the service that samples them, and the exporter
@@ -118,6 +135,7 @@ public static class QueueMetricsSetup
                 .AddAttributes([new("deployment.environment.name", builder.Environment.EnvironmentName)]))
             .WithMetrics(metrics => metrics
                 .AddMeter(RunQueueMetrics.MeterName, OverflowMetrics.MeterName)
+                .AddMeter(PlatformMeters)
                 .AddOtlpExporter((exporterOptions, readerOptions) =>
                 {
                     if (endpoint is not null)
