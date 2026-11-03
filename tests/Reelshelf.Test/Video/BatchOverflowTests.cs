@@ -147,6 +147,22 @@ public class BatchOverflowTests
     }
 
     [Fact]
+    public async Task AfterAJobNeverStarted_ThePoolStartsNothing_SoTheNextPoolIsAsked()
+    {
+        FakeBatch batch = new();
+        Job stuck = JobOf(3, JobStatus.Types.State.Scheduled);
+        stuck.Name = "projects/p/locations/europe-west9/jobs/stuck";
+        stuck.CreateTime = Timestamp.FromDateTimeOffset(Now - TimeSpan.FromMinutes(30));
+        batch.Jobs.Add(stuck);
+        BatchOverflowTaskLauncher launcher = Launcher(batch);
+
+        await launcher.CountActiveTasksAsync(CancellationToken.None);
+
+        Assert.Equal(0, await launcher.StartTasksAsync(3, CancellationToken.None));
+        Assert.Empty(batch.Created);
+    }
+
+    [Fact]
     public async Task Starting_CreatesOneJobForAllTheWorkers()
     {
         FakeBatch batch = new();

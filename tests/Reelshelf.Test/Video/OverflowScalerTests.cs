@@ -588,6 +588,7 @@ public class OverflowScalerTests
     [InlineData("Overflow:Ec2:AccessKeyId", "AKIAEXAMPLE", "Overflow:Ec2:AccessKeyId and SecretAccessKey must both be set")]
     [InlineData("Overflow:Ec2:MaxTasks", "-1", "can't be negative")]
     [InlineData("Overflow:Ec2:Cluster", "reelshelf-overflow-prod", "must be different clusters")]
+    [InlineData("Overflow:Ec2:ProvisionTimeout", "00:00:00", "Overflow:Ec2:ProvisionTimeout must be positive")]
     public void Setup_Ec2_FailsOnBadSettings(string key, string value, string message)
     {
         Dictionary<string, string?> settings = EcsSettings();
@@ -833,6 +834,12 @@ public class OverflowScalerTests
 
         public Task<Amazon.ECS.Model.RunTaskResponse> RunTaskAsync(Amazon.ECS.Model.RunTaskRequest request,
             CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<Amazon.ECS.Model.Task>> DescribeTasksAsync(string cluster,
+            IReadOnlyList<string> taskArns, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task StopTaskAsync(string cluster, string taskArn, string reason, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeStorage(bool configured) : ITranscodeStorage

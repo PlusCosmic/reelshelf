@@ -16,7 +16,9 @@ choice, ahead of Fargate Spot ([fargate-overflow.md](fargate-overflow.md)) and G
 ## Decisions
 
 - **EC2 Spot goes first** (2026-11-03). Prod becomes `Overflow__Pools=ec2,ecs,batch`: EC2 up to its cap, then
-  Fargate, then Batch. Anything EC2 can't start (an error, no Spot capacity) goes to Fargate in the same tick.
+  Fargate, then Batch. Anything EC2 refuses (an error, a `RunTask` failure) goes to Fargate in the same tick.
+  Tasks the Auto Scaling group can't find instances for (no Spot capacity, the vCPU quota, its maximum) aren't
+  refused: ECS accepts them and leaves them in `PROVISIONING`, so they go on through the provisioning timeout below.
 - **One launcher for both AWS pools** (2026-11-03). `EcsOverflowTaskLauncher` runs both: the pool `ec2` takes its
   settings from `Overflow:Ec2:*`, `ecs` from `Overflow:Ecs:*`, each with its own client and cap. The capacity
   provider is a setting (`CapacityProvider`), `FARGATE_SPOT` by default for `ecs` so prod's settings keep working,
@@ -38,6 +40,13 @@ choice, ahead of Fargate Spot ([fargate-overflow.md](fargate-overflow.md)) and G
 - **Provisioning tasks count** (2026-11-03). A task waits in `PROVISIONING` while managed scaling boots an instance
   (1 to 3 minutes). Its desired status is already `RUNNING`, so `ListTasks` counts it from the start and the next
   tick doesn't start another for the same job.
+- **A provisioning timeout, as Batch has** (2026-11-03). With managed scaling, ECS never fails a task for want of
+  capacity; it queues it in `PROVISIONING`, where it holds the pool's places, `Overflow:MaxTasks` and the jobs it
+  covers, so no other pool is asked. While counting, a task still `PROVISIONING` after the pool's
+  `ProvisionTimeout` (4 min, past the 1 to 3 minute cold start) is stopped (`DescribeTasks`, `StopTask`) and left
+  out, and the pool starts nothing for as long again, so the scaler offers its share to Fargate and Batch; after
+  that it tries EC2 first again. No worker has claimed anything in such a task. Batch now holds back the same way
+  after deleting a job that never started.
 - **No worker changes, no preemption watcher** (2026-11-03). The ECS agent runs with
   `ECS_ENABLE_SPOT_INSTANCE_DRAINING=true`: on the two-minute interruption notice it drains the instance and stops
   the task with SIGTERM and the task definition's `stopTimeout`, as Fargate Spot does. The worker's usual shutdown
@@ -58,7 +67,7 @@ In `aws/overflow-workers/` next to the Fargate pool, built in the infrastructure
 - the task definition family `reelshelf-worker-overflow-ec2-<instance>`: `requiresCompatibilities = ["EC2"]`,
   `networkMode = "host"`, sized so one task fills one instance, `stopTimeout` 120, the Fargate family's image,
   volumes, sandbox and `Worker__Secret`, with `Worker__LogicalProcessors=4`;
-- for the scaler's IAM user, on the new cluster and family: `ecs:RunTask`, `ecs:ListTasks`,
+- for the scaler's IAM user, on the new cluster and family: `ecs:RunTask`, `ecs:ListTasks`, `ecs:DescribeTasks`, `ecs:StopTask`,
   `ecs:DescribeTaskDefinition`, `ecs:RegisterTaskDefinition`, and `iam:PassRole` on the execution role (and the
   task role, if the family has one).
 
@@ -73,6 +82,7 @@ In `aws/overflow-workers/` next to the Fargate pool, built in the infrastructure
 | `Overflow__Ec2__CapacityProvider` | yes      | the cluster's Auto Scaling group capacity provider; no default    |
 | `Overflow__Ec2__TaskDefinition`   | yes      | the family, without a revision                                    |
 | `Overflow__Ec2__MaxTasks`         | no       | the Spot vCPU quota over 4; 0 means `Overflow__MaxTasks`          |
+| `Overflow__Ec2__ProvisionTimeout` | no       | `00:04:00`; stops tasks with no instance by then, then holds back |
 | `Overflow__Ec2__WorkerImage`      | no       | kept current by the bump PR; empty runs the latest revision as is |
 | `Overflow__Ec2__AccessKeyId`      | no       | the scaler user's key, with `SecretAccessKey` (both or neither)   |
 | `Overflow__Ec2__SecretAccessKey`  | no       |                                                                   |

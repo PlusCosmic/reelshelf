@@ -318,8 +318,10 @@ launcher, client, cluster and cap. The plans, quotas and reasons are in [ec2-ove
   = `Overflow:StartedBy`, and a client token so the SDK's retries start them once. `Overflow:Ecs:CapacityProvider`
   defaults to `FARGATE_SPOT`; `Overflow:Ec2:CapacityProvider` has no default and names the cluster's Auto Scaling
   group capacity provider, whose managed scaling starts an instance for each task and scales back to zero. There are
-  no overrides and no tags (the API's user has no `ecs:TagResource`). ECS reports no Spot capacity (or no quota) as
-  `failures` rather than an error, so the call returns how many tasks it got and the rest go to the next pool.
+  no overrides and no tags (the API's user has no `ecs:TagResource`). Fargate reports no Spot capacity (or no quota) as
+  `failures` rather than an error, so the call returns how many tasks it got and the rest go to the next pool. An
+  Auto Scaling group capacity provider with managed scaling refuses nothing: tasks it has no instance for wait in
+  `PROVISIONING` (see counting). While the pool is held back the call starts nothing and returns 0.
 - **Network:** the task definition's network mode decides. An `awsvpc` task (Fargate's only mode) runs in the pool's
   `Subnets` with its `SecurityGroups`, and on Fargate with a public IP (public subnets, no NAT). EC2 can't give an
   `awsvpc` task a public IP, so the EC2 pool's task definition is `host` mode: the task uses its instance's network
@@ -343,12 +345,18 @@ launcher, client, cluster and cap. The plans, quotas and reasons are in [ec2-ove
   (`Worker:PreemptionNotice` stays empty).
 - **Counting:** `ListTasks` in the pool's cluster by `startedBy` with desired status `RUNNING`, then `PENDING`,
   without repeats. A task still provisioning, such as one waiting for its EC2 instance to boot (1 to 3 minutes), is
-  `RUNNING`, so it counts at once. Each pool counts only its own cluster, so the two pools must not share one.
+  `RUNNING`, so it counts at once. Each pool counts only its own cluster, so the two pools must not share one. The
+  listed tasks are then described, and one still `PROVISIONING` after the pool's `ProvisionTimeout` (4 min) is
+  stopped and left out: its capacity provider couldn't place it (no Spot capacity, the quota, the Auto Scaling
+  group's maximum), and until stopped it holds places another pool could fill. The pool then starts nothing for
+  `ProvisionTimeout`, so the next pools take its share. A task that can't be stopped still counts, and when describing fails (say, before the scaler's user has `ecs:DescribeTasks`) every listed task counts. This needs
+  `ecs:DescribeTasks` and `ecs:StopTask` besides `RunTask`, `ListTasks`, `DescribeTaskDefinition` and
+  `RegisterTaskDefinition`.
 - **Client:** each pool's `AccessKeyId` and `SecretAccessKey`, the scaler user's key from infrastructure's
   `aws/overflow-workers/secrets.sh` (both pools may use the same one; both or neither; neither uses the SDK's default
   chain), in its `Region`.
 - **Settings:** with a pool in `Overflow:Pools`, startup fails when its `Region`, `Cluster`, `CapacityProvider` or
-  `TaskDefinition` is missing (and for `ecs`, `Subnets` or `SecurityGroups`), on a `TaskDefinition` with a
+  `TaskDefinition` is missing (and for `ecs`, `Subnets` or `SecurityGroups`), on a `ProvisionTimeout` that isn't positive, on a `TaskDefinition` with a
   revision, a `WorkerImage` without a tag, or half a key, and with both pools in use when their `Cluster`s are the
   same.
 
@@ -376,7 +384,8 @@ status.state!="FAILED"` (Batch filters on the allocation policy's labels, not th
   `Overflow:Batch:ProvisionTimeout` (3 min; it was 10 before the second pool), is deleted while counting, with
   Batch's latest status event logged (quota exceeded, no Spot capacity), so it stops holding `MaxTasks`. Until then
   its tasks count as running, so they hold places another pool could have filled; hence the short timeout. No worker in it has claimed anything. A job
-  that can't be deleted still counts.
+  that can't be deleted still counts. After deleting one the pool starts nothing for `ProvisionTimeout`, so the next
+  pools take its share, as the ECS pools do.
 - **Client:** `Overflow:Batch:CredentialsBase64` is the scaler service account's JSON key, base64; empty uses
   Application Default Credentials. The service account needs `roles/batch.jobsEditor` and `roles/iam.serviceAccountUser`
   on the worker service account only.

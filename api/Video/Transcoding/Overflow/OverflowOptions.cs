@@ -257,7 +257,7 @@ public sealed class OverflowBatchOptions
 
     /// <summary>
     /// A job none of whose tasks has started after this long (no quota, no Spot capacity) is deleted, so it stops
-    /// counting against <see cref="OverflowOptions.MaxTasks"/>.
+    /// counting against <see cref="OverflowOptions.MaxTasks"/>, and the pool starts nothing for as long again.
     /// </summary>
     public TimeSpan ProvisionTimeout { get; set; } = TimeSpan.FromMinutes(3);
 
@@ -387,6 +387,13 @@ public abstract class OverflowEcsPoolOptions
 
     public string SecretAccessKey { get; set; } = "";
 
+    /// <summary>
+    /// A task still <c>PROVISIONING</c> after this long (its capacity provider couldn't place it: no Spot capacity, the
+    /// quota, the Auto Scaling group's maximum) is stopped, and the pool starts nothing for as long again, so its
+    /// tasks go to the next pool. Above an EC2 instance's cold start (1 to 3 minutes).
+    /// </summary>
+    public TimeSpan ProvisionTimeout { get; set; } = TimeSpan.FromMinutes(4);
+
     public IReadOnlyList<string> SubnetList => SplitList(Subnets);
 
     public IReadOnlyList<string> SecurityGroupList => SplitList(SecurityGroups);
@@ -429,6 +436,11 @@ public abstract class OverflowEcsPoolOptions
         if (string.IsNullOrWhiteSpace(AccessKeyId) != string.IsNullOrWhiteSpace(SecretAccessKey))
         {
             problems.Add($"{Prefix}{nameof(AccessKeyId)} and {nameof(SecretAccessKey)} must both be set, or neither for the default credential chain");
+        }
+
+        if (ProvisionTimeout <= TimeSpan.Zero)
+        {
+            problems.Add($"{Prefix}{nameof(ProvisionTimeout)} must be positive");
         }
 
         return problems;

@@ -160,6 +160,87 @@ public class EcsOverflowTests
     }
 
     [Fact]
+    public async Task Counting_StopsTasksStillProvisioningPastTheTimeout_AndLeavesThemOut()
+    {
+        FakeEcs ecs = new();
+        ecs.Tasks[DesiredStatus.RUNNING] = ["stuck", "booting", "working"];
+        ecs.Described.AddRange([
+            EcsTask("stuck", "PROVISIONING", Now - TimeSpan.FromMinutes(5)),
+            EcsTask("booting", "PROVISIONING", Now - TimeSpan.FromMinutes(2)),
+            EcsTask("working", "RUNNING", Now - TimeSpan.FromMinutes(30))
+        ]);
+
+        int active = await Launcher(ecs, pool: OverflowOptions.Ec2Pool).CountActiveTasksAsync(CancellationToken.None);
+
+        Assert.Equal(2, active);
+        Assert.Equal([("reelshelf-overflow-ec2-prod", "stuck")], ecs.Stopped);
+    }
+
+    [Fact]
+    public async Task ATaskThatCantBeStopped_StillCounts()
+    {
+        FakeEcs ecs = new() { FailStops = true };
+        ecs.Tasks[DesiredStatus.RUNNING] = ["stuck"];
+        ecs.Described.Add(EcsTask("stuck", "PROVISIONING", Now - TimeSpan.FromMinutes(5)));
+
+        Assert.Equal(1, await Launcher(ecs, pool: OverflowOptions.Ec2Pool).CountActiveTasksAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task WhenTasksCantBeDescribed_TheyAllCount()
+    {
+        FakeEcs ecs = new() { FailDescribes = true };
+        ecs.Tasks[DesiredStatus.RUNNING] = ["a", "b"];
+
+        Assert.Equal(2, await Launcher(ecs).CountActiveTasksAsync(CancellationToken.None));
+        Assert.Empty(ecs.Stopped);
+    }
+
+    [Fact]
+    public async Task AfterTasksGotNoCapacity_ThePoolStartsNothing_UntilTheTimeoutHasPassedAgain()
+    {
+        FakeEcs ecs = new() { Latest = Ec2Definition(Image, revision: 3) };
+        ecs.Tasks[DesiredStatus.RUNNING] = ["stuck"];
+        ecs.Described.Add(EcsTask("stuck", "PROVISIONING", Now - TimeSpan.FromMinutes(4)));
+        MutableTime time = new(Now);
+        EcsOverflowTaskLauncher launcher = Launcher(ecs, pool: OverflowOptions.Ec2Pool, time: time);
+
+        Assert.Equal(0, await launcher.CountActiveTasksAsync(CancellationToken.None));
+
+        // Started nothing, so the scaler offers the tasks to the next pool.
+        Assert.Equal(0, await launcher.StartTasksAsync(2, CancellationToken.None));
+        time.Now = Now + TimeSpan.FromMinutes(3);
+        Assert.Equal(0, await launcher.StartTasksAsync(2, CancellationToken.None));
+        Assert.Empty(ecs.Runs);
+
+        time.Now = Now + TimeSpan.FromMinutes(4);
+        Assert.Equal(2, await launcher.StartTasksAsync(2, CancellationToken.None));
+    }
+
+    [Fact]
+    public void NeverStarted_OnlyATaskStillProvisioningPastTheTimeout()
+    {
+        TimeSpan timeout = TimeSpan.FromMinutes(4);
+        Assert.True(EcsOverflowTaskLauncher.NeverStarted(EcsTask("a", "PROVISIONING", Now - timeout), Now, timeout));
+        Assert.False(EcsOverflowTaskLauncher.NeverStarted(EcsTask("a", "PROVISIONING", Now - TimeSpan.FromMinutes(3)), Now, timeout));
+        Assert.False(EcsOverflowTaskLauncher.NeverStarted(EcsTask("a", "PENDING", Now - TimeSpan.FromHours(1)), Now, timeout));
+        Assert.False(EcsOverflowTaskLauncher.NeverStarted(EcsTask("a", "RUNNING", Now - TimeSpan.FromHours(1)), Now, timeout));
+        Assert.False(EcsOverflowTaskLauncher.NeverStarted(new Amazon.ECS.Model.Task { LastStatus = "PROVISIONING" }, Now, timeout));
+
+        // The SDK may hand the time back as local time.
+        Amazon.ECS.Model.Task local = new() { LastStatus = "PROVISIONING", CreatedAt = (Now - timeout).LocalDateTime };
+        Assert.True(EcsOverflowTaskLauncher.NeverStarted(local, Now, timeout));
+    }
+
+    [Fact]
+    public void TheEcsPoolsProvisionTimeout_DefaultsToFourMinutes()
+    {
+        // Above an EC2 instance's 1 to 3 minute cold start.
+        Assert.Equal(TimeSpan.FromMinutes(4), new OverflowEc2Options().ProvisionTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(4), new OverflowEcsOptions().ProvisionTimeout);
+    }
+
+    [Fact]
     public async Task ANewImage_RegistersARevisionWithIt_OnEveryContainerOfTheWorkersRepository()
     {
         FakeEcs ecs = new() { Latest = Definition(OldImage, revision: 4) };
@@ -315,9 +396,22 @@ public class EcsOverflowTests
 
     private static readonly RunnableTaskDefinition Awsvpc = new("arn:td:7", NetworkMode.Awsvpc);
 
+    private static readonly DateTimeOffset Now = new(2026, 11, 3, 16, 0, 0, TimeSpan.Zero);
+
     private static EcsOverflowTaskLauncher Launcher(FakeEcs ecs, Action<OverflowOptions>? configure = null,
-        string pool = OverflowOptions.EcsPool) =>
-        new(pool, ecs, Options.Create(Settings(configure)), NullLogger<EcsOverflowTaskLauncher>.Instance);
+        string pool = OverflowOptions.EcsPool, TimeProvider? time = null) =>
+        new(pool, ecs, Options.Create(Settings(configure)), time ?? new MutableTime(Now),
+            NullLogger<EcsOverflowTaskLauncher>.Instance);
+
+    private static Amazon.ECS.Model.Task EcsTask(string arn, string lastStatus, DateTimeOffset createdAt) =>
+        new() { TaskArn = arn, LastStatus = lastStatus, CreatedAt = createdAt.UtcDateTime };
+
+    private sealed class MutableTime(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
 
     /// <summary>The EC2 pool's shape: host networking, sized by its container, one task per instance.</summary>
     private static TaskDefinition Ec2Definition(string image, int revision) => new()
@@ -386,12 +480,34 @@ public class EcsOverflowTests
         public List<RunTaskRequest> Runs { get; } = [];
         public int Accept { get; set; } = int.MaxValue;
         public Exception? RunError { get; set; }
+        public List<Amazon.ECS.Model.Task> Described { get; } = [];
+        public List<(string Cluster, string Task)> Stopped { get; } = [];
+        public bool FailStops { get; init; }
+        public bool FailDescribes { get; init; }
 
         public Task<IReadOnlyList<string>> ListTaskArnsAsync(string cluster, string startedBy,
             DesiredStatus desiredStatus, CancellationToken cancellationToken)
         {
             ListCalls.Add((cluster, startedBy));
             return Task.FromResult<IReadOnlyList<string>>(Tasks.GetValueOrDefault(desiredStatus) ?? []);
+        }
+
+        public Task<IReadOnlyList<Amazon.ECS.Model.Task>> DescribeTasksAsync(string cluster,
+            IReadOnlyList<string> taskArns, CancellationToken cancellationToken) =>
+            FailDescribes
+                ? Task.FromException<IReadOnlyList<Amazon.ECS.Model.Task>>(new InvalidOperationException("Not authorized"))
+                : Task.FromResult<IReadOnlyList<Amazon.ECS.Model.Task>>(
+                    Described.Where(task => taskArns.Contains(task.TaskArn)).ToList());
+
+        public Task StopTaskAsync(string cluster, string taskArn, string reason, CancellationToken cancellationToken)
+        {
+            if (FailStops)
+            {
+                throw new InvalidOperationException("ECS said no");
+            }
+
+            Stopped.Add((cluster, taskArn));
+            return Task.CompletedTask;
         }
 
         public Task<TaskDefinition> DescribeLatestAsync(string family, CancellationToken cancellationToken)

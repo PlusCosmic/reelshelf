@@ -37,6 +37,10 @@ What is built is described in [workers-and-jobs.md](workers-and-jobs.md#the-over
   task definition with that image when the latest one runs another. Everything else in the task definition (size,
   roles, secret, sandbox) stays Terraform's. This costs the API's user `ecs:RegisterTaskDefinition` and
   `ecs:DescribeTaskDefinition`, which IAM can't scope to one family, and `iam:PassRole` on the execution role only.
+- **The provisioning timeout covers Fargate too** (2026-11-03, with the EC2 pool). A task still `PROVISIONING`
+  after `Overflow:Ecs:ProvisionTimeout` (4 min) is stopped and the pool holds back as long again
+  ([ec2-overflow.md](ec2-overflow.md)). It needs `ecs:DescribeTasks` and `ecs:StopTask` on the cluster's tasks;
+  until the user has them, counting logs a warning and counts every listed task, as before.
 - **No preemption watcher.** Fargate Spot gives SIGTERM two minutes ahead; with `stopTimeout` 120 s the worker's
   usual shutdown (20 s grace, then release) hands the job back. `Worker__PreemptionNotice` stays empty.
 - **Its own credential**, `Worker:Secrets:aws`, as in the first run: `reelshelf/worker/aws` in Secrets Manager,

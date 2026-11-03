@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace Reelshelf.Video.Transcoding.Overflow;
@@ -35,6 +36,8 @@ public static class OverflowSetup
         }
 
         IReadOnlyList<string> poolNames = settings.PoolList;
+        // The launchers time out tasks that never start.
+        builder.Services.TryAddSingleton(TimeProvider.System);
         foreach (string pool in OverflowOptions.EcsPools.Where(poolNames.Contains))
         {
             OverflowEcsPoolOptions poolSettings = settings.EcsPoolSettings(pool);
@@ -43,6 +46,7 @@ public static class OverflowSetup
             builder.Services.AddKeyedSingleton(pool, (provider, _) => new EcsOverflowTaskLauncher(pool,
                 provider.GetRequiredKeyedService<IEcsTasks>(pool),
                 provider.GetRequiredService<IOptions<OverflowOptions>>(),
+                provider.GetRequiredService<TimeProvider>(),
                 provider.GetRequiredService<ILogger<EcsOverflowTaskLauncher>>()));
         }
 

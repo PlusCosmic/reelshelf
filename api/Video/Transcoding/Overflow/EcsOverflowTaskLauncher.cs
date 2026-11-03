@@ -15,6 +15,12 @@ public interface IEcsTasks
     Task<IReadOnlyList<string>> ListTaskArnsAsync(string cluster, string startedBy, DesiredStatus desiredStatus,
         CancellationToken cancellationToken);
 
+    /// <summary>The tasks <paramref name="taskArns"/> names in <paramref name="cluster"/>, leaving out any ECS no longer has.</summary>
+    Task<IReadOnlyList<Amazon.ECS.Model.Task>> DescribeTasksAsync(string cluster, IReadOnlyList<string> taskArns,
+        CancellationToken cancellationToken);
+
+    Task StopTaskAsync(string cluster, string taskArn, string reason, CancellationToken cancellationToken);
+
     /// <summary>The family's latest active revision.</summary>
     Task<TaskDefinition> DescribeLatestAsync(string family, CancellationToken cancellationToken);
 
@@ -46,6 +52,25 @@ public sealed class AwsEcsTasks(IAmazonECS ecs) : IEcsTasks
 
         return arns;
     }
+
+    public async Task<IReadOnlyList<Amazon.ECS.Model.Task>> DescribeTasksAsync(string cluster,
+        IReadOnlyList<string> taskArns, CancellationToken cancellationToken)
+    {
+        List<Amazon.ECS.Model.Task> tasks = [];
+        // DescribeTasks takes at most 100 tasks a call.
+        foreach (string[] chunk in taskArns.Chunk(100))
+        {
+            DescribeTasksResponse response = await ecs.DescribeTasksAsync(
+                new DescribeTasksRequest { Cluster = cluster, Tasks = [.. chunk] }, cancellationToken);
+            tasks.AddRange(response.Tasks ?? []);
+        }
+
+        return tasks;
+    }
+
+    public async Task StopTaskAsync(string cluster, string taskArn, string reason, CancellationToken cancellationToken) =>
+        await ecs.StopTaskAsync(new StopTaskRequest { Cluster = cluster, Task = taskArn, Reason = reason },
+            cancellationToken);
 
     public async Task<TaskDefinition> DescribeLatestAsync(string family, CancellationToken cancellationToken) =>
         (await ecs.DescribeTaskDefinitionAsync(new DescribeTaskDefinitionRequest { TaskDefinition = family },
@@ -81,17 +106,31 @@ public sealed class AwsEcsTasks(IAmazonECS ecs) : IEcsTasks
 /// Spot instance's ECS agent drains it on the interruption notice (<c>ECS_ENABLE_SPOT_INSTANCE_DRAINING</c>), which
 /// stops its task the same way; the task definition's <c>stopTimeout</c> covers the worker's shutdown grace and
 /// release, so the worker needs no preemption watcher here.
+/// <para>
+/// ECS accepts a task it has no capacity for (an Auto Scaling group that can't launch: no Spot capacity, the vCPU
+/// quota, its maximum) and leaves it in <c>PROVISIONING</c>, so <c>RunTask</c> alone never tells the scaler to offer
+/// it to the next pool. A task still provisioning after
+/// <see cref="OverflowEcsPoolOptions.ProvisionTimeout"/> is stopped while counting, as Batch's jobs are, and the pool
+/// starts nothing for as long again, so the next pools take its share; no worker has claimed anything in it.
+/// </para>
 /// </summary>
 public sealed class EcsOverflowTaskLauncher(
     string pool,
     IEcsTasks ecs,
     IOptions<OverflowOptions> options,
+    TimeProvider timeProvider,
     ILogger<EcsOverflowTaskLauncher> logger) : IOverflowTaskLauncher
 {
     /// <summary>The most tasks one <c>RunTask</c> call can start.</summary>
     public const int MaxTasksPerRunTask = 10;
 
+    /// <summary>The <c>lastStatus</c> of a task waiting for capacity.</summary>
+    public const string ProvisioningStatus = "PROVISIONING";
+
     private readonly SemaphoreSlim _resolving = new(1, 1);
+
+    /// <summary>Until when the pool starts nothing, after tasks had to be stopped for never getting capacity.</summary>
+    private DateTimeOffset? _heldBackUntil;
 
     /// <summary>
     /// The task definition last found or registered for an image ("" when none is set), so each start doesn't describe
@@ -108,18 +147,83 @@ public sealed class EcsOverflowTaskLauncher(
         OverflowEcsPoolOptions settings = current.EcsPoolSettings(Pool);
         // A task that is provisioning (waiting for an instance) or starting has desired status RUNNING; PENDING is
         // listed too, as ECS allows it.
-        HashSet<string> tasks = [];
+        string cluster = settings.Cluster.Trim();
+        HashSet<string> arns = [];
         foreach (DesiredStatus status in new[] { DesiredStatus.RUNNING, DesiredStatus.PENDING })
         {
-            tasks.UnionWith(await ecs.ListTaskArnsAsync(settings.Cluster.Trim(), current.StartedBy.Trim(), status,
-                cancellationToken));
+            arns.UnionWith(await ecs.ListTaskArnsAsync(cluster, current.StartedBy.Trim(), status, cancellationToken));
         }
 
-        return tasks.Count;
+        if (arns.Count == 0)
+        {
+            return 0;
+        }
+
+        DateTimeOffset now = timeProvider.GetUtcNow();
+        IReadOnlyList<Amazon.ECS.Model.Task> described;
+        try
+        {
+            described = await ecs.DescribeTasksAsync(cluster, [.. arns], cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The listing still counts (e.g. before the scaler's user has ecs:DescribeTasks); only the timeout waits.
+            logger.LogWarning(ex, "Could not describe the {Pool} overflow tasks; counting them all", Pool);
+            return arns.Count;
+        }
+
+        List<string> stuck = described
+            .Where(task => NeverStarted(task, now, settings.ProvisionTimeout))
+            .Select(task => task.TaskArn)
+            .ToList();
+        if (stuck.Count == 0)
+        {
+            return arns.Count;
+        }
+
+        _heldBackUntil = now + settings.ProvisionTimeout;
+        logger.LogWarning(
+            "Stopping {Count} {Pool} overflow tasks still provisioning after {Timeout} (no capacity on {CapacityProvider}); starting none there until {Until}",
+            stuck.Count, Pool, settings.ProvisionTimeout, settings.CapacityProvider.Trim(), _heldBackUntil);
+        int stopped = 0;
+        foreach (string arn in stuck)
+        {
+            try
+            {
+                await ecs.StopTaskAsync(cluster, arn, "Reelshelf: no capacity in time", cancellationToken);
+                stopped++;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Could not stop {Pool} overflow task {Task}; it still counts", Pool, arn);
+            }
+        }
+
+        return arns.Count - stopped;
     }
+
+    /// <summary>
+    /// Whether <paramref name="task"/> has waited for capacity longer than <paramref name="timeout"/>: still
+    /// <c>PROVISIONING</c> and created that long before <paramref name="now"/>.
+    /// </summary>
+    public static bool NeverStarted(Amazon.ECS.Model.Task task, DateTimeOffset now, TimeSpan timeout) =>
+        task.LastStatus == ProvisioningStatus && task.CreatedAt is { } createdAt &&
+        now - AsUtc(createdAt) >= timeout;
+
+    /// <summary>The SDK's timestamp as an instant, taking one of unspecified kind as UTC.</summary>
+    private static DateTimeOffset AsUtc(DateTime time) => time.Kind == DateTimeKind.Unspecified
+        ? new DateTimeOffset(DateTime.SpecifyKind(time, DateTimeKind.Utc))
+        : new DateTimeOffset(time.ToUniversalTime());
 
     public async Task<int> StartTasksAsync(int count, CancellationToken cancellationToken)
     {
+        if (_heldBackUntil is { } until && timeProvider.GetUtcNow() < until)
+        {
+            logger.LogInformation("Starting no {Pool} overflow tasks until {Until}: its last ones got no capacity",
+                Pool, until);
+            return 0;
+        }
+
         OverflowOptions current = options.Value;
         OverflowEcsPoolOptions settings = current.EcsPoolSettings(Pool);
         RunnableTaskDefinition definition = await TaskDefinitionForAsync(settings, cancellationToken);
