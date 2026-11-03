@@ -49,8 +49,10 @@ What is built is described in [workers-and-jobs.md](workers-and-jobs.md#the-over
 `aws/overflow-workers/`, Terraform in `eu-north-1` only, planned on pull requests and applied on merge to `main` by
 `.github/workflows/aws-overflow-workers.yml` like `gcp/overflow-workers` (2026-11-03: the first pool's CloudFormation
 template, deployed by hand, was ported so both clouds are managed the same way). `aws/bootstrap/`, applied by hand
-once, holds the S3 state bucket and the two roles GitHub Actions assumes through OIDC: plan (read-only, pull requests)
-and apply (`main` only, IAM limited to the `/reelshelf/` path, no secret values). `secrets.sh` makes the worker
+once, holds the S3 state bucket and the two IAM users GitHub Actions signs in as by access key: plan (read-only, keys
+in repository secrets) and apply (IAM limited to the `/reelshelf/` path, no secret values, keys in the `aws-apply`
+environment, which only `main` can deploy to). They are users, not OIDC roles, because the project's SCP refuses
+`iam:CreateOpenIDConnectProvider` (2026-11-03). `secrets.sh` makes the worker
 secret's value and the scaler's access key outside the state. It holds the first pool's resources without the EC2
 parts:
 
@@ -71,8 +73,8 @@ Its RUNBOOK covers the bootstrap, the secrets, the settings and the smoke test.
 2. **Infrastructure PR**: the Terraform, its bootstrap, workflow and RUNBOOK, the `Overflow__Ecs__*` settings and
    `Worker__Secrets__aws` in `services/clips.yml` with `Overflow__Pools` still `batch`, and the Grafana panels
    summing the pools.
-3. **Bootstrap** `aws/bootstrap` by hand and set `AWS_ACCOUNT_ID`; merging the infrastructure PR then applies the
-   pool. Run `secrets.sh prod` and put `ClipsAwsWorkerSecret` and the API's key in Infisical.
+3. **Bootstrap** `aws/bootstrap` by hand and put the CI users' keys in GitHub; merging the infrastructure PR then
+   applies the pool. Run `secrets.sh prod` and put `ClipsAwsWorkerSecret` and the API's key in Infisical.
 4. **Turn it on**: `Overflow__Pools=ecs,batch`, `Overflow__MaxTasks=10`, then upload a burst of clips and check
    that four Fargate tasks start first and Batch takes the rest.
 5. **Measure** a 2-vCPU worker: encode time per clip, peak memory against the 4 GiB, and how often Fargate Spot
