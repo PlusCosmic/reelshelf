@@ -54,7 +54,8 @@ public sealed class GoogleBatchJobs(BatchServiceClient client) : IBatchJobs
 /// <c>count</c> tasks, one worker VM each, labelled <c>pool</c> = <see cref="OverflowOptions.StartedBy"/> so
 /// counting finds them again. A job none of whose tasks has started within
 /// <see cref="OverflowBatchOptions.ProvisionTimeout"/> is deleted while counting, so a job stuck on quota or Spot
-/// capacity doesn't hold the pool's places for ever; no worker has claimed anything in it.
+/// capacity doesn't hold the pool's places for ever; no worker has claimed anything in it. The pool then starts
+/// nothing for as long again, so the next pools take its share.
 /// </summary>
 public sealed class BatchOverflowTaskLauncher(
     IBatchJobs batch,
@@ -74,6 +75,9 @@ public sealed class BatchOverflowTaskLauncher(
     private static readonly string[] FinishedTaskStates = ["SUCCEEDED", "FAILED"];
     private static readonly string[] StartedTaskStates = ["ASSIGNED", "RUNNING", "SUCCEEDED", "FAILED"];
 
+    /// <summary>Until when the pool starts nothing, after a job had to be deleted for never starting.</summary>
+    private DateTimeOffset? _heldBackUntil;
+
     public async Task<int> CountActiveTasksAsync(CancellationToken cancellationToken)
     {
         OverflowOptions current = options.Value;
@@ -83,6 +87,7 @@ public sealed class BatchOverflowTaskLauncher(
         {
             if (NeverStarted(job, now, current.Batch.ProvisionTimeout))
             {
+                _heldBackUntil = now + current.Batch.ProvisionTimeout;
                 string reason = job.Status?.StatusEvents.LastOrDefault()?.Description ?? "no status events";
                 logger.LogWarning("Deleting overflow job {Job}: none of its tasks started in {Timeout}. Batch said: {Reason}",
                     job.Name, current.Batch.ProvisionTimeout, reason);
@@ -105,6 +110,12 @@ public sealed class BatchOverflowTaskLauncher(
 
     public async Task<int> StartTasksAsync(int count, CancellationToken cancellationToken)
     {
+        if (_heldBackUntil is { } until && timeProvider.GetUtcNow() < until)
+        {
+            logger.LogInformation("Starting no Batch overflow jobs until {Until}: its last one never started", until);
+            return 0;
+        }
+
         OverflowOptions current = options.Value;
         string jobId = NewJobId(timeProvider.GetUtcNow());
         await batch.CreateAsync(new CreateJobRequest

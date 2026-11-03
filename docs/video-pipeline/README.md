@@ -15,6 +15,7 @@ is deleted.
 | [bunny-migration.md](bunny-migration.md)                     | Moving the Bunny clips to R2, then leaving Bunny                          |
 | [batch-overflow.md](batch-overflow.md)                       | The overflow pool on Google Cloud Batch: plan, measurements, settings     |
 | [fargate-overflow.md](fargate-overflow.md)                   | The second overflow pool, on AWS Fargate Spot, alongside Batch            |
+| [ec2-overflow.md](ec2-overflow.md)                           | The third overflow pool, on AWS EC2 Spot, first in the order              |
 | [open-questions.md](open-questions.md)                       | Undecided points and known follow-ups                                     |
 
 Conventions:

@@ -5,7 +5,8 @@ namespace Reelshelf.Video.Transcoding.Overflow;
 /// <summary>
 /// The overflow pool (<c>Overflow:*</c>, docs/video-pipeline/workers-and-jobs.md#the-overflow-pool): one-shot transcode
 /// workers that the API starts when <c>transcode_run</c> backs up, on the backends <see cref="Pools"/> lists, most
-/// preferred first: ECS tasks on AWS Fargate Spot (<see cref="Ecs"/>) and Google Cloud Batch (<see cref="Batch"/>).
+/// preferred first: ECS tasks on AWS EC2 Spot instances (<see cref="Ec2"/>) and on Fargate Spot (<see cref="Ecs"/>), and
+/// Google Cloud Batch (<see cref="Batch"/>).
 /// Each backend has its own cap (its quota), and <see cref="MaxTasks"/> caps them all together. The workers stop
 /// themselves once idle, so the API only ever starts them. PlusCosmic/infrastructure's aws/overflow-workers and
 /// gcp/overflow-workers give each backend's settings.
@@ -14,6 +15,9 @@ public sealed partial class OverflowOptions
 {
     public const string SectionName = "Overflow";
 
+    /// <summary>The pool name of ECS tasks on EC2 Spot instances (<see cref="Ec2"/>).</summary>
+    public const string Ec2Pool = "ec2";
+
     /// <summary>The pool name of ECS tasks on Fargate Spot (<see cref="Ecs"/>).</summary>
     public const string EcsPool = "ecs";
 
@@ -21,7 +25,10 @@ public sealed partial class OverflowOptions
     public const string BatchPool = "batch";
 
     /// <summary>Every pool <see cref="Pools"/> may name.</summary>
-    public static readonly IReadOnlyList<string> KnownPools = [EcsPool, BatchPool];
+    public static readonly IReadOnlyList<string> KnownPools = [Ec2Pool, EcsPool, BatchPool];
+
+    /// <summary>The pools of ECS tasks, each started by its own <see cref="EcsOverflowTaskLauncher"/>.</summary>
+    public static readonly IReadOnlyList<string> EcsPools = [Ec2Pool, EcsPool];
 
     /// <summary>The longest GCP label value, which <see cref="StartedBy"/> is.</summary>
     public const int MaxGcpLabelLength = 63;
@@ -33,7 +40,7 @@ public sealed partial class OverflowOptions
 
     /// <summary>
     /// The backends workers are started on, comma-separated, most preferred first: <c>batch</c> (the default),
-    /// <c>ecs</c>, or both, e.g. <c>ecs,batch</c>. Each tick fills the first pool up to its own <c>MaxTasks</c> and
+    /// <c>ec2</c>, <c>ecs</c>, or several, e.g. <c>ec2,ecs,batch</c>. Each tick fills the first pool up to its own <c>MaxTasks</c> and
     /// hands the rest to the next; workers a pool can't start (an error, no Spot capacity) go to the next one too.
     /// </summary>
     public string Pools { get; set; } = BatchPool;
@@ -75,6 +82,8 @@ public sealed partial class OverflowOptions
 
     public OverflowEcsOptions Ecs { get; set; } = new();
 
+    public OverflowEc2Options Ec2 { get; set; } = new();
+
     public TimeSpan EffectiveInterval => Interval < MinimumInterval ? MinimumInterval : Interval;
 
     public IReadOnlyList<string> JobTypeList => SplitList(JobTypes);
@@ -90,6 +99,7 @@ public sealed partial class OverflowOptions
     {
         int own = pool switch
         {
+            Ec2Pool => Ec2.MaxTasks,
             EcsPool => Ecs.MaxTasks,
             BatchPool => Batch.MaxTasks,
             _ => 0
@@ -97,10 +107,19 @@ public sealed partial class OverflowOptions
         return own > 0 ? own : MaxTasks;
     }
 
+    /// <summary>The settings of an ECS pool (<see cref="EcsPools"/>): <see cref="Ec2"/> or <see cref="Ecs"/>.</summary>
+    public OverflowEcsPoolOptions EcsPoolSettings(string pool) => pool switch
+    {
+        Ec2Pool => Ec2,
+        EcsPool => Ecs,
+        _ => throw new ArgumentException($"{pool} isn't an ECS overflow pool", nameof(pool))
+    };
+
     /// <summary>
     /// What is wrong with these settings for an enabled pool, if anything: no pools or unknown ones, whatever
-    /// <see cref="OverflowEcsOptions.Problems"/> and <see cref="OverflowBatchOptions.Problems"/> find for the pools in
-    /// use, a <see cref="StartedBy"/> that isn't a GCP label value, unknown job types, or limits below 1.
+    /// <see cref="OverflowEcsPoolOptions.Problems"/> and <see cref="OverflowBatchOptions.Problems"/> find for the pools
+    /// in use, two ECS pools on one cluster, a <see cref="StartedBy"/> that isn't a GCP label value, unknown job types,
+    /// or limits below 1.
     /// </summary>
     public IReadOnlyList<string> Problems()
     {
@@ -117,9 +136,16 @@ public sealed partial class OverflowOptions
             problems.Add($"{SectionName}:{nameof(Pools)} has unknown pools: {string.Join(", ", unknownPools)} (use {string.Join(", ", KnownPools)})");
         }
 
-        if (pools.Contains(EcsPool))
+        foreach (string pool in EcsPools.Where(pools.Contains))
         {
-            problems.AddRange(Ecs.Problems());
+            problems.AddRange(EcsPoolSettings(pool).Problems());
+        }
+
+        // Tasks are counted by cluster and startedBy, so two pools on one cluster would each count the other's.
+        if (pools.Contains(Ec2Pool) && pools.Contains(EcsPool) && !string.IsNullOrWhiteSpace(Ec2.Cluster) &&
+            Ec2.Cluster.Trim() == Ecs.Cluster.Trim())
+        {
+            problems.Add($"{SectionName}:{nameof(Ec2)}:{nameof(OverflowEc2Options.Cluster)} and {nameof(Ecs)}:{nameof(OverflowEcsOptions.Cluster)} must be different clusters, as each pool counts the tasks in its own");
         }
 
         if (pools.Contains(BatchPool))
@@ -143,9 +169,9 @@ public sealed partial class OverflowOptions
             problems.Add($"{SectionName}:{nameof(MaxTasks)} must be at least 1");
         }
 
-        if (Ecs.MaxTasks < 0 || Batch.MaxTasks < 0)
+        if (Ec2.MaxTasks < 0 || Ecs.MaxTasks < 0 || Batch.MaxTasks < 0)
         {
-            problems.Add($"{SectionName}:{nameof(Ecs)}:{nameof(OverflowEcsOptions.MaxTasks)} and {nameof(Batch)}:{nameof(OverflowBatchOptions.MaxTasks)} can't be negative (0 means {nameof(MaxTasks)})");
+            problems.Add($"{SectionName}:{nameof(Ec2)}:{nameof(OverflowEc2Options.MaxTasks)}, {nameof(Ecs)}:{nameof(OverflowEcsOptions.MaxTasks)} and {nameof(Batch)}:{nameof(OverflowBatchOptions.MaxTasks)} can't be negative (0 means {nameof(MaxTasks)})");
         }
 
         if (MaxStartPerTick < 1)
@@ -231,7 +257,7 @@ public sealed class OverflowBatchOptions
 
     /// <summary>
     /// A job none of whose tasks has started after this long (no quota, no Spot capacity) is deleted, so it stops
-    /// counting against <see cref="OverflowOptions.MaxTasks"/>.
+    /// counting against <see cref="OverflowOptions.MaxTasks"/>, and the pool starts nothing for as long again.
     /// </summary>
     public TimeSpan ProvisionTimeout { get; set; } = TimeSpan.FromMinutes(3);
 
@@ -300,27 +326,39 @@ public sealed class OverflowBatchOptions
 }
 
 /// <summary>
-/// The overflow pool on AWS (<c>Overflow:Ecs:*</c>, docs/video-pipeline/fargate-overflow.md): ECS tasks of
-/// <see cref="TaskDefinition"/> on Fargate Spot, one worker each, started with <c>RunTask</c> in
-/// <see cref="Subnets"/> with a public IP. The task definition holds the task's size, roles, secret, volumes and
-/// sandbox; the API changes only its image, to <see cref="WorkerImage"/>, by registering a new revision.
+/// An overflow pool of ECS tasks (docs/video-pipeline/fargate-overflow.md, ec2-overflow.md): tasks of
+/// <see cref="TaskDefinition"/>, one worker each, started with <c>RunTask</c> on <see cref="CapacityProvider"/> in
+/// <see cref="Cluster"/>. The task definition holds the task's size, network mode, roles, secret, volumes and sandbox;
+/// the API changes only its image, to <see cref="WorkerImage"/>, by registering a new revision, and sends
+/// <see cref="Subnets"/> and <see cref="SecurityGroups"/> only when its network mode is <c>awsvpc</c>.
 /// PlusCosmic/infrastructure's aws/overflow-workers (Terraform) creates the resources and outputs these settings.
+/// <see cref="OverflowEcsOptions"/> is the Fargate Spot pool and <see cref="OverflowEc2Options"/> the EC2 Spot one;
+/// each has its own cluster, so each counts only its own tasks.
 /// </summary>
-public sealed class OverflowEcsOptions
+public abstract class OverflowEcsPoolOptions
 {
-    private const string Prefix = OverflowOptions.SectionName + ":" + nameof(OverflowOptions.Ecs) + ":";
+    /// <summary>The pool's section under <c>Overflow</c>, e.g. <c>Ecs</c>.</summary>
+    protected abstract string SectionName { get; }
+
+    /// <summary>Whether <see cref="Subnets"/> and <see cref="SecurityGroups"/> must be set (an awsvpc-only pool).</summary>
+    protected abstract bool RequiresNetwork { get; }
+
+    private string Prefix => $"{OverflowOptions.SectionName}:{SectionName}:";
 
     /// <summary>
-    /// The most Fargate workers up at once: the Fargate Spot vCPU quota over the task's vCPUs (8 / 2 = 4). 0 (the
-    /// default) leaves only <see cref="OverflowOptions.MaxTasks"/>.
+    /// The most workers of this pool up at once, e.g. its vCPU quota over the task's vCPUs. 0 (the default) leaves
+    /// only <see cref="OverflowOptions.MaxTasks"/>.
     /// </summary>
     public int MaxTasks { get; set; }
 
     /// <summary>The project's Region, e.g. <c>eu-north-1</c>.</summary>
     public string Region { get; set; } = "";
 
-    /// <summary>The ECS cluster's name or ARN.</summary>
+    /// <summary>The ECS cluster's name or ARN; each pool has its own, as tasks are counted per cluster.</summary>
     public string Cluster { get; set; } = "";
+
+    /// <summary>The capacity provider every task is started on, e.g. <c>FARGATE_SPOT</c> or an Auto Scaling group's.</summary>
+    public abstract string CapacityProvider { get; set; }
 
     /// <summary>
     /// The worker's task definition family. Tasks run its latest revision, or the revision the API registers for
@@ -328,10 +366,13 @@ public sealed class OverflowEcsOptions
     /// </summary>
     public string TaskDefinition { get; set; } = "";
 
-    /// <summary>Comma-separated subnet ids the tasks run in, with a public IP to reach the API and R2.</summary>
+    /// <summary>
+    /// Comma-separated subnet ids the tasks run in, sent only for an <c>awsvpc</c> task definition; on Fargate they
+    /// get a public IP to reach the API and R2.
+    /// </summary>
     public string Subnets { get; set; } = "";
 
-    /// <summary>Comma-separated security group ids for the tasks.</summary>
+    /// <summary>Comma-separated security group ids for the tasks, sent only for an <c>awsvpc</c> task definition.</summary>
     public string SecurityGroups { get; set; } = "";
 
     /// <summary>
@@ -346,9 +387,19 @@ public sealed class OverflowEcsOptions
 
     public string SecretAccessKey { get; set; } = "";
 
+    /// <summary>
+    /// A task still <c>PROVISIONING</c> after this long (its capacity provider couldn't place it: no Spot capacity, the
+    /// quota, the Auto Scaling group's maximum) is stopped, and the pool starts nothing for as long again, so its
+    /// tasks go to the next pool. Above an EC2 instance's cold start (1 to 3 minutes).
+    /// </summary>
+    public TimeSpan ProvisionTimeout { get; set; } = TimeSpan.FromMinutes(4);
+
     public IReadOnlyList<string> SubnetList => SplitList(Subnets);
 
     public IReadOnlyList<string> SecurityGroupList => SplitList(SecurityGroups);
+
+    /// <summary>Whether <see cref="CapacityProvider"/> is Fargate's, the only one where a task can get a public IP.</summary>
+    public bool IsFargate => CapacityProvider.Trim() is "FARGATE" or OverflowEcsOptions.FargateSpot;
 
     /// <summary>The settings' problems, for <see cref="OverflowOptions.Problems"/>.</summary>
     public IReadOnlyList<string> Problems()
@@ -364,9 +415,14 @@ public sealed class OverflowEcsOptions
 
         Require(Region, nameof(Region));
         Require(Cluster, nameof(Cluster));
+        Require(CapacityProvider, nameof(CapacityProvider));
         Require(TaskDefinition, nameof(TaskDefinition));
-        Require(Subnets, nameof(Subnets));
-        Require(SecurityGroups, nameof(SecurityGroups));
+        if (RequiresNetwork)
+        {
+            Require(Subnets, nameof(Subnets));
+            Require(SecurityGroups, nameof(SecurityGroups));
+        }
+
         if (!string.IsNullOrWhiteSpace(TaskDefinition) && TaskDefinition.Contains(':'))
         {
             problems.Add($"{Prefix}{nameof(TaskDefinition)} must be the family, without a revision or ARN");
@@ -382,9 +438,48 @@ public sealed class OverflowEcsOptions
             problems.Add($"{Prefix}{nameof(AccessKeyId)} and {nameof(SecretAccessKey)} must both be set, or neither for the default credential chain");
         }
 
+        if (ProvisionTimeout <= TimeSpan.Zero)
+        {
+            problems.Add($"{Prefix}{nameof(ProvisionTimeout)} must be positive");
+        }
+
         return problems;
     }
 
     private static IReadOnlyList<string> SplitList(string value) =>
         value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct().ToList();
+}
+
+/// <summary>
+/// The overflow pool on AWS Fargate Spot (<c>Overflow:Ecs:*</c>, docs/video-pipeline/fargate-overflow.md): an
+/// <c>awsvpc</c> task definition, so <see cref="OverflowEcsPoolOptions.Subnets"/> and
+/// <see cref="OverflowEcsPoolOptions.SecurityGroups"/> are required, and every task gets a public IP.
+/// </summary>
+public sealed class OverflowEcsOptions : OverflowEcsPoolOptions
+{
+    public const string FargateSpot = "FARGATE_SPOT";
+
+    protected override string SectionName => nameof(OverflowOptions.Ecs);
+
+    protected override bool RequiresNetwork => true;
+
+    /// <summary><c>FARGATE_SPOT</c> unless set.</summary>
+    public override string CapacityProvider { get; set; } = FargateSpot;
+}
+
+/// <summary>
+/// The overflow pool on EC2 Spot instances (<c>Overflow:Ec2:*</c>, docs/video-pipeline/ec2-overflow.md): ECS tasks
+/// on its own cluster's Auto Scaling group capacity provider (<see cref="CapacityProvider"/>, required), which starts
+/// an instance for each and scales back to zero. The task definition is usually <c>host</c> mode, using the instance's
+/// public IP, so <see cref="OverflowEcsPoolOptions.Subnets"/> and <see cref="OverflowEcsPoolOptions.SecurityGroups"/>
+/// are only needed for an <c>awsvpc</c> one.
+/// </summary>
+public sealed class OverflowEc2Options : OverflowEcsPoolOptions
+{
+    protected override string SectionName => nameof(OverflowOptions.Ec2);
+
+    protected override bool RequiresNetwork => false;
+
+    /// <summary>The cluster's Auto Scaling group capacity provider; no default.</summary>
+    public override string CapacityProvider { get; set; } = "";
 }

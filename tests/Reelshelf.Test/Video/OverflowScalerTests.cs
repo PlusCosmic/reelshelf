@@ -277,6 +277,33 @@ public class OverflowScalerTests
     }
 
     [Fact]
+    public async Task ThreePools_FillInOrder_Ec2ThenFargateThenBatch()
+    {
+        Harness test = new(o =>
+        {
+            o.MaxTasks = 12;
+            o.MaxStartPerTick = 12;
+            o.Ec2.MaxTasks = 4;
+            o.Ecs.MaxTasks = 4;
+            o.Batch.MaxTasks = 6;
+        }, pools: ["ec2", "ecs", "batch"]);
+        test.Backlog.Next = new OverflowBacklog(11, Old);
+        test.Launchers["ec2"].Running = 2;
+        // EC2 Spot can only place one more this tick.
+        test.Launchers["ec2"].Accept = 1;
+
+        OverflowTick tick = await test.TickAsync();
+
+        Assert.Equal(OverflowTickOutcome.Started, tick.Outcome);
+        Assert.Equal(9, tick.Started);
+        Assert.Equal([2], test.Launchers["ec2"].StartRequests);
+        Assert.Equal([4], test.Launchers["ecs"].StartRequests);
+        Assert.Equal([4], test.Launchers["batch"].StartRequests);
+        Assert.Equal(new Dictionary<string, int> { ["ec2"] = 1, ["ecs"] = 4, ["batch"] = 4 }, tick.StartedByPool);
+        Assert.Equal(3, test.Metrics.RunningIn("ec2"));
+    }
+
+    [Fact]
     public async Task APoolThatOnlyStartsSome_HandsTheRestToTheNext()
     {
         Harness test = new(o =>
@@ -393,7 +420,8 @@ public class OverflowScalerTests
     [Fact]
     public void APoolsCap_DefaultsToTheOverallOne()
     {
-        OverflowOptions options = new() { MaxTasks = 7, Ecs = { MaxTasks = 4 } };
+        OverflowOptions options = new() { MaxTasks = 7, Ecs = { MaxTasks = 4 }, Ec2 = { MaxTasks = 5 } };
+        Assert.Equal(5, options.MaxTasksFor("ec2"));
         Assert.Equal(4, options.MaxTasksFor("ecs"));
         Assert.Equal(7, options.MaxTasksFor("batch"));
     }
@@ -470,13 +498,122 @@ public class OverflowScalerTests
         services.AddSingleton(TimeProvider.System);
         // No clients: building them needs real credentials.
         services.AddSingleton<IBatchJobs>(new NoBatch());
-        services.AddSingleton<IEcsTasks>(new NoEcs());
+        services.AddKeyedSingleton<IEcsTasks>("ecs", new NoEcs());
         using ServiceProvider provider = services.BuildServiceProvider();
 
         OverflowPools pools = provider.GetRequiredService<OverflowPools>();
         Assert.Equal(["ecs", "batch"], pools.All.Select(pool => pool.Name));
         Assert.IsType<EcsOverflowTaskLauncher>(pools.All[0].Launcher);
         Assert.IsType<BatchOverflowTaskLauncher>(pools.All[1].Launcher);
+    }
+
+    [Fact]
+    public void Setup_ThreePools_RegistersThemInOrder_EachEcsPoolWithItsOwnClient()
+    {
+        Dictionary<string, string?> settings = CompleteSettings();
+        foreach ((string key, string? value) in EcsSettings().Concat(Ec2Settings()))
+        {
+            settings[key] = value;
+        }
+
+        settings["Overflow:Pools"] = "ec2,ecs,batch";
+        IServiceCollection services = Build(settings);
+        services.AddSingleton(TimeProvider.System);
+        NoEcs ec2Client = new();
+        NoEcs ecsClient = new();
+        services.AddSingleton<IBatchJobs>(new NoBatch());
+        services.AddKeyedSingleton<IEcsTasks>("ec2", ec2Client);
+        services.AddKeyedSingleton<IEcsTasks>("ecs", ecsClient);
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        OverflowPools pools = provider.GetRequiredService<OverflowPools>();
+        Assert.Equal(["ec2", "ecs", "batch"], pools.All.Select(pool => pool.Name));
+        Assert.Equal("ec2", Assert.IsType<EcsOverflowTaskLauncher>(pools.All[0].Launcher).Pool);
+        Assert.Equal("ecs", Assert.IsType<EcsOverflowTaskLauncher>(pools.All[1].Launcher).Pool);
+        Assert.NotSame(pools.All[0].Launcher, pools.All[1].Launcher);
+        Assert.Same(ec2Client, provider.GetRequiredKeyedService<IEcsTasks>("ec2"));
+        Assert.Same(ecsClient, provider.GetRequiredKeyedService<IEcsTasks>("ecs"));
+        Assert.IsType<BatchOverflowTaskLauncher>(pools.All[2].Launcher);
+        OverflowOptions options = provider.GetRequiredService<IOptions<OverflowOptions>>().Value;
+        Assert.Equal("reelshelf-overflow-ec2-spot", options.Ec2.CapacityProvider);
+        // The Fargate pool keeps its default when no capacity provider is set.
+        Assert.Equal("FARGATE_SPOT", options.Ecs.CapacityProvider);
+    }
+
+    [Fact]
+    public void Setup_Ec2Alone_NeedsNoSubnetsOrOtherPoolsSettings()
+    {
+        Dictionary<string, string?> settings = Ec2Settings();
+        settings["Overflow:Enabled"] = "true";
+        settings["Overflow:Pools"] = "ec2";
+
+        IServiceCollection services = Build(settings);
+        Assert.True(RegistersTheService(services));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IBatchJobs));
+        Assert.DoesNotContain(services, descriptor => Equals(descriptor.ServiceKey, "ecs"));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Assert.Equal(["ec2"], provider.GetRequiredService<OverflowPools>().All.Select(pool => pool.Name));
+    }
+
+    [Theory]
+    [InlineData("Overflow:Ec2:Region")]
+    [InlineData("Overflow:Ec2:Cluster")]
+    [InlineData("Overflow:Ec2:CapacityProvider")]
+    [InlineData("Overflow:Ec2:TaskDefinition")]
+    public void Setup_Ec2_FailsWithoutARequiredSetting(string key)
+    {
+        Dictionary<string, string?> settings = Ec2Settings();
+        settings["Overflow:Enabled"] = "true";
+        settings["Overflow:Pools"] = "ec2";
+        settings[key] = " ";
+
+        Assert.Contains($"{key} is missing", Assert.Throws<InvalidOperationException>(() => Build(settings)).Message);
+    }
+
+    [Fact]
+    public void Setup_Ec2_HasNoDefaultCapacityProvider()
+    {
+        Dictionary<string, string?> settings = Ec2Settings();
+        settings.Remove("Overflow:Ec2:CapacityProvider");
+        settings["Overflow:Enabled"] = "true";
+        settings["Overflow:Pools"] = "ec2";
+
+        Assert.Contains("Overflow:Ec2:CapacityProvider is missing",
+            Assert.Throws<InvalidOperationException>(() => Build(settings)).Message);
+    }
+
+    [Theory]
+    [InlineData("Overflow:Ec2:TaskDefinition", "reelshelf-worker-overflow-ec2-prod:3", "Overflow:Ec2:TaskDefinition must be the family")]
+    [InlineData("Overflow:Ec2:WorkerImage", "ghcr.io/pluscosmic/reelshelf-worker", "Overflow:Ec2:WorkerImage must name a tag")]
+    [InlineData("Overflow:Ec2:AccessKeyId", "AKIAEXAMPLE", "Overflow:Ec2:AccessKeyId and SecretAccessKey must both be set")]
+    [InlineData("Overflow:Ec2:MaxTasks", "-1", "can't be negative")]
+    [InlineData("Overflow:Ec2:Cluster", "reelshelf-overflow-prod", "must be different clusters")]
+    [InlineData("Overflow:Ec2:ProvisionTimeout", "00:00:00", "Overflow:Ec2:ProvisionTimeout must be positive")]
+    public void Setup_Ec2_FailsOnBadSettings(string key, string value, string message)
+    {
+        Dictionary<string, string?> settings = EcsSettings();
+        foreach ((string ec2Key, string? ec2Value) in Ec2Settings())
+        {
+            settings[ec2Key] = ec2Value;
+        }
+
+        settings["Overflow:Enabled"] = "true";
+        settings["Overflow:Pools"] = "ec2,ecs";
+        settings[key] = value;
+
+        Assert.Contains(message, Assert.Throws<InvalidOperationException>(() => Build(settings)).Message);
+    }
+
+    [Fact]
+    public void Setup_EcsPoolsNotInUse_AreNotValidated()
+    {
+        // An incomplete Ec2 section doesn't stop a deployment that only uses the Fargate pool.
+        Dictionary<string, string?> settings = EcsSettings();
+        settings["Overflow:Enabled"] = "true";
+        settings["Overflow:Pools"] = "ecs";
+        settings["Overflow:Ec2:Cluster"] = "reelshelf-overflow-ec2-prod";
+
+        Assert.True(RegistersTheService(Build(settings)));
     }
 
     [Fact]
@@ -499,6 +636,7 @@ public class OverflowScalerTests
     [InlineData("Overflow:Ecs:TaskDefinition")]
     [InlineData("Overflow:Ecs:Subnets")]
     [InlineData("Overflow:Ecs:SecurityGroups")]
+    [InlineData("Overflow:Ecs:CapacityProvider")]
     public void Setup_Ecs_FailsWithoutARequiredSetting(string key)
     {
         Dictionary<string, string?> settings = EcsSettings();
@@ -565,6 +703,15 @@ public class OverflowScalerTests
         ["Overflow:Ecs:Subnets"] = "subnet-a,subnet-b",
         ["Overflow:Ecs:SecurityGroups"] = "sg-1",
         ["Overflow:Ecs:WorkerImage"] = "ghcr.io/pluscosmic/reelshelf-worker:sha-abc"
+    };
+
+    private static Dictionary<string, string?> Ec2Settings() => new()
+    {
+        ["Overflow:Ec2:Region"] = "eu-north-1",
+        ["Overflow:Ec2:Cluster"] = "reelshelf-overflow-ec2-prod",
+        ["Overflow:Ec2:CapacityProvider"] = "reelshelf-overflow-ec2-spot",
+        ["Overflow:Ec2:TaskDefinition"] = "reelshelf-worker-overflow-ec2-prod",
+        ["Overflow:Ec2:WorkerImage"] = "ghcr.io/pluscosmic/reelshelf-worker:sha-abc"
     };
 
     private static bool RegistersTheService(IServiceCollection services) =>
@@ -687,6 +834,12 @@ public class OverflowScalerTests
 
         public Task<Amazon.ECS.Model.RunTaskResponse> RunTaskAsync(Amazon.ECS.Model.RunTaskRequest request,
             CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<Amazon.ECS.Model.Task>> DescribeTasksAsync(string cluster,
+            IReadOnlyList<string> taskArns, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task StopTaskAsync(string cluster, string taskArn, string reason, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeStorage(bool configured) : ITranscodeStorage

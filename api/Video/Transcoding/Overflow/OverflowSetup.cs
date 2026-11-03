@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+
 namespace Reelshelf.Video.Transcoding.Overflow;
 
 public static class OverflowSetup
@@ -5,7 +8,8 @@ public static class OverflowSetup
     /// <summary>
     /// Registers the overflow pool where <c>Overflow:Enabled</c> is true, outside the <c>OpenApi</c> environment
     /// (which builds the app without secrets and runs no background services), with a launcher for each backend in
-    /// <c>Overflow:Pools</c> (ECS on Fargate Spot, Google Cloud Batch), in that order. Startup fails when it is on and
+    /// <c>Overflow:Pools</c> (ECS on EC2 Spot, ECS on Fargate Spot, Google Cloud Batch), in that order. Each ECS pool
+    /// gets its own client (the keyed <see cref="IEcsTasks"/> of its name) and launcher. Startup fails when it is on and
     /// the settings are incomplete (<see cref="OverflowOptions.Problems"/>), so a half-configured pool never runs. Call
     /// it after the R2 host, whose storage gates each tick.
     /// </summary>
@@ -32,10 +36,18 @@ public static class OverflowSetup
         }
 
         IReadOnlyList<string> poolNames = settings.PoolList;
-        if (poolNames.Contains(OverflowOptions.EcsPool))
+        // The launchers time out tasks that never start.
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        foreach (string pool in OverflowOptions.EcsPools.Where(poolNames.Contains))
         {
-            builder.Services.AddSingleton<IEcsTasks>(_ => new AwsEcsTasks(AwsEcsTasks.CreateClient(settings.Ecs)));
-            builder.Services.AddSingleton<EcsOverflowTaskLauncher>();
+            OverflowEcsPoolOptions poolSettings = settings.EcsPoolSettings(pool);
+            builder.Services.AddKeyedSingleton<IEcsTasks>(pool,
+                (_, _) => new AwsEcsTasks(AwsEcsTasks.CreateClient(poolSettings)));
+            builder.Services.AddKeyedSingleton(pool, (provider, _) => new EcsOverflowTaskLauncher(pool,
+                provider.GetRequiredKeyedService<IEcsTasks>(pool),
+                provider.GetRequiredService<IOptions<OverflowOptions>>(),
+                provider.GetRequiredService<TimeProvider>(),
+                provider.GetRequiredService<ILogger<EcsOverflowTaskLauncher>>()));
         }
 
         if (poolNames.Contains(OverflowOptions.BatchPool))
@@ -47,7 +59,8 @@ public static class OverflowSetup
         builder.Services.AddSingleton(provider => new OverflowPools(poolNames.Select(name => new OverflowPool(name,
             name switch
             {
-                OverflowOptions.EcsPool => provider.GetRequiredService<EcsOverflowTaskLauncher>(),
+                OverflowOptions.Ec2Pool or OverflowOptions.EcsPool =>
+                    provider.GetRequiredKeyedService<EcsOverflowTaskLauncher>(name),
                 OverflowOptions.BatchPool => (IOverflowTaskLauncher)provider.GetRequiredService<BatchOverflowTaskLauncher>(),
                 _ => throw new InvalidOperationException($"Unknown overflow pool {name}")
             })).ToList()));
