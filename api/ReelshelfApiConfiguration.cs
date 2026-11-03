@@ -356,7 +356,8 @@ internal static class ReelshelfApiConfiguration
         // Gauges for every run table above; the sampler stays out of the OpenApi environment like the services below.
         builder.AddQueueMetrics();
 
-        // Google Cloud Batch overflow workers for the transcode queue; only where Overflow:Enabled is on, never in OpenApi.
+        // Overflow workers for the transcode queue (Fargate Spot and/or Google Cloud Batch, Overflow:Pools); only where
+        // Overflow:Enabled is on, never in OpenApi.
         builder.AddTranscodeOverflow();
 
         // Background services should not run during explicit OpenAPI document generation.

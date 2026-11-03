@@ -1,6 +1,8 @@
 namespace Reelshelf.Video.Transcoding.Overflow;
 
-/// <summary>Starts and counts the overflow pool's tasks, one worker each; a fake stands in for Batch in tests.</summary>
+/// <summary>
+/// Starts and counts one overflow pool's tasks, one worker each; a fake stands in for the backend in tests.
+/// </summary>
 public interface IOverflowTaskLauncher
 {
     /// <summary>The overflow tasks running or still provisioning.</summary>
@@ -11,4 +13,13 @@ public interface IOverflowTaskLauncher
     /// be asked of it at all.
     /// </summary>
     Task<int> StartTasksAsync(int count, CancellationToken cancellationToken);
+}
+
+/// <summary>One backend of the overflow pool: its name in <see cref="OverflowOptions.Pools"/> and its launcher.</summary>
+public sealed record OverflowPool(string Name, IOverflowTaskLauncher Launcher);
+
+/// <summary>The pools in <see cref="OverflowOptions.Pools"/>'s order, most preferred first.</summary>
+public sealed class OverflowPools(IReadOnlyList<OverflowPool> pools)
+{
+    public IReadOnlyList<OverflowPool> All { get; } = pools;
 }

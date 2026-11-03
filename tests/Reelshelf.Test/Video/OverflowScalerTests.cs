@@ -12,8 +12,8 @@ using Xunit;
 namespace Reelshelf.Test.Video;
 
 /// <summary>
-/// The overflow pool's decision (<see cref="OverflowScaler"/>) against a fake backlog and a fake launcher, and its startup
-/// checks (<see cref="OverflowSetup"/>).
+/// The overflow pool's decision (<see cref="OverflowScaler"/>) against a fake backlog and fake launchers, one pool or
+/// several, and its startup checks (<see cref="OverflowSetup"/>).
 /// </summary>
 public class OverflowScalerTests
 {
@@ -252,6 +252,195 @@ public class OverflowScalerTests
     }
 
     [Fact]
+    public async Task SeveralPools_FillTheFirstUpToItsCap_ThenTheNext()
+    {
+        Harness test = new(o =>
+        {
+            o.MaxTasks = 10;
+            o.MaxStartPerTick = 10;
+            o.Ecs.MaxTasks = 4;
+            o.Batch.MaxTasks = 6;
+        }, pools: ["ecs", "batch"]);
+        test.Backlog.Next = new OverflowBacklog(7, Old);
+        test.Launchers["ecs"].Running = 1;
+
+        OverflowTick tick = await test.TickAsync();
+
+        Assert.Equal(OverflowTickOutcome.Started, tick.Outcome);
+        Assert.Equal(6, tick.Started);
+        Assert.Equal([3], test.Launchers["ecs"].StartRequests);
+        Assert.Equal([3], test.Launchers["batch"].StartRequests);
+        Assert.Equal(new Dictionary<string, int> { ["ecs"] = 3, ["batch"] = 3 }, tick.StartedByPool);
+        Assert.Equal(4, test.Metrics.RunningIn("ecs"));
+        Assert.Equal(3, test.Metrics.RunningIn("batch"));
+        Assert.Equal(7, test.Metrics.Running);
+    }
+
+    [Fact]
+    public async Task APoolThatOnlyStartsSome_HandsTheRestToTheNext()
+    {
+        Harness test = new(o =>
+        {
+            o.MaxTasks = 10;
+            o.MaxStartPerTick = 10;
+            o.Ecs.MaxTasks = 4;
+            o.Batch.MaxTasks = 6;
+        }, pools: ["ecs", "batch"]);
+        test.Backlog.Next = new OverflowBacklog(5, Old);
+        // No Fargate Spot capacity for all of them.
+        test.Launchers["ecs"].Accept = 1;
+
+        OverflowTick tick = await test.TickAsync();
+
+        Assert.Equal(5, tick.Started);
+        Assert.Equal([4], test.Launchers["ecs"].StartRequests);
+        Assert.Equal([4], test.Launchers["batch"].StartRequests);
+    }
+
+    [Fact]
+    public async Task APoolThatThrows_HandsItsShareToTheNext()
+    {
+        Harness test = new(o =>
+        {
+            o.MaxTasks = 10;
+            o.MaxStartPerTick = 10;
+            o.Ecs.MaxTasks = 4;
+        }, pools: ["ecs", "batch"]);
+        test.Backlog.Next = new OverflowBacklog(3, Old);
+        test.Launchers["ecs"].StartError = new InvalidOperationException("AccessDenied");
+
+        OverflowTick tick = await test.TickAsync();
+
+        Assert.Equal(OverflowTickOutcome.Started, tick.Outcome);
+        Assert.Equal(3, tick.Started);
+        Assert.Equal([3], test.Launchers["batch"].StartRequests);
+        Assert.Equal(new Dictionary<string, int> { ["batch"] = 3 }, tick.StartedByPool);
+    }
+
+    [Fact]
+    public async Task EveryPoolThrowing_IsAStartFailure()
+    {
+        Harness test = new(o => o.MaxTasks = 10, pools: ["ecs", "batch"]);
+        test.Backlog.Next = new OverflowBacklog(3, Old);
+        test.Launchers["ecs"].StartError = new InvalidOperationException("AccessDenied");
+        test.Launchers["batch"].StartError = new InvalidOperationException("PERMISSION_DENIED");
+
+        Assert.Equal(OverflowTickOutcome.StartFailed, (await test.TickAsync()).Outcome);
+    }
+
+    [Fact]
+    public async Task APoolThatCantBeCounted_IsTakenAsFull()
+    {
+        Harness test = new(o =>
+        {
+            o.MaxTasks = 8;
+            o.MaxStartPerTick = 10;
+            o.Ecs.MaxTasks = 4;
+            o.Batch.MaxTasks = 6;
+        }, pools: ["ecs", "batch"]);
+        test.Backlog.Next = new OverflowBacklog(20, Old);
+        test.Launchers["ecs"].ListError = new InvalidOperationException("throttled");
+
+        OverflowTick tick = await test.TickAsync();
+
+        // ECS may have its 4 up, so only 8 - 4 = 4 go to Batch, and none to ECS.
+        Assert.Equal(OverflowTickOutcome.Started, tick.Outcome);
+        Assert.Equal(4, tick.Running);
+        Assert.Empty(test.Launchers["ecs"].StartRequests);
+        Assert.Equal([4], test.Launchers["batch"].StartRequests);
+        Assert.Null(test.Metrics.RunningIn("ecs"));
+    }
+
+    [Fact]
+    public async Task EveryPoolAtItsOwnCap_StartsNothing_EvenUnderTheOverallCap()
+    {
+        Harness test = new(o =>
+        {
+            o.MaxTasks = 20;
+            o.MaxStartPerTick = 10;
+            o.Ecs.MaxTasks = 4;
+            o.Batch.MaxTasks = 6;
+        }, pools: ["ecs", "batch"]);
+        test.Backlog.Next = new OverflowBacklog(50, Old);
+        test.Launchers["ecs"].Running = 4;
+        test.Launchers["batch"].Running = 6;
+
+        Assert.Equal(OverflowTickOutcome.Enough, (await test.TickAsync()).Outcome);
+        Assert.Empty(test.Launchers["ecs"].StartRequests);
+        Assert.Empty(test.Launchers["batch"].StartRequests);
+    }
+
+    [Fact]
+    public async Task TheOverallCap_LimitsEveryPoolTogether()
+    {
+        Harness test = new(o =>
+        {
+            o.MaxTasks = 5;
+            o.MaxStartPerTick = 10;
+            o.Ecs.MaxTasks = 4;
+            o.Batch.MaxTasks = 6;
+        }, pools: ["ecs", "batch"]);
+        test.Backlog.Next = new OverflowBacklog(50, Old);
+        test.Launchers["batch"].Running = 2;
+
+        OverflowTick tick = await test.TickAsync();
+
+        Assert.Equal(3, tick.Started);
+        Assert.Equal([3], test.Launchers["ecs"].StartRequests);
+        Assert.Empty(test.Launchers["batch"].StartRequests);
+    }
+
+    [Fact]
+    public void APoolsCap_DefaultsToTheOverallOne()
+    {
+        OverflowOptions options = new() { MaxTasks = 7, Ecs = { MaxTasks = 4 } };
+        Assert.Equal(4, options.MaxTasksFor("ecs"));
+        Assert.Equal(7, options.MaxTasksFor("batch"));
+    }
+
+    [Fact]
+    public async Task Metrics_AreTaggedWithThePool()
+    {
+        Harness test = new(o =>
+        {
+            o.MaxTasks = 10;
+            o.Ecs.MaxTasks = 1;
+        }, pools: ["ecs", "batch"]);
+        test.Backlog.Next = new OverflowBacklog(3, Old);
+        List<(string Name, long Value, string? Pool)> recorded = [];
+        using MeterListener listener = new();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter == test.Metrics.Meter)
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
+        {
+            string? pool = null;
+            foreach (KeyValuePair<string, object?> tag in tags)
+            {
+                if (tag.Key == OverflowMetrics.PoolTag)
+                {
+                    pool = tag.Value as string;
+                }
+            }
+
+            recorded.Add((instrument.Name, value, pool));
+        });
+        listener.Start();
+
+        await test.TickAsync();
+        listener.RecordObservableInstruments();
+
+        Assert.Contains(("reelshelf.overflow.tasks_started", 1L, "ecs"), recorded);
+        Assert.Contains(("reelshelf.overflow.tasks_started", 2L, "batch"), recorded);
+        Assert.Contains(("reelshelf.overflow.tasks_running", 1L, "ecs"), recorded);
+        Assert.Contains(("reelshelf.overflow.tasks_running", 2L, "batch"), recorded);
+    }
+
+    [Fact]
     public void Setup_IsOffByDefault()
     {
         Assert.False(RegistersTheService(Build(new Dictionary<string, string?>())));
@@ -265,6 +454,76 @@ public class OverflowScalerTests
         using ServiceProvider provider = services.BuildServiceProvider();
         OverflowOptions options = provider.GetRequiredService<IOptions<OverflowOptions>>().Value;
         Assert.Equal("europe-west9", options.Batch.Region);
+    }
+
+    [Fact]
+    public void Setup_BothPools_RegistersThemInOrder()
+    {
+        Dictionary<string, string?> settings = CompleteSettings();
+        foreach ((string key, string? value) in EcsSettings())
+        {
+            settings[key] = value;
+        }
+
+        settings["Overflow:Pools"] = "ECS, batch";
+        IServiceCollection services = Build(settings);
+        services.AddSingleton(TimeProvider.System);
+        // No clients: building them needs real credentials.
+        services.AddSingleton<IBatchJobs>(new NoBatch());
+        services.AddSingleton<IEcsTasks>(new NoEcs());
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        OverflowPools pools = provider.GetRequiredService<OverflowPools>();
+        Assert.Equal(["ecs", "batch"], pools.All.Select(pool => pool.Name));
+        Assert.IsType<EcsOverflowTaskLauncher>(pools.All[0].Launcher);
+        Assert.IsType<BatchOverflowTaskLauncher>(pools.All[1].Launcher);
+    }
+
+    [Fact]
+    public void Setup_EcsAlone_NeedsNoBatchSettings()
+    {
+        Dictionary<string, string?> settings = EcsSettings();
+        settings["Overflow:Enabled"] = "true";
+        settings["Overflow:Pools"] = "ecs";
+
+        IServiceCollection services = Build(settings);
+        Assert.True(RegistersTheService(services));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IBatchJobs));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Assert.Equal(["ecs"], provider.GetRequiredService<OverflowPools>().All.Select(pool => pool.Name));
+    }
+
+    [Theory]
+    [InlineData("Overflow:Ecs:Region")]
+    [InlineData("Overflow:Ecs:Cluster")]
+    [InlineData("Overflow:Ecs:TaskDefinition")]
+    [InlineData("Overflow:Ecs:Subnets")]
+    [InlineData("Overflow:Ecs:SecurityGroups")]
+    public void Setup_Ecs_FailsWithoutARequiredSetting(string key)
+    {
+        Dictionary<string, string?> settings = EcsSettings();
+        settings["Overflow:Enabled"] = "true";
+        settings["Overflow:Pools"] = "ecs";
+        settings[key] = " ";
+
+        Assert.Contains($"{key} is missing", Assert.Throws<InvalidOperationException>(() => Build(settings)).Message);
+    }
+
+    [Theory]
+    [InlineData("Overflow:Pools", "ecs,lambda", "unknown pools: lambda")]
+    [InlineData("Overflow:Pools", " , ", "names no pool")]
+    [InlineData("Overflow:Ecs:TaskDefinition", "reelshelf-worker-overflow-prod:3", "must be the family")]
+    [InlineData("Overflow:Ecs:WorkerImage", "ghcr.io/pluscosmic/reelshelf-worker", "must name a tag")]
+    [InlineData("Overflow:Ecs:AccessKeyId", "AKIAEXAMPLE", "must both be set")]
+    [InlineData("Overflow:Ecs:MaxTasks", "-1", "can't be negative")]
+    public void Setup_Ecs_FailsOnBadSettings(string key, string value, string message)
+    {
+        Dictionary<string, string?> settings = EcsSettings();
+        settings["Overflow:Enabled"] = "true";
+        settings["Overflow:Pools"] = "ecs";
+        settings[key] = value;
+
+        Assert.Contains(message, Assert.Throws<InvalidOperationException>(() => Build(settings)).Message);
     }
 
     [Theory]
@@ -298,6 +557,16 @@ public class OverflowScalerTests
         ["Overflow:Batch:ApiBaseUrl"] = "https://reelshelf.example"
     };
 
+    private static Dictionary<string, string?> EcsSettings() => new()
+    {
+        ["Overflow:Ecs:Region"] = "eu-north-1",
+        ["Overflow:Ecs:Cluster"] = "reelshelf-overflow-prod",
+        ["Overflow:Ecs:TaskDefinition"] = "reelshelf-worker-overflow-prod",
+        ["Overflow:Ecs:Subnets"] = "subnet-a,subnet-b",
+        ["Overflow:Ecs:SecurityGroups"] = "sg-1",
+        ["Overflow:Ecs:WorkerImage"] = "ghcr.io/pluscosmic/reelshelf-worker:sha-abc"
+    };
+
     private static bool RegistersTheService(IServiceCollection services) =>
         services.Any(descriptor => descriptor.ServiceType == typeof(IHostedService) &&
                                    descriptor.ImplementationType == typeof(OverflowBackgroundService));
@@ -316,20 +585,33 @@ public class OverflowScalerTests
         public Harness(
             Action<OverflowOptions>? configure = null,
             bool storageConfigured = true,
-            TranscodingOptions? transcoding = null)
+            TranscodingOptions? transcoding = null,
+            string[]? pools = null)
         {
             OverflowOptions options = new() { Enabled = true };
             configure?.Invoke(options);
             ServiceProvider services = new ServiceCollection().AddMetrics().AddSingleton<OverflowMetrics>()
                 .BuildServiceProvider();
             Metrics = services.GetRequiredService<OverflowMetrics>();
-            Scaler = new OverflowScaler(Backlog, Launcher, new FakeStorage(storageConfigured), Metrics,
+            foreach (string pool in pools ?? [OverflowOptions.BatchPool])
+            {
+                Launchers[pool] = new FakeLauncher();
+            }
+
+            Scaler = new OverflowScaler(Backlog,
+                new OverflowPools(Launchers.Select(pair => new OverflowPool(pair.Key, pair.Value)).ToList()),
+                new FakeStorage(storageConfigured), Metrics,
                 Options.Create(options), new FixedOptions<TranscodingOptions>(transcoding ?? new TranscodingOptions()),
                 Clock, NullLogger<OverflowScaler>.Instance);
         }
 
         public FakeBacklog Backlog { get; } = new();
-        public FakeLauncher Launcher { get; } = new();
+
+        /// <summary>Each pool's fake, in the pools' order.</summary>
+        public Dictionary<string, FakeLauncher> Launchers { get; } = [];
+
+        /// <summary>The first pool's fake.</summary>
+        public FakeLauncher Launcher => Launchers.Values.First();
         public Clock Clock { get; } = new();
         public OverflowMetrics Metrics { get; }
         public OverflowScaler Scaler { get; }
@@ -376,6 +658,35 @@ public class OverflowScalerTests
             StartRequests.Add(count);
             return Task.FromResult(Math.Min(count, Accept));
         }
+    }
+
+    private sealed class NoBatch : IBatchJobs
+    {
+        public IAsyncEnumerable<Google.Cloud.Batch.V1.Job> ListAsync(string parent, string filter,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task CreateAsync(Google.Cloud.Batch.V1.CreateJobRequest request, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task DeleteAsync(string name, string reason, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class NoEcs : IEcsTasks
+    {
+        public Task<IReadOnlyList<string>> ListTaskArnsAsync(string cluster, string startedBy,
+            Amazon.ECS.DesiredStatus desiredStatus, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<Amazon.ECS.Model.TaskDefinition> DescribeLatestAsync(string family,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<Amazon.ECS.Model.TaskDefinition> RegisterAsync(
+            Amazon.ECS.Model.RegisterTaskDefinitionRequest request, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<Amazon.ECS.Model.RunTaskResponse> RunTaskAsync(Amazon.ECS.Model.RunTaskRequest request,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class FakeStorage(bool configured) : ITranscodeStorage

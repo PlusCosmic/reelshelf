@@ -17,8 +17,9 @@ public sealed class OverflowBackgroundService(
         await Task.Yield();
         OverflowOptions current = options.Value;
         logger.LogInformation(
-            "Overflow pool on: checking every {Interval}, up to {MaxTasks} Batch workers in {Region}",
-            current.EffectiveInterval, current.MaxTasks, current.Batch.Region);
+            "Overflow pool on: checking every {Interval}, up to {MaxTasks} workers in {Pools}",
+            current.EffectiveInterval, current.MaxTasks,
+            string.Join(", then ", current.PoolList.Select(pool => $"{pool} (up to {current.MaxTasksFor(pool)})")));
 
         using PeriodicTimer timer = new(current.EffectiveInterval);
         do

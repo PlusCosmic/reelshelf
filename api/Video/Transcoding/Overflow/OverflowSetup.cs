@@ -4,10 +4,10 @@ public static class OverflowSetup
 {
     /// <summary>
     /// Registers the overflow pool where <c>Overflow:Enabled</c> is true, outside the <c>OpenApi</c> environment
-    /// (which builds the app without secrets and runs no background services), with the Google Cloud Batch launcher.
-    /// Startup fails when it is on and the settings are incomplete
-    /// (<see cref="OverflowOptions.Problems"/>), so a half-configured pool never runs. Call it after the R2 host, whose
-    /// storage gates each tick.
+    /// (which builds the app without secrets and runs no background services), with a launcher for each backend in
+    /// <c>Overflow:Pools</c> (ECS on Fargate Spot, Google Cloud Batch), in that order. Startup fails when it is on and
+    /// the settings are incomplete (<see cref="OverflowOptions.Problems"/>), so a half-configured pool never runs. Call
+    /// it after the R2 host, whose storage gates each tick.
     /// </summary>
     public static void AddTranscodeOverflow(this WebApplicationBuilder builder)
     {
@@ -31,8 +31,26 @@ public static class OverflowSetup
                 $"Overflow:Enabled is on, but its settings are incomplete: {string.Join("; ", problems)}");
         }
 
-        builder.Services.AddSingleton<IBatchJobs>(_ => new GoogleBatchJobs(GoogleBatchJobs.CreateClient(settings.Batch)));
-        builder.Services.AddSingleton<IOverflowTaskLauncher, BatchOverflowTaskLauncher>();
+        IReadOnlyList<string> poolNames = settings.PoolList;
+        if (poolNames.Contains(OverflowOptions.EcsPool))
+        {
+            builder.Services.AddSingleton<IEcsTasks>(_ => new AwsEcsTasks(AwsEcsTasks.CreateClient(settings.Ecs)));
+            builder.Services.AddSingleton<EcsOverflowTaskLauncher>();
+        }
+
+        if (poolNames.Contains(OverflowOptions.BatchPool))
+        {
+            builder.Services.AddSingleton<IBatchJobs>(_ => new GoogleBatchJobs(GoogleBatchJobs.CreateClient(settings.Batch)));
+            builder.Services.AddSingleton<BatchOverflowTaskLauncher>();
+        }
+
+        builder.Services.AddSingleton(provider => new OverflowPools(poolNames.Select(name => new OverflowPool(name,
+            name switch
+            {
+                OverflowOptions.EcsPool => provider.GetRequiredService<EcsOverflowTaskLauncher>(),
+                OverflowOptions.BatchPool => (IOverflowTaskLauncher)provider.GetRequiredService<BatchOverflowTaskLauncher>(),
+                _ => throw new InvalidOperationException($"Unknown overflow pool {name}")
+            })).ToList()));
 
         builder.Services.AddSingleton<IOverflowBacklogReader, OverflowBacklogStatements>();
         builder.Services.AddSingleton<OverflowMetrics>();

@@ -141,7 +141,7 @@ backlog reader don't change, apart from the defaults below.
 | `ApiBaseUrl`        | `https://reelshelf.app`                                        |                                                                                                           |
 | `ExitWhenIdleAfter` | `00:01:00`                                                     | Passed to the worker.                                                                                     |
 | `MaxRunDuration`    | `12:00:00`                                                     | A safety cap only. A long backlog legitimately runs for hours (one Fargate worker took 7 h and 102 jobs). |
-| `ProvisionTimeout`  | `00:10:00`                                                     | See [Jobs that never start](#jobs-that-never-start).                                                      |
+| `ProvisionTimeout`  | `00:03:00`                                                     | See [Jobs that never start](#jobs-that-never-start).                                                      |
 | `CredentialsBase64` | (the scaler SA key, base64)                                    | Empty means Application Default Credentials. Base64 so the JSON survives an env var.                      |
 
 ### `BatchOverflowTaskLauncher`
