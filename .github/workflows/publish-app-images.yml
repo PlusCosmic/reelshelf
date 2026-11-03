@@ -113,7 +113,7 @@ jobs:
 
           # The worker is deployed by its own compose files (services/reelshelf-worker-dev.yml, and one per
           # environment as they are added): every services/*.yml whose image is the worker's, or that hands it to the
-          # Batch overflow pool as Overflow__Batch__WorkerImage (services/clips.yml). It needs building
+          # overflow pools as Overflow__Batch__WorkerImage or Overflow__Ecs__WorkerImage (services/clips.yml). It needs building
           # when workers/ changed since any of the commits they deploy, or when one can't be found. The bump job
           # rewrites the same set of files.
           worker_needs_build() {
@@ -123,7 +123,7 @@ jobs:
             while read -r path; do
               [[ -n "$path" ]] || continue
               text="$(gh api "repos/PlusCosmic/infrastructure/contents/${path}" -H 'Accept: application/vnd.github.raw')" || return 1
-              grep -qE "(image:[[:space:]]*|Overflow__Batch__WorkerImage=)['\"]?ghcr\.io/pluscosmic/reelshelf-worker:" <<< "$text" || continue
+              grep -qE "(image:[[:space:]]*|Overflow__(Batch|Ecs)__WorkerImage=)['\"]?ghcr\.io/pluscosmic/reelshelf-worker:" <<< "$text" || continue
               found=true
               echo "::notice::reelshelf-worker: deployed by ${path}" >&2
               if [[ "$(needs_build reelshelf-worker '^(workers/|\.github/workflows/publish-app-images\.yml)' "$text")" == "true" ]]; then
@@ -306,12 +306,12 @@ jobs:
               compose_file.write_text(updated)
               bumped = True
 
-          # The worker: every services/*.yml that deploys it (dev, prod) or names it for the Batch overflow pool
-          # (Overflow__Batch__WorkerImage in clips.yml), all of them, skipping the rest.
+          # The worker: every services/*.yml that deploys it (dev, prod) or names it for the overflow
+          # pools (Overflow__Batch__WorkerImage and Overflow__Ecs__WorkerImage in clips.yml), all of them, skipping the rest.
           if os.environ["BUMP_WORKER"] == "true":
               image = f"ghcr.io/pluscosmic/reelshelf-worker:sha-{sha}"
               pattern = re.compile(
-                  r"((?:image:\s*|Overflow__Batch__WorkerImage=)['\"]?)ghcr\.io/pluscosmic/reelshelf-worker:[^'\"\s]+(['\"]?)"
+                  r"((?:image:\s*|Overflow__(?:Batch|Ecs)__WorkerImage=)['\"]?)ghcr\.io/pluscosmic/reelshelf-worker:[^'\"\s]+(['\"]?)"
               )
               worker_files = 0
               for compose_file in sorted(Path("services").glob("*.yml")):

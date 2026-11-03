@@ -124,7 +124,7 @@ upload completes and passes its checks (#213, see [r2-bucket.md](r2-bucket.md#br
   also deletes `clips/{clipId}/v1/`; a PUT the worker makes after that is left in the bucket.
 - **Credential:** the endpoints require the `Worker` policy: `Authorization: Bearer <secret>`, where the secret is
   `Worker:Secret` (the secret named `default`) or one of the named secrets `Worker:Secrets:<name>` (#247), e.g.
-  `Worker:Secrets:gcp` for the overflow workers, so each pool's credential can be rotated or revoked on its own. The
+  `Worker:Secrets:gcp` and `Worker:Secrets:aws` for the two overflow pools, so each pool's credential can be rotated or revoked on its own. The
   bearer is compared in constant time against every configured secret, without stopping at a match, so the time
   doesn't reveal which one matched. A secret shorter than 32 characters is ignored, with a warning at startup (so is
   a `Worker:Secrets:default` while `Worker:Secret` is set), and with no usable secret every request is refused. The
@@ -250,12 +250,18 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
 ## The overflow pool (built in #248)
 
 When `transcode_run` backs up (a burst of uploads, or the Bunny migration), the API starts extra one-shot workers on
-Google Cloud Batch, Spot `c4-highcpu-4` VMs in Paris (see [Google Cloud Batch](#google-cloud-batch) below and
-[batch-overflow.md](batch-overflow.md)). They run the same image as the dedicated worker, with
-`Worker__ExitWhenIdleAfter` set (#246), so they stop themselves once the queue is empty. The API only ever starts
-workers and never stops one. The code is in `api/Video/Transcoding/Overflow/`, and the GCP resources are
-PlusCosmic/infrastructure's `gcp/overflow-workers/`. The pool first ran on AWS Fargate Spot and ECS EC2 Spot (#248,
-infrastructure#214); that backend and its stack were removed on 2026-10-22 once Batch had carried real sessions.
+one or more backends, the pools in `Overflow:Pools`:
+
+- `ecs`: ECS tasks on AWS Fargate Spot in Stockholm (see [AWS Fargate Spot](#aws-fargate-spot) below and
+  [fargate-overflow.md](fargate-overflow.md)), resources in PlusCosmic/infrastructure's `aws/overflow-workers/`;
+- `batch`: Google Cloud Batch, Spot `c4-highcpu-4` VMs in Paris (see [Google Cloud Batch](#google-cloud-batch) and
+  [batch-overflow.md](batch-overflow.md)), resources in infrastructure's `gcp/overflow-workers/`.
+
+They run the same image as the dedicated worker, with `Worker__ExitWhenIdleAfter` set (#246), so they stop
+themselves once the queue is empty. The API only ever starts workers and never stops one. The code is in
+`api/Video/Transcoding/Overflow/`. The pool first ran on AWS (Fargate Spot, then ECS EC2 Spot; #248,
+infrastructure#214), which was removed on 2026-10-22 once Batch had carried real sessions; Fargate Spot came back
+as a second pool alongside Batch on 2026-11-03, because Batch was at its CPU quota.
 
 - **Gate:** `OverflowBackgroundService` is registered only where `Overflow:Enabled` is true (default false), and
   never in the `OpenApi` environment. Each tick also checks that R2 is configured (`ITranscodeStorage.IsConfigured`).
@@ -271,23 +277,59 @@ infrastructure#214); that backend and its stack were removed on 2026-10-22 once 
      the `oldest_pending_age` gauge, which counts from `created_at`. A job released by a restarting worker, or one
      past its retry delay, has only just become available, so the dedicated worker gets the threshold to take it
      first.
-  3. It counts the overflow tasks running or provisioning (`IOverflowTaskLauncher`; see below).
+  3. It counts the overflow tasks running or provisioning in each pool (its `IOverflowTaskLauncher`; see below). A
+     pool whose count fails is taken as full for this tick: nothing is started there, and it counts as its own cap
+     against `Overflow:MaxTasks`, so a failing count never lets spend go over.
   4. Once the oldest job has waited `Overflow:ScaleUpAfter` (2 min), it starts
-     `min(pending - running, MaxTasks - running, MaxStartPerTick)` tasks. `Overflow:MaxTasks` (4) is the hard cap on
-     spend, and `Overflow:MaxStartPerTick` defaults to 4.
-  5. After starting any, it starts no more for `Overflow:Cooldown` (2 min), so tasks still provisioning aren't
+     `min(pending - running, MaxTasks - running, MaxStartPerTick)` tasks, `running` being every pool's together,
+     and no more than the pools' own caps leave room for. `Overflow:MaxTasks` (4) is the hard cap on spend across
+     the pools, and `Overflow:MaxStartPerTick` defaults to 4.
+  5. The tasks go to the pools in `Overflow:Pools`'s order: each takes as many as its own cap (`Overflow:Ecs:MaxTasks`,
+     `Overflow:Batch:MaxTasks`: the backend's quota; 0, the default, means `Overflow:MaxTasks`) leaves room for, and
+     whatever a pool doesn't start (it threw, or started fewer for want of Spot capacity) is offered to the next.
+  6. After starting any, it starts no more for `Overflow:Cooldown` (2 min), so tasks still provisioning aren't
      counted twice.
 - **Errors:** a failed backlog count, task count or start is logged and tried again on the next tick, with no
-  cooldown. Nothing here throws into the API.
-- **Metrics:** the `Reelshelf.Overflow` meter has two instruments, and both are exported with the queue gauges when
-  `QueueMetrics:Exporter=otlp`:
-  - `reelshelf.overflow.tasks_running`, a gauge of the tasks as last counted. It reports nothing before the first
-    count and after a failed one.
+  cooldown. A start that fails in one pool goes to the next in the same tick; the outcome is `StartFailed` only
+  when every pool asked threw and none started. Nothing here throws into the API.
+- **Metrics:** the `Reelshelf.Overflow` meter has two instruments, both tagged `pool` (`ecs`, `batch`) and exported
+  with the queue gauges when `QueueMetrics:Exporter=otlp`:
+  - `reelshelf.overflow.tasks_running`, a gauge of each pool's tasks as last counted. A pool reports nothing before
+    its first count and after a failed one; sum the pools for the total.
   - `reelshelf.overflow.tasks_started`, a counter.
 - **One scaler per deployment:** each API instance with `Overflow:Enabled` runs its own scaler. Dev and prod
   must use separate `StartedBy` values, so each counts only its own jobs.
 - **The Bunny migration** is the pool's first big backlog: keep `Migration:BatchSize` above the total number of
   workers ([bunny-migration.md](bunny-migration.md#api-queueing-migration)).
+
+### AWS Fargate Spot
+
+`EcsOverflowTaskLauncher` (`AWSSDK.ECS`) starts and counts the workers as ECS tasks on Fargate Spot. The plan, the
+quota and the reasons are in [fargate-overflow.md](fargate-overflow.md).
+
+- **Starting:** `RunTask` of up to 10 tasks per call on the `FARGATE_SPOT` capacity provider in
+  `Overflow:Ecs:Cluster`, in `Overflow:Ecs:Subnets` with `Overflow:Ecs:SecurityGroups` and a public IP (public
+  subnets, no NAT), `startedBy` = `Overflow:StartedBy`, and a client token so the SDK's retries start them once.
+  There are no overrides and no tags (the API's user has no `ecs:TagResource`). ECS reports no Spot capacity (or no
+  quota) as `failures` rather than an error, so the call returns how many tasks it got and the rest go to the next
+  pool.
+- **The worker image:** the task definition (`Overflow:Ecs:TaskDefinition`, a family) holds the task's size (2 vCPU,
+  4 GiB on prod), roles, `Worker__Secret` from Secrets Manager, environment, volumes and sandbox, all from the
+  stack. The API changes only the image: when `Overflow:Ecs:WorkerImage` is set and the family's latest revision
+  runs another one, it registers a copy of that revision with the image on every container of the same repository
+  (the worker and its `volume-init`), and runs that. It remembers the revision for the image, and finds it again
+  after a failed `RunTask` (someone may have deregistered it). The bump PR keeps `WorkerImage` current, as for
+  Batch, so a new worker needs no stack deploy. Empty runs the latest revision as it is.
+- **Preemption:** Fargate Spot sends SIGTERM two minutes ahead and the task definition's `stopTimeout` is 120 s,
+  past the worker's `ShutdownGrace` (20 s) plus its release, so the job goes back to `pending` without a watcher
+  (`Worker:PreemptionNotice` stays empty).
+- **Counting:** `ListTasks` by `startedBy` with desired status `RUNNING`, then `PENDING`, without repeats; a task
+  still provisioning is `RUNNING`.
+- **Client:** `Overflow:Ecs:AccessKeyId` and `SecretAccessKey`, the stack's API user's key (both or neither; neither
+  uses the SDK's default chain), in `Overflow:Ecs:Region`.
+- **Settings:** with `ecs` in `Overflow:Pools`, startup fails when `Region`, `Cluster`, `TaskDefinition`, `Subnets`
+  or `SecurityGroups` is missing, on a `TaskDefinition` with a revision, a `WorkerImage` without a tag, or half a
+  key.
 
 ### Google Cloud Batch
 
@@ -310,8 +352,9 @@ status.state!="FAILED"` (Batch filters on the allocation policy's labels, not th
   tasks less those succeeded or failed, so tasks still waiting for a VM, and a preempted task waiting for its retry,
   count from the moment the job exists.
 - **Jobs that never start:** a job still `QUEUED` or `SCHEDULED` with no task ever assigned, older than
-  `Overflow:Batch:ProvisionTimeout` (10 min), is deleted while counting, with Batch's latest status event logged
-  (quota exceeded, no Spot capacity), so it stops holding `MaxTasks`. No worker in it has claimed anything. A job
+  `Overflow:Batch:ProvisionTimeout` (3 min; it was 10 before the second pool), is deleted while counting, with
+  Batch's latest status event logged (quota exceeded, no Spot capacity), so it stops holding `MaxTasks`. Until then
+  its tasks count as running, so they hold places another pool could have filled; hence the short timeout. No worker in it has claimed anything. A job
   that can't be deleted still counts.
 - **Client:** `Overflow:Batch:CredentialsBase64` is the scaler service account's JSON key, base64; empty uses
   Application Default Credentials. The service account needs `roles/batch.jobsEditor` and `roles/iam.serviceAccountUser`
@@ -319,10 +362,12 @@ status.state!="FAILED"` (Batch filters on the allocation policy's labels, not th
 - **Settings:** startup fails when `Enabled` is on and any of `ProjectId`, `Region`,
   `InstanceTemplate`, `ServiceAccount`, `WorkerImage`, `WorkerSecret` or `ApiBaseUrl` is missing, on a key that
   isn't base64, non-positive sizes or durations, or a `StartedBy` that isn't a GCP label value, as well as on
-  an unknown job type or `MaxTasks`/`MaxStartPerTick` below 1. infrastructure's `gcp/overflow-workers/setup.sh` prints the values, and the bump PR keeps
+  an unknown job type or `MaxTasks`/`MaxStartPerTick` below 1 (checked only with `batch` in `Overflow:Pools`). infrastructure's `gcp/overflow-workers/setup.sh` prints the values, and the bump PR keeps
   `WorkerImage` current.
-- **Scaling settings for a session burst:** `ScaleUpAfter` 30 s, `Cooldown` 0 (jobs count their tasks at once),
-  `MaxStartPerTick` = `MaxTasks` (prod: 6, the C4 quota in Paris). The code's defaults are 2 min, 2 min and 4.
+- **Scaling settings for a session burst:** `ScaleUpAfter` 30 s, `Cooldown` 0 (jobs and tasks count at once),
+  `MaxStartPerTick` = `MaxTasks`. Prod: `Overflow:Batch:MaxTasks` 6 (the C4 quota in Paris), `Overflow:Ecs:MaxTasks`
+  4 (the 8-vCPU Fargate Spot quota over 2-vCPU tasks), `Overflow:MaxTasks` 10, `Overflow:Pools` `ecs,batch`. The
+  code's defaults are 2 min, 2 min and 4.
 
 ## Downloads
 

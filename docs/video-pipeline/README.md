@@ -13,6 +13,8 @@ is deleted.
 | [workers-and-jobs.md](workers-and-jobs.md)                   | The worker service, job types, thumbnails, downloads and trimming         |
 | [r2-bucket.md](r2-bucket.md)                                 | The R2 bucket: config, object layout, lifecycle, CORS, caching, Activity  |
 | [bunny-migration.md](bunny-migration.md)                     | Moving the Bunny clips to R2, then leaving Bunny                          |
+| [batch-overflow.md](batch-overflow.md)                       | The overflow pool on Google Cloud Batch: plan, measurements, settings     |
+| [fargate-overflow.md](fargate-overflow.md)                   | The second overflow pool, on AWS Fargate Spot, alongside Batch            |
 | [open-questions.md](open-questions.md)                       | Undecided points and known follow-ups                                     |
 
 Conventions:

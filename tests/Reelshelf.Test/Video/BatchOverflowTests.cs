@@ -168,8 +168,9 @@ public class BatchOverflowTests
 
         Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IHostedService) &&
                                                 descriptor.ImplementationType == typeof(OverflowBackgroundService));
-        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IOverflowTaskLauncher) &&
-                                                descriptor.ImplementationType == typeof(BatchOverflowTaskLauncher));
+        // Batch is the default pool, and the only one without Overflow:Pools.
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(BatchOverflowTaskLauncher));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(EcsOverflowTaskLauncher));
     }
 
     [Theory]

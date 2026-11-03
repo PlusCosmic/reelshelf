@@ -7,7 +7,7 @@ import { legalOperator } from "./legal";
  */
 export const privacyCopy = {
   title: "Privacy policy",
-  updated: "29 October 2026",
+  updated: "3 November 2026",
 } as const;
 
 export function PrivacyText() {
@@ -108,8 +108,9 @@ export function PrivacyText() {
       <ul>
         <li>
           <strong>Cloudflare</strong> and <strong>Bunny.net</strong> store and
-          stream your clips. <strong>Google Cloud</strong> converts some of them
-          for streaming, in the EU, and keeps nothing afterwards.
+          stream your clips. <strong>Google Cloud</strong> and{" "}
+          <strong>Amazon Web Services</strong> convert some of them for
+          streaming, in the EU, and keep nothing afterwards.
         </li>
         <li>
           <strong>Discord, Twitch and Google</strong> handle sign-in. Twitch
@@ -150,11 +151,12 @@ export function PrivacyText() {
         Reelshelf is run from the UK. Our servers and database are in Germany.
         Clips in our own pipeline are stored by Cloudflare in the US (eastern
         North America); some older clips are stored by Bunny.net in Germany.
-        Clips that Google Cloud encodes are processed in the EU. Cloudflare,
-        Discord, Twitch, Google, Stripe, OpenAI, Anthropic, OpenRouter and
-        Resend are based in the US, so data they handle leaves the UK and EU. We
-        rely on their standard data protection terms, such as standard
-        contractual clauses or the UK–US data bridge, to protect it.
+        Clips that Google Cloud or Amazon Web Services encode are processed in
+        the EU. Cloudflare, Discord, Twitch, Google, Amazon, Stripe, OpenAI,
+        Anthropic, OpenRouter and Resend are based in the US, so data they
+        handle leaves the UK and EU. We rely on their standard data protection
+        terms, such as standard contractual clauses or the UK–US data bridge, to
+        protect it.
       </p>
 
       <h2>Sharing and visibility</h2>
