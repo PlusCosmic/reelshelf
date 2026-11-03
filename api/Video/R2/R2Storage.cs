@@ -189,6 +189,24 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
         }
     }
 
+    /// <summary>Puts a small object in one request, with the given <c>Content-Type</c> and <c>Cache-Control</c>.</summary>
+    public async Task PutAsync(string key, byte[] content, string contentType, string cacheControl,
+        CancellationToken cancellationToken)
+    {
+        using MemoryStream body = new(content, writable: false);
+        PutObjectRequest request = new()
+        {
+            BucketName = _options.Bucket,
+            Key = key,
+            InputStream = body,
+            ContentType = contentType,
+            DisablePayloadSigning = true,
+            AutoCloseStream = false
+        };
+        request.Headers.CacheControl = cacheControl;
+        await _client.PutObjectAsync(request, cancellationToken);
+    }
+
     /// <summary>Starts a multipart upload into <paramref name="key"/> for the browser to fill, and returns its id.</summary>
     public async Task<string> StartMultipartUploadAsync(string key, string contentType, CancellationToken cancellationToken)
     {

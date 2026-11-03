@@ -8,7 +8,8 @@ public class GameCategoryStatements(NpgsqlConnection connection)
     public async Task<List<GameCategory>> GetAllCategoriesAsync()
     {
         const string sql = """
-            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color, is_custom, created_at, updated_at
+            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color,
+                   cover_key, key_art_key, game_logo_key, igdb_checked_at, is_custom, created_at, updated_at
             FROM game_category
             ORDER BY name
             """;
@@ -19,7 +20,8 @@ public class GameCategoryStatements(NpgsqlConnection connection)
     public async Task<List<GameCategory>> GetUserCategoriesAsync(Guid userId)
     {
         const string sql = """
-            SELECT gc.id, gc.igdb_id, gc.name, gc.slug, gc.cover_url, gc.key_art_url, gc.game_logo_url, gc.cloth_color, gc.is_custom,
+            SELECT gc.id, gc.igdb_id, gc.name, gc.slug, gc.cover_url, gc.key_art_url, gc.game_logo_url, gc.cloth_color,
+                   gc.cover_key, gc.key_art_key, gc.game_logo_key, gc.igdb_checked_at, gc.is_custom,
                    gc.created_at, gc.updated_at
             FROM game_category gc
             INNER JOIN user_game_category ugc ON gc.id = ugc.game_category_id
@@ -38,7 +40,8 @@ public class GameCategoryStatements(NpgsqlConnection connection)
     public async Task<List<GameCategory>> GetLibraryCategoriesAsync(Guid userId)
     {
         const string sql = """
-            SELECT gc.id, gc.igdb_id, gc.name, gc.slug, gc.cover_url, gc.key_art_url, gc.game_logo_url, gc.cloth_color, gc.is_custom,
+            SELECT gc.id, gc.igdb_id, gc.name, gc.slug, gc.cover_url, gc.key_art_url, gc.game_logo_url, gc.cloth_color,
+                   gc.cover_key, gc.key_art_key, gc.game_logo_key, gc.igdb_checked_at, gc.is_custom,
                    gc.created_at, gc.updated_at
             FROM game_category gc
             LEFT JOIN user_game_category ugc ON ugc.game_category_id = gc.id AND ugc.user_id = @UserId
@@ -79,7 +82,8 @@ public class GameCategoryStatements(NpgsqlConnection connection)
     public async Task<GameCategory?> GetByIdAsync(Guid id)
     {
         const string sql = """
-            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color, is_custom, created_at, updated_at
+            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color,
+                   cover_key, key_art_key, game_logo_key, igdb_checked_at, is_custom, created_at, updated_at
             FROM game_category
             WHERE id = @Id
             """;
@@ -94,7 +98,8 @@ public class GameCategoryStatements(NpgsqlConnection connection)
         }
 
         const string sql = """
-            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color, is_custom, created_at, updated_at
+            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color,
+                   cover_key, key_art_key, game_logo_key, igdb_checked_at, is_custom, created_at, updated_at
             FROM game_category
             WHERE id = ANY(@Ids)
             """;
@@ -105,7 +110,8 @@ public class GameCategoryStatements(NpgsqlConnection connection)
     public async Task<GameCategory?> GetBySlugAsync(string slug)
     {
         const string sql = """
-            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color, is_custom, created_at, updated_at
+            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color,
+                   cover_key, key_art_key, game_logo_key, igdb_checked_at, is_custom, created_at, updated_at
             FROM game_category
             WHERE slug = @Slug
             """;
@@ -115,29 +121,80 @@ public class GameCategoryStatements(NpgsqlConnection connection)
     public async Task<GameCategory?> GetByIgdbIdAsync(long igdbId)
     {
         const string sql = """
-            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color, is_custom, created_at, updated_at
+            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color,
+                   cover_key, key_art_key, game_logo_key, igdb_checked_at, is_custom, created_at, updated_at
             FROM game_category
             WHERE igdb_id = @IgdbId
             """;
         return await connection.QuerySingleOrDefaultAsync<GameCategory>(sql, new { IgdbId = igdbId });
     }
 
+    /// <summary>
+    /// IGDB categories on someone's shelf (added, or holding a clip) that are due: never read from IGDB or last read
+    /// more than <paramref name="staleAfter"/> ago, or, with <paramref name="includeUncopied"/>, an IGDB image with no
+    /// copy yet. Never read first, then the longest since.
+    /// </summary>
     public async Task<List<GameCategory>> GetCategoriesNeedingIgdbAssetRefreshAsync(
         int limit,
-        TimeSpan staleAfter)
+        TimeSpan staleAfter,
+        bool includeUncopied)
     {
         const string sql = """
-            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color, is_custom, created_at, updated_at
-            FROM game_category
-            WHERE igdb_id IS NOT NULL
-              AND (key_art_url IS NULL OR game_logo_url IS NULL)
-              AND updated_at <= now() - @StaleAfter
-            ORDER BY updated_at, name
+            SELECT gc.id, gc.igdb_id, gc.name, gc.slug, gc.cover_url, gc.key_art_url, gc.game_logo_url, gc.cloth_color,
+                   gc.cover_key, gc.key_art_key, gc.game_logo_key, gc.igdb_checked_at, gc.is_custom, gc.created_at, gc.updated_at
+            FROM game_category gc
+            WHERE gc.igdb_id IS NOT NULL
+              AND (gc.igdb_checked_at IS NULL
+                   OR gc.igdb_checked_at <= now() - @StaleAfter
+                   OR (@IncludeUncopied AND (
+                          (gc.cover_url LIKE 'https://images.igdb.com/%' AND gc.cover_key IS NULL)
+                       OR (gc.key_art_url LIKE 'https://images.igdb.com/%' AND gc.key_art_key IS NULL)
+                       OR (gc.game_logo_url LIKE 'https://images.igdb.com/%' AND gc.game_logo_key IS NULL))))
+              AND (EXISTS (SELECT 1 FROM user_game_category ugc WHERE ugc.game_category_id = gc.id)
+                   OR EXISTS (SELECT 1 FROM clip c WHERE c.game_category_id = gc.id))
+            ORDER BY gc.igdb_checked_at NULLS FIRST, gc.name, gc.id
             LIMIT @Limit
             """;
 
-        var results = await connection.QueryAsync<GameCategory>(sql, new { Limit = limit, StaleAfter = staleAfter });
+        var results = await connection.QueryAsync<GameCategory>(
+            sql, new { Limit = limit, StaleAfter = staleAfter, IncludeUncopied = includeUncopied });
         return results.ToList();
+    }
+
+    /// <summary>Records that IGDB was asked about the category and had nothing for it (the game is gone).</summary>
+    public async Task MarkIgdbCheckedAsync(Guid id)
+    {
+        await connection.ExecuteAsync(
+            "UPDATE game_category SET igdb_checked_at = now() WHERE id = @Id", new { Id = id });
+    }
+
+    /// <summary>
+    /// Records <paramref name="key"/> as the copy of the category's <paramref name="kind"/> image, unless that image
+    /// changed since the copy was made. Returns whether it was recorded and the key it replaced, which the caller
+    /// deletes.
+    /// </summary>
+    public async Task<(bool Recorded, string? Replaced)> SetArtKeyAsync(
+        Guid id, GameArtKind kind, string sourceUrl, string key)
+    {
+        (string urlColumn, string keyColumn) = kind switch
+        {
+            GameArtKind.Cover => ("cover_url", "cover_key"),
+            GameArtKind.KeyArt => ("key_art_url", "key_art_key"),
+            GameArtKind.Logo => ("game_logo_url", "game_logo_key"),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        };
+
+        // The old key is read in the same statement: the subquery sees the row as it was before the update.
+        string sql = $"""
+            UPDATE game_category gc
+            SET {keyColumn} = @Key
+            FROM (SELECT id, {keyColumn} AS old_key FROM game_category WHERE id = @Id) old
+            WHERE gc.id = old.id AND gc.{urlColumn} = @SourceUrl
+            RETURNING old.old_key
+            """;
+        var replaced = (await connection.QueryAsync<string?>(
+            sql, new { Id = id, SourceUrl = sourceUrl, Key = key })).ToList();
+        return replaced.Count == 0 ? (false, null) : (true, replaced[0] == key ? null : replaced[0]);
     }
 
     public async Task<GameCategory> CreateCategoryAsync(CreateGameCategoryRequest request)
@@ -145,7 +202,8 @@ public class GameCategoryStatements(NpgsqlConnection connection)
         const string sql = """
             INSERT INTO game_category (igdb_id, name, slug, cover_url, key_art_url, game_logo_url, is_custom)
             VALUES (@IgdbId, @Name, @Slug, @CoverUrl, @KeyArtUrl, @GameLogoUrl, @IsCustom)
-            RETURNING id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color, is_custom, created_at, updated_at
+            RETURNING id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color,
+                   cover_key, key_art_key, game_logo_key, igdb_checked_at, is_custom, created_at, updated_at
             """;
         return await connection.QuerySingleAsync<GameCategory>(sql, new
         {
@@ -169,9 +227,11 @@ public class GameCategoryStatements(NpgsqlConnection connection)
                                    THEN NULL ELSE cloth_color END,
                 key_art_url = COALESCE(@KeyArtUrl, key_art_url),
                 game_logo_url = COALESCE(@GameLogoUrl, game_logo_url),
+                igdb_checked_at = now(),
                 updated_at = now()
             WHERE id = @Id
-            RETURNING id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color, is_custom, created_at, updated_at
+            RETURNING id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color,
+                   cover_key, key_art_key, game_logo_key, igdb_checked_at, is_custom, created_at, updated_at
             """;
 
         return await connection.QuerySingleAsync<GameCategory>(sql, new
@@ -187,7 +247,8 @@ public class GameCategoryStatements(NpgsqlConnection connection)
     public async Task<List<GameCategory>> GetCategoriesNeedingClothColorAsync(int limit)
     {
         const string sql = """
-            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color, is_custom, created_at, updated_at
+            SELECT id, igdb_id, name, slug, cover_url, key_art_url, game_logo_url, cloth_color,
+                   cover_key, key_art_key, game_logo_key, igdb_checked_at, is_custom, created_at, updated_at
             FROM game_category
             WHERE cloth_color IS NULL
               AND cover_url LIKE 'https://images.igdb.com/%'

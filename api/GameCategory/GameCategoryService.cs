@@ -5,7 +5,8 @@ namespace Reelshelf.Games;
 public partial class GameCategoryService(
     GameCategoryStatements statements,
     IgdbService igdbService,
-    GameCoverColors coverColors)
+    GameCoverColors coverColors,
+    GameArtUrls artUrls)
 {
     public async Task<List<GameCategoryResponse>> GetAllCategoriesAsync()
     {
@@ -143,14 +144,15 @@ public partial class GameCategoryService(
         return (await statements.GetByIdAsync(category.Id)) ?? category;
     }
 
-    private static GameCategoryResponse ToResponse(GameCategory category) =>
+    /// <summary>Serves our copies of the images where we hold them, else their sources (<see cref="GameArtUrls"/>).</summary>
+    private GameCategoryResponse ToResponse(GameCategory category) =>
         new(
             category.Id,
             category.Name,
             category.Slug,
-            category.CoverUrl,
-            category.KeyArtUrl,
-            category.GameLogoUrl,
+            artUrls.Cover(category),
+            artUrls.KeyArt(category),
+            artUrls.Logo(category),
             category.IsCustom,
             category.ClothColor
         );

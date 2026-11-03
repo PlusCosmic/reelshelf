@@ -33,6 +33,7 @@ An R2 clip's video id is its clip id (`R2ObjectKeys`):
 | `clips/{clipId}/v{n}/thumbnail.jpg`, `thumbnail_1.jpg` … `thumbnail_5.jpg` | The thumbnail and the five more detection frames                                     |
 | `clips/{clipId}/v{n}/preview.mp4`                                          | The animated preview (no consumer yet)                                               |
 | `exports/{userId}/{exportId}/reelshelf-clips-{n}.zip`                      | An export's zips (ADR-0007), each under 4 GiB, downloadable for 28 days              |
+| `game-art/{categoryId}/{cover,key-art,logo}/{size}/{imageId}.{ext}`        | Our copies of IGDB categories' images (`GameArtMirror`), checked against IGDB daily  |
 
 The clip records its current version in `clip.video_version` (V42), with that version's codecs and height in
 `video_codecs` and `video_height` for its playback source (`video/mp4; codecs="..."`). A trim writes version
@@ -101,8 +102,12 @@ uploads), and completion shares clip preparation's rate limit.
 
 ## Caching (Cloudflare cache rule)
 
-A cache rule on the media hostname caches `/clips/` and respects the origin's `Cache-Control`. `uploads/` is never
-served from the media domain: workers read it with a presigned URL on the S3 endpoint.
+A cache rule on the media hostname caches `/clips/` and respects the origin's `Cache-Control`. `/game-art/` is
+served from the media domain too, `immutable` like the clips' outputs (an IGDB image id never changes content, so a
+new image is a new key); add it to the rule's path match. Without it Cloudflare still caches `.jpg` and `.png` by
+extension, honouring the same header. The API serves a copy's URL only once the copy is recorded, so it never asks
+for a missing one. `uploads/` is never served from the media domain: workers read it with a presigned URL on the S3
+endpoint.
 
 **404s.** R2 answers a missing object with a 404 and no `Cache-Control`. With the rule's edge TTL set to "use
 cache-control header if present, use default Cloudflare caching behavior if not", Cloudflare then applies its

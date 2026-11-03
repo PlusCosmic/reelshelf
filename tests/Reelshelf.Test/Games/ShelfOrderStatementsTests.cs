@@ -49,6 +49,8 @@ public class ShelfOrderStatementsTests
             await TestClipSchema.CreateAsync(connection);
             await connection.ExecuteAsync(
                 await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V54__shelf_order.sql")));
+            await connection.ExecuteAsync(
+                await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V56__game_category_art_copies.sql")));
             await RunAsync(connection, new GameCategoryStatements(dataSource.CreateConnection()));
         }
         finally
