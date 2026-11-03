@@ -43,7 +43,7 @@ export function SelectionBar({
           </button>
         ) : null}
       </div>
-      <p className="rs-selection-hint wide-only">{copy.hint}</p>
+      <p className="rs-selection-hint">{copy.hint}</p>
       <div className="rs-selection-actions">
         <button type="button" className="rs-small-button" onClick={onClear}>
           <IconX size={13} aria-hidden="true" />

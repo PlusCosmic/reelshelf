@@ -9672,9 +9672,20 @@ html:has(.rs-library-route) {
   margin: 0 32px 16px;
 }
 
+/* The keys only help with a keyboard: not on a phone, or wherever there's no pointer to hover with. */
+@media (hover: none) {
+  .rs-selection-hint {
+    display: none;
+  }
+}
+
 @media (max-width: 720px) {
   .rs-selection-bar {
     margin: 0 12px 12px;
+  }
+
+  .rs-selection-hint {
+    display: none;
   }
 
   .rs-row-select > .rs-row-check {
