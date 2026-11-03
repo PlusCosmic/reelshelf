@@ -1,7 +1,6 @@
 import * as tus from "tus-js-client";
 import type { CreateClipResponse } from "@/api-client";
 import { createVideoRequest } from "@/shared/services/clips";
-import { calculateFileMD5 } from "@/utils/fileHash";
 import { S3MultipartUpload } from "@/utils/s3MultipartUpload";
 import { uploadCopy } from "@/copy/upload";
 
@@ -20,10 +19,6 @@ export type TusClipUploadOptions = {
   onSuccess: () => void;
   onError: (error: Error) => void;
 };
-
-export function calculateClipUploadMd5(file: File) {
-  return calculateFileMD5(file);
-}
 
 export async function createPreparedClipUpload({
   categoryId,

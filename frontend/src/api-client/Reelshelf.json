@@ -337,6 +337,57 @@
         }
       }
     },
+    "/api/clips/categories/{categoryId}/videos/duplicates": {
+      "post": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "FindDuplicateVideos",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindDuplicateVideosRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindDuplicateVideosResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clips/videos/{clipId}": {
       "get": {
         "tags": [
@@ -5806,6 +5857,34 @@
         "type": "object",
         "properties": {
           "enabled": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "FindDuplicateVideosRequest": {
+        "required": [
+          "md5_hashes"
+        ],
+        "type": "object",
+        "properties": {
+          "md5_hashes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "FindDuplicateVideosResponse": {
+        "required": [
+          "duplicates"
+        ],
+        "type": "object",
+        "properties": {
+          "duplicates": {
             "type": "array",
             "items": {
               "type": "string"

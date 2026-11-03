@@ -13,7 +13,9 @@ import { bookBinding } from "@/components/Reelshelf/reelshelf-model";
 import {
   clipStage,
   clipStageLabel,
+  isHashingUpload,
   isUnfinishedUpload,
+  isWaitingUpload,
   type ClipStage,
   type UploadItem,
 } from "./addClipsModel";
@@ -35,7 +37,8 @@ function stageOf(item: UploadItem, clip: Clip | undefined): ClipStage | null {
 
 function lineLabel(line: Line) {
   if (!line.stage) return line.item.error ?? uploadCopy.tray.lineFailed;
-  if (line.item.status === "queued") return uploadCopy.tray.waiting;
+  if (isWaitingUpload(line.item)) return uploadCopy.tray.waiting;
+  if (isHashingUpload(line.item)) return uploadCopy.tray.checking;
   if (line.stage.kind === "ready") return uploadCopy.tray.onTheShelf;
   return clipStageLabel(line.stage);
 }
@@ -256,7 +259,7 @@ function TrayBook({
   const order = (line: Line) =>
     !line.stage
       ? 0
-      : line.stage.kind === "uploading" && line.item.status !== "queued"
+      : line.stage.kind === "uploading" && !isWaitingUpload(line.item)
         ? 1
         : line.stage.kind === "processing"
           ? 2

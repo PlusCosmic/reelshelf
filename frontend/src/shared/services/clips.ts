@@ -51,6 +51,19 @@ export async function createVideoRequest(
   });
 }
 
+/** The hashes, of files about to go into the book, that the owner already has a clip of there. */
+export async function findDuplicateVideos(
+  categoryId: string,
+  md5Hashes: string[],
+): Promise<string[]> {
+  const api = createClipsApi();
+  const response = await api.findDuplicateVideos({
+    categoryId,
+    findDuplicateVideosRequest: { md5Hashes },
+  });
+  return response.duplicates;
+}
+
 export async function getVideo(videoId: string): Promise<Clip | null> {
   const api = createClipsApi();
 

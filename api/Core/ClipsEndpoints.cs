@@ -17,6 +17,8 @@ public static class ClipsEndpoints
         group.MapPost("categories/{categoryId:guid}/videos", CreateVideo).WithName("CreateVideo")
             .RequirePermission(Permissions.ClipsCreate)
             .RequireRateLimiting(RateLimitPolicies.ClipPrepare);
+        group.MapPost("categories/{categoryId:guid}/videos/duplicates", FindDuplicateVideos).WithName("FindDuplicateVideos")
+            .RequirePermission(Permissions.ClipsCreate);
         group.MapGet("videos/{clipId:guid}", GetVideoById).WithName("GetVideoById");
         group.MapPost("videos/{clipId:guid}/share", ShareVideo).WithName("ShareVideo");
         group.MapPost("videos/{clipId:guid}/view", MarkVideoAsViewed).WithName("MarkVideoAsViewed");
@@ -103,6 +105,25 @@ public static class ClipsEndpoints
         }
 
         return TypedResults.Ok(result);
+    }
+
+    /// <summary>
+    /// The MD5 hashes, of up to <see cref="MaxDuplicateHashes"/> files about to be uploaded to the category, that the
+    /// caller already has a clip of there. Creating such a clip would answer 409, so the uploader skips it.
+    /// </summary>
+    private static async Task<Results<Ok<FindDuplicateVideosResponse>, BadRequest<string>>> FindDuplicateVideos(
+        ClipService clipService,
+        Guid categoryId,
+        AuthenticatedUser user,
+        FindDuplicateVideosRequest request)
+    {
+        if (request.Md5Hashes is null || request.Md5Hashes.Count > MaxDuplicateHashes)
+        {
+            return TypedResults.BadRequest($"Send between 0 and {MaxDuplicateHashes} hashes");
+        }
+
+        IReadOnlyList<string> duplicates = await clipService.FindDuplicateMd5Hashes(user.Id, categoryId, request.Md5Hashes);
+        return TypedResults.Ok(new FindDuplicateVideosResponse(duplicates));
     }
 
     private static async Task<Results<Ok<Clip>, NotFound>> GetVideoById(
@@ -229,6 +250,12 @@ public static class ClipsEndpoints
         BackfillResult result = await backfillService.BackfillClipMetadataAsync();
         return TypedResults.Ok(result);
     }
+
+    public const int MaxDuplicateHashes = 500;
+
+    public sealed record FindDuplicateVideosRequest(IReadOnlyList<string> Md5Hashes);
+
+    public sealed record FindDuplicateVideosResponse(IReadOnlyList<string> Duplicates);
 
     public sealed record AddTagRequest(string Tag);
 

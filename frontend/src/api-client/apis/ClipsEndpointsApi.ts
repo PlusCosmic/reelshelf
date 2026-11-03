@@ -20,6 +20,8 @@ import type {
   ClipLibraryResponse,
   ClipShareResponse,
   CreateClipResponse,
+  FindDuplicateVideosRequest,
+  FindDuplicateVideosResponse,
   LegendCount,
   PagedClipsResponse,
   TopTag,
@@ -38,6 +40,10 @@ import {
   ClipShareResponseToJSON,
   CreateClipResponseFromJSON,
   CreateClipResponseToJSON,
+  FindDuplicateVideosRequestFromJSON,
+  FindDuplicateVideosRequestToJSON,
+  FindDuplicateVideosResponseFromJSON,
+  FindDuplicateVideosResponseToJSON,
   LegendCountFromJSON,
   LegendCountToJSON,
   PagedClipsResponseFromJSON,
@@ -63,6 +69,11 @@ export interface CreateVideoRequest {
 
 export interface DeleteClipRequest {
   clipId: string;
+}
+
+export interface FindDuplicateVideosOperationRequest {
+  categoryId: string;
+  findDuplicateVideosRequest: FindDuplicateVideosRequest;
 }
 
 export interface GetClipsRequest {
@@ -328,6 +339,69 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteClipRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   */
+  async findDuplicateVideosRaw(
+    requestParameters: FindDuplicateVideosOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<FindDuplicateVideosResponse>> {
+    if (requestParameters["categoryId"] == null) {
+      throw new runtime.RequiredError(
+        "categoryId",
+        'Required parameter "categoryId" was null or undefined when calling findDuplicateVideos().',
+      );
+    }
+
+    if (requestParameters["findDuplicateVideosRequest"] == null) {
+      throw new runtime.RequiredError(
+        "findDuplicateVideosRequest",
+        'Required parameter "findDuplicateVideosRequest" was null or undefined when calling findDuplicateVideos().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clips/categories/{categoryId}/videos/duplicates`;
+    urlPath = urlPath.replace(
+      `{${"categoryId"}}`,
+      encodeURIComponent(String(requestParameters["categoryId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: FindDuplicateVideosRequestToJSON(
+          requestParameters["findDuplicateVideosRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      FindDuplicateVideosResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async findDuplicateVideos(
+    requestParameters: FindDuplicateVideosOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<FindDuplicateVideosResponse> {
+    const response = await this.findDuplicateVideosRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
   }
 
   /**

@@ -47,6 +47,17 @@ public class ClipService(
     /// <paramref name="durationSeconds"/> is checked against the plan's length cap when it is known up front (a
     /// Twitch import); a browser upload's length is checked when the upload completes.
     /// </summary>
+    /// <summary>
+    /// The hashes among <paramref name="md5Hashes"/> the owner already has a clip of in the category, so the uploader
+    /// can turn a folder's duplicates away in one request; <see cref="CreateClip"/> still refuses each one.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> FindDuplicateMd5Hashes(Guid userId, Guid gameCategoryId, IReadOnlyCollection<string> md5Hashes)
+    {
+        HashSet<string> existing = await clipsStatements.FindExistingMd5Hashes(
+            userId, gameCategoryId, md5Hashes.Where(hash => !string.IsNullOrWhiteSpace(hash)).Distinct().ToList());
+        return md5Hashes.Where(existing.Contains).Distinct().ToList();
+    }
+
     public async Task<CreateClipResponse?> CreateClip(Guid gameCategoryId, string videoTitle,
         Guid userId, DateTimeOffset createdAt, long fileSize, string? md5Hash = null, ClipSource? source = null,
         double? durationSeconds = null)
