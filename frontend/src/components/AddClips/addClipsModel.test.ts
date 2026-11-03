@@ -32,6 +32,7 @@ function upload(overrides: Partial<UploadItem>): UploadItem {
     createdAt: new Date(),
     sessionDate: "2026-10-10",
     status: "uploading",
+    md5Hash: null,
     progress: 40,
     clipId: "clip-1",
     error: null,

@@ -19,17 +19,24 @@ import { fetchPlan } from "@/shared/services/plans";
 import { clipLengthProblem, readVideoDuration } from "@/utils/clipLength";
 import { invalidateClipCollections } from "@/hooks/clips.queries";
 import { ApiError } from "@/shared/services/api-error";
-import { deleteClip } from "@/shared/services/clips";
+import { deleteClip, findDuplicateVideos } from "@/shared/services/clips";
+import { createDuplicateChecker } from "@/utils/duplicateCheck";
 import { ensureGamingSessionPlaylist } from "@/shared/services/playlists";
 import { uploadErrorMessage } from "@/utils/uploadErrorMessage";
 import {
   isActiveUpload,
+  isHashingUpload,
   isUnfinishedUpload,
   type UploadItem,
 } from "./addClipsModel";
 import { uploadCopy } from "@/copy/upload";
 
 const MAX_ACTIVE_UPLOADS = 3;
+// Hashing is limited by the disk as much as the CPU, so a few workers are enough; leave a core for the page.
+const HASH_CONCURRENCY = Math.max(
+  1,
+  Math.min(4, (globalThis.navigator?.hardwareConcurrency || 2) - 1),
+);
 
 type UploadsContextValue = {
   items: UploadItem[];
@@ -79,6 +86,10 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
   const filedIds = useRef(new Set<string>());
   const filingSessions = useRef(new Set<string>());
   const batch = useRef(0);
+  // One request per book for the hashes that finish close together, rather than a clip preparation each.
+  const [checkDuplicate] = useState(() =>
+    createDuplicateChecker(findDuplicateVideos),
+  );
 
   const patch = useCallback((id: string, change: Partial<UploadItem>) => {
     setItems((current) =>
@@ -105,7 +116,11 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
     [queryClient],
   );
 
-  const start = useCallback(
+  /**
+   * Checks the file's length against the plan, hashes it and asks the API whether the book already has it, ahead of
+   * the upload slots; a file that passes waits as `hashed` for one.
+   */
+  const prepare = useCallback(
     (item: UploadItem) => {
       patch(item.id, { status: "hashing", progress: 0, error: null });
 
@@ -127,10 +142,60 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // The upload clients (tus, MD5) load with the first upload rather than with the library.
+          // The hashing code loads with the first upload rather than with the library.
+          const [{ hashFileMd5 }, { localResumeStore, multipartResumeKey }] =
+            await Promise.all([
+              import("@/utils/fileHash"),
+              import("@/utils/s3MultipartUpload"),
+            ]);
+          const md5Hash = await hashFileMd5(item.file);
+          const duplicateKey = `${item.categoryId}:${md5Hash}`;
+          const existing = duplicateKeys.current.get(duplicateKey);
+          if (existing && existing !== item.id) {
+            patch(item.id, {
+              status: "duplicate",
+              error: uploadCopy.duplicateInBook,
+            });
+            return;
+          }
+          duplicateKeys.current.set(duplicateKey, item.id);
+
+          // An R2 upload saved before a reload already reserved its clip with this hash; it resumes rather than
+          // counting as a duplicate.
+          const resuming = localResumeStore.load(
+            multipartResumeKey(item.categoryId, md5Hash, item.file.size),
+          );
+          if (!resuming && (await checkDuplicate(item.categoryId, md5Hash))) {
+            patch(item.id, {
+              status: "duplicate",
+              md5Hash,
+              error: uploadCopy.errors.alreadyUploaded,
+            });
+            return;
+          }
+          patch(item.id, { status: "hashed", md5Hash });
+        } catch (error) {
+          patch(item.id, {
+            status: "error",
+            error: uploadErrorMessage(error),
+          });
+        }
+      })();
+    },
+    [checkDuplicate, patch, queryClient],
+  );
+
+  const start = useCallback(
+    (item: UploadItem) => {
+      const md5Hash = item.md5Hash;
+      if (!md5Hash) return;
+      patch(item.id, { status: "creating", error: null });
+
+      void (async () => {
+        try {
+          // The upload clients (tus, S3 multipart) load with the first upload rather than with the library.
           const [
             {
-              calculateClipUploadMd5,
               createPreparedClipUpload,
               createS3ClipUpload,
               createTusClipUpload,
@@ -145,19 +210,6 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
             import("@/utils/clipUpload"),
             import("@/utils/s3MultipartUpload"),
           ]);
-          const md5Hash = await calculateClipUploadMd5(item.file);
-          const duplicateKey = `${item.categoryId}:${md5Hash}`;
-          const existing = duplicateKeys.current.get(duplicateKey);
-          if (existing && existing !== item.id) {
-            patch(item.id, {
-              status: "duplicate",
-              error: uploadCopy.duplicateInBook,
-            });
-            return;
-          }
-          duplicateKeys.current.set(duplicateKey, item.id);
-          patch(item.id, { status: "creating" });
-
           // A multipart upload this browser started before a reload carries on into the clip it prepared then.
           const resumeKey = multipartResumeKey(
             item.categoryId,
@@ -252,13 +304,23 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
     [patch, queryClient, releasePreparedClip],
   );
 
+  // Hash a few files at once, each in its own worker, whether or not the upload slots are free.
+  useEffect(() => {
+    const hashing = items.filter(isHashingUpload).length;
+    if (hashing >= HASH_CONCURRENCY) return;
+    items
+      .filter((item) => item.status === "queued")
+      .slice(0, HASH_CONCURRENCY - hashing)
+      .forEach(prepare);
+  }, [items, prepare]);
+
   // Keep a few uploads running at once; the rest wait their turn.
   useEffect(() => {
     if (paused) return;
     const active = items.filter(isActiveUpload).length;
     if (active >= MAX_ACTIVE_UPLOADS) return;
     items
-      .filter((item) => item.status === "queued")
+      .filter((item) => item.status === "hashed")
       .slice(0, MAX_ACTIVE_UPLOADS - active)
       .forEach(start);
   }, [items, paused, start]);
@@ -321,6 +383,7 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
         createdAt: row.createdAt,
         sessionDate: row.sessionDate,
         status: "queued",
+        md5Hash: null,
         progress: 0,
         clipId: null,
         error: null,
@@ -348,7 +411,8 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
       current.map((item) => {
         if (item.status !== "paused") return item;
         const upload = uploads.current.get(item.id);
-        if (!upload) return { ...item, status: "queued" };
+        if (!upload)
+          return { ...item, status: item.md5Hash ? "hashed" : "queued" };
         upload.start();
         return { ...item, status: "uploading" };
       }),
@@ -360,7 +424,13 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
       setItems((current) =>
         current.map((item) =>
           item.id === id && item.status === "error"
-            ? { ...item, status: "queued", error: null, clipId: null }
+            ? {
+                ...item,
+                // A file already hashed and checked goes straight back in line for an upload slot.
+                status: item.md5Hash ? "hashed" : "queued",
+                error: null,
+                clipId: null,
+              }
             : item,
         ),
       ),

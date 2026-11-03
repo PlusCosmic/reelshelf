@@ -244,6 +244,24 @@ public class ClipsStatements(NpgsqlConnection connection)
         return (await connection.QueryAsync<Guid>(sql, new { clipIds = clipIds.ToArray() })).ToHashSet();
     }
 
+    /// <summary>Which of these MD5 hashes the owner already has a clip of in the category, a reserved upload included.</summary>
+    public async Task<HashSet<string>> FindExistingMd5Hashes(Guid ownerId, Guid gameCategoryId, IReadOnlyCollection<string> md5Hashes)
+    {
+        if (md5Hashes.Count == 0)
+        {
+            return [];
+        }
+
+        const string sql = """
+            SELECT DISTINCT md5_hash
+            FROM clip
+            WHERE owner_id = @ownerId AND game_category_id = @gameCategoryId AND md5_hash = ANY(@md5Hashes)
+            """;
+
+        return (await connection.QueryAsync<string>(sql, new { ownerId, gameCategoryId, md5Hashes = md5Hashes.ToArray() }))
+            .ToHashSet();
+    }
+
     public async Task<bool> ClipExistsByMd5Hash(Guid ownerId, Guid gameCategoryId, string md5Hash)
     {
         const string sql = """

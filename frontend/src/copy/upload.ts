@@ -36,6 +36,7 @@ export const uploadCopy = {
     label: "Clips being added",
     lineFailed: "Couldn't upload",
     waiting: "Waiting",
+    checking: "Checking",
     onTheShelf: "On the shelf",
     aBook: "a book",
     addingToBook: (clips: number, book: string) =>

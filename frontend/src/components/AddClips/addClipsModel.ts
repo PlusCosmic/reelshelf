@@ -8,6 +8,7 @@ import { uploadCopy } from "@/copy/upload";
 export type UploadStatus =
   | "queued"
   | "hashing"
+  | "hashed"
   | "creating"
   | "uploading"
   | "paused"
@@ -24,16 +25,38 @@ export type UploadItem = {
   createdAt: Date;
   sessionDate: string;
   status: UploadStatus;
+  /** Set once hashed; the API's duplicate check and the clip's preparation both use it. */
+  md5Hash: string | null;
   progress: number;
   clipId: string | null;
   error: string | null;
 };
 
-const ACTIVE: UploadStatus[] = ["hashing", "creating", "uploading"];
-const UNFINISHED: UploadStatus[] = ["queued", "paused", ...ACTIVE];
+// Hashing runs ahead of the upload slots, so a folder's duplicates are found while other files upload.
+const HASHING: UploadStatus[] = ["hashing"];
+const ACTIVE: UploadStatus[] = ["creating", "uploading"];
+const WAITING: UploadStatus[] = ["queued", "hashed"];
+const UNFINISHED: UploadStatus[] = [
+  ...WAITING,
+  ...HASHING,
+  "paused",
+  ...ACTIVE,
+];
+
+/** True while a file is being hashed and checked against the book. */
+export function isHashingUpload(item: UploadItem) {
+  return HASHING.includes(item.status);
+}
+
+/** True while a file takes one of the upload slots. */
 
 export function isActiveUpload(item: UploadItem) {
   return ACTIVE.includes(item.status);
+}
+
+/** True while a file waits for its hash or for an upload slot. */
+export function isWaitingUpload(item: UploadItem) {
+  return WAITING.includes(item.status);
 }
 
 export function isUnfinishedUpload(item: UploadItem) {
