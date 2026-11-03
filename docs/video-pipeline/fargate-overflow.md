@@ -23,7 +23,9 @@ What is built is described in [workers-and-jobs.md](workers-and-jobs.md#the-over
   order, or dropping a pool, is a settings change.
 - **Fargate Spot, not EC2 Spot** (2026-11-03). The quota increase is for Fargate Spot, and Fargate started
   workers in about 40 s in the first AWS run, faster than Batch (53 to 86 s) and much faster than EC2 Spot through
-  ECS managed scaling (2.5 min cold, and two instances for one task). The EC2 capacity provider is not brought back.
+  ECS managed scaling (2.5 min cold, and two instances for one task). The EC2 capacity provider is not brought back. Superseded
+  the same day: EC2 Spot came back as a third pool, first in the order, because a clip costs about a third as much on
+  it ([ec2-overflow.md](ec2-overflow.md)).
 - **Four 2-vCPU workers** (2026-11-03). The 8-vCPU quota is four 2-vCPU tasks or two 4-vCPU ones. Four is better
   for a burst of clips (one worker per clip) and exercises AWS more. A 2-vCPU worker encodes at roughly half the
   speed, about 8 minutes a clip rather than 4 (to be measured; see below). The task is 2 vCPU and 4 GiB (the

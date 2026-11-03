@@ -252,8 +252,11 @@ through FFMpegCore, so it can run them under `nice` and read `-progress`. Its te
 When `transcode_run` backs up (a burst of uploads, or the Bunny migration), the API starts extra one-shot workers on
 one or more backends, the pools in `Overflow:Pools`:
 
-- `ecs`: ECS tasks on AWS Fargate Spot in Stockholm (see [AWS Fargate Spot](#aws-fargate-spot) below and
-  [fargate-overflow.md](fargate-overflow.md)), resources in PlusCosmic/infrastructure's `aws/overflow-workers/`;
+- `ec2`: ECS tasks on AWS EC2 Spot instances in Stockholm, one 4-vCPU instance per worker, on their own cluster
+  (see [AWS ECS](#aws-ecs-ec2-spot-and-fargate-spot) below and [ec2-overflow.md](ec2-overflow.md)), resources in
+  PlusCosmic/infrastructure's `aws/overflow-workers/`;
+- `ecs`: ECS tasks on AWS Fargate Spot in Stockholm (see [AWS ECS](#aws-ecs-ec2-spot-and-fargate-spot) below and
+  [fargate-overflow.md](fargate-overflow.md)), resources in the same Terraform;
 - `batch`: Google Cloud Batch, Spot `c4-highcpu-4` VMs in Paris (see [Google Cloud Batch](#google-cloud-batch) and
   [batch-overflow.md](batch-overflow.md)), resources in infrastructure's `gcp/overflow-workers/`.
 
@@ -261,7 +264,8 @@ They run the same image as the dedicated worker, with `Worker__ExitWhenIdleAfter
 themselves once the queue is empty. The API only ever starts workers and never stops one. The code is in
 `api/Video/Transcoding/Overflow/`. The pool first ran on AWS (Fargate Spot, then ECS EC2 Spot; #248,
 infrastructure#214), which was removed on 2026-10-22 once Batch had carried real sessions; Fargate Spot came back
-as a second pool alongside Batch on 2026-11-03, because Batch was at its CPU quota.
+as a second pool alongside Batch on 2026-11-03, because Batch was at its CPU quota, and EC2 Spot came back the same
+day as a third pool, first in the order, because a clip costs about a third as much on it as on Fargate Spot.
 
 - **Gate:** `OverflowBackgroundService` is registered only where `Overflow:Enabled` is true (default false), and
   never in the `OpenApi` environment. Each tick also checks that R2 is configured (`ITranscodeStorage.IsConfigured`).
@@ -284,16 +288,17 @@ as a second pool alongside Batch on 2026-11-03, because Batch was at its CPU quo
      `min(pending - running, MaxTasks - running, MaxStartPerTick)` tasks, `running` being every pool's together,
      and no more than the pools' own caps leave room for. `Overflow:MaxTasks` (4) is the hard cap on spend across
      the pools, and `Overflow:MaxStartPerTick` defaults to 4.
-  5. The tasks go to the pools in `Overflow:Pools`'s order: each takes as many as its own cap (`Overflow:Ecs:MaxTasks`,
-     `Overflow:Batch:MaxTasks`: the backend's quota; 0, the default, means `Overflow:MaxTasks`) leaves room for, and
-     whatever a pool doesn't start (it threw, or started fewer for want of Spot capacity) is offered to the next.
+  5. The tasks go to the pools in `Overflow:Pools`'s order: each takes as many as its own cap
+     (`Overflow:Ec2:MaxTasks`, `Overflow:Ecs:MaxTasks`, `Overflow:Batch:MaxTasks`: the backend's quota; 0, the
+     default, means `Overflow:MaxTasks`) leaves room for, and whatever a pool doesn't start (it threw, or started
+     fewer for want of Spot capacity) is offered to the next.
   6. After starting any, it starts no more for `Overflow:Cooldown` (2 min), so tasks still provisioning aren't
      counted twice.
 - **Errors:** a failed backlog count, task count or start is logged and tried again on the next tick, with no
   cooldown. A start that fails in one pool goes to the next in the same tick; the outcome is `StartFailed` only
   when every pool asked threw and none started. Nothing here throws into the API.
-- **Metrics:** the `Reelshelf.Overflow` meter has two instruments, both tagged `pool` (`ecs`, `batch`) and exported
-  with the queue gauges when `QueueMetrics:Exporter=otlp`:
+- **Metrics:** the `Reelshelf.Overflow` meter has two instruments, both tagged `pool` (`ec2`, `ecs`, `batch`) and
+  exported with the queue gauges when `QueueMetrics:Exporter=otlp`:
   - `reelshelf.overflow.tasks_running`, a gauge of each pool's tasks as last counted. A pool reports nothing before
     its first count and after a failed one; sum the pools for the total.
   - `reelshelf.overflow.tasks_started`, a counter.
@@ -302,34 +307,50 @@ as a second pool alongside Batch on 2026-11-03, because Batch was at its CPU quo
 - **The Bunny migration** is the pool's first big backlog: keep `Migration:BatchSize` above the total number of
   workers ([bunny-migration.md](bunny-migration.md#api-queueing-migration)).
 
-### AWS Fargate Spot
+### AWS ECS (EC2 Spot and Fargate Spot)
 
-`EcsOverflowTaskLauncher` (`AWSSDK.ECS`) starts and counts the workers as ECS tasks on Fargate Spot. The plan, the
-quota and the reasons are in [fargate-overflow.md](fargate-overflow.md).
+`EcsOverflowTaskLauncher` (`AWSSDK.ECS`) starts and counts the workers of both AWS pools as ECS tasks: `ec2` from
+`Overflow:Ec2:*` and `ecs` from `Overflow:Ecs:*`. The two sections have the same settings, and each pool has its own
+launcher, client, cluster and cap. The plans, quotas and reasons are in [ec2-overflow.md](ec2-overflow.md) and
+[fargate-overflow.md](fargate-overflow.md).
 
-- **Starting:** `RunTask` of up to 10 tasks per call on the `FARGATE_SPOT` capacity provider in
-  `Overflow:Ecs:Cluster`, in `Overflow:Ecs:Subnets` with `Overflow:Ecs:SecurityGroups` and a public IP (public
-  subnets, no NAT), `startedBy` = `Overflow:StartedBy`, and a client token so the SDK's retries start them once.
-  There are no overrides and no tags (the API's user has no `ecs:TagResource`). ECS reports no Spot capacity (or no
-  quota) as `failures` rather than an error, so the call returns how many tasks it got and the rest go to the next
-  pool.
-- **The worker image:** the task definition (`Overflow:Ecs:TaskDefinition`, a family) holds the task's size (2 vCPU,
-  4 GiB on prod), roles, `Worker__Secret` from Secrets Manager, environment, volumes and sandbox, all from
-  infrastructure's Terraform. The API changes only the image: when `Overflow:Ecs:WorkerImage` is set and the family's latest revision
-  runs another one, it registers a copy of that revision with the image on every container of the same repository
-  (the worker and its `volume-init`), and runs that. It remembers the revision for the image, and finds it again
-  after a failed `RunTask` (someone may have deregistered it). The bump PR keeps `WorkerImage` current, as for
-  Batch, so a new worker needs no Terraform apply. Empty runs the latest revision as it is.
-- **Preemption:** Fargate Spot sends SIGTERM two minutes ahead and the task definition's `stopTimeout` is 120 s,
-  past the worker's `ShutdownGrace` (20 s) plus its release, so the job goes back to `pending` without a watcher
+- **Starting:** `RunTask` of up to 10 tasks per call on the pool's `CapacityProvider` in its `Cluster`, `startedBy`
+  = `Overflow:StartedBy`, and a client token so the SDK's retries start them once. `Overflow:Ecs:CapacityProvider`
+  defaults to `FARGATE_SPOT`; `Overflow:Ec2:CapacityProvider` has no default and names the cluster's Auto Scaling
+  group capacity provider, whose managed scaling starts an instance for each task and scales back to zero. There are
+  no overrides and no tags (the API's user has no `ecs:TagResource`). ECS reports no Spot capacity (or no quota) as
+  `failures` rather than an error, so the call returns how many tasks it got and the rest go to the next pool.
+- **Network:** the task definition's network mode decides. An `awsvpc` task (Fargate's only mode) runs in the pool's
+  `Subnets` with its `SecurityGroups`, and on Fargate with a public IP (public subnets, no NAT). EC2 can't give an
+  `awsvpc` task a public IP, so the EC2 pool's task definition is `host` mode: the task uses its instance's network
+  and public IP, gets no network configuration from the API, and needs no `Subnets` or `SecurityGroups` (the Auto
+  Scaling group's launch template holds those). A `bridge` task is sent none either. An `awsvpc` task definition with
+  no `Subnets` fails to start, and the pool's tasks go to the next pool.
+- **The worker image:** the task definition (`TaskDefinition`, a family) holds the task's size (on prod 2 vCPU and
+  4 GiB on Fargate; one 4-vCPU instance's worth on EC2), network mode, roles, `Worker__Secret` from Secrets Manager,
+  environment, volumes and sandbox, all from infrastructure's Terraform. The API changes only the image: when
+  `WorkerImage` is set and the family's latest revision runs another one, it registers a copy of that revision with
+  the image on every container of the same repository (the worker and its `volume-init`), and runs that. The copy
+  keeps what the revision sets and leaves unset what it leaves unset (an EC2 revision's task-level size, Fargate's
+  placement constraints). It remembers the revision and its network mode for the image, and finds them again after a
+  failed `RunTask` (someone may have deregistered it). The bump PR keeps `WorkerImage` current, as for Batch, so a
+  new worker needs no Terraform apply. Empty runs the latest revision as it is (described once for its network
+  mode).
+- **Preemption:** Fargate Spot sends SIGTERM two minutes ahead. On EC2 the ECS agent has
+  `ECS_ENABLE_SPOT_INSTANCE_DRAINING=true`, so the instance's two-minute interruption notice drains it and ECS stops
+  its task the same way. Either way the task definition's `stopTimeout` (120 s) is past the worker's
+  `ShutdownGrace` (20 s) plus its release, so the job goes back to `pending` without a watcher
   (`Worker:PreemptionNotice` stays empty).
-- **Counting:** `ListTasks` by `startedBy` with desired status `RUNNING`, then `PENDING`, without repeats; a task
-  still provisioning is `RUNNING`.
-- **Client:** `Overflow:Ecs:AccessKeyId` and `SecretAccessKey`, the scaler user's key from infrastructure's `aws/overflow-workers/secrets.sh` (both or neither; neither
-  uses the SDK's default chain), in `Overflow:Ecs:Region`.
-- **Settings:** with `ecs` in `Overflow:Pools`, startup fails when `Region`, `Cluster`, `TaskDefinition`, `Subnets`
-  or `SecurityGroups` is missing, on a `TaskDefinition` with a revision, a `WorkerImage` without a tag, or half a
-  key.
+- **Counting:** `ListTasks` in the pool's cluster by `startedBy` with desired status `RUNNING`, then `PENDING`,
+  without repeats. A task still provisioning, such as one waiting for its EC2 instance to boot (1 to 3 minutes), is
+  `RUNNING`, so it counts at once. Each pool counts only its own cluster, so the two pools must not share one.
+- **Client:** each pool's `AccessKeyId` and `SecretAccessKey`, the scaler user's key from infrastructure's
+  `aws/overflow-workers/secrets.sh` (both pools may use the same one; both or neither; neither uses the SDK's default
+  chain), in its `Region`.
+- **Settings:** with a pool in `Overflow:Pools`, startup fails when its `Region`, `Cluster`, `CapacityProvider` or
+  `TaskDefinition` is missing (and for `ecs`, `Subnets` or `SecurityGroups`), on a `TaskDefinition` with a
+  revision, a `WorkerImage` without a tag, or half a key, and with both pools in use when their `Cluster`s are the
+  same.
 
 ### Google Cloud Batch
 
@@ -366,7 +387,8 @@ status.state!="FAILED"` (Batch filters on the allocation policy's labels, not th
   `WorkerImage` current.
 - **Scaling settings for a session burst:** `ScaleUpAfter` 30 s, `Cooldown` 0 (jobs and tasks count at once),
   `MaxStartPerTick` = `MaxTasks`. Prod: `Overflow:Batch:MaxTasks` 6 (the C4 quota in Paris), `Overflow:Ecs:MaxTasks`
-  4 (the 8-vCPU Fargate Spot quota over 2-vCPU tasks), `Overflow:MaxTasks` 10, `Overflow:Pools` `ecs,batch`. The
+  4 (the 8-vCPU Fargate Spot quota over 2-vCPU tasks), `Overflow:MaxTasks` 10, `Overflow:Pools` `ecs,batch`, to
+  become `ec2,ecs,batch` with `Overflow:Ec2:MaxTasks` set from the EC2 Spot quota ([ec2-overflow.md](ec2-overflow.md)). The
   code's defaults are 2 min, 2 min and 4.
 
 ## Downloads

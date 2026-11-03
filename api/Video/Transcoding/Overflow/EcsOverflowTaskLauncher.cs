@@ -59,10 +59,10 @@ public sealed class AwsEcsTasks(IAmazonECS ecs) : IEcsTasks
         ecs.RunTaskAsync(request, cancellationToken);
 
     /// <summary>
-    /// An ECS client in <see cref="OverflowEcsOptions.Region"/>, with the configured keys, or the SDK's default
+    /// An ECS client in the pool's <see cref="OverflowEcsPoolOptions.Region"/>, with its keys, or the SDK's default
     /// credential chain when there are none.
     /// </summary>
-    public static IAmazonECS CreateClient(OverflowEcsOptions settings)
+    public static IAmazonECS CreateClient(OverflowEcsPoolOptions settings)
     {
         RegionEndpoint region = RegionEndpoint.GetBySystemName(settings.Region.Trim());
         return string.IsNullOrWhiteSpace(settings.AccessKeyId)
@@ -73,13 +73,17 @@ public sealed class AwsEcsTasks(IAmazonECS ecs) : IEcsTasks
 }
 
 /// <summary>
-/// The overflow pool on AWS Fargate Spot (docs/video-pipeline/fargate-overflow.md): ECS tasks of
-/// <see cref="OverflowEcsOptions.TaskDefinition"/>, one worker each, with <c>startedBy</c> =
-/// <see cref="OverflowOptions.StartedBy"/> so <c>ListTasks</c> finds them again. Fargate Spot sends SIGTERM two minutes
-/// before it takes a task back, and the task definition's <c>stopTimeout</c> covers the worker's shutdown grace and
+/// An overflow pool of ECS tasks (docs/video-pipeline/fargate-overflow.md, ec2-overflow.md), <see cref="Pool"/>: the
+/// Fargate Spot pool <c>ecs</c> or the EC2 Spot pool <c>ec2</c>, each with its own settings
+/// (<see cref="OverflowOptions.EcsPoolSettings"/>), client and cluster. Tasks of the pool's task definition, one worker
+/// each, run on its capacity provider with <c>startedBy</c> = <see cref="OverflowOptions.StartedBy"/> so
+/// <c>ListTasks</c> finds them again. Fargate Spot sends SIGTERM two minutes before it takes a task back, and an EC2
+/// Spot instance's ECS agent drains it on the interruption notice (<c>ECS_ENABLE_SPOT_INSTANCE_DRAINING</c>), which
+/// stops its task the same way; the task definition's <c>stopTimeout</c> covers the worker's shutdown grace and
 /// release, so the worker needs no preemption watcher here.
 /// </summary>
 public sealed class EcsOverflowTaskLauncher(
+    string pool,
     IEcsTasks ecs,
     IOptions<OverflowOptions> options,
     ILogger<EcsOverflowTaskLauncher> logger) : IOverflowTaskLauncher
@@ -87,21 +91,27 @@ public sealed class EcsOverflowTaskLauncher(
     /// <summary>The most tasks one <c>RunTask</c> call can start.</summary>
     public const int MaxTasksPerRunTask = 10;
 
-    public const string CapacityProvider = "FARGATE_SPOT";
-
     private readonly SemaphoreSlim _resolving = new(1, 1);
 
-    /// <summary>The revision last found or registered for an image, so each start doesn't describe it again.</summary>
-    private (string Image, string Arn)? _revision;
+    /// <summary>
+    /// The task definition last found or registered for an image ("" when none is set), so each start doesn't describe
+    /// it again.
+    /// </summary>
+    private (string Image, RunnableTaskDefinition Definition)? _revision;
+
+    /// <summary>The pool's name in <see cref="OverflowOptions.Pools"/>.</summary>
+    public string Pool { get; } = pool;
 
     public async Task<int> CountActiveTasksAsync(CancellationToken cancellationToken)
     {
         OverflowOptions current = options.Value;
-        // A task that is provisioning or starting has desired status RUNNING; PENDING is listed too, as ECS allows it.
+        OverflowEcsPoolOptions settings = current.EcsPoolSettings(Pool);
+        // A task that is provisioning (waiting for an instance) or starting has desired status RUNNING; PENDING is
+        // listed too, as ECS allows it.
         HashSet<string> tasks = [];
         foreach (DesiredStatus status in new[] { DesiredStatus.RUNNING, DesiredStatus.PENDING })
         {
-            tasks.UnionWith(await ecs.ListTaskArnsAsync(current.Ecs.Cluster.Trim(), current.StartedBy.Trim(), status,
+            tasks.UnionWith(await ecs.ListTaskArnsAsync(settings.Cluster.Trim(), current.StartedBy.Trim(), status,
                 cancellationToken));
         }
 
@@ -111,7 +121,8 @@ public sealed class EcsOverflowTaskLauncher(
     public async Task<int> StartTasksAsync(int count, CancellationToken cancellationToken)
     {
         OverflowOptions current = options.Value;
-        string taskDefinition = await TaskDefinitionForAsync(current.Ecs, cancellationToken);
+        OverflowEcsPoolOptions settings = current.EcsPoolSettings(Pool);
+        RunnableTaskDefinition definition = await TaskDefinitionForAsync(settings, cancellationToken);
         int started = 0;
         while (started < count)
         {
@@ -119,19 +130,20 @@ public sealed class EcsOverflowTaskLauncher(
             RunTaskResponse response;
             try
             {
-                response = await ecs.RunTaskAsync(BuildRunTaskRequest(current, taskDefinition, batch), cancellationToken);
+                response = await ecs.RunTaskAsync(
+                    BuildRunTaskRequest(current.StartedBy, settings, definition, batch), cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // The revision may have been deregistered; find it again next time.
+                // The revision may have been deregistered, or its network mode changed; find it again next time.
                 _revision = null;
                 if (started == 0)
                 {
                     throw;
                 }
 
-                logger.LogWarning(ex, "Started {Started} Fargate overflow tasks, then ECS refused the next {Batch}",
-                    started, batch);
+                logger.LogWarning(ex, "Started {Started} {Pool} overflow tasks, then ECS refused the next {Batch}",
+                    started, Pool, batch);
                 return started;
             }
 
@@ -139,8 +151,8 @@ public sealed class EcsOverflowTaskLauncher(
             started += accepted;
             foreach (Failure failure in response.Failures ?? [])
             {
-                // No spare Fargate Spot capacity (or quota) shows up here rather than as an error.
-                logger.LogWarning("ECS couldn't start a Fargate overflow task: {Reason} {Detail}", failure.Reason,
+                // No spare Spot capacity (or quota) shows up here rather than as an error.
+                logger.LogWarning("ECS couldn't start a {Pool} overflow task: {Reason} {Detail}", Pool, failure.Reason,
                     failure.Detail);
             }
 
@@ -154,21 +166,18 @@ public sealed class EcsOverflowTaskLauncher(
     }
 
     /// <summary>
-    /// The task definition to run: the family as it is without <see cref="OverflowEcsOptions.WorkerImage"/>, else the
-    /// latest revision when it already runs that image, else a new revision copied from it with the image swapped.
+    /// The task definition to run and its network mode: the family's latest revision as it is without
+    /// <see cref="OverflowEcsPoolOptions.WorkerImage"/> (run by family), else that revision when it already runs the
+    /// image, else a new revision copied from it with the image swapped.
     /// </summary>
-    private async Task<string> TaskDefinitionForAsync(OverflowEcsOptions settings, CancellationToken cancellationToken)
+    private async Task<RunnableTaskDefinition> TaskDefinitionForAsync(OverflowEcsPoolOptions settings,
+        CancellationToken cancellationToken)
     {
         string family = settings.TaskDefinition.Trim();
         string image = settings.WorkerImage.Trim();
-        if (image.Length == 0)
-        {
-            return family;
-        }
-
         if (_revision is { } known && known.Image == image)
         {
-            return known.Arn;
+            return known.Definition;
         }
 
         await _resolving.WaitAsync(cancellationToken);
@@ -176,25 +185,30 @@ public sealed class EcsOverflowTaskLauncher(
         {
             if (_revision is { } raced && raced.Image == image)
             {
-                return raced.Arn;
+                return raced.Definition;
             }
 
             TaskDefinition latest = await ecs.DescribeLatestAsync(family, cancellationToken);
-            string arn;
-            if (RunsImage(latest, image))
+            RunnableTaskDefinition definition;
+            if (image.Length == 0)
             {
-                arn = latest.TaskDefinitionArn;
+                definition = new RunnableTaskDefinition(family, latest.NetworkMode);
+            }
+            else if (RunsImage(latest, image))
+            {
+                definition = new RunnableTaskDefinition(latest.TaskDefinitionArn, latest.NetworkMode);
             }
             else
             {
                 TaskDefinition registered = await ecs.RegisterAsync(BuildRegisterRequest(latest, image), cancellationToken);
-                arn = registered.TaskDefinitionArn;
-                logger.LogInformation("Registered {TaskDefinition} for the Fargate overflow workers' image {Image}",
-                    arn, image);
+                definition = new RunnableTaskDefinition(registered.TaskDefinitionArn,
+                    registered.NetworkMode ?? latest.NetworkMode);
+                logger.LogInformation("Registered {TaskDefinition} for the {Pool} overflow workers' image {Image}",
+                    definition.TaskDefinition, Pool, image);
             }
 
-            _revision = (image, arn);
-            return arn;
+            _revision = (image, definition);
+            return definition;
         }
         finally
         {
@@ -212,9 +226,11 @@ public sealed class EcsOverflowTaskLauncher(
     }
 
     /// <summary>
-    /// A copy of <paramref name="latest"/> (size, network mode, roles, volumes, ephemeral storage, platform and every
-    /// container's settings) with <paramref name="image"/> on each container of the same repository, such as the
-    /// worker and its volume-init container. Tags aren't copied: the API's user has no <c>ecs:TagResource</c>.
+    /// A copy of <paramref name="latest"/> (size, network mode, compatibilities, roles, volumes, ephemeral storage,
+    /// platform, placement constraints and every container's settings) with <paramref name="image"/> on each container
+    /// of the same repository, such as the worker and its volume-init container. What a Fargate or EC2 task definition
+    /// leaves unset (an EC2 one's task-level size, Fargate's placement constraints) stays unset. Tags aren't copied:
+    /// the API's user has no <c>ecs:TagResource</c>.
     /// </summary>
     public static RegisterTaskDefinitionRequest BuildRegisterRequest(TaskDefinition latest, string image)
     {
@@ -247,33 +263,51 @@ public sealed class EcsOverflowTaskLauncher(
             EphemeralStorage = latest.EphemeralStorage,
             RuntimePlatform = latest.RuntimePlatform,
             PidMode = latest.PidMode,
-            IpcMode = latest.IpcMode
+            IpcMode = latest.IpcMode,
+            PlacementConstraints = latest.PlacementConstraints,
+            ProxyConfiguration = latest.ProxyConfiguration,
+            EnableFaultInjection = latest.EnableFaultInjection
         };
     }
 
     /// <summary>
-    /// One <c>RunTask</c> call for <paramref name="count"/> tasks on Fargate Spot, in the configured subnets with a
-    /// public IP, so in a public subnet they reach the API and R2 without a NAT gateway. The client token makes the
-    /// SDK's own retries of this call idempotent.
+    /// One <c>RunTask</c> call for <paramref name="count"/> tasks on the pool's capacity provider. Only an
+    /// <c>awsvpc</c> task definition gets a network configuration, with the pool's subnets and security groups, and on
+    /// Fargate a public IP, so in a public subnet they reach the API and R2 without a NAT gateway (EC2 can't give an
+    /// awsvpc task a public IP, so it would need a NAT). <c>host</c> and <c>bridge</c> tasks use their instance's
+    /// network. The client token makes the SDK's own retries of this call idempotent.
     /// </summary>
-    public static RunTaskRequest BuildRunTaskRequest(OverflowOptions options, string taskDefinition, int count) => new()
+    public static RunTaskRequest BuildRunTaskRequest(string startedBy, OverflowEcsPoolOptions settings,
+        RunnableTaskDefinition definition, int count) => new()
     {
-        Cluster = options.Ecs.Cluster.Trim(),
-        TaskDefinition = taskDefinition,
+        Cluster = settings.Cluster.Trim(),
+        TaskDefinition = definition.TaskDefinition,
         Count = count,
-        StartedBy = options.StartedBy.Trim(),
+        StartedBy = startedBy.Trim(),
         ClientToken = Guid.NewGuid().ToString("N"),
-        CapacityProviderStrategy = [new CapacityProviderStrategyItem { CapacityProvider = CapacityProvider, Weight = 1 }],
-        NetworkConfiguration = new NetworkConfiguration
+        CapacityProviderStrategy =
+            [new CapacityProviderStrategyItem { CapacityProvider = settings.CapacityProvider.Trim(), Weight = 1 }],
+        NetworkConfiguration = definition.NetworkMode == NetworkMode.Awsvpc ? AwsvpcNetwork(settings) : null
+    };
+
+    private static NetworkConfiguration AwsvpcNetwork(OverflowEcsPoolOptions settings)
+    {
+        if (settings.SubnetList.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"The {settings.TaskDefinition.Trim()} task definition uses the awsvpc network mode, which needs the pool's Subnets (and SecurityGroups)");
+        }
+
+        return new NetworkConfiguration
         {
             AwsvpcConfiguration = new AwsVpcConfiguration
             {
-                Subnets = options.Ecs.SubnetList.ToList(),
-                SecurityGroups = options.Ecs.SecurityGroupList.ToList(),
-                AssignPublicIp = AssignPublicIp.ENABLED
+                Subnets = settings.SubnetList.ToList(),
+                SecurityGroups = settings.SecurityGroupList.Count > 0 ? settings.SecurityGroupList.ToList() : null,
+                AssignPublicIp = settings.IsFargate ? AssignPublicIp.ENABLED : null
             }
-        }
-    };
+        };
+    }
 
     /// <summary><c>registry/name</c> without its tag or digest, e.g. <c>ghcr.io/pluscosmic/reelshelf-worker</c>.</summary>
     public static string ImageRepository(string image)
@@ -289,3 +323,9 @@ public sealed class EcsOverflowTaskLauncher(
         return colon > trimmed.LastIndexOf('/') ? trimmed[..colon] : trimmed;
     }
 }
+
+/// <summary>
+/// What a pool runs: a task definition ARN (or the family, for its latest revision) and its network mode, null when the
+/// task definition leaves it to ECS's default (<c>bridge</c> on EC2).
+/// </summary>
+public sealed record RunnableTaskDefinition(string TaskDefinition, NetworkMode? NetworkMode);

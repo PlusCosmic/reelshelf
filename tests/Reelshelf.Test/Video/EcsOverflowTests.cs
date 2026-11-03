@@ -10,9 +10,9 @@ using TaskDefinition = Amazon.ECS.Model.TaskDefinition;
 namespace Reelshelf.Test.Video;
 
 /// <summary>
-/// The overflow pool on AWS Fargate Spot: the <c>RunTask</c> request <see cref="EcsOverflowTaskLauncher"/> sends, how
-/// it counts tasks, and how it registers a task definition revision for the configured worker image (against a fake
-/// ECS).
+/// The overflow pools on ECS, Fargate Spot (<c>ecs</c>) and EC2 Spot (<c>ec2</c>): the <c>RunTask</c> request
+/// <see cref="EcsOverflowTaskLauncher"/> sends for each network mode, how it counts tasks, and how it registers a task
+/// definition revision for the configured worker image (against a fake ECS).
 /// </summary>
 public class EcsOverflowTests
 {
@@ -24,7 +24,7 @@ public class EcsOverflowTests
     {
         OverflowOptions options = Settings();
 
-        RunTaskRequest request = EcsOverflowTaskLauncher.BuildRunTaskRequest(options, "arn:td:7", 3);
+        RunTaskRequest request = EcsOverflowTaskLauncher.BuildRunTaskRequest(options.StartedBy, options.Ecs, Awsvpc, 3);
 
         Assert.Equal("reelshelf-overflow-prod", request.Cluster);
         Assert.Equal("arn:td:7", request.TaskDefinition);
@@ -41,7 +41,111 @@ public class EcsOverflowTests
         // No tags: the API's user has no ecs:TagResource, and startedBy is how the tasks are found again.
         Assert.True(request.Tags is null or { Count: 0 });
         Assert.False(string.IsNullOrEmpty(request.ClientToken));
-        Assert.NotEqual(request.ClientToken, EcsOverflowTaskLauncher.BuildRunTaskRequest(options, "arn:td:7", 3).ClientToken);
+        Assert.NotEqual(request.ClientToken,
+            EcsOverflowTaskLauncher.BuildRunTaskRequest(options.StartedBy, options.Ecs, Awsvpc, 3).ClientToken);
+    }
+
+    [Fact]
+    public void TheFargatePool_DefaultsToFargateSpot_AndTakesAnotherCapacityProviderFromSettings()
+    {
+        Assert.Equal("FARGATE_SPOT", new OverflowEcsOptions().CapacityProvider);
+
+        OverflowOptions options = Settings(o => o.Ecs.CapacityProvider = "FARGATE");
+        RunTaskRequest request = EcsOverflowTaskLauncher.BuildRunTaskRequest(options.StartedBy, options.Ecs, Awsvpc, 1);
+
+        Assert.Equal("FARGATE", Assert.Single(request.CapacityProviderStrategy).CapacityProvider);
+        Assert.Equal(AssignPublicIp.ENABLED, request.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp);
+    }
+
+    [Theory]
+    [InlineData("host")]
+    [InlineData("bridge")]
+    [InlineData(null)]
+    public void RunTaskRequest_OnEc2_InHostOrBridgeMode_SendsNoNetworkConfiguration(string? networkMode)
+    {
+        OverflowOptions options = Settings();
+
+        RunTaskRequest request = EcsOverflowTaskLauncher.BuildRunTaskRequest(options.StartedBy, options.Ec2,
+            new RunnableTaskDefinition("arn:ec2td:3", networkMode is null ? null : new NetworkMode(networkMode)), 2);
+
+        Assert.Equal("reelshelf-overflow-ec2-prod", request.Cluster);
+        Assert.Equal("arn:ec2td:3", request.TaskDefinition);
+        Assert.Equal(2, request.Count);
+        Assert.Equal("reelshelf-overflow", request.StartedBy);
+        Assert.Null(request.LaunchType);
+        CapacityProviderStrategyItem strategy = Assert.Single(request.CapacityProviderStrategy);
+        Assert.Equal("reelshelf-overflow-ec2-spot", strategy.CapacityProvider);
+        Assert.Null(request.NetworkConfiguration);
+        Assert.Null(request.Overrides);
+    }
+
+    [Fact]
+    public void RunTaskRequest_OnEc2_InAwsvpcMode_SendsTheSubnetsWithoutAPublicIp()
+    {
+        // EC2 refuses assignPublicIp for awsvpc tasks; such a pool needs a NAT.
+        OverflowOptions options = Settings(o =>
+        {
+            o.Ec2.Subnets = "subnet-c";
+            o.Ec2.SecurityGroups = "sg-2, sg-3";
+        });
+
+        RunTaskRequest request = EcsOverflowTaskLauncher.BuildRunTaskRequest(options.StartedBy, options.Ec2, Awsvpc, 1);
+
+        Assert.Equal(["subnet-c"], request.NetworkConfiguration.AwsvpcConfiguration.Subnets);
+        Assert.Equal(["sg-2", "sg-3"], request.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups);
+        Assert.Null(request.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp);
+    }
+
+    [Fact]
+    public void RunTaskRequest_InAwsvpcMode_WithoutSubnets_IsRefused()
+    {
+        OverflowOptions options = Settings();
+
+        Assert.Contains("awsvpc", Assert.Throws<InvalidOperationException>(() =>
+            EcsOverflowTaskLauncher.BuildRunTaskRequest(options.StartedBy, options.Ec2, Awsvpc, 1)).Message);
+    }
+
+    [Fact]
+    public async Task TheEc2Pool_RunsOnItsOwnClusterAndCapacityProvider_InTheTaskDefinitionsNetworkMode()
+    {
+        FakeEcs ecs = new() { Latest = Ec2Definition(Image, revision: 2) };
+        ecs.Tasks[DesiredStatus.RUNNING] = ["a"];
+        EcsOverflowTaskLauncher launcher = Launcher(ecs, pool: OverflowOptions.Ec2Pool);
+
+        Assert.Equal(1, await launcher.CountActiveTasksAsync(CancellationToken.None));
+        Assert.Equal(3, await launcher.StartTasksAsync(3, CancellationToken.None));
+
+        Assert.All(ecs.ListCalls, call => Assert.Equal(("reelshelf-overflow-ec2-prod", "reelshelf-overflow"), call));
+        Assert.Equal("reelshelf-worker-overflow-ec2-prod", ecs.DescribedFamily);
+        RunTaskRequest run = Assert.Single(ecs.Runs);
+        Assert.Equal("arn:td:2", run.TaskDefinition);
+        Assert.Equal("reelshelf-overflow-ec2-prod", run.Cluster);
+        Assert.Equal("reelshelf-overflow-ec2-spot", Assert.Single(run.CapacityProviderStrategy).CapacityProvider);
+        Assert.Null(run.NetworkConfiguration);
+    }
+
+    [Fact]
+    public async Task AnEc2TaskDefinition_IsCopiedForANewImage_WithoutWhatFargateNeeds()
+    {
+        FakeEcs ecs = new() { Latest = Ec2Definition(OldImage, revision: 2) };
+
+        await Launcher(ecs, pool: OverflowOptions.Ec2Pool).StartTasksAsync(1, CancellationToken.None);
+
+        RegisterTaskDefinitionRequest register = Assert.Single(ecs.Registered);
+        Assert.Equal("reelshelf-worker-overflow-ec2-prod", register.Family);
+        Assert.Equal(NetworkMode.Host, register.NetworkMode);
+        Assert.Equal(["EC2"], register.RequiresCompatibilities);
+        // An EC2 task definition may leave the task's size to its containers.
+        Assert.Null(register.Cpu);
+        Assert.Null(register.Memory);
+        Assert.Null(register.EphemeralStorage);
+        Assert.Equal("memberOf", Assert.Single(register.PlacementConstraints).Type.Value);
+        Assert.Equal([Image], register.ContainerDefinitions.Select(c => c.Image));
+        Assert.Equal(3584, register.ContainerDefinitions[0].MemoryReservation);
+        RunTaskRequest run = Assert.Single(ecs.Runs);
+        Assert.Equal("arn:td:3", run.TaskDefinition);
+        // The registered revision's network mode decides: host, so no network configuration.
+        Assert.Null(run.NetworkConfiguration);
     }
 
     [Fact]
@@ -100,12 +204,17 @@ public class EcsOverflowTests
     [Fact]
     public async Task WithoutAWorkerImage_RunsTheFamilyAsItIs()
     {
-        FakeEcs ecs = new();
+        FakeEcs ecs = new() { Latest = Definition(OldImage, revision: 4) };
+        EcsOverflowTaskLauncher launcher = Launcher(ecs, o => o.Ecs.WorkerImage = "");
 
-        await Launcher(ecs, o => o.Ecs.WorkerImage = "").StartTasksAsync(1, CancellationToken.None);
+        await launcher.StartTasksAsync(1, CancellationToken.None);
+        await launcher.StartTasksAsync(1, CancellationToken.None);
 
-        Assert.Equal(0, ecs.DescribeCalls);
-        Assert.Equal("reelshelf-worker-overflow-prod", Assert.Single(ecs.Runs).TaskDefinition);
+        // Described once, for its network mode, and never registered.
+        Assert.Equal(1, ecs.DescribeCalls);
+        Assert.Empty(ecs.Registered);
+        Assert.Equal("reelshelf-worker-overflow-prod", ecs.Runs[0].TaskDefinition);
+        Assert.Equal(["subnet-a", "subnet-b"], ecs.Runs[0].NetworkConfiguration.AwsvpcConfiguration.Subnets);
     }
 
     [Fact]
@@ -190,14 +299,55 @@ public class EcsOverflowTests
                 Subnets = "subnet-a, subnet-b",
                 SecurityGroups = "sg-1",
                 WorkerImage = Image
+            },
+            Ec2 = new OverflowEc2Options
+            {
+                Region = "eu-north-1",
+                Cluster = "reelshelf-overflow-ec2-prod",
+                CapacityProvider = "reelshelf-overflow-ec2-spot",
+                TaskDefinition = "reelshelf-worker-overflow-ec2-prod",
+                WorkerImage = Image
             }
         };
         configure?.Invoke(options);
         return options;
     }
 
-    private static EcsOverflowTaskLauncher Launcher(FakeEcs ecs, Action<OverflowOptions>? configure = null) =>
-        new(ecs, Options.Create(Settings(configure)), NullLogger<EcsOverflowTaskLauncher>.Instance);
+    private static readonly RunnableTaskDefinition Awsvpc = new("arn:td:7", NetworkMode.Awsvpc);
+
+    private static EcsOverflowTaskLauncher Launcher(FakeEcs ecs, Action<OverflowOptions>? configure = null,
+        string pool = OverflowOptions.EcsPool) =>
+        new(pool, ecs, Options.Create(Settings(configure)), NullLogger<EcsOverflowTaskLauncher>.Instance);
+
+    /// <summary>The EC2 pool's shape: host networking, sized by its container, one task per instance.</summary>
+    private static TaskDefinition Ec2Definition(string image, int revision) => new()
+    {
+        TaskDefinitionArn = $"arn:td:{revision}",
+        Family = "reelshelf-worker-overflow-ec2-prod",
+        Revision = revision,
+        NetworkMode = NetworkMode.Host,
+        RequiresCompatibilities = ["EC2"],
+        ExecutionRoleArn = "arn:execution",
+        PlacementConstraints =
+        [
+            new TaskDefinitionPlacementConstraint
+            {
+                Type = TaskDefinitionPlacementConstraintType.MemberOf,
+                Expression = "attribute:ecs.instance-type =~ c7a.*"
+            }
+        ],
+        ContainerDefinitions =
+        [
+            new ContainerDefinition
+            {
+                Name = "worker",
+                Image = image,
+                MemoryReservation = 3584,
+                StopTimeout = 120,
+                Secrets = [new Secret { Name = "Worker__Secret", ValueFrom = "arn:secret" }]
+            }
+        ]
+    };
 
     private static TaskDefinition Definition(string image, int revision) => new()
     {
@@ -231,6 +381,7 @@ public class EcsOverflowTests
         public List<(string Cluster, string StartedBy)> ListCalls { get; } = [];
         public TaskDefinition Latest { get; set; } = new();
         public int DescribeCalls { get; private set; }
+        public string? DescribedFamily { get; private set; }
         public List<RegisterTaskDefinitionRequest> Registered { get; } = [];
         public List<RunTaskRequest> Runs { get; } = [];
         public int Accept { get; set; } = int.MaxValue;
@@ -246,6 +397,7 @@ public class EcsOverflowTests
         public Task<TaskDefinition> DescribeLatestAsync(string family, CancellationToken cancellationToken)
         {
             DescribeCalls++;
+            DescribedFamily = family;
             return Task.FromResult(Latest);
         }
 
@@ -256,7 +408,8 @@ public class EcsOverflowTests
             return Task.FromResult(new TaskDefinition
             {
                 TaskDefinitionArn = $"arn:td:{Latest.Revision + 1}",
-                Family = request.Family
+                Family = request.Family,
+                NetworkMode = request.NetworkMode
             });
         }
 

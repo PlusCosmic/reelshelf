@@ -5,8 +5,8 @@ namespace Reelshelf.Video.Transcoding.Overflow;
 
 /// <summary>
 /// The <see cref="MeterName"/> meter: a gauge of the overflow tasks running or provisioning as the scaler last
-/// counted them, and a counter of the tasks it has started, both tagged <c>pool</c> (<c>ecs</c>, <c>batch</c>).
-/// Exported with the queue gauges when <c>QueueMetrics:Exporter=otlp</c>.
+/// counted them, and a counter of the tasks it has started, both tagged <c>pool</c> (<c>ec2</c>, <c>ecs</c>,
+/// <c>batch</c>). Exported with the queue gauges when <c>QueueMetrics:Exporter=otlp</c>.
 /// </summary>
 public sealed class OverflowMetrics
 {
