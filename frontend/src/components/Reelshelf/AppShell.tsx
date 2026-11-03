@@ -12,6 +12,7 @@ import {
 import { useState } from "react";
 import { UploadsProvider } from "@/components/AddClips/UploadsProvider";
 import { UploadTray } from "@/components/AddClips/UploadTray";
+import { BinProvider } from "@/components/Reelshelf/BinToast";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
 import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
@@ -192,15 +193,17 @@ export function AppShell({
         </div>
       </header>
       <UploadsProvider>
-        <main>
-          {user.needsUsername ? (
-            <UsernameOnboarding user={user} />
-          ) : user.needsOnboarding ? (
-            <EmailOnboarding user={user} />
-          ) : (
-            <Outlet />
-          )}
-        </main>
+        <BinProvider>
+          <main>
+            {user.needsUsername ? (
+              <UsernameOnboarding user={user} />
+            ) : user.needsOnboarding ? (
+              <EmailOnboarding user={user} />
+            ) : (
+              <Outlet />
+            )}
+          </main>
+        </BinProvider>
         <UploadTray />
       </UploadsProvider>
     </div>

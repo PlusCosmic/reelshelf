@@ -663,6 +663,144 @@
         }
       }
     },
+    "/api/clips/bin": {
+      "get": {
+        "tags": [
+          "ClipBinEndpoints"
+        ],
+        "operationId": "GetClipBin",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 48
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipBinResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ClipBinEndpoints"
+        ],
+        "operationId": "BinClips",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BinClipsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BinnedClipsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clips/bin/restore": {
+      "post": {
+        "tags": [
+          "ClipBinEndpoints"
+        ],
+        "operationId": "RestoreClips",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreClipsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BinnedClipsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clips/bin/delete": {
+      "post": {
+        "tags": [
+          "ClipBinEndpoints"
+        ],
+        "operationId": "DeleteBinnedClips",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteBinnedClipsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteBinnedClipsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clips/videos/{clipId}/upload/parts": {
       "post": {
         "tags": [
@@ -4615,6 +4753,93 @@
           }
         }
       },
+      "BinClipsFilter": {
+        "required": [
+          "category_id",
+          "tags",
+          "search",
+          "legend"
+        ],
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "tags": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "search": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "legend": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "unviewed_only": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "BinClipsRequest": {
+        "required": [
+          "clip_ids",
+          "filter"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "filter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BinClipsFilter"
+              }
+            ]
+          }
+        }
+      },
+      "BinnedClipsResponse": {
+        "required": [
+          "clip_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
       "ClearLegendDetectionLabelsRequest": {
         "required": [
           "clip_ids"
@@ -4691,6 +4916,42 @@
               "null",
               "string"
             ]
+          },
+          "binned_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ClipBinResponse": {
+        "required": [
+          "clips",
+          "total_clips",
+          "total_pages",
+          "retention_days"
+        ],
+        "type": "object",
+        "properties": {
+          "clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Clip"
+            }
+          },
+          "total_clips": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total_pages": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "retention_days": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -4797,7 +5058,8 @@
         "required": [
           "categories",
           "totals",
-          "category_totals"
+          "category_totals",
+          "binned_count"
         ],
         "type": "object",
         "properties": {
@@ -4815,6 +5077,10 @@
             "items": {
               "$ref": "#/components/schemas/ClipCategoryTotals"
             }
+          },
+          "binned_count": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -5700,6 +5966,52 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "DeleteBinnedClipsRequest": {
+        "required": [
+          "clip_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "DeleteBinnedClipsResponse": {
+        "required": [
+          "deleted_ids",
+          "held_ids",
+          "remaining"
+        ],
+        "type": "object",
+        "properties": {
+          "deleted_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "held_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "remaining": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -7774,6 +8086,21 @@
           }
         }
       },
+      "RestoreClipsRequest": {
+        "required": [
+          "clip_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
       "RoomTokenResponse": {
         "required": [
           "room_token",
@@ -8283,6 +8610,9 @@
     },
     {
       "name": "ClipsEndpoints"
+    },
+    {
+      "name": "ClipBinEndpoints"
     },
     {
       "name": "MultipartUploadEndpoints"

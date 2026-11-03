@@ -36,7 +36,8 @@ public class ClipProjection(ClipMediaUrls mediaUrls)
             isViewed,
             new ClipShareSummary(isShared),
             null,
-            ApexLegendNames.Canonicalize(row.PlayerLegend));
+            ApexLegendNames.Canonicalize(row.PlayerLegend),
+            row.BinnedAt);
     }
 
     public List<Clip> ProjectClips(

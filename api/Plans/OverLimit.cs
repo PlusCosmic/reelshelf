@@ -1,19 +1,23 @@
 namespace Reelshelf.Plans;
 
 /// <summary>A clip as going over the limit sees it: the owner's picks first, then the newest.</summary>
-public sealed record OwnedClip(Guid Id, string? Title, DateTimeOffset CreatedAt, DateTimeOffset? KeptAt, string? GameName);
+/// <param name="BinnedAt">When the owner put it in the bin; a binned clip is the first to go.</param>
+public sealed record OwnedClip(Guid Id, string? Title, DateTimeOffset CreatedAt, DateTimeOffset? KeptAt, string? GameName,
+    DateTimeOffset? BinnedAt = null);
 
 /// <summary>Which of an account's clips its tier keeps, and which are over the limit (ADR-0007).</summary>
 public static class OverLimit
 {
     /// <summary>
     /// The clips kept and the clips over <paramref name="limit"/>. Clips the owner picked come first (the most recently
-    /// picked first, should there be more picks than room), then the rest newest first. No limit keeps everything.
+    /// picked first, should there be more picks than room), then the rest newest first, and binned clips last whatever
+    /// else, since their owner already meant them to go. No limit keeps everything.
     /// </summary>
     public static (List<OwnedClip> Kept, List<OwnedClip> Over) Split(IEnumerable<OwnedClip> clips, int? limit)
     {
         List<OwnedClip> ordered = clips
-            .OrderByDescending(clip => clip.KeptAt is not null)
+            .OrderBy(clip => clip.BinnedAt is not null)
+            .ThenByDescending(clip => clip.KeptAt is not null)
             .ThenByDescending(clip => clip.KeptAt)
             .ThenByDescending(clip => clip.CreatedAt)
             .ThenBy(clip => clip.Id)

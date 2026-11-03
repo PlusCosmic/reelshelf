@@ -384,12 +384,14 @@ public class ClipService(
     /// search and filters run in the database over every clip rather than over whatever the client holds.
     /// <paramref name="search"/> matches a clip's title, one of its tags, or its category name.
     /// <paramref name="legend"/>, spelled as in <see cref="ApexLegendNames"/>, keeps the Apex clips played as it.
+    /// Binned clips are left out, unless <paramref name="binned"/> asks for the bin instead, newest in first.
     /// </summary>
     public async Task<PagedClipsResponse> GetClips(
         Guid userId, Guid? gameCategoryId, int page, int pageSize, List<string>? tags = null,
         string? search = null, bool unviewedOnly = false,
         ClipSortOrder sortOrder = ClipSortOrder.DateDescending,
-        DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? legend = null)
+        DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? legend = null,
+        bool binned = false)
     {
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -410,7 +412,8 @@ public class ClipService(
                 userId,
                 pageSize,
                 (page - 1) * pageSize,
-                legend);
+                legend,
+                binned);
 
         List<ClipsStatements.ClipWithTagsRow> pagedClips = clipsPage.Rows;
         List<Guid> clipIds = pagedClips.Select(c => c.Id).ToList();

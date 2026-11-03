@@ -1,6 +1,7 @@
 import {
   AdminAccountEndpointsApi,
   BillingEndpointsApi,
+  ClipBinEndpointsApi,
   ClipsEndpointsApi,
   ClipSummaryEndpointsApi,
   ClipTranscriptionEndpointsApi,
@@ -29,6 +30,10 @@ const clientOptions = {
 
 export function createClipsApi() {
   return new ClipsEndpointsApi(new ClipsConfiguration(clientOptions));
+}
+
+export function createClipBinApi() {
+  return new ClipBinEndpointsApi(new ClipsConfiguration(clientOptions));
 }
 
 export function createSharedClipsApi() {

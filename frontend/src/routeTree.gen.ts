@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LibraryRouteImport } from './routes/_library'
+import { Route as BinRouteImport } from './routes/bin'
 import { Route as ClipTranscriptionRouteImport } from './routes/clip-transcription'
 import { Route as LegendDetectionRouteImport } from './routes/legend-detection'
 import { Route as PlanRouteImport } from './routes/plan'
@@ -33,6 +34,11 @@ import { Route as LibraryGamesSlugIndexRouteImport } from './routes/_library/gam
 
 const LibraryRoute = LibraryRouteImport.update({
   id: '/_library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BinRoute = BinRouteImport.update({
+  id: '/bin',
+  path: '/bin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClipTranscriptionRoute = ClipTranscriptionRouteImport.update({
@@ -138,6 +144,7 @@ const LibraryGamesSlugIndexRoute = LibraryGamesSlugIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof LibraryIndexRoute
+  '/bin': typeof BinRoute
   '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
   '/plan': typeof PlanRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/games/$slug/': typeof LibraryGamesSlugIndexRoute
 }
 export interface FileRoutesByTo {
+  '/bin': typeof BinRoute
   '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
   '/plan': typeof PlanRoute
@@ -183,6 +191,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_library': typeof LibraryRouteWithChildren
+  '/bin': typeof BinRoute
   '/clip-transcription': typeof ClipTranscriptionRoute
   '/legend-detection': typeof LegendDetectionRoute
   '/plan': typeof PlanRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/bin'
     | '/clip-transcription'
     | '/legend-detection'
     | '/plan'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/games/$slug/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/bin'
     | '/clip-transcription'
     | '/legend-detection'
     | '/plan'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_library'
+    | '/bin'
     | '/clip-transcription'
     | '/legend-detection'
     | '/plan'
@@ -276,6 +288,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRouteWithChildren
+  BinRoute: typeof BinRoute
   ClipTranscriptionRoute: typeof ClipTranscriptionRoute
   LegendDetectionRoute: typeof LegendDetectionRoute
   PlanRoute: typeof PlanRoute
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bin': {
+      id: '/bin'
+      path: '/bin'
+      fullPath: '/bin'
+      preLoaderRoute: typeof BinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clip-transcription': {
@@ -463,6 +483,7 @@ const LibraryRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRouteWithChildren,
+  BinRoute: BinRoute,
   ClipTranscriptionRoute: ClipTranscriptionRoute,
   LegendDetectionRoute: LegendDetectionRoute,
   PlanRoute: PlanRoute,

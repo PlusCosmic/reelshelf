@@ -59,6 +59,12 @@ export interface ClipLibraryResponse {
    * @memberof ClipLibraryResponse
    */
   categoryTotals: Array<ClipCategoryTotals>;
+  /**
+   *
+   * @type {number}
+   * @memberof ClipLibraryResponse
+   */
+  binnedCount: number;
 }
 
 /**
@@ -71,6 +77,8 @@ export function instanceOfClipLibraryResponse(
     return false;
   if (!("totals" in value) || value["totals"] === undefined) return false;
   if (!("categoryTotals" in value) || value["categoryTotals"] === undefined)
+    return false;
+  if (!("binnedCount" in value) || value["binnedCount"] === undefined)
     return false;
   return true;
 }
@@ -94,6 +102,7 @@ export function ClipLibraryResponseFromJSONTyped(
     categoryTotals: (json["category_totals"] as Array<any>).map(
       ClipCategoryTotalsFromJSON,
     ),
+    binnedCount: json["binned_count"],
   };
 }
 
@@ -117,5 +126,6 @@ export function ClipLibraryResponseToJSONTyped(
     category_totals: (value["categoryTotals"] as Array<any>).map(
       ClipCategoryTotalsToJSON,
     ),
+    binned_count: value["binnedCount"],
   };
 }

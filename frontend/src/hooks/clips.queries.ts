@@ -8,10 +8,8 @@ import {
 } from "@tanstack/react-query";
 import type { Clip, PagedClipsResponse } from "@/api-client";
 import { clipStillArriving } from "@/components/AddClips/addClipsModel";
-import { planQueryKey } from "@/hooks/auth.queries";
 import { gamingSessionBounds } from "@/shared/utils/gamingSession";
 import {
-  deleteClip,
   fetchClipLegends,
   fetchClips,
   fetchTopTags,
@@ -113,13 +111,31 @@ export function useClipSession(clip: Clip | null | undefined) {
   });
 }
 
-/** The clips either side of this one in its game, by when they were recorded. */
-export function useClipNeighbours(clip: Clip | null | undefined) {
-  const categoryId = clip?.gameCategoryId;
+/**
+ * The clips either side of this one by when they were recorded: in its game, or in the library list it was opened
+ * from (`list`, whose `categoryId` is null for every game), so stepping on walks the same clips that list showed.
+ */
+export function useClipNeighbours(
+  clip: Clip | null | undefined,
+  list?: ClipsFilters,
+) {
+  const categoryId =
+    list && list.categoryId === null
+      ? undefined
+      : (list?.categoryId ?? clip?.gameCategoryId);
+  const search = list?.search?.trim() || undefined;
+  const tags = list?.tag ? [list.tag] : undefined;
+  const legend = list?.legend ?? undefined;
   const at = clip ? new Date(clip.createdAt) : undefined;
 
   return useQuery({
-    queryKey: ["clips", "list", "neighbours", clip?.clipId],
+    queryKey: [
+      "clips",
+      "list",
+      "neighbours",
+      clip?.clipId,
+      { categoryId, search, tag: list?.tag ?? undefined, legend },
+    ],
     queryFn: async () => {
       // Two of each, so the clip itself can be dropped if it shares a timestamp with its neighbour.
       const [older, newer] = await Promise.all([
@@ -127,6 +143,9 @@ export function useClipNeighbours(clip: Clip | null | undefined) {
           page: 1,
           pageSize: 2,
           categoryId,
+          tags,
+          search,
+          legend,
           sortOrder: 0,
           endDate: at,
         }),
@@ -134,6 +153,9 @@ export function useClipNeighbours(clip: Clip | null | undefined) {
           page: 1,
           pageSize: 2,
           categoryId,
+          tags,
+          search,
+          legend,
           sortOrder: 1,
           startDate: at,
         }),
@@ -257,21 +279,6 @@ export function useShareClip() {
     onSuccess: (_data, clipId) => {
       queryClient.invalidateQueries({ queryKey: ["clips", clipId] });
       queryClient.invalidateQueries({ queryKey: ["clips"], exact: false });
-    },
-  });
-}
-
-export function useDeleteClip() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (clipId: string) => deleteClip(clipId),
-    onSuccess: (_data, clipId) => {
-      queryClient.removeQueries({ queryKey: ["clips", clipId] });
-      invalidateClipCollections(queryClient);
-      // Playlist summaries and details embed clips; drop the deleted one from them too.
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
-      queryClient.invalidateQueries({ queryKey: planQueryKey });
     },
   });
 }

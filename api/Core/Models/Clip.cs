@@ -7,6 +7,10 @@ namespace Reelshelf.Core.Models;
 /// The legend the owner played in an Apex Legends clip, spelled as in <c>ApexLegendNames</c>: its label, else the
 /// latest succeeded legend detection. Null for other games and for clips whose legend isn't known.
 /// </param>
+/// <param name="BinnedAt">
+/// When the owner put the clip in the bin, which empties itself after <c>Bin:Retention</c>; null while it is in the
+/// library. Only the owner ever sees a binned clip.
+/// </param>
 public record Clip(
     Guid ClipId,
     Guid OwnerId,
@@ -19,7 +23,8 @@ public record Clip(
     bool IsViewed,
     ClipShareSummary Share,
     object? GameMetadata,
-    string? Legend)
+    string? Legend,
+    DateTimeOffset? BinnedAt = null)
 {
 }
 
@@ -60,10 +65,12 @@ public record ClipCategoryTotals(
     long DurationSeconds,
     long StorageBytes);
 
+/// <param name="BinnedCount">How many of the owner's clips are in the bin, which the totals leave out.</param>
 public record ClipLibraryResponse(
     List<GameCategoryResponse> Categories,
     ClipLibraryTotals Totals,
-    List<ClipCategoryTotals> CategoryTotals);
+    List<ClipCategoryTotals> CategoryTotals,
+    int BinnedCount);
 
 public record ClipShareSummary(bool Shared);
 

@@ -27,14 +27,15 @@ public class ClipLibraryService(
                 row.StorageBytes))
             .ToList();
 
-        // Summed over every category the owner has clips in, including any dropped from their library,
-        // so the topline matches the storage meter rather than the shelf.
+        // Summed over every category the owner has clips in, including any dropped from their library. Binned clips
+        // are left out, though they still count toward the plan until the bin lets them go.
         ClipLibraryTotals totals = new(
             categoryTotals.Sum(total => total.ClipCount),
             categoryTotals.Sum(total => total.UnviewedCount),
             categoryTotals.Sum(total => total.DurationSeconds),
             categoryTotals.Sum(total => total.StorageBytes));
 
-        return new ClipLibraryResponse(categories, totals, categoryTotals);
+        return new ClipLibraryResponse(categories, totals, categoryTotals,
+            await clipsStatements.CountBinnedClips(userId));
     }
 }

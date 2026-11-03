@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import type { CSSProperties } from "react";
-import { IconPlayerPlayFilled } from "@tabler/icons-react";
+import type { CSSProperties, MouseEvent, PointerEvent } from "react";
+import { useEffect, useRef } from "react";
+import { IconCheck, IconPlayerPlayFilled } from "@tabler/icons-react";
 import type { Clip, GameCategoryResponse } from "@/api-client";
 import {
   clipStageFor,
@@ -8,6 +9,7 @@ import {
   type ClipStage,
 } from "@/components/AddClips/addClipsModel";
 import { useUploadForClip } from "@/components/AddClips/UploadsProvider";
+import { binCopy } from "@/copy/bin";
 import { libraryCopy } from "@/copy/library";
 import {
   bookBinding,
@@ -17,11 +19,16 @@ import {
   legendPortraitUrl,
   thumbnailUrl,
 } from "../reelshelf-model";
+import { isChosen, type ClipSelection } from "../clipSelection";
+import type { ClipListSearch } from "../libraryList";
 import { StitchedDot } from "../StitchedDot";
 import { SharedIndicator } from "./Navigation";
 
-/** What a link to a clip's page can carry: the collection it is being played through, if any. */
-export type ClipLinkSearch = { collection?: string };
+/**
+ * What a link to a clip's page can carry: the collection it is being played through, or the library list it was
+ * opened from (`ClipListSearch`).
+ */
+export type ClipLinkSearch = { collection?: string } & ClipListSearch;
 
 export function ClipThumb({
   clip,
@@ -173,7 +180,13 @@ function ClipCard({
 const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "long" });
 
 type FilmstripItem =
-  | { kind: "month"; key: string; month: string; year: number }
+  | {
+      kind: "month";
+      key: string;
+      month: string;
+      year: number;
+      clipIds: string[];
+    }
   | { kind: "clip"; clip: Clip };
 
 /** Interleaves a month heading wherever the recording month changes. */
@@ -191,13 +204,29 @@ function filmstripItems(clips: Clip[], groupByMonth: boolean): FilmstripItem[] {
         key,
         month: monthFormatter.format(recorded),
         year: recorded.getFullYear(),
+        clipIds: [],
       });
       lastKey = key;
     }
+    const month = items.findLast((item) => item.kind === "month");
+    if (month?.kind === "month") month.clipIds.push(clip.clipId);
     items.push({ kind: "clip", clip });
   }
   return items;
 }
+
+/**
+ * Choosing clips in a filmstrip: the list's selection, and what toggling a row, a run of rows or a month does to it.
+ * Dragging from one row's check over others sets them all the way the first went.
+ */
+export type ClipListChoosing = {
+  selection: ClipSelection;
+  onToggle: (clipId: string, range: boolean) => void;
+  onSet: (clipIds: string[], selected: boolean) => void;
+};
+
+/** A drag across the rows' checks, choosing (or clearing) each row it passes. */
+type Paint = { selected: boolean } | null;
 
 function ClipRow({
   clip,
@@ -206,6 +235,9 @@ function ClipRow({
   showLegend,
   current,
   search,
+  choosing,
+  paint,
+  fromList,
 }: {
   clip: Clip;
   category: GameCategoryResponse | undefined;
@@ -214,17 +246,32 @@ function ClipRow({
   showLegend: boolean;
   current: boolean;
   search: ClipLinkSearch | undefined;
+  choosing?: ClipListChoosing;
+  paint?: { current: Paint };
+  fromList?: boolean;
 }) {
   const stage = clipStageFor(clip, useUploadForClip(clip.clipId));
   const cloth = category ? bookBinding(category).cloth : undefined;
   const legend = showLegend ? clip.legend : null;
-  return (
+  const row = (
     <Link
       className={`rs-row${showGame ? "" : " no-game"}${showLegend ? " has-legend" : ""}${current ? " current" : ""}`}
       to="/games/$slug/$clipId"
       params={{ slug: clip.categorySlug, clipId: clip.clipId }}
       search={search}
+      // Back from the clip returns to this list where it was, rather than opening it afresh at the top.
+      state={fromList ? { fromList: true } : undefined}
       aria-current={current ? "page" : undefined}
+      onClick={
+        choosing?.selection.active
+          ? (event: MouseEvent) => {
+              // While choosing, a row toggles; a modified click still opens the clip in a new tab.
+              if (event.metaKey || event.ctrlKey || event.button !== 0) return;
+              event.preventDefault();
+              choosing.onToggle(clip.clipId, event.shiftKey);
+            }
+          : undefined
+      }
     >
       <ClipThumb clip={clip} category={category} compact stage={stage} />
       <span className="rs-row-body">
@@ -293,6 +340,41 @@ function ClipRow({
       </span>
     </Link>
   );
+  if (!choosing) return row;
+
+  const chosen = isChosen(choosing.selection, clip.clipId);
+  return (
+    <div
+      className={`rs-row-select${chosen ? " chosen" : ""}${choosing.selection.active ? " choosing" : ""}`}
+      data-clip-id={clip.clipId}
+      onPointerEnter={(event: PointerEvent) => {
+        if (paint?.current && event.buttons === 1)
+          choosing.onSet([clip.clipId], paint.current.selected);
+      }}
+    >
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={chosen}
+        className="rs-row-check"
+        aria-label={binCopy.selection.toggle(clip.video.title)}
+        onPointerDown={(event: PointerEvent) => {
+          if (event.button !== 0 || event.shiftKey || !paint) return;
+          // Pressing starts a drag; the press itself toggles this row.
+          paint.current = { selected: !chosen };
+          choosing.onSet([clip.clipId], !chosen);
+        }}
+        onClick={(event: MouseEvent) => {
+          // The pointer already toggled it on press; keys and shift-clicks come through here.
+          if (event.shiftKey) choosing.onToggle(clip.clipId, true);
+          else if (event.detail === 0) choosing.onToggle(clip.clipId, false);
+        }}
+      >
+        <IconCheck size={14} aria-hidden="true" />
+      </button>
+      {row}
+    </div>
+  );
 }
 
 export function ClipGrid({
@@ -303,6 +385,8 @@ export function ClipGrid({
   showGame = true,
   currentClipId,
   linkSearch,
+  choosing,
+  fromList,
 }: {
   clips: Clip[];
   categories: GameCategoryResponse[];
@@ -315,7 +399,25 @@ export function ClipGrid({
   currentClipId?: string;
   /** Filmstrip only: carried on each clip's link, such as the collection being played through. */
   linkSearch?: ClipLinkSearch;
+  /** Filmstrip only: rows can be chosen, to bin together. */
+  choosing?: ClipListChoosing;
+  /** Filmstrip only: this is a library list, which a clip opened from it goes back to. */
+  fromList?: boolean;
 }) {
+  const paint = useRef<Paint>(null);
+  useEffect(() => {
+    if (!choosing) return;
+    const end = () => {
+      paint.current = null;
+    };
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    return () => {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+  }, [choosing]);
+
   if (clips.length === 0) {
     return <div className="rs-empty">{libraryCopy.list.empty}</div>;
   }
@@ -329,6 +431,13 @@ export function ClipGrid({
         {filmstripItems(clips, groupByMonth).map((item) =>
           item.kind === "month" ? (
             <h3 className="rs-month" key={item.key}>
+              {choosing ? (
+                <MonthCheck
+                  label={binCopy.selection.month(`${item.month} ${item.year}`)}
+                  clipIds={item.clipIds}
+                  choosing={choosing}
+                />
+              ) : null}
               <span className="rs-display">{item.month}</span>
               <span className="rs-month-year">{item.year}</span>
             </h3>
@@ -341,6 +450,9 @@ export function ClipGrid({
               showLegend={showLegend}
               current={item.clip.clipId === currentClipId}
               search={linkSearch}
+              choosing={choosing}
+              paint={paint}
+              fromList={fromList}
             />
           ),
         )}
@@ -359,5 +471,32 @@ export function ClipGrid({
         />
       ))}
     </div>
+  );
+}
+
+/** Chooses (or clears) every loaded clip from one month. */
+function MonthCheck({
+  label,
+  clipIds,
+  choosing,
+}: {
+  label: string;
+  clipIds: string[];
+  choosing: ClipListChoosing;
+}) {
+  const all = clipIds.every((clipId) => isChosen(choosing.selection, clipId));
+  const some =
+    !all && clipIds.some((clipId) => isChosen(choosing.selection, clipId));
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={all ? true : some ? "mixed" : false}
+      className={`rs-row-check rs-month-check${all ? " chosen" : some ? " partly" : ""}`}
+      aria-label={label}
+      onClick={() => choosing.onSet(clipIds, !all)}
+    >
+      <IconCheck size={14} aria-hidden="true" />
+    </button>
   );
 }

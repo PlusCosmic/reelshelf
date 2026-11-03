@@ -28,6 +28,8 @@ public class BunnyMigrationStatements(NpgsqlConnection connection)
             FROM clip
             WHERE clip.video_host = 'bunny'
               AND clip.video_state = 'ready'
+              -- A binned clip is on its way out; moving it would be wasted work.
+              AND clip.binned_at IS NULL
               AND NOT EXISTS (
                   SELECT 1 FROM transcode_run run
                   WHERE run.clip_id = clip.id

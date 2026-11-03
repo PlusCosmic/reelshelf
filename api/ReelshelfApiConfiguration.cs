@@ -12,6 +12,7 @@ using Reelshelf.ApexLegends;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Auth;
 using Reelshelf.Billing;
+using Reelshelf.ClipBin;
 using Reelshelf.FeatureFlags;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
@@ -87,6 +88,7 @@ internal static class ReelshelfApiConfiguration
 
         RouteGroupBuilder apiGroup = app.MapGroup("/api");
         apiGroup.MapClipsEndpoints();
+        apiGroup.MapClipBinEndpoints();
         apiGroup.MapMultipartUploadEndpoints();
         apiGroup.MapSharedClipsEndpoints();
         apiGroup.MapContentReportEndpoints();
@@ -283,6 +285,10 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<ClipProjection>();
         builder.Services.AddSingleton<ClipMediaUrls>();
         builder.Services.AddScoped<ClipService>();
+        // The bin (V55): deleted clips wait there for Bin:Retention before the sweep deletes them for good.
+        builder.Services.Configure<ClipBinOptions>(builder.Configuration.GetSection(ClipBinOptions.SectionName));
+        builder.Services.AddScoped<ClipBinService>();
+        builder.Services.AddScoped<ClipBinSweeper>();
         builder.Services.AddScoped<ClipLibraryService>();
         builder.Services.AddScoped<ClipsBackfillService>();
         builder.Services.AddScoped<PlaylistService>();
@@ -373,6 +379,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<AccountDeletionBackgroundService>();
             builder.Services.AddHostedService<BunnyMigrationBackfillService>();
             builder.Services.AddHostedService<BunnyCopySweepService>();
+            builder.Services.AddHostedService<ClipBinSweepService>();
         }
     }
 }

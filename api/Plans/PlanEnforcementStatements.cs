@@ -88,13 +88,13 @@ public sealed class PlanEnforcementStatements(NpgsqlConnection connection) : IPl
     public async Task<List<OwnedClip>> GetOwnedClips(Guid userId)
     {
         const string sql = """
-            SELECT c.id, c.title, c.created_at, c.kept_at, g.name AS game_name
+            SELECT c.id, c.title, c.created_at, c.kept_at, g.name AS game_name, c.binned_at
             FROM clip c
             LEFT JOIN game_category g ON g.id = c.game_category_id
             WHERE c.owner_id = @userId
             """;
         return (await connection.QueryAsync<OwnedClipRow>(sql, new { userId }))
-            .Select(row => new OwnedClip(row.Id, row.Title, row.CreatedAt, row.KeptAt, row.GameName))
+            .Select(row => new OwnedClip(row.Id, row.Title, row.CreatedAt, row.KeptAt, row.GameName, row.BinnedAt))
             .ToList();
     }
 
@@ -120,5 +120,6 @@ public sealed class PlanEnforcementStatements(NpgsqlConnection connection) : IPl
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset? KeptAt { get; set; }
         public string? GameName { get; set; }
+        public DateTimeOffset? BinnedAt { get; set; }
     }
 }

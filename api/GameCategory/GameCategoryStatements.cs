@@ -44,7 +44,7 @@ public class GameCategoryStatements(NpgsqlConnection connection)
             LEFT JOIN user_game_category ugc ON ugc.game_category_id = gc.id AND ugc.user_id = @UserId
             WHERE ugc.user_id IS NOT NULL
                OR EXISTS (SELECT 1 FROM clip c
-                          WHERE c.game_category_id = gc.id AND c.owner_id = @UserId)
+                          WHERE c.game_category_id = gc.id AND c.owner_id = @UserId AND c.binned_at IS NULL)
             ORDER BY ugc.shelf_position NULLS LAST, gc.name, gc.id
             """;
         var results = await connection.QueryAsync<GameCategory>(sql, new { UserId = userId });
@@ -222,13 +222,15 @@ public class GameCategoryStatements(NpgsqlConnection connection)
 
     /// <summary>
     /// Takes an empty book off the owner's shelf. A book that still holds any of the owner's clips (a reserved
-    /// upload included) stays, since the shelf shows every game with clips; the result says which happened.
+    /// upload included, binned ones not) stays, since the shelf shows every game with clips; the result says which
+    /// happened. A binned clip restored later puts its book back on the shelf.
     /// </summary>
     public async Task<RemoveShelfBookResult> RemoveUserCategoryAsync(Guid userId, Guid categoryId)
     {
         const string sql = """
             WITH has_clips AS (
-                SELECT EXISTS (SELECT 1 FROM clip WHERE owner_id = @UserId AND game_category_id = @CategoryId) AS found
+                SELECT EXISTS (SELECT 1 FROM clip WHERE owner_id = @UserId AND game_category_id = @CategoryId
+                                AND binned_at IS NULL) AS found
             ),
             removed AS (
                 DELETE FROM user_game_category

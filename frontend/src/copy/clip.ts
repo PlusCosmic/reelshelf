@@ -8,6 +8,8 @@ export const clipCopy = {
     label: "Where this clip lives",
     backTo: "Back to",
     theShelf: "the shelf",
+    /** The back link when the clip was opened from the whole library rather than its own book. */
+    theLibrary: "your library",
     position: (index: number, total: number) => `Clip ${index} of ${total}`,
     newCount: (count: number) => `${count} new`,
     theatre: "Theatre mode",
@@ -41,6 +43,17 @@ export const clipCopy = {
     onlyYou: "Only you",
   },
   stage: "Player",
+  binned: {
+    title: "This clip is in the bin.",
+    body: (days: number) =>
+      days <= 0
+        ? "It'll be permanently deleted within the hour unless you put it back."
+        : days === 1
+          ? "It'll be permanently deleted within a day unless you put it back."
+          : `It'll be permanently deleted in ${days} days unless you put it back.`,
+    restore: "Put back",
+    restoring: "Putting back…",
+  },
   playedAs: "Played as ",
   notWatchedYet: "Not watched yet",
   upNextIn: (collection: string) => `Up next in ${collection}`,

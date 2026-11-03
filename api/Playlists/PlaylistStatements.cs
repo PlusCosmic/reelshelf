@@ -60,7 +60,9 @@ public class PlaylistStatements(NpgsqlConnection connection)
                 EXISTS (SELECT 1 FROM playlist_gaming_sessions gs WHERE gs.playlist_id = p.id) as is_gaming_session
             FROM playlists p
             INNER JOIN playlist_collaborators pcollab ON p.id = pcollab.playlist_id
+            -- Binned clips are out of every collection until they are restored.
             LEFT JOIN playlist_clips pc ON p.id = pc.playlist_id
+                AND NOT EXISTS (SELECT 1 FROM clip binned WHERE binned.id = pc.clip_id AND binned.binned_at IS NOT NULL)
             WHERE pcollab.user_id = @userId
             GROUP BY p.id, p.name, p.description, p.creator_user_id, p.created_at, p.updated_at
             ORDER BY p.updated_at DESC";
@@ -83,7 +85,7 @@ public class PlaylistStatements(NpgsqlConnection connection)
                        ROW_NUMBER() OVER (PARTITION BY pc.playlist_id ORDER BY pc.position, pc.added_at) AS n
                 FROM playlist_clips pc
                 INNER JOIN clip c ON c.id = pc.clip_id
-                WHERE pc.playlist_id = ANY(@playlistIds)
+                WHERE pc.playlist_id = ANY(@playlistIds) AND c.binned_at IS NULL
             ) ordered
             WHERE n <= 4
             ORDER BY playlist_id, n";
@@ -92,7 +94,7 @@ public class PlaylistStatements(NpgsqlConnection connection)
             SELECT pc.playlist_id, c.game_category_id, COUNT(*)::int AS clip_count, COALESCE(SUM(c.length), 0)::int AS seconds
             FROM playlist_clips pc
             INNER JOIN clip c ON c.id = pc.clip_id
-            WHERE pc.playlist_id = ANY(@playlistIds)
+            WHERE pc.playlist_id = ANY(@playlistIds) AND c.binned_at IS NULL
             GROUP BY pc.playlist_id, c.game_category_id";
 
         const string peopleSql = @"
@@ -238,6 +240,7 @@ public class PlaylistStatements(NpgsqlConnection connection)
                 pc.added_at
             FROM playlist_clips pc
             WHERE pc.playlist_id = @playlistId
+              AND NOT EXISTS (SELECT 1 FROM clip binned WHERE binned.id = pc.clip_id AND binned.binned_at IS NOT NULL)
             ORDER BY pc.position ASC";
 
         var results = await connection.QueryAsync<PlaylistClipRow>(sql, new { playlistId });

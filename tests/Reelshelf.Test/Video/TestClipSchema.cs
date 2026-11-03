@@ -5,7 +5,7 @@ using Xunit;
 namespace Reelshelf.Test.Video;
 
 /// <summary>
-/// A minimal <c>clip</c> table with the columns the clip statements read, plus the video pipeline's migrations, for
+/// A minimal <c>clip</c> table with the columns the clip statements read, plus the video pipeline's migrations and the bin's, for
 /// <see cref="PostgresFactAttribute"/> tests that run in a schema of their own.
 /// </summary>
 internal static class TestClipSchema
@@ -36,6 +36,7 @@ internal static class TestClipSchema
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V40__transcode_run.sql")));
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V42__clip_video_version.sql")));
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V44__bunny_migration.sql")));
+        await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V55__clip_bin.sql")));
     }
 
     public static string MigrationPath(string fileName)

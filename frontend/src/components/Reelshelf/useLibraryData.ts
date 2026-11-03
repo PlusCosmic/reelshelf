@@ -21,6 +21,8 @@ export function useLibraryData() {
     categories: libraryQuery.data?.categories ?? [],
     categoryTotals: libraryQuery.data?.categoryTotals ?? [],
     totals: libraryQuery.data?.totals ?? emptyTotals,
+    /** Clips in the bin, which the totals leave out. */
+    binnedCount: libraryQuery.data?.binnedCount ?? 0,
     isLoading: libraryQuery.isLoading,
     isError: libraryQuery.isError,
   };
