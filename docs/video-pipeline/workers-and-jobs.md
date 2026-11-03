@@ -314,18 +314,18 @@ quota and the reasons are in [fargate-overflow.md](fargate-overflow.md).
   quota) as `failures` rather than an error, so the call returns how many tasks it got and the rest go to the next
   pool.
 - **The worker image:** the task definition (`Overflow:Ecs:TaskDefinition`, a family) holds the task's size (2 vCPU,
-  4 GiB on prod), roles, `Worker__Secret` from Secrets Manager, environment, volumes and sandbox, all from the
-  stack. The API changes only the image: when `Overflow:Ecs:WorkerImage` is set and the family's latest revision
+  4 GiB on prod), roles, `Worker__Secret` from Secrets Manager, environment, volumes and sandbox, all from
+  infrastructure's Terraform. The API changes only the image: when `Overflow:Ecs:WorkerImage` is set and the family's latest revision
   runs another one, it registers a copy of that revision with the image on every container of the same repository
   (the worker and its `volume-init`), and runs that. It remembers the revision for the image, and finds it again
   after a failed `RunTask` (someone may have deregistered it). The bump PR keeps `WorkerImage` current, as for
-  Batch, so a new worker needs no stack deploy. Empty runs the latest revision as it is.
+  Batch, so a new worker needs no Terraform apply. Empty runs the latest revision as it is.
 - **Preemption:** Fargate Spot sends SIGTERM two minutes ahead and the task definition's `stopTimeout` is 120 s,
   past the worker's `ShutdownGrace` (20 s) plus its release, so the job goes back to `pending` without a watcher
   (`Worker:PreemptionNotice` stays empty).
 - **Counting:** `ListTasks` by `startedBy` with desired status `RUNNING`, then `PENDING`, without repeats; a task
   still provisioning is `RUNNING`.
-- **Client:** `Overflow:Ecs:AccessKeyId` and `SecretAccessKey`, the stack's API user's key (both or neither; neither
+- **Client:** `Overflow:Ecs:AccessKeyId` and `SecretAccessKey`, the scaler user's key from infrastructure's `aws/overflow-workers/secrets.sh` (both or neither; neither
   uses the SDK's default chain), in `Overflow:Ecs:Region`.
 - **Settings:** with `ecs` in `Overflow:Pools`, startup fails when `Region`, `Cluster`, `TaskDefinition`, `Subnets`
   or `SecurityGroups` is missing, on a `TaskDefinition` with a revision, a `WorkerImage` without a tag, or half a

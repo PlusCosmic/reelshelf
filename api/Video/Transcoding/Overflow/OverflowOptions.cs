@@ -304,7 +304,7 @@ public sealed class OverflowBatchOptions
 /// <see cref="TaskDefinition"/> on Fargate Spot, one worker each, started with <c>RunTask</c> in
 /// <see cref="Subnets"/> with a public IP. The task definition holds the task's size, roles, secret, volumes and
 /// sandbox; the API changes only its image, to <see cref="WorkerImage"/>, by registering a new revision.
-/// PlusCosmic/infrastructure's aws/overflow-workers stack creates the resources and outputs these settings.
+/// PlusCosmic/infrastructure's aws/overflow-workers (Terraform) creates the resources and outputs these settings.
 /// </summary>
 public sealed class OverflowEcsOptions
 {

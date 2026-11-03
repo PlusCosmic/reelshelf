@@ -28,12 +28,12 @@ What is built is described in [workers-and-jobs.md](workers-and-jobs.md#the-over
   for a burst of clips (one worker per clip) and exercises AWS more. A 2-vCPU worker encodes at roughly half the
   speed, about 8 minutes a clip rather than 4 (to be measured; see below). The task is 2 vCPU and 4 GiB (the
   smallest Fargate size for 2 vCPU), with `Worker__LogicalProcessors=2`. Once the quota grows, going back to 4 vCPU
-  is a stack parameter.
+  is a Terraform variable (`task_cpu`).
 - **The API owns the worker image** (2026-11-03, "option B"). The first AWS pool had the image in the task
-  definition, so each new worker needed a CloudFormation deploy. Now `Overflow__Ecs__WorkerImage` sits in
+  definition, so each new worker needed a stack deploy. Now `Overflow__Ecs__WorkerImage` sits in
   `services/clips.yml`, the bump PR rewrites it with the other worker tags, and the API registers a revision of the
   task definition with that image when the latest one runs another. Everything else in the task definition (size,
-  roles, secret, sandbox) stays the stack's. This costs the API's user `ecs:RegisterTaskDefinition` and
+  roles, secret, sandbox) stays Terraform's. This costs the API's user `ecs:RegisterTaskDefinition` and
   `ecs:DescribeTaskDefinition`, which IAM can't scope to one family, and `iam:PassRole` on the execution role only.
 - **No preemption watcher.** Fargate Spot gives SIGTERM two minutes ahead; with `stopTimeout` 120 s the worker's
   usual shutdown (20 s grace, then release) hands the job back. `Worker__PreemptionNotice` stays empty.
@@ -46,8 +46,13 @@ What is built is described in [workers-and-jobs.md](workers-and-jobs.md#the-over
 
 ## AWS resources (infrastructure repo)
 
-`aws/overflow-workers/template.yml`, one CloudFormation stack per instance (`reelshelf-overflow-workers-prod`),
-`eu-north-1` only. It is the first pool's template without the EC2 parts:
+`aws/overflow-workers/`, Terraform in `eu-north-1` only, planned on pull requests and applied on merge to `main` by
+`.github/workflows/aws-overflow-workers.yml` like `gcp/overflow-workers` (2026-11-03: the first pool's CloudFormation
+template, deployed by hand, was ported so both clouds are managed the same way). `aws/bootstrap/`, applied by hand
+once, holds the S3 state bucket and the two roles GitHub Actions assumes through OIDC: plan (read-only, pull requests)
+and apply (`main` only, IAM limited to the `/reelshelf/` path, no secret values). `secrets.sh` makes the worker
+secret's value and the scaler's access key outside the state. It holds the first pool's resources without the EC2
+parts:
 
 - a VPC with two public subnets, no NAT, and a security group with nothing in and only 443 out;
 - the cluster `reelshelf-overflow-<instance>` with `FARGATE_SPOT`;
@@ -55,18 +60,19 @@ What is built is described in [workers-and-jobs.md](workers-and-jobs.md#the-over
   read-only root with `/work` and `/tmp` volumes and the `volume-init` container, every capability dropped,
   `stopTimeout` 120, `Worker__ApiBaseUrl`, `Worker__LogicalProcessors`, `Worker__ExitWhenIdleAfter=00:01:00` and
   `Worker__Secret` from Secrets Manager;
-- a log group (14 days), the execution role, and the API's IAM user.
+- a log group (14 days), the worker secret (no value), the execution role, and the API's IAM user.
 
-The README and RUNBOOK next to it cover the secret, the deploy, the API key and the smoke test.
+Its RUNBOOK covers the bootstrap, the secrets, the settings and the smoke test.
 
 ## Rollout
 
 1. **API PR** (this repo): pools, `EcsOverflowTaskLauncher`, settings, metrics tagged by pool, the bump PR's
    pattern, tests and docs.
-2. **Infrastructure PR**: the template and its README and RUNBOOK, the `Overflow__Ecs__*` settings and
+2. **Infrastructure PR**: the Terraform, its bootstrap, workflow and RUNBOOK, the `Overflow__Ecs__*` settings and
    `Worker__Secrets__aws` in `services/clips.yml` with `Overflow__Pools` still `batch`, and the Grafana panels
    summing the pools.
-3. **Deploy the stack** (RUNBOOK), put `ClipsAwsWorkerSecret` and the API's key in Infisical/Dokploy.
+3. **Bootstrap** `aws/bootstrap` by hand and set `AWS_ACCOUNT_ID`; merging the infrastructure PR then applies the
+   pool. Run `secrets.sh prod` and put `ClipsAwsWorkerSecret` and the API's key in Infisical.
 4. **Turn it on**: `Overflow__Pools=ecs,batch`, `Overflow__MaxTasks=10`, then upload a burst of clips and check
    that four Fargate tasks start first and Batch takes the rest.
 5. **Measure** a 2-vCPU worker: encode time per clip, peak memory against the 4 GiB, and how often Fargate Spot
