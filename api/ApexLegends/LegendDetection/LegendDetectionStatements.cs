@@ -157,33 +157,57 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     /// <summary>
     /// Claims the next pending run, or a running one whose worker stopped before finishing, and counts the
     /// attempt. Manual and escalation runs go before automatic ones, so they never wait behind a backfill, and
-    /// eval runs go last, so an eval never holds up a new clip; otherwise the oldest goes first. A run that already failed an attempt waits <paramref name="retryAfter"/>
-    /// before it is retried. SKIP LOCKED keeps two API instances from claiming the same run.
+    /// eval runs go last, so an eval never holds up a new clip; otherwise the oldest goes first. A run that already
+    /// failed an attempt waits <paramref name="retryAfter"/> before it is retried. Runs that would be claimable but
+    /// have used <paramref name="maxAttempts"/> are failed first and never claimed. Each claim gets a fresh
+    /// <c>claim_id</c>, which the processor passes back to <see cref="CompleteRunAsync"/> and
+    /// <see cref="FailRunAsync"/>, so only the latest claim's result is written. SKIP LOCKED keeps two API instances
+    /// from claiming the same run.
     /// </summary>
-    public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter)
+    public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter, int maxAttempts)
     {
+        const string giveUpSql = """
+            UPDATE legend_detection_run
+            SET status = 'failed', error = 'Gave up after ' || @MaxAttempts || ' attempts', claim_id = NULL,
+                completed_at = now()
+            WHERE id IN (
+                SELECT id FROM legend_detection_run
+                WHERE archived_at IS NULL AND attempts >= @MaxAttempts
+                  AND ((status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
+                    OR (status = 'running' AND started_at < now() - @StaleAfter))
+                FOR UPDATE SKIP LOCKED)
+            """;
+        object parameters = new { RetryAfter = retryAfter, StaleAfter = staleAfter, MaxAttempts = maxAttempts };
+        await connection.ExecuteAsync(giveUpSql, parameters);
+
         string sql = $"""
             UPDATE legend_detection_run run
-            SET status = 'running', attempts = run.attempts + 1, started_at = now()
+            SET status = 'running', attempts = run.attempts + 1, started_at = now(), claim_id = gen_random_uuid()
             FROM clip
             WHERE clip.id = run.clip_id
               AND run.id = (
                   SELECT id FROM legend_detection_run
-                  WHERE archived_at IS NULL
+                  WHERE archived_at IS NULL AND attempts < @MaxAttempts
                     AND ((status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
                       OR (status = 'running' AND started_at < now() - @StaleAfter))
                   ORDER BY trigger = 'eval', trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height,
+            RETURNING run.id, run.claim_id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height,
                       clip.video_state, {ClipVideoColumns.ThumbnailsReadySql("clip")},
                       run.trigger, run.provider, run.model, run.reasoning_effort, run.attempts
             """;
-        return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql, new { RetryAfter = retryAfter, StaleAfter = staleAfter });
+        return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql, parameters);
     }
 
-    public async Task CompleteRunAsync(
+    /// <summary>
+    /// Records a claim's result. Nothing is written unless the run is still running under
+    /// <paramref name="claimId"/>: a run reclaimed after its processor went quiet, or already finished, keeps what it
+    /// has. Returns whether the result was written, and whether the run had been archived meanwhile ("Start fresh").
+    /// </summary>
+    public async Task<(bool Written, bool Archived)> CompleteRunAsync(
         Guid runId,
+        Guid claimId,
         string promptVersion,
         int frameCount,
         LegendRecognition recognition,
@@ -209,12 +233,14 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
                 duration_ms = @DurationMs,
                 error = NULL,
                 completed_at = now()
-            WHERE id = @RunId
+            WHERE id = @RunId AND claim_id = @ClaimId AND status = 'running'
+            RETURNING archived_at IS NOT NULL
             """;
         LegendDetectionResult result = recognition.Result;
-        await connection.ExecuteAsync(sql, new
+        bool? archived = await connection.QuerySingleOrDefaultAsync<bool?>(sql, new
         {
             RunId = runId,
+            ClaimId = claimId,
             PromptVersion = promptVersion,
             FrameCount = frameCount,
             result.HudDetected,
@@ -231,28 +257,41 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
             recognition.CostUsd,
             DurationMs = durationMs
         });
+        return (archived is not null, archived == true);
     }
 
-    /// <summary>Records a failed attempt; the run goes back to pending unless <paramref name="retry"/> is false.</summary>
-    public async Task FailRunAsync(Guid runId, string error, string? promptVersion, string? rawResponse, bool retry)
+    /// <summary>
+    /// Records a claim's failed attempt; the run goes back to pending unless <paramref name="retry"/> is false or it
+    /// has been archived, since an archived pending run is never claimed again. Like
+    /// <see cref="CompleteRunAsync"/>, nothing is written unless the run is still running under
+    /// <paramref name="claimId"/>; returns whether it was.
+    /// </summary>
+    public async Task<bool> FailRunAsync(
+        Guid runId,
+        Guid claimId,
+        string error,
+        string? promptVersion,
+        string? rawResponse,
+        bool retry)
     {
         const string sql = """
             UPDATE legend_detection_run
-            SET status = CASE WHEN @Retry THEN 'pending' ELSE 'failed' END,
+            SET status = CASE WHEN @Retry AND archived_at IS NULL THEN 'pending' ELSE 'failed' END,
                 error = @Error,
                 prompt_version = COALESCE(@PromptVersion, prompt_version),
                 raw_response = COALESCE(@RawResponse, raw_response),
-                completed_at = CASE WHEN @Retry THEN NULL ELSE now() END
-            WHERE id = @RunId
+                completed_at = CASE WHEN @Retry AND archived_at IS NULL THEN NULL ELSE now() END
+            WHERE id = @RunId AND claim_id = @ClaimId AND status = 'running'
             """;
-        await connection.ExecuteAsync(sql, new
+        return await connection.ExecuteAsync(sql, new
         {
             RunId = runId,
+            ClaimId = claimId,
             Error = error,
             PromptVersion = promptVersion,
             RawResponse = rawResponse,
             Retry = retry
-        });
+        }) > 0;
     }
 
     /// <summary>
@@ -765,6 +804,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     public class ClaimedRunRow : IClipVideoColumns
     {
         public Guid Id { get; set; }
+        public Guid ClaimId { get; set; }
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
         public string VideoHost { get; set; } = "";
