@@ -288,6 +288,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped<ClipProjection>();
         builder.Services.AddSingleton<ClipMediaUrls>();
         builder.Services.AddScoped<ClipService>();
+        builder.Services.AddScoped<ClipMoveService>();
         // The bin (V55): deleted clips wait there for Bin:Retention before the sweep deletes them for good.
         builder.Services.Configure<ClipBinOptions>(builder.Configuration.GetSection(ClipBinOptions.SectionName));
         builder.Services.AddScoped<ClipBinService>();

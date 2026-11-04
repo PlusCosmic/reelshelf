@@ -130,6 +130,28 @@ public class BunnyCopyStatementsTests
         Assert.True(await test.CollectionExistsAsync(waiting));
     }
 
+    [PostgresFact]
+    public async Task ACollection_IsKeptWhileAClipMovedToAnotherBookIsFiledInIt()
+    {
+        await using TestSweep test = await TestSweep.CreateAsync();
+        Guid owner = Guid.NewGuid();
+        Guid filedIn = Guid.NewGuid();
+        Guid movedTo = Guid.NewGuid();
+        Guid clip = await test.AddClipAsync(videoHost: "bunny", ownerId: owner, gameCategoryId: filedIn);
+        Guid collection = await test.AddCollectionAsync(owner, filedIn);
+        // What moving the clip to another book does (ClipsStatements.MoveClips).
+        await test.Connection.ExecuteAsync("""
+            UPDATE clip SET game_category_id = @movedTo, filed_category_id = @filedIn WHERE id = @clip
+            """, new { movedTo, filedIn, clip });
+
+        Assert.Empty(await test.Statements.GetUnusedCollectionsAsync([], limit: 10));
+
+        // Once the clip leaves Bunny for good, its old collection can go.
+        await test.Connection.ExecuteAsync("UPDATE clip SET video_host = 'r2' WHERE id = @clip", new { clip });
+        Assert.Equal([collection], (await test.Statements.GetUnusedCollectionsAsync([], limit: 10))
+            .Select(row => row.CollectionId));
+    }
+
     private static Func<Guid, Task> Record(List<Guid> deleted) => id =>
     {
         deleted.Add(id);

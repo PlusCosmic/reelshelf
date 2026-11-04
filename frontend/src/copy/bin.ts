@@ -3,7 +3,7 @@ import { plural } from "./plural";
 
 /**
  * The bin: where deleted clips wait before they're permanently deleted, the undo note that follows a delete, selecting clips in
- * the library list, and sorting through a list one clip at a time.
+ * the library list, moving them to another book, and sorting through a list one clip at a time.
  */
 export const binCopy = {
   name: "Bin",
@@ -77,9 +77,41 @@ export const binCopy = {
     selectAll: (count: number) => `Select all ${count.toLocaleString()}`,
     bin: "Move to bin",
     binning: "Moving…",
+    move: "Move to book…",
     clear: "Clear",
     barLabel: "Selected clips",
     hint: "Shift-click selects a run · X selects · J and K move · Delete bins",
+  },
+  /** Moving chosen clips to another book, for clips filed under the wrong game. */
+  move: {
+    eyebrow: "Move clips",
+    title: (count: number | "all") =>
+      count === "all"
+        ? "Which book do these clips belong in?"
+        : count === 1
+          ? "Which book does this clip belong in?"
+          : `Which book do these ${count.toLocaleString()} clips belong in?`,
+    noOtherBooks: "There are no other books on your shelf yet.",
+    book: (name: string, clips: number) =>
+      `${name}, ${commonCopy.clips(clips)}`,
+    anotherGame: "Another game…",
+    moving: "Moving…",
+    failed: "Nothing was moved. Try again.",
+    moved: (count: number, book: string) =>
+      count === 1
+        ? `Clip moved to ${book}.`
+        : `${commonCopy.clips(count)} moved to ${book}.`,
+    nothingMoved: (book: string) => `Those clips were already in ${book}.`,
+    skipped: (count: number) =>
+      count === 1
+        ? "1 stayed put: that book already has the same video."
+        : `${count.toLocaleString()} stayed put: that book already has the same videos.`,
+    movedBack: (count: number) =>
+      count === 1
+        ? "Clip moved back."
+        : `${commonCopy.clips(count)} moved back.`,
+    undoing: "Moving back…",
+    undoFailed: "Those clips weren't moved back. Move them from the list.",
   },
   /** Sorting through a list: keep or bin each clip in turn. */
   sort: {

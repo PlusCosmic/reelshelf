@@ -34,6 +34,38 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
         }) > 0;
     }
 
+    /// <summary>
+    /// Queues an automatic run for each of these clips that is in the category, ready to play, out of the bin and
+    /// without an unarchived automatic run; returns how many it queued. A clip still encoding is left to the
+    /// automatic run its encode queues.
+    /// </summary>
+    public async Task<int> QueueAutoRunsForClipsAsync(
+        IReadOnlyCollection<Guid> clipIds,
+        Guid gameCategoryId,
+        string provider,
+        string model,
+        string? reasoningEffort)
+    {
+        const string sql = """
+            INSERT INTO legend_detection_run (clip_id, trigger, provider, model, reasoning_effort)
+            SELECT id, 'auto', @Provider, @Model, @ReasoningEffort
+            FROM clip
+            WHERE id = ANY(@ClipIds)
+              AND game_category_id = @GameCategoryId
+              AND video_state = 'ready'
+              AND binned_at IS NULL
+            ON CONFLICT (clip_id) WHERE trigger = 'auto' AND archived_at IS NULL DO NOTHING
+            """;
+        return await connection.ExecuteAsync(sql, new
+        {
+            ClipIds = clipIds.ToArray(),
+            GameCategoryId = gameCategoryId,
+            Provider = provider,
+            Model = model,
+            ReasoningEffort = reasoningEffort
+        });
+    }
+
     /// <summary>Queues an automatic run for every clip in the category without an unarchived one.</summary>
     public async Task<int> QueueAutoRunsForCategoryAsync(
         Guid gameCategoryId,

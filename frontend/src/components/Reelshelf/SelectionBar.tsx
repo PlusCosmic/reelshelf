@@ -1,11 +1,11 @@
-import { IconTrash, IconX } from "@tabler/icons-react";
+import { IconArrowsExchange, IconTrash, IconX } from "@tabler/icons-react";
 import { binCopy } from "@/copy/bin";
 
 const copy = binCopy.selection;
 
 /**
  * The bar at the foot of the library list while clips are being chosen: how many, choosing every clip that matches
- * (loaded or not), and moving them to the bin.
+ * (loaded or not), and moving them to another book or to the bin.
  */
 export function SelectionBar({
   chosen,
@@ -13,7 +13,9 @@ export function SelectionBar({
   loaded,
   allMatching,
   binning,
+  moving,
   onSelectAll,
+  onMove,
   onBin,
   onClear,
 }: {
@@ -23,7 +25,9 @@ export function SelectionBar({
   loaded: number;
   allMatching: boolean;
   binning: boolean;
+  moving: boolean;
   onSelectAll: () => void;
+  onMove: () => void;
   onBin: () => void;
   onClear: () => void;
 }) {
@@ -48,6 +52,15 @@ export function SelectionBar({
         <button type="button" className="rs-small-button" onClick={onClear}>
           <IconX size={13} aria-hidden="true" />
           {copy.clear}
+        </button>
+        <button
+          type="button"
+          className="rs-small-button"
+          onClick={onMove}
+          disabled={chosen === 0 || moving || binning}
+        >
+          <IconArrowsExchange size={13} aria-hidden="true" />
+          {copy.move}
         </button>
         <button
           type="button"

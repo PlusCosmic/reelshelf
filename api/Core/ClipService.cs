@@ -127,7 +127,8 @@ public class ClipService(
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
             {
-                // Two imports of the same source clip raced past the check above; the first one wins.
+                // Two imports of the same source clip, or two uploads of the same file to one book, raced past the
+                // checks above; the first one wins.
                 return null;
             }
 
