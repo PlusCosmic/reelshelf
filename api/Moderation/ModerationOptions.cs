@@ -20,9 +20,17 @@ public sealed class ModerationOptions
     /// <summary>A claimed evidence copy with no progress for this long is claimed again.</summary>
     public TimeSpan EvidenceStaleAfter { get; set; } = TimeSpan.FromMinutes(30);
 
+    /// <summary>
+    /// Attempts at the evidence copy before the record is marked <c>failed</c> (needs attention). It is never given up
+    /// on: later attempts back off, doubling from <see cref="EvidenceRetryAfter"/> up to
+    /// <see cref="EvidenceMaxRetryAfter"/>.
+    /// </summary>
     public int EvidenceMaxAttempts { get; set; } = 5;
 
     public TimeSpan EvidenceRetryAfter { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>The longest wait between attempts once a record is past <see cref="EvidenceMaxAttempts"/>.</summary>
+    public TimeSpan EvidenceMaxRetryAfter { get; set; } = TimeSpan.FromHours(1);
 
     /// <summary>
     /// When the second sweep of a removed clip's media folder runs. A transcode worker may still upload into it with

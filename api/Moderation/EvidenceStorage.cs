@@ -36,6 +36,85 @@ public sealed class UnconfiguredEvidenceStorage : IEvidenceStorage
     public Task DeletePrefixAsync(string prefix) => Task.CompletedTask;
 }
 
+/// <summary>
+/// Takes a removed clip's objects off public access in the media bucket without deleting the only copy: each is copied
+/// server side to <c>quarantine/{evidenceId}/{its key}</c>, then the original is deleted. Quarantine keys are never
+/// handed out, the evidence id in them is random, and the media domain's WAF blocks <c>/quarantine/*</c>
+/// (docs/moderation.md). It uses the media bucket's own credentials, so it works whatever state the evidence bucket is
+/// in. The quarantine is deleted once the evidence copy exists.
+/// </summary>
+public interface IEvidenceQuarantine
+{
+    /// <summary>
+    /// Moves everything of the clip in the media bucket (<c>clips/{clipId}/</c> and <c>uploads/{clipId}</c>) into the
+    /// quarantine. Safe to repeat: a key already quarantined is never overwritten, so a late upload to the same key
+    /// can't replace what was there at removal.
+    /// </summary>
+    Task QuarantineAsync(Guid evidenceId, Guid clipId, CancellationToken cancellationToken);
+
+    /// <summary>A quarantined object, by its original key; null when there is none.</summary>
+    Task<Stream?> OpenAsync(Guid evidenceId, string originalKey, CancellationToken cancellationToken);
+
+    Task DeleteAsync(Guid evidenceId);
+}
+
+public static class EvidenceQuarantineKeys
+{
+    public static string Prefix(Guid evidenceId) => $"quarantine/{evidenceId}/";
+
+    public static string For(Guid evidenceId, string originalKey) => Prefix(evidenceId) + originalKey;
+}
+
+public sealed class R2EvidenceQuarantine(R2Storage media) : IEvidenceQuarantine
+{
+    public async Task QuarantineAsync(Guid evidenceId, Guid clipId, CancellationToken cancellationToken)
+    {
+        string upload = R2ObjectKeys.Upload(clipId);
+        // An open browser upload could otherwise complete into uploads/{clipId} later.
+        await media.AbortMultipartUploadsAsync(upload);
+        List<(string Key, long Size)> originals =
+        [
+            .. await media.ListAsync(R2ObjectKeys.ClipPrefix(clipId)),
+            .. (await media.ListAsync(upload)).Where(item => item.Key == upload)
+        ];
+        if (originals.Count == 0)
+        {
+            return;
+        }
+
+        HashSet<string> quarantined = (await media.ListAsync(EvidenceQuarantineKeys.Prefix(evidenceId)))
+            .Select(item => item.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach ((string key, long size) in originals)
+        {
+            string target = EvidenceQuarantineKeys.For(evidenceId, key);
+            if (!quarantined.Contains(target))
+            {
+                await media.CopyAsync(key, size, target, cancellationToken);
+            }
+        }
+
+        // Only once every copy exists.
+        await media.DeleteObjectsAsync(originals.Select(item => item.Key));
+    }
+
+    public Task<Stream?> OpenAsync(Guid evidenceId, string originalKey, CancellationToken cancellationToken) =>
+        media.OpenReadAsync(EvidenceQuarantineKeys.For(evidenceId, originalKey), cancellationToken);
+
+    public Task DeleteAsync(Guid evidenceId) => media.DeletePrefixAsync(EvidenceQuarantineKeys.Prefix(evidenceId));
+}
+
+/// <summary>Without R2 a clip has nothing in the media bucket to quarantine.</summary>
+public sealed class NoEvidenceQuarantine : IEvidenceQuarantine
+{
+    public Task QuarantineAsync(Guid evidenceId, Guid clipId, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task<Stream?> OpenAsync(Guid evidenceId, string originalKey, CancellationToken cancellationToken) =>
+        Task.FromResult<Stream?>(null);
+
+    public Task DeleteAsync(Guid evidenceId) => Task.CompletedTask;
+}
+
 public static class CdnPurgeResults
 {
     public const string Purged = "purged";
@@ -102,7 +181,10 @@ public sealed class NoCdnPurger(string result) : ICdnPurger
         Task.FromResult(result);
 }
 
-/// <summary>Deletes a removed clip's video wherever it is public: its host, its R2 versions and any Bunny copy.</summary>
+/// <summary>
+/// Deletes a removed clip's video wherever it is: its host, its R2 versions and any Bunny copy. Only ever called once
+/// the evidence copy exists.
+/// </summary>
 public interface IEvidenceMediaDeleter
 {
     Task DeleteAsync(EvidenceClip clip);

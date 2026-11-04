@@ -134,6 +134,36 @@ internal sealed class FakeR2Client : AmazonS3Client
                 .ToList()
         });
 
+    public List<(string Source, string Destination)> Copies { get; } = [];
+
+    public override Task<CopyObjectResponse> CopyObjectAsync(CopyObjectRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Objects.TryGetValue(request.SourceKey, out long size))
+        {
+            throw new AmazonS3Exception("Not Found") { StatusCode = HttpStatusCode.NotFound };
+        }
+
+        Objects[request.DestinationKey] = size;
+        Copies.Add((request.SourceKey, request.DestinationKey));
+        return Task.FromResult(new CopyObjectResponse());
+    }
+
+    /// <summary>An object's content is its own key, for telling objects apart.</summary>
+    public override Task<GetObjectResponse> GetObjectAsync(GetObjectRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Objects.ContainsKey(request.Key))
+        {
+            throw new AmazonS3Exception("Not Found") { StatusCode = HttpStatusCode.NotFound };
+        }
+
+        return Task.FromResult(new GetObjectResponse
+        {
+            ResponseStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(request.Key))
+        });
+    }
+
     private OpenUpload Find(string uploadId, string key)
     {
         if (!Uploads.TryGetValue(uploadId, out OpenUpload? upload) || upload.Key != key)
