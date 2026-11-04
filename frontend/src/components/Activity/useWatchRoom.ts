@@ -9,8 +9,14 @@ import {
   type RoomReaction,
   type RoomStateView,
 } from "@/shared/services/watchRoom";
+import {
+  createRoomConnectionDriver,
+  initialRoomConnectionState,
+  type RoomConnectionDriver,
+  type RoomConnectionStatus,
+} from "./roomConnection";
 
-export type WatchRoomStatus = "connecting" | "connected" | "reconnecting";
+export type WatchRoomStatus = RoomConnectionStatus;
 
 /** How long a reaction stays on screen; matches the float animation in reelshelf.css. */
 const reactionLifetimeMs = 2600;
@@ -21,12 +27,16 @@ const maxReactionsOnScreen = 30;
 /** A reaction on screen, with a lane across the player so a burst spreads out. */
 export type FloatingReaction = RoomReaction & { key: number; lane: number };
 
-/** Renew the room token this long before it expires, so a reconnect never presents an expired one. */
-const refreshLeadMs = 5 * 60_000;
-
 export type WatchRoom = {
   state: RoomStateView | null;
   status: WatchRoomStatus;
+  /**
+   * Whether the room is connected. Room controls are disabled otherwise: the state on screen may be stale
+   * and nothing sent would arrive.
+   */
+  live: boolean;
+  /** Tries the connection again after it `failed`. */
+  retry: () => void;
   isHost: boolean;
   /** Server time minus local time, from the latest room state. */
   clockOffsetMs: () => number;
@@ -53,43 +63,46 @@ export type WatchRoom = {
 /** The live connection to this Activity instance's watch room. */
 export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
   const [state, setState] = useState<RoomStateView | null>(null);
-  const [status, setStatus] = useState<WatchRoomStatus>("connecting");
+  const [status, setStatus] = useState<WatchRoomStatus>(
+    initialRoomConnectionState.kind,
+  );
   const [error, setError] = useState<string | null>(null);
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const tokenRef = useRef(session.roomToken);
-  const expiresAtRef = useRef(session.roomTokenExpiresAt);
+  const initialExpiresAtRef = useRef(session.roomTokenExpiresAt);
   const offsetRef = useRef(0);
   const versionRef = useRef(-1);
   const connectionRef = useRef<HubConnection | null>(null);
+  const driverRef = useRef<RoomConnectionDriver | null>(null);
   const getRoomToken = useCallback(() => tokenRef.current, []);
 
   useEffect(() => {
     let disposed = false;
-    let refreshTimer: number | undefined;
     let reactionCount = 0;
     const reactionTimers = new Set<number>();
 
-    const scheduleRefresh = () => {
-      const delay = Math.max(
-        10_000,
-        expiresAtRef.current.getTime() - Date.now() - refreshLeadMs,
-      );
-      refreshTimer = window.setTimeout(() => {
-        refreshRoomToken(tokenRef.current)
-          .then((refreshed) => {
-            tokenRef.current = refreshed.roomToken;
-            expiresAtRef.current = refreshed.roomTokenExpiresAt;
-          })
-          .catch(() => undefined)
-          .finally(() => {
-            if (!disposed) scheduleRefresh();
-          });
-      }, delay);
-    };
-    scheduleRefresh();
-
     const connection = createWatchRoomConnection(() => tokenRef.current);
     connectionRef.current = connection;
+
+    // Retries a failed first connection, renews the token and gives up once it has expired (roomConnection.ts).
+    const driver = createRoomConnectionDriver({
+      start: () => {
+        // A new connection may join a room that restarted and counts from zero again.
+        versionRef.current = -1;
+        return connection.start();
+      },
+      stop: () => connection.stop(),
+      refreshToken: async () => {
+        const refreshed = await refreshRoomToken(tokenRef.current);
+        tokenRef.current = refreshed.roomToken;
+        return refreshed.roomTokenExpiresAt;
+      },
+      expiresAt: initialExpiresAtRef.current,
+      onChange: (next) => {
+        if (!disposed) setStatus(next.kind);
+      },
+    });
+    driverRef.current = driver;
 
     connection.on("RoomState", (next: RoomStateView) => {
       // States can overtake each other; keep the newest. A rejoined room after a restart counts from zero
@@ -112,29 +125,21 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
       }, reactionLifetimeMs);
       reactionTimers.add(timer);
     });
-    connection.onreconnecting(() => {
-      if (!disposed) setStatus("reconnecting");
-    });
+    connection.onreconnecting(() => driver.dispatch({ type: "lost" }));
     connection.onreconnected(() => {
       versionRef.current = -1;
-      if (!disposed) setStatus("connected");
+      driver.dispatch({ type: "reconnected" });
     });
+    connection.onclose(() => driver.dispatch({ type: "closed" }));
 
-    connection
-      .start()
-      .then(() => {
-        if (!disposed) setStatus("connected");
-      })
-      .catch(() => {
-        if (!disposed) setStatus("reconnecting");
-      });
+    driver.begin();
 
     return () => {
       disposed = true;
-      window.clearTimeout(refreshTimer);
       reactionTimers.forEach((timer) => window.clearTimeout(timer));
       connectionRef.current = null;
-      void connection.stop();
+      driverRef.current = null;
+      driver.dispose();
     };
   }, []);
 
@@ -152,9 +157,15 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
     });
   }, []);
 
+  const retry = useCallback(() => {
+    driverRef.current?.dispatch({ type: "retry" });
+  }, []);
+
   return {
     state,
     status,
+    live: status === "connected",
+    retry,
     isHost: state?.hostDiscordUserId === session.participant.discordUserId,
     clockOffsetMs: () => offsetRef.current,
     error,

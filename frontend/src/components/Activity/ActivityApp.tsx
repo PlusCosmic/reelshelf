@@ -103,13 +103,7 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
 
   return (
     <section className="rs-activity-room">
-      {room.status !== "connected" ? (
-        <p className="rs-activity-banner" aria-live="polite">
-          {room.status === "connecting"
-            ? activityCopy.room.connecting
-            : activityCopy.room.reconnecting}
-        </p>
-      ) : null}
+      <RoomStatusBanner room={room} />
 
       {playback ? <ActivityNowPlaying room={room} playback={playback} /> : null}
 
@@ -160,12 +154,45 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
       {canQueue ? (
         <ActivityClipPicker
           getRoomToken={room.getRoomToken}
+          disabled={!room.live}
           queuedClipIds={new Set(queue.map((item) => item.clipId))}
           onPick={(clip) => room.addToQueue(clip.clipId)}
         />
       ) : null}
     </section>
   );
+}
+
+/** What the room's connection is doing whenever it isn't connected; a first connection that failed can be retried. */
+function RoomStatusBanner({ room }: { room: WatchRoom }) {
+  switch (room.status) {
+    case "connected":
+      return null;
+    case "connecting":
+    case "reconnecting":
+      return (
+        <p className="rs-activity-banner" aria-live="polite">
+          {room.status === "connecting"
+            ? activityCopy.room.connecting
+            : activityCopy.room.reconnecting}
+        </p>
+      );
+    case "failed":
+      return (
+        <div className="rs-activity-banner has-action" role="alert">
+          <p>{activityCopy.room.couldNotConnect}</p>
+          <button type="button" className="rs-primary" onClick={room.retry}>
+            {commonCopy.tryAgain}
+          </button>
+        </div>
+      );
+    case "expired":
+      return (
+        <p className="rs-activity-banner" role="alert">
+          {activityCopy.room.expired}
+        </p>
+      );
+  }
 }
 
 /**
@@ -262,6 +289,7 @@ function ActivityNowPlaying({
           <button
             type="button"
             className="rs-primary"
+            disabled={!room.live}
             onClick={() => room.next(playback.itemId)}
           >
             {queue.length > 0
@@ -270,7 +298,7 @@ function ActivityNowPlaying({
           </button>
         ) : null}
       </div>
-      <ActivityReactionBar onReact={room.react} />
+      <ActivityReactionBar onReact={room.react} disabled={!room.live} />
     </div>
   );
 }
