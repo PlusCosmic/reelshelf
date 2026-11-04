@@ -23,7 +23,7 @@ The service that stores, encodes and serves clip videos (`IClipVideoHost`); Bunn
 _Avoid_: Calling Bunny directly from outside `api/Bunny/`, or building a video's URLs anywhere but `ClipMediaUrls`; clients take the URLs the API hands out.
 
 **Clip Video Status**:
-Where a clip's video is on its way to playable, in the app's own terms (`ClipVideoStatus`): awaiting upload, uploaded, processing, ready, encode failed or upload failed. A clip plays, shares and is transcribed only when ready. The **Video Host** maps its own statuses onto these.
+Where a clip's video is on its way to playable, in the app's own terms (`ClipVideoStatus`): awaiting upload, uploaded, processing, ready, encode failed or upload failed. A clip plays, shares and is transcribed only when ready. The **Video Host** maps its own statuses onto these. The moves between them are listed once (`ClipVideoTransitions`): a host's report never takes a clip back (a ready clip leaves ready only for a failure the host reports), our own worker's progress and failure move only a clip that is uploaded or processing, and a failed upload stays failed.
 _Avoid_: Comparing against a host's status numbers outside its folder.
 
 **Bulk Upload Queue**:
