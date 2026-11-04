@@ -169,7 +169,7 @@ public class ClipsStatements(NpgsqlConnection connection)
         (StringBuilder where, DynamicParameters parameters) = ClipFilter(ownerId, gameCategoryId, tags, search,
             null, null, unviewedOnly, ownerId, legend, binned: false);
         string sql = $"""
-            UPDATE clip c SET binned_at = now()
+            UPDATE clip c SET binned_at = now(), kept_at = NULL
             WHERE {where}
             RETURNING c.id
             """;
@@ -180,7 +180,7 @@ public class ClipsStatements(NpgsqlConnection connection)
     public async Task<List<Guid>> BinClips(Guid ownerId, IReadOnlyCollection<Guid> clipIds)
     {
         const string sql = """
-            UPDATE clip SET binned_at = now()
+            UPDATE clip SET binned_at = now(), kept_at = NULL
             WHERE owner_id = @ownerId AND id = ANY(@clipIds) AND binned_at IS NULL
             RETURNING id
             """;

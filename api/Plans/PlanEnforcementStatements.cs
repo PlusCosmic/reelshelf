@@ -98,10 +98,14 @@ public sealed class PlanEnforcementStatements(NpgsqlConnection connection) : IPl
             .ToList();
     }
 
+    /// <summary>
+    /// Picks or unpicks a clip. A binned clip can't be picked (binning clears the pick, and V59's
+    /// <c>clip_kept_not_binned_check</c> holds it), so picking one answers false, like a clip that isn't the owner's.
+    /// </summary>
     public async Task<bool> SetKept(Guid userId, Guid clipId, bool keep)
     {
         string sql = keep
-            ? "UPDATE clip SET kept_at = COALESCE(kept_at, now()) WHERE id = @clipId AND owner_id = @userId"
+            ? "UPDATE clip SET kept_at = COALESCE(kept_at, now()) WHERE id = @clipId AND owner_id = @userId AND binned_at IS NULL"
             : "UPDATE clip SET kept_at = NULL WHERE id = @clipId AND owner_id = @userId";
         return await connection.ExecuteAsync(sql, new { userId, clipId }) == 1;
     }

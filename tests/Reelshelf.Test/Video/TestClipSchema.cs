@@ -30,7 +30,8 @@ internal static class TestClipSchema
                 video_state text NOT NULL DEFAULT 'awaiting_upload',
                 video_host text NOT NULL DEFAULT 'bunny',
                 encode_progress integer,
-                file_size bigint
+                file_size bigint,
+                kept_at timestamptz
             )
             """);
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V40__transcode_run.sql")));
