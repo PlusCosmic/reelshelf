@@ -216,9 +216,11 @@ export class S3MultipartUpload {
   private readonly done = new Map<number, string>();
   private readonly urls = new Map<number, { url: string; expiresAt: number }>();
   private batch: Promise<void> | null = null;
+  /** The latest run's: aborted once it is paused, replaced when it is started again. */
   private controller: AbortController | null = null;
+  /** The latest run, settled once it has unwound (an aborted one too). */
+  private current: Promise<void> = Promise.resolve();
   private reconciled = false;
-  private running = false;
 
   constructor(options: S3MultipartUploadOptions) {
     this.options = {
@@ -233,14 +235,19 @@ export class S3MultipartUpload {
     };
   }
 
+  /**
+   * Starts the upload, or carries on after `abort`. Each run has its own signal, and a run started while an
+   * aborted one is still unwinding (waiting on a part or a URL) begins once that one has settled, so the two
+   * never send parts at once and only the latest run can report success or failure.
+   */
   start() {
-    if (this.running) return;
-    this.running = true;
-    this.controller = new AbortController();
-    const { signal } = this.controller;
-    void this.run(signal).finally(() => {
-      this.running = false;
-    });
+    if (this.controller && !this.controller.signal.aborted) return;
+    const controller = new AbortController();
+    this.controller = controller;
+    const { signal } = controller;
+    this.current = this.current.then(() =>
+      signal.aborted ? undefined : this.run(signal),
+    );
   }
 
   abort() {
@@ -285,7 +292,7 @@ export class S3MultipartUpload {
   private async run(signal: AbortSignal) {
     try {
       if (!this.reconciled) {
-        await this.reconcile();
+        await this.reconcile(signal);
         this.reconciled = true;
       }
       this.reportProgress();
@@ -305,6 +312,8 @@ export class S3MultipartUpload {
           this.options.api.complete(this.options.clipId, this.uploadId, parts),
         signal,
       );
+      // Paused while completing: the next run completes again (the API accepts a repeat) and reports it.
+      if (signal.aborted) return;
       this.options.store.remove(this.options.resumeKey);
       this.reportProgress();
       this.options.onSuccess();
@@ -320,12 +329,13 @@ export class S3MultipartUpload {
    * Takes the parts storage already holds as done, when this upload was saved before (a reload, or a retry in
    * this tab), and records the upload so a reload from here on finds it.
    */
-  private async reconcile() {
+  private async reconcile(signal: AbortSignal) {
     const { store, resumeKey, clipId } = this.options;
     const saved = store.load(resumeKey);
     if (saved?.uploadId === this.uploadId) {
-      const listed = await this.withApiRetries(() =>
-        this.options.api.listParts(clipId, this.uploadId),
+      const listed = await this.withApiRetries(
+        () => this.options.api.listParts(clipId, this.uploadId),
+        signal,
       );
       for (const part of listed) {
         if (
@@ -415,7 +425,8 @@ export class S3MultipartUpload {
         ) {
           throw error;
         }
-        await this.options.sleep(retryDelays[attempt]);
+        await this.pause(retryDelays[attempt], signal);
+        if (signal.aborted) throw error;
       }
     }
   }
@@ -472,6 +483,20 @@ export class S3MultipartUpload {
     }
   }
 
+  /** Waits out a retry delay, cut short by a pause so a resume isn't held up behind it. */
+  private pause(ms: number, signal?: AbortSignal) {
+    if (!signal) return this.options.sleep(ms);
+    if (signal.aborted) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const done = () => {
+        signal.removeEventListener("abort", done);
+        resolve();
+      };
+      signal.addEventListener("abort", done);
+      void this.options.sleep(ms).then(done, done);
+    });
+  }
+
   private async withApiRetries<T>(
     call: () => Promise<T>,
     signal?: AbortSignal,
@@ -488,7 +513,8 @@ export class S3MultipartUpload {
         ) {
           throw error;
         }
-        await this.options.sleep(retryDelays[attempt]);
+        await this.pause(retryDelays[attempt], signal);
+        if (signal?.aborted) throw error;
       }
     }
   }

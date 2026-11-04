@@ -26,7 +26,10 @@ public static class ClipExportStatuses
     public static bool IsActive(string status) => status is Pending or Running;
 }
 
-/// <summary>One zip of an export: <c>exports/{userId}/{exportId}/reelshelf-clips-{index}.zip</c>.</summary>
+/// <summary>
+/// One zip of an export: <c>exports/{userId}/{exportId}/{leaseId}/reelshelf-clips-{index}.zip</c>, under the lease of
+/// the run that made it (<see cref="ExportParts.Key(ClipExport, int)"/>).
+/// </summary>
 public sealed record ClipExportPart(int Index, long SizeBytes, int ClipCount);
 
 public sealed record ClipExport(
@@ -40,7 +43,8 @@ public sealed record ClipExport(
     string? Error,
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt,
-    DateTimeOffset? ExpiresAt);
+    DateTimeOffset? ExpiresAt,
+    Guid? LeaseId = null);
 
 /// <summary>A clip going into an export, with what's needed to fetch its video and name it in the zip.</summary>
 public sealed class ExportClipRow : IClipVideoColumns
@@ -62,21 +66,32 @@ public sealed class ExportClipRow : IClipVideoColumns
 
 public interface IClipExportStore
 {
-    Task<Guid> Create(Guid userId, string reason, IReadOnlyCollection<Guid> clipIds);
+    /// <summary>
+    /// Queues an export, or returns null when the account already has one of that <paramref name="reason"/> waiting or
+    /// being made (one at a time, by a unique index).
+    /// </summary>
+    Task<Guid?> Create(Guid userId, string reason, IReadOnlyCollection<Guid> clipIds);
     Task<List<ClipExport>> GetForUser(Guid userId);
     Task<ClipExport?> Get(Guid exportId);
 
     /// <summary>
     /// Claims the oldest export waiting to be made, or one whose maker went quiet for <paramref name="staleAfter"/>,
-    /// and counts the attempt. Null when there is none.
+    /// counts the attempt and gives it a new <see cref="ClipExport.LeaseId"/>. Exports that have used
+    /// <paramref name="maxAttempts"/> (a maker that went quiet included) are failed instead. Null when there is none.
     /// </summary>
-    Task<ClipExport?> Claim(TimeSpan staleAfter);
+    Task<ClipExport?> Claim(TimeSpan staleAfter, int maxAttempts);
 
-    Task Heartbeat(Guid exportId);
-    Task Complete(Guid exportId, IReadOnlyList<ClipExportPart> parts, DateTimeOffset expiresAt);
+    /// <summary>False when <paramref name="leaseId"/> no longer holds the export (it was reclaimed or settled).</summary>
+    Task<bool> Heartbeat(Guid exportId, Guid leaseId);
 
-    /// <summary>Records a failed attempt: back to pending after <paramref name="retryAfter"/>, or failed for good when null.</summary>
-    Task Fail(Guid exportId, string error, TimeSpan? retryAfter);
+    /// <summary>Marks the export ready, only while <paramref name="leaseId"/> still holds it; false otherwise.</summary>
+    Task<bool> Complete(Guid exportId, Guid leaseId, IReadOnlyList<ClipExportPart> parts, DateTimeOffset expiresAt);
+
+    /// <summary>
+    /// Records a failed attempt: back to pending after <paramref name="retryAfter"/>, or failed for good when null.
+    /// Only while <paramref name="leaseId"/> still holds the export; false otherwise.
+    /// </summary>
+    Task<bool> Fail(Guid exportId, Guid leaseId, string error, TimeSpan? retryAfter);
 
     /// <summary>Marks ready exports past their expiry as expired and returns them, so their objects can be deleted.</summary>
     Task<List<ClipExport>> ExpireDue();
@@ -88,18 +103,22 @@ public interface IClipExportStore
 public sealed class ClipExportStatements(NpgsqlConnection connection) : IClipExportStore
 {
     private const string Columns =
-        "id, user_id, reason, status, clip_ids, parts::text AS parts, attempts, error, created_at, completed_at, expires_at";
+        "id, user_id, reason, status, clip_ids, parts::text AS parts, attempts, error, created_at, completed_at, expires_at, " +
+        "lease_id";
 
     private static readonly JsonSerializerOptions PartsJson = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-    public async Task<Guid> Create(Guid userId, string reason, IReadOnlyCollection<Guid> clipIds)
+    public async Task<Guid?> Create(Guid userId, string reason, IReadOnlyCollection<Guid> clipIds)
     {
+        // clip_export_active_idx (V58): one waiting or running export per account and reason.
         const string sql = """
             INSERT INTO clip_export (user_id, reason, clip_ids)
             VALUES (@userId, @reason, @clipIds)
+            ON CONFLICT (user_id, reason) WHERE status IN ('pending', 'running') DO NOTHING
             RETURNING id
             """;
-        return await connection.QuerySingleAsync<Guid>(sql, new { userId, reason, clipIds = clipIds.ToArray() });
+        return await connection.QuerySingleOrDefaultAsync<Guid?>(sql,
+            new { userId, reason, clipIds = clipIds.ToArray() });
     }
 
     public async Task<List<ClipExport>> GetForUser(Guid userId)
@@ -114,53 +133,77 @@ public sealed class ClipExportStatements(NpgsqlConnection connection) : IClipExp
         return (await connection.QuerySingleOrDefaultAsync<ExportRow>(sql, new { exportId }))?.ToExport();
     }
 
-    public async Task<ClipExport?> Claim(TimeSpan staleAfter)
+    public async Task<ClipExport?> Claim(TimeSpan staleAfter, int maxAttempts)
     {
+        // A maker that went quiet used its attempt too, so an export that keeps crashing or hanging its maker runs out.
+        await connection.ExecuteAsync("""
+            UPDATE clip_export
+            SET status = 'failed',
+                error = COALESCE(error, 'The export stopped responding'),
+                lease_id = NULL,
+                heartbeat_at = NULL,
+                completed_at = now()
+            WHERE attempts >= @maxAttempts
+              AND ((status = 'pending' AND available_at <= now())
+                OR (status = 'running' AND heartbeat_at < now() - @staleAfter))
+            """, new { staleAfter, maxAttempts });
+
         string sql = $"""
             UPDATE clip_export
-            SET status = 'running', attempts = attempts + 1, heartbeat_at = now()
+            SET status = 'running', attempts = attempts + 1, heartbeat_at = now(), lease_id = gen_random_uuid()
             WHERE id = (
                 SELECT id FROM clip_export
-                WHERE (status = 'pending' AND available_at <= now())
-                   OR (status = 'running' AND heartbeat_at < now() - @staleAfter)
+                WHERE attempts < @maxAttempts
+                  AND ((status = 'pending' AND available_at <= now())
+                    OR (status = 'running' AND heartbeat_at < now() - @staleAfter))
                 ORDER BY created_at
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED)
             RETURNING {Columns}
             """;
-        return (await connection.QuerySingleOrDefaultAsync<ExportRow>(sql, new { staleAfter }))?.ToExport();
+        return (await connection.QuerySingleOrDefaultAsync<ExportRow>(sql, new { staleAfter, maxAttempts }))
+            ?.ToExport();
     }
 
-    public async Task Heartbeat(Guid exportId)
-    {
-        await connection.ExecuteAsync("UPDATE clip_export SET heartbeat_at = now() WHERE id = @exportId",
-            new { exportId });
-    }
-
-    public async Task Complete(Guid exportId, IReadOnlyList<ClipExportPart> parts, DateTimeOffset expiresAt)
+    public async Task<bool> Heartbeat(Guid exportId, Guid leaseId)
     {
         const string sql = """
-            UPDATE clip_export
-            SET status = 'ready', parts = @parts::jsonb, error = NULL, completed_at = now(), expires_at = @expiresAt
-            WHERE id = @exportId
+            UPDATE clip_export SET heartbeat_at = now()
+            WHERE id = @exportId AND status = 'running' AND lease_id = @leaseId
             """;
-        await connection.ExecuteAsync(sql,
-            new { exportId, parts = JsonSerializer.Serialize(parts, PartsJson), expiresAt });
+        return await connection.ExecuteAsync(sql, new { exportId, leaseId }) == 1;
     }
 
-    public async Task Fail(Guid exportId, string error, TimeSpan? retryAfter)
+    public async Task<bool> Complete(Guid exportId, Guid leaseId, IReadOnlyList<ClipExportPart> parts,
+        DateTimeOffset expiresAt)
+    {
+        // The lease stays on the ready export: it names the folder its parts are in.
+        const string sql = """
+            UPDATE clip_export
+            SET status = 'ready', parts = @parts::jsonb, error = NULL, heartbeat_at = NULL, completed_at = now(),
+                expires_at = @expiresAt
+            WHERE id = @exportId AND status = 'running' AND lease_id = @leaseId
+            """;
+        return await connection.ExecuteAsync(sql,
+            new { exportId, leaseId, parts = JsonSerializer.Serialize(parts, PartsJson), expiresAt }) == 1;
+    }
+
+    public async Task<bool> Fail(Guid exportId, Guid leaseId, string error, TimeSpan? retryAfter)
     {
         const string sql = """
             UPDATE clip_export
             SET status = CASE WHEN @retry THEN 'pending' ELSE 'failed' END,
                 available_at = CASE WHEN @retry THEN now() + @retryAfter ELSE available_at END,
                 error = @error,
+                lease_id = NULL,
                 heartbeat_at = NULL,
                 completed_at = CASE WHEN @retry THEN NULL ELSE now() END
-            WHERE id = @exportId
+            WHERE id = @exportId AND status = 'running' AND lease_id = @leaseId
             """;
-        await connection.ExecuteAsync(sql,
-            new { exportId, error, retry = retryAfter is not null, retryAfter = retryAfter ?? TimeSpan.Zero });
+        return await connection.ExecuteAsync(sql, new
+        {
+            exportId, leaseId, error, retry = retryAfter is not null, retryAfter = retryAfter ?? TimeSpan.Zero
+        }) == 1;
     }
 
     public async Task<List<ClipExport>> ExpireDue()
@@ -200,9 +243,10 @@ public sealed class ClipExportStatements(NpgsqlConnection connection) : IClipExp
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset? CompletedAt { get; set; }
         public DateTimeOffset? ExpiresAt { get; set; }
+        public Guid? LeaseId { get; set; }
 
         public ClipExport ToExport() => new(Id, UserId, Reason, Status, ClipIds,
             JsonSerializer.Deserialize<List<ClipExportPart>>(Parts, PartsJson) ?? [], Attempts, Error, CreatedAt,
-            CompletedAt, ExpiresAt);
+            CompletedAt, ExpiresAt, LeaseId);
     }
 }

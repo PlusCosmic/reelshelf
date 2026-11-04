@@ -159,7 +159,7 @@ function ActivityRoom({ connection }: { connection: ActivityConnection }) {
 
       {canQueue ? (
         <ActivityClipPicker
-          roomToken={session.roomToken}
+          getRoomToken={room.getRoomToken}
           queuedClipIds={new Set(queue.map((item) => item.clipId))}
           onPick={(clip) => room.addToQueue(clip.clipId)}
         />

@@ -76,11 +76,17 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [items, setItems] = useState<UploadItem[]>([]);
   const [paused, setPaused] = useState(false);
-  // tus for Bunny, S3 multipart for R2: both pause with abort and carry on with start.
+  // tus for Bunny, S3 multipart for R2: both pause with abort and carry on with start. An upload is here from the
+  // moment it starts (or would, but for a pause) until it succeeds or fails.
   const uploads = useRef(
     new Map<string, { start: () => void; abort: () => unknown }>(),
   );
+  // Read by uploads still being prepared when they would start, so a pause meanwhile holds them back too.
+  const pausedRef = useRef(false);
+  // The uploads a pause stopped or held back, which a resume starts.
+  const pausedUploads = useRef(new Set<string>());
   const preparedClipIds = useRef(new Map<string, string>());
+  // The item each file (by book and hash) is queued as, so the same file isn't uploaded twice into a book at once.
   const duplicateKeys = useRef(new Map<string, string>());
   const freshIds = useRef(new Set<string>());
   const filedIds = useRef(new Set<string>());
@@ -95,6 +101,13 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
     setItems((current) =>
       current.map((item) => (item.id === id ? { ...item, ...change } : item)),
     );
+  }, []);
+
+  /** Lets the same file be added to its book again once its item has failed, been retried or been cleared. */
+  const forgetDuplicateKey = useCallback((id: string) => {
+    for (const [key, owner] of duplicateKeys.current) {
+      if (owner === id) duplicateKeys.current.delete(key);
+    }
   }, []);
 
   /** Gives back the storage a clip reserved when its upload never finished. */
@@ -175,6 +188,7 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
           }
           patch(item.id, { status: "hashed", md5Hash });
         } catch (error) {
+          forgetDuplicateKey(item.id);
           patch(item.id, {
             status: "error",
             error: uploadErrorMessage(error),
@@ -182,7 +196,7 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
         }
       })();
     },
-    [checkDuplicate, patch, queryClient],
+    [checkDuplicate, forgetDuplicateKey, patch, queryClient],
   );
 
   const start = useCallback(
@@ -240,12 +254,15 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
               }),
             onSuccess: () => {
               uploads.current.delete(item.id);
+              pausedUploads.current.delete(item.id);
               preparedClipIds.current.delete(item.id);
               patch(item.id, { status: "uploaded", progress: 100 });
               invalidateClipCollections(queryClient);
             },
             onError: (error: Error) => {
               uploads.current.delete(item.id);
+              pausedUploads.current.delete(item.id);
+              forgetDuplicateKey(item.id);
               localResumeStore.remove(resumeKey);
               void releasePreparedClip(item.id);
               patch(item.id, {
@@ -255,16 +272,30 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
             },
           };
 
-          if (isS3MultipartUpload(response)) {
-            const upload = createS3ClipUpload({
-              file: item.file,
-              response,
-              resumeKey,
-              ...callbacks,
-            });
+          // Starts the upload, or holds it back as paused when a pause came while the clip was being prepared.
+          const begin = (upload: {
+            start: () => void;
+            abort: () => unknown;
+          }) => {
             uploads.current.set(item.id, upload);
+            if (pausedRef.current) {
+              pausedUploads.current.add(item.id);
+              patch(item.id, { status: "paused" });
+              return;
+            }
             patch(item.id, { status: "uploading" });
             upload.start();
+          };
+
+          if (isS3MultipartUpload(response)) {
+            begin(
+              createS3ClipUpload({
+                file: item.file,
+                response,
+                resumeKey,
+                ...callbacks,
+              }),
+            );
             return;
           }
 
@@ -273,7 +304,6 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
             response,
             ...callbacks,
           });
-          uploads.current.set(item.id, upload);
 
           const previous = await upload.findPreviousUploads();
           if (freshIds.current.delete(item.id)) {
@@ -287,9 +317,9 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
           } else if (previous.length) {
             upload.resumeFromPreviousUpload(previous[0]);
           }
-          patch(item.id, { status: "uploading" });
-          upload.start();
+          begin(upload);
         } catch (error) {
+          forgetDuplicateKey(item.id);
           void releasePreparedClip(item.id);
           patch(item.id, {
             status:
@@ -301,7 +331,7 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
         }
       })();
     },
-    [patch, queryClient, releasePreparedClip],
+    [forgetDuplicateKey, patch, queryClient, releasePreparedClip],
   );
 
   // Hash a few files at once, each in its own worker, whether or not the upload slots are free.
@@ -394,33 +424,50 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // Uploads are stopped and started here, outside the state updaters, which StrictMode runs twice. Items still being
+  // prepared (`creating`) see the pause when their upload would start and wait as `paused` instead.
   const pauseAll = useCallback(() => {
+    pausedRef.current = true;
     setPaused(true);
+    const stopped = new Set<string>();
+    for (const [id, upload] of uploads.current) {
+      if (pausedUploads.current.has(id)) continue;
+      upload.abort();
+      pausedUploads.current.add(id);
+      stopped.add(id);
+    }
     setItems((current) =>
-      current.map((item) => {
-        if (item.status !== "uploading") return item;
-        uploads.current.get(item.id)?.abort();
-        return { ...item, status: "paused" };
-      }),
+      current.map((item) =>
+        stopped.has(item.id) && item.status === "uploading"
+          ? { ...item, status: "paused" }
+          : item,
+      ),
     );
   }, []);
 
   const resumeAll = useCallback(() => {
+    pausedRef.current = false;
     setPaused(false);
+    const resumed = new Set<string>();
+    for (const id of pausedUploads.current) {
+      const upload = uploads.current.get(id);
+      if (!upload) continue;
+      upload.start();
+      resumed.add(id);
+    }
+    pausedUploads.current.clear();
     setItems((current) =>
       current.map((item) => {
         if (item.status !== "paused") return item;
-        const upload = uploads.current.get(item.id);
-        if (!upload)
-          return { ...item, status: item.md5Hash ? "hashed" : "queued" };
-        upload.start();
-        return { ...item, status: "uploading" };
+        if (resumed.has(item.id)) return { ...item, status: "uploading" };
+        return { ...item, status: item.md5Hash ? "hashed" : "queued" };
       }),
     );
   }, []);
 
   const retry = useCallback(
-    (id: string) =>
+    (id: string) => {
+      forgetDuplicateKey(id);
       setItems((current) =>
         current.map((item) =>
           item.id === id && item.status === "error"
@@ -433,14 +480,17 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
               }
             : item,
         ),
-      ),
-    [],
+      );
+    },
+    [forgetDuplicateKey],
   );
 
-  const clearFinished = useCallback(
-    () => setItems((current) => current.filter(isUnfinishedUpload)),
-    [],
-  );
+  const clearFinished = useCallback(() => {
+    items
+      .filter((item) => !isUnfinishedUpload(item))
+      .forEach((item) => forgetDuplicateKey(item.id));
+    setItems((current) => current.filter(isUnfinishedUpload));
+  }, [forgetDuplicateKey, items]);
 
   const value = useMemo<UploadsContextValue>(() => {
     const byClip = new Map(

@@ -135,7 +135,14 @@ public sealed class OverLimitSweeper(
 
         if (export is null || export.Status == ClipExportStatuses.Expired)
         {
-            await exports.Create(userId, ClipExportReasons.GraceEnded, over.Select(clip => clip.Id).ToList());
+            if (await exports.Create(userId, ClipExportReasons.GraceEnded, over.Select(clip => clip.Id).ToList()) is null)
+            {
+                // One is already waiting or being made (an earlier grace's); the next pass looks again.
+                logger.LogInformation("Account {UserId}'s grace ended; waiting for its export already under way",
+                    userId);
+                return;
+            }
+
             logger.LogInformation("Account {UserId}'s grace ended; exporting its {Over} clips over the limit",
                 userId, over.Count);
             return;
