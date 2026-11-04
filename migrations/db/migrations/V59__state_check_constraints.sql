@@ -67,16 +67,24 @@ ALTER TABLE clip ADD CONSTRAINT clip_kept_not_binned_check
     CHECK (binned_at IS NULL OR kept_at IS NULL);
 
 -- clip: a clip with a Bunny copy left behind has moved (SetMigratedToR2 sets both; the delete sweep clears only
--- bunny_video_id). A copy with no migrated_at would never be swept, so it gets now() and is swept after the usual
--- grace.
-UPDATE clip
-SET migrated_at = now()
-WHERE bunny_video_id IS NOT NULL
-  AND migrated_at IS NULL;
-
+-- bunny_video_id). A copy with no migrated_at could only come from a hand edit. Giving it a migrated_at here would
+-- schedule the delete sweep to remove that Bunny video, so this migration never does: the constraint is left out
+-- (with a notice) until a person sorts those clips out and this block is run again.
 ALTER TABLE clip DROP CONSTRAINT IF EXISTS clip_bunny_copy_migrated_check;
-ALTER TABLE clip ADD CONSTRAINT clip_bunny_copy_migrated_check
-    CHECK (bunny_video_id IS NULL OR migrated_at IS NOT NULL);
+DO
+$$
+    DECLARE
+        stray integer;
+    BEGIN
+        SELECT count(*) INTO stray FROM clip WHERE bunny_video_id IS NOT NULL AND migrated_at IS NULL;
+        IF stray = 0 THEN
+            ALTER TABLE clip ADD CONSTRAINT clip_bunny_copy_migrated_check
+                CHECK (bunny_video_id IS NULL OR migrated_at IS NOT NULL);
+        ELSE
+            RAISE NOTICE 'clip_bunny_copy_migrated_check left out: % clips have a Bunny copy but no migrated_at', stray;
+        END IF;
+    END
+$$;
 
 -- clip: a clip playing from Bunny has no separate Bunny copy (switching back, as bunny-migration.md does it, clears
 -- bunny_video_id). A copy that is the video it plays from is just cleared. A clip on Bunny with a different copy left

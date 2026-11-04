@@ -38,7 +38,7 @@ public class StateCheckConstraintsTests
         await db.ExecuteAsync("""
             INSERT INTO clip (id, owner_id, video_id, game_category_id, video_host, kept_at, binned_at, bunny_video_id, migrated_at) VALUES
                 (@keptBinned, @owner, gen_random_uuid(), gen_random_uuid(), 'r2', now(), now(), NULL, NULL),
-                (@copyUnmigrated, @owner, gen_random_uuid(), gen_random_uuid(), 'r2', NULL, NULL, gen_random_uuid(), NULL),
+                (@copyUnmigrated, @owner, gen_random_uuid(), gen_random_uuid(), 'r2', NULL, NULL, gen_random_uuid(), now()),
                 (@bunnyOwnCopy, @owner, @bunnyOwnCopy, gen_random_uuid(), 'bunny', NULL, NULL, @bunnyOwnCopy, now())
             """, new { keptBinned, copyUnmigrated, bunnyOwnCopy, owner });
 
@@ -64,8 +64,6 @@ public class StateCheckConstraintsTests
 
         Assert.Null(await db.ExecuteScalarAsync<DateTime?>(
             "SELECT kept_at FROM clip WHERE id = @keptBinned", new { keptBinned }));
-        Assert.NotNull(await db.ExecuteScalarAsync<DateTime?>(
-            "SELECT migrated_at FROM clip WHERE id = @copyUnmigrated", new { copyUnmigrated }));
         Assert.Null(await db.ExecuteScalarAsync<Guid?>(
             "SELECT bunny_video_id FROM clip WHERE id = @bunnyOwnCopy", new { bunnyOwnCopy }));
 
@@ -81,6 +79,23 @@ public class StateCheckConstraintsTests
             "UPDATE clip SET migrated_at = NULL WHERE id = @Id", copyUnmigrated);
         await AssertRefusedAsync(db, "clip_bunny_host_no_copy_check",
             "UPDATE clip SET bunny_video_id = gen_random_uuid() WHERE id = @Id", bunnyOwnCopy);
+
+        // A Bunny copy with no migrated_at (a hand edit) is never given one, which would schedule the delete sweep to
+        // remove that Bunny video: the constraint waits instead.
+        Guid strayCopy = Guid.NewGuid();
+        await db.ExecuteAsync("ALTER TABLE clip DROP CONSTRAINT clip_bunny_copy_migrated_check");
+        await db.ExecuteAsync("""
+            INSERT INTO clip (id, owner_id, video_id, game_category_id, video_host, bunny_video_id, migrated_at)
+            VALUES (@strayCopy, @owner, gen_random_uuid(), gen_random_uuid(), 'r2', gen_random_uuid(), NULL)
+            """, new { strayCopy, owner });
+        await test.ApplyV59Async();
+        Assert.Null(await db.ExecuteScalarAsync<DateTime?>(
+            "SELECT migrated_at FROM clip WHERE id = @strayCopy", new { strayCopy }));
+        Assert.Equal(0, await db.ExecuteScalarAsync<int>(
+            "SELECT count(*) FROM pg_constraint WHERE conname = 'clip_bunny_copy_migrated_check'" +
+            " AND connamespace = current_schema()::regnamespace"));
+        await db.ExecuteAsync("DELETE FROM clip WHERE id = @strayCopy", new { strayCopy });
+        await test.ApplyV59Async();
 
         // A clip on Bunny with another Bunny copy (a hand edit) can't be cleared safely, so the last constraint waits.
         await db.ExecuteAsync("ALTER TABLE clip DROP CONSTRAINT clip_bunny_host_no_copy_check");
