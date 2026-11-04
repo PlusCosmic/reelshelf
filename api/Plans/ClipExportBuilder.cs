@@ -50,7 +50,7 @@ public sealed class ClipExportBuilder(IExportVideoSource videos, IExportStorage 
         foreach (List<ExportClipRow> partClips in ExportParts.Plan(clips, maxPartBytes))
         {
             int index = parts.Count + 1;
-            string key = ExportParts.Key(export.UserId, export.Id, index);
+            string key = ExportParts.Key(export, index);
             Pipe pipe = new();
             CountingStream counted = new(pipe.Reader.AsStream());
             using CancellationTokenSource partCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

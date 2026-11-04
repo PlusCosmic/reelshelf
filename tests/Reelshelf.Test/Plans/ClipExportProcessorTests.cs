@@ -59,6 +59,36 @@ public class ClipExportProcessorTests
         Assert.Empty(sender.Sent);
     }
 
+    [Fact]
+    public async Task ARunWhoseLeaseIsGone_StopsAndDeletesOnlyItsOwnParts()
+    {
+        var (processor, queue, storage, videos, sender) = Build(ClipExportReasons.GraceEnded);
+        videos.Bytes[queue.Clip.Id] = new byte[2_000];
+        string otherRun = ExportParts.Key(queue.Current with { LeaseId = Guid.NewGuid() }, 1);
+        storage.Objects[otherRun] = [1, 2, 3];
+        queue.LeaseLost = true;
+
+        Assert.True(await processor.ProcessNextAsync(CancellationToken.None));
+
+        Assert.Null(queue.CompletedParts);
+        Assert.False(queue.FailedForGood);
+        Assert.Null(queue.RetryAfter);
+        Assert.Empty(sender.Sent);
+        Assert.Equal([otherRun], storage.Objects.Keys);
+    }
+
+    [Fact]
+    public async Task EachRun_WritesUnderItsOwnLease()
+    {
+        var (processor, queue, storage, videos, _) = Build(ClipExportReasons.Requested);
+        videos.Bytes[queue.Clip.Id] = new byte[2_000];
+
+        await processor.ProcessNextAsync(CancellationToken.None);
+
+        Assert.Equal([$"exports/{UserId}/{queue.Current.Id}/{queue.Current.LeaseId}/reelshelf-clips-1.zip"],
+            storage.Objects.Keys);
+    }
+
     internal sealed class FakeExportQueue(string reason) : IClipExportStore
     {
         public ExportClipRow Clip { get; } = new()
@@ -73,33 +103,52 @@ public class ClipExportProcessorTests
         public DateTimeOffset? ExpiresAt { get; private set; }
         public TimeSpan? RetryAfter { get; private set; }
         public bool FailedForGood { get; private set; }
-        private readonly Guid _id = Guid.NewGuid();
 
-        public Task<ClipExport?> Claim(TimeSpan staleAfter) => Task.FromResult(Waiting
-            ? new ClipExport(_id, UserId, reason, ClipExportStatuses.Running, [Clip.Id], [], Attempts, null,
-                DateTimeOffset.UtcNow, null, null)
-            : null);
+        /// <summary>Another run has claimed the export: every heartbeat, completion and failure is refused.</summary>
+        public bool LeaseLost { get; set; }
+
+        public ClipExport Current { get; private set; } = new(Guid.NewGuid(), UserId, reason,
+            ClipExportStatuses.Running, [], [], 1, null, DateTimeOffset.UtcNow, null, null, Guid.NewGuid());
+
+        public Task<ClipExport?> Claim(TimeSpan staleAfter, int maxAttempts)
+        {
+            Current = Current with { ClipIds = [Clip.Id], Attempts = Attempts, LeaseId = Guid.NewGuid() };
+            return Task.FromResult(Waiting ? Current : null);
+        }
 
         public Task<List<ExportClipRow>> GetExportClips(Guid userId, IReadOnlyCollection<Guid> clipIds) =>
             Task.FromResult(new List<ExportClipRow> { Clip });
 
-        public Task Heartbeat(Guid exportId) => Task.CompletedTask;
+        private bool Holds(Guid leaseId) => !LeaseLost && leaseId == Current.LeaseId;
 
-        public Task Complete(Guid exportId, IReadOnlyList<ClipExportPart> parts, DateTimeOffset expiresAt)
+        public Task<bool> Heartbeat(Guid exportId, Guid leaseId) => Task.FromResult(Holds(leaseId));
+
+        public Task<bool> Complete(Guid exportId, Guid leaseId, IReadOnlyList<ClipExportPart> parts,
+            DateTimeOffset expiresAt)
         {
+            if (!Holds(leaseId))
+            {
+                return Task.FromResult(false);
+            }
+
             (CompletedParts, ExpiresAt, Waiting) = (parts, expiresAt, false);
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
-        public Task Fail(Guid exportId, string error, TimeSpan? retryAfter)
+        public Task<bool> Fail(Guid exportId, Guid leaseId, string error, TimeSpan? retryAfter)
         {
+            if (!Holds(leaseId))
+            {
+                return Task.FromResult(false);
+            }
+
             RetryAfter = retryAfter;
             FailedForGood = retryAfter is null;
             Waiting = !FailedForGood;
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
-        public Task<Guid> Create(Guid userId, string reason, IReadOnlyCollection<Guid> clipIds) =>
+        public Task<Guid?> Create(Guid userId, string reason, IReadOnlyCollection<Guid> clipIds) =>
             throw new NotSupportedException();
         public Task<List<ClipExport>> GetForUser(Guid userId) => throw new NotSupportedException();
         public Task<ClipExport?> Get(Guid exportId) => throw new NotSupportedException();

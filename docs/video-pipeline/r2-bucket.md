@@ -32,7 +32,7 @@ An R2 clip's video id is its clip id (`R2ObjectKeys`):
 | `clips/{clipId}/v{n}/av1.mp4`                                              | Version `n`'s AV1 MP4. Its size is the clip's `storage_size`, which the quota counts |
 | `clips/{clipId}/v{n}/thumbnail.jpg`, `thumbnail_1.jpg` … `thumbnail_5.jpg` | The thumbnail and the five more detection frames                                     |
 | `clips/{clipId}/v{n}/preview.mp4`                                          | The animated preview (no consumer yet)                                               |
-| `exports/{userId}/{exportId}/reelshelf-clips-{n}.zip`                      | An export's zips (ADR-0007), each under 4 GiB, downloadable for 28 days              |
+| `exports/{userId}/{exportId}/{leaseId}/reelshelf-clips-{n}.zip`            | An export's zips (ADR-0007), under 4 GiB, kept 28 days; one folder per run (V58)     |
 | `game-art/{categoryId}/{cover,key-art,logo}/{size}/{imageId}.{ext}`        | Our copies of IGDB categories' images (`GameArtMirror`), checked against IGDB daily  |
 
 The clip records its current version in `clip.video_version` (V42), with that version's codecs and height in
