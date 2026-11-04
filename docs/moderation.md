@@ -16,6 +16,14 @@ address is mailed. While it is open the clip is held as possible evidence: the s
 can't delete the clip (the over-limit sweep skips it too), and the owner can't delete their account. Both refusals
 say only that it can't be done right now.
 
+An account that asked to be deleted before the report was filed is held too: each pass of the account deletion job
+(`AccountDeletionService.Process`, checked again before each batch of 20 videos) still cancels its Stripe
+subscriptions but deletes no video, clip row, collection or export while `IAccountDeletionStore.IsHeldForReview` is
+true, and logs a warning that the deletion waits on a review. The account stays held until the report is dismissed, or
+the clip is removed and the evidence processor has copied its video (`clip_evidence.files` is set); then the next pass
+deletes the rest. `DeleteClips` also leaves out a clip under an open urgent report, should one be filed mid-batch.
+Removing works for such an account, but it isn't suspended, since it is already being deleted.
+
 ### Removing a clip
 
 One transaction (`ContentReportStatements.Remove`):

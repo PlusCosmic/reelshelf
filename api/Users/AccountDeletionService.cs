@@ -12,7 +12,11 @@ namespace Reelshelf.Users;
 /// once, so it can't be used again; <see cref="AccountDeletionBackgroundService"/> then cancels its Stripe
 /// subscriptions, deletes its videos and
 /// their containers (Bunny's collections), each at its own host, and finally the account row, which cascades to the
-/// rest of its data. Every step is idempotent, so a pass that fails part-way is simply repeated.
+/// rest of its data. Every step is idempotent, so a pass that fails part-way is simply repeated. While the account is
+/// held for review (<see cref="IAccountDeletionStore.IsHeldForReview"/>: a child-safety or terrorism report on one of
+/// its clips is open, or a removed clip's video hasn't been copied as evidence yet) a pass only cancels the
+/// subscriptions and deletes nothing, so a report filed after deletion was requested still keeps the evidence; the
+/// account waits, pass after pass, until an admin has dealt with the report.
 /// </summary>
 public class AccountDeletionService(
     IAccountDeletionStore store,
@@ -28,6 +32,9 @@ public class AccountDeletionService(
     public const string ConfirmationPhrase = "delete my account";
 
     private const int MaxConcurrentVideoDeletes = 4;
+
+    /// <summary>Clips whose videos are deleted between two checks of the hold, so a report filed mid-pass stops it soon.</summary>
+    private const int VideoDeleteBatchSize = MaxConcurrentVideoDeletes * 5;
 
     public static bool IsConfirmed(string? confirmation)
     {
@@ -66,34 +73,57 @@ public class AccountDeletionService(
             return false;
         }
 
+        if (await WaitsOnReview(userId))
+        {
+            return false;
+        }
+
         List<OwnedClipVideo> clips = await store.GetClipVideos(userId);
         ConcurrentBag<Guid> deletedClipIds = [];
         bool videosFailed = false;
+        bool held = false;
 
-        await Parallel.ForEachAsync(
-            clips,
-            new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentVideoDeletes, CancellationToken = cancellationToken },
-            async (clip, _) =>
+        foreach (OwnedClipVideo[] batch in clips.Chunk(VideoDeleteBatchSize))
+        {
+            // Checked again before each batch, as a report can be filed while the videos go. The check runs between
+            // batches because the store's connection can't be shared with the parallel deletes.
+            if (!deletedClipIds.IsEmpty && await WaitsOnReview(userId))
             {
-                try
+                held = true;
+                break;
+            }
+
+            await Parallel.ForEachAsync(
+                batch,
+                new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentVideoDeletes, CancellationToken = cancellationToken },
+                async (clip, _) =>
                 {
-                    // Includes a migrated clip's Bunny copy still waiting out its grace period, before the
-                    // collections it may be filed in are deleted below.
-                    await ClipVideoDeletion.DeleteAsync(videoHosts, transcodeStorage, clip.ClipId, clip.VideoHost,
-                        clip.VideoId, clip.BunnyVideoId);
-                    deletedClipIds.Add(clip.ClipId);
-                }
-                catch (Exception ex)
-                {
-                    videosFailed = true;
-                    logger.LogError(ex, "Failed to delete {VideoHost} video {VideoId} of clip {ClipId} for deleted account {UserId}",
-                        clip.VideoHost, clip.VideoId, clip.ClipId, userId);
-                }
-            });
+                    try
+                    {
+                        // Includes a migrated clip's Bunny copy still waiting out its grace period, before the
+                        // collections it may be filed in are deleted below.
+                        await ClipVideoDeletion.DeleteAsync(videoHosts, transcodeStorage, clip.ClipId, clip.VideoHost,
+                            clip.VideoId, clip.BunnyVideoId);
+                        deletedClipIds.Add(clip.ClipId);
+                    }
+                    catch (Exception ex)
+                    {
+                        videosFailed = true;
+                        logger.LogError(ex, "Failed to delete {VideoHost} video {VideoId} of clip {ClipId} for deleted account {UserId}",
+                            clip.VideoHost, clip.VideoId, clip.ClipId, userId);
+                    }
+                });
+        }
 
         if (!deletedClipIds.IsEmpty)
         {
+            // Leaves out a clip under an open urgent report, should one have been filed since the last check.
             await store.DeleteClips(userId, deletedClipIds.ToList());
+        }
+
+        if (held)
+        {
+            return false;
         }
 
         if (videosFailed)
@@ -138,6 +168,18 @@ public class AccountDeletionService(
         logger.LogInformation("Deleted account {UserId} with {ClipCount} clips", userId, deletedClipIds.Count);
         return true;
     }
+
+    private async Task<bool> WaitsOnReview(Guid userId)
+    {
+        if (!await store.IsHeldForReview(userId))
+        {
+            return false;
+        }
+
+        logger.LogWarning("Deletion of account {UserId} waits on an admin's review of a child-safety or terrorism report " +
+                          "on one of its clips; it is retried on later passes", userId);
+        return true;
+    }
 }
 
 public sealed record AccountDeletionRequest(string? Email);
@@ -158,10 +200,22 @@ public interface IAccountDeletionStore
 
     Task<List<Guid>> GetAccountsPendingDeletion();
     Task<List<OwnedClipVideo>> GetClipVideos(Guid userId);
+
+    /// <summary>
+    /// Whether the account's videos and rows must stay for now: a child-safety or terrorism report on one of its clips
+    /// is open (as in <see cref="Moderation.ContentReportStatements.IsHeldForReview"/>), or a clip removed after one
+    /// still waits for its video to be copied as evidence.
+    /// </summary>
+    Task<bool> IsHeldForReview(Guid userId);
+
+    /// <summary>Deletes the clip rows, leaving out any under an open child-safety or terrorism report.</summary>
     Task DeleteClips(Guid userId, IReadOnlyCollection<Guid> clipIds);
     Task<List<OwnedVideoContainer>> GetVideoContainers(Guid userId);
 
-    /// <summary>Deletes the marked account row only if it owns no clips. True when it was deleted.</summary>
+    /// <summary>
+    /// Deletes the marked account row only if it owns no clips and no clip of its removed as evidence still waits to
+    /// be copied. True when it was deleted.
+    /// </summary>
     Task<bool> DeleteAccountIfEmpty(Guid userId);
 }
 
