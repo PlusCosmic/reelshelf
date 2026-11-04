@@ -1,5 +1,6 @@
 using Dapper;
 using Npgsql;
+using Reelshelf.Moderation;
 using Reelshelf.Video;
 
 namespace Reelshelf.Users;
@@ -61,9 +62,31 @@ public class AccountDeletionStatements(NpgsqlConnection connection) : IAccountDe
             .ToList();
     }
 
+    /// <summary>A clip of the account's, removed after an urgent report, whose video isn't in the evidence bucket yet.</summary>
+    private const string UncopiedEvidenceSql =
+        "EXISTS (SELECT 1 FROM clip_evidence e WHERE e.owner_id = @userId AND e.files IS NULL)";
+
+    private static readonly string OpenUrgentReportSql = $"""
+        EXISTS (
+            SELECT 1 FROM content_report r
+            WHERE r.clip_id = c.id AND r.status = 'open' AND r.reason IN ({ContentReportReasons.UrgentSqlList}))
+        """;
+
+    public async Task<bool> IsHeldForReview(Guid userId)
+    {
+        string sql = $"""
+            SELECT EXISTS (SELECT 1 FROM clip c WHERE c.owner_id = @userId AND {OpenUrgentReportSql})
+                OR {UncopiedEvidenceSql}
+            """;
+        return await connection.QuerySingleAsync<bool>(sql, new { userId });
+    }
+
     public async Task DeleteClips(Guid userId, IReadOnlyCollection<Guid> clipIds)
     {
-        const string sql = "DELETE FROM clip WHERE owner_id = @userId AND id = ANY(@clipIds)";
+        string sql = $"""
+            DELETE FROM clip c
+            WHERE c.owner_id = @userId AND c.id = ANY(@clipIds) AND NOT {OpenUrgentReportSql}
+            """;
         await connection.ExecuteAsync(sql, new { userId, clipIds = clipIds.ToArray() });
     }
 
@@ -83,11 +106,12 @@ public class AccountDeletionStatements(NpgsqlConnection connection) : IAccountDe
 
     public async Task<bool> DeleteAccountIfEmpty(Guid userId)
     {
-        const string sql = """
+        const string sql = $"""
             DELETE FROM app_user
             WHERE id = @userId
               AND deletion_requested_at IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM clip WHERE owner_id = @userId)
+              AND NOT {UncopiedEvidenceSql}
             """;
         return await connection.ExecuteAsync(sql, new { userId }) > 0;
     }
