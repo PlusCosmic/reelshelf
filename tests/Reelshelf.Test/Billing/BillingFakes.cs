@@ -98,9 +98,13 @@ internal sealed class FakeStripe : IStripeBilling
         return Task.CompletedTask;
     }
 
+    /// <summary>Called on every subscription read, so a test can see what the store held at that moment.</summary>
+    public Action<string>? OnSubscriptionRead { get; set; }
+
     public Task<StripeSubscriptionState?> GetSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken)
     {
         SubscriptionReads++;
+        OnSubscriptionRead?.Invoke(subscriptionId);
         return Task.FromResult(Subscriptions.GetValueOrDefault(subscriptionId));
     }
 
@@ -176,15 +180,45 @@ internal sealed class FakeStore : IBillingStore
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
-    public Task<bool> UpsertSubscription(BillingSubscription subscription)
+    /// <summary>Subscription locks held now; <see cref="Log"/> records each lock, upsert and release.</summary>
+    public HashSet<string> HeldSubscriptionLocks { get; } = [];
+
+    public List<string> Log { get; } = [];
+
+    public Task<IAsyncDisposable> LockSubscription(string subscriptionId)
     {
+        HeldSubscriptionLocks.Add(subscriptionId);
+        Log.Add($"lock {subscriptionId}");
+        return Task.FromResult<IAsyncDisposable>(new SubscriptionLock(this, subscriptionId));
+    }
+
+    private sealed class SubscriptionLock(FakeStore store, string subscriptionId) : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync()
+        {
+            store.HeldSubscriptionLocks.Remove(subscriptionId);
+            store.Log.Add($"release {subscriptionId}");
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    public Task<Guid?> UpsertSubscription(BillingSubscription subscription)
+    {
+        Log.Add($"upsert {subscription.Id}");
         if (!Users.Contains(subscription.UserId))
         {
-            return Task.FromResult(false);
+            return Task.FromResult<Guid?>(null);
         }
 
-        Subscriptions.RemoveAll(existing => existing.Id == subscription.Id);
+        if (Subscriptions.FirstOrDefault(existing => existing.Id == subscription.Id) is { } recorded)
+        {
+            // As the database does: a recorded subscription keeps its account.
+            Subscriptions.Remove(recorded);
+            Subscriptions.Add(subscription with { UserId = recorded.UserId });
+            return Task.FromResult<Guid?>(recorded.UserId);
+        }
+
         Subscriptions.Add(subscription);
-        return Task.FromResult(true);
+        return Task.FromResult<Guid?>(subscription.UserId);
     }
 }
