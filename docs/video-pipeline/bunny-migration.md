@@ -140,13 +140,17 @@ changed, as when the worker started keeping 60 fps instead of forcing 30):
 
 1. Set `Migration:Enabled` and `Migration:DeleteBunny` to false, on every instance, and wait for the deploy. The
    backfill then queues nothing, and the sweep deletes no Bunny copy while you revert. Make sure every worker runs
-   the encode you want (the re-run uses whatever the workers do), and wait until no `migrate` run is `running`, so
-   no worker cut off in step 2 is still writing files.
+   the encode you want (the re-run uses whatever the workers do), and wait until no `migrate` run, and no other run
+   on a clip you are reverting, is `running`, so no worker cut off in step 2 is still writing files.
 2. In one transaction:
 
    ```sql
    begin;
-   delete from transcode_run where type = 'migrate';
+   delete from transcode_run
+   where type = 'migrate'
+      or (status in ('pending', 'running') and clip_id in (
+            select id from clip
+            where bunny_video_id is not null and video_host = 'r2' and video_state = 'ready'));
    update clip set video_host = 'bunny', video_id = bunny_video_id, bunny_video_id = null,
      video_codecs = null, video_height = null, migrated_at = null
    where bunny_video_id is not null and video_host = 'r2' and video_state = 'ready';
@@ -155,8 +159,12 @@ changed, as when the worker started keeping 60 fps instead of forcing 30):
 
    Leave `video_version` alone, so the re-run goes to the next version and never reuses keys a clip played from.
    SET reads the row as it was, so `video_id` takes the old `bunny_video_id`. Deleting the `migrate` runs lets the
-   backfill take the clips again; a run still in flight then gets 404 on completion. To revert one clip, add
-   `and id = '<clip id>'` to the update and delete only that clip's `migrate` runs.
+   backfill take the clips again; a run still in flight then gets 404 on completion. Every other pending or running
+   job on a reverted clip (a `trim`, `thumbnails` and so on, which read and write R2 versions) goes too, before the
+   update, while the clips still read as moved. Such a job left behind would be superseded on completion (a `trim` or
+   `transcode` never changes a clip that isn't on R2) but would then delete its own version's files, which could be
+   the very version the re-run is writing. To revert one clip, add `and id = '<clip id>'` to the update and delete
+   only that clip's `migrate` runs and its other pending or running jobs.
 
 3. Turn both settings back on. The re-run moves each clip to `video_version + 1` and, once it completes, deletes
    the earlier versions under `clips/{clipId}/` by itself, including any files a run cut off in step 2 had uploaded.
