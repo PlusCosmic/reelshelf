@@ -87,8 +87,8 @@ public class ClipVideoUpdateHandler(
 
     /// <summary>
     /// A transcode or trim finished: the clip is ready on <paramref name="videoVersion"/>, with the output's length,
-    /// size, codecs and height. Returns the version it was on before (null when there is no such clip), whose files
-    /// the caller deletes when it differs.
+    /// size, codecs and height. Returns the version it was on before, whose files the caller deletes when it differs;
+    /// null when the job was superseded (the clip is no longer on R2, or already on a later version) and nothing moved.
     /// </summary>
     public Task<int?> ApplyTranscodeCompletedAsync(
         Guid clipId,

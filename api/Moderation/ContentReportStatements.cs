@@ -198,7 +198,8 @@ public sealed class ContentReportStatements(NpgsqlConnection connection)
 
     /// <summary>
     /// Takes the report's clip down: blocks sharing it, revokes its share links, and resolves every open report against
-    /// it, in one transaction. A report whose clip was deleted is resolved alone.
+    /// it but the <see cref="ContentReportReasons.Urgent"/> ones, in one transaction. An open urgent report stays open, so
+    /// the clip stays held and can still be removed. A report whose clip was deleted is resolved alone.
     /// </summary>
     public async Task<TakeDownResult> TakeDown(Guid id, Guid adminId, string note)
     {
@@ -237,10 +238,12 @@ public sealed class ContentReportStatements(NpgsqlConnection connection)
                 new { clipId }, transaction);
         }
 
-        await connection.ExecuteAsync("""
+        await connection.ExecuteAsync($"""
             UPDATE content_report
             SET status = 'taken_down', resolved_by = @adminId, resolution_note = @note, resolved_at = now()
-            WHERE status = 'open' AND (id = @id OR (@clipId::uuid IS NOT NULL AND clip_id = @clipId))
+            WHERE status = 'open'
+              AND (id = @id OR (@clipId::uuid IS NOT NULL AND clip_id = @clipId
+                  AND reason NOT IN ({ContentReportReasons.UrgentSqlList})))
             """, new { id, clipId = found.ClipId, adminId, note }, transaction);
         await transaction.CommitAsync();
 
