@@ -80,7 +80,7 @@ public class WatchRoomTests
 
         Assert.False(room.SetPlayback("c2", false, 5));
         Assert.False(room.SetPlayback("g1", false, 5));
-        Assert.False(room.Next("c2", null));
+        Assert.False(room.Next("c2", room.Snapshot().Playback!.ItemId));
         Assert.False(room.SetQueueLocked("c2", true));
         Assert.True(room.SetPlayback("c1", false, 5));
         Assert.False(room.Snapshot().Playback!.Playing);
@@ -113,7 +113,7 @@ public class WatchRoomTests
         Assert.Equal(0, room.Snapshot().Playback!.PositionSeconds);
         Assert.False(room.SetPlayback("c1", true, double.NaN));
 
-        room.Next("c1", null);
+        room.Next("c1", room.Snapshot().Playback!.ItemId);
         Assert.Null(room.Snapshot().Playback);
     }
 
@@ -268,6 +268,96 @@ public class WatchRoomTests
     }
 
     [Fact]
+    public void TwoOfTheHostsDevicesSkippingTheSameClip_MoveOnOnce()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("desktop", "alice"));
+        _rooms.Join(Instance, Member("phone", "alice"));
+        room.Enqueue("desktop", NewClip("first"));
+        room.Enqueue("desktop", NewClip("second"));
+        room.Enqueue("desktop", NewClip("third"));
+        Guid first = room.Snapshot().Playback!.ItemId;
+
+        Assert.True(room.Next("desktop", first));
+        Assert.False(room.Next("phone", first));
+        Assert.Equal("second", room.Snapshot().Playback!.Clip.Title);
+        Assert.Equal(["third"], QueueTitles(room));
+    }
+
+    [Fact]
+    public void ThePlayingClipMovesOnByItself_AGracePeriodAfterItsExpectedEnd()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        room.Enqueue("c1", NewClip("first"));
+        room.Enqueue("c1", NewClip("second"));
+        Guid first = room.Snapshot().Playback!.ItemId;
+
+        // 30 s long, sought to 10 s at once: it ends 20 s from now, and the room waits the grace beyond that.
+        room.SetPlayback("c1", null, 10);
+        _clock.Advance(TimeSpan.FromSeconds(20) + WatchRoom.EndGrace - TimeSpan.FromMilliseconds(1));
+        Assert.False(room.AdvanceIfOverdue());
+        Assert.Empty(_rooms.AdvanceOverdue());
+
+        _clock.Advance(TimeSpan.FromMilliseconds(1));
+        long version = room.Snapshot().Version;
+        (WatchRoom advancedRoom, RoomStateView state) = Assert.Single(_rooms.AdvanceOverdue());
+        Assert.Same(room, advancedRoom);
+        Assert.Equal("second", state.Playback!.Clip.Title);
+        Assert.Equal(version + 1, state.Version);
+
+        // The host's player reporting the end late moves nothing more.
+        Assert.False(room.Next("c1", first));
+        Assert.Equal("second", room.Snapshot().Playback!.Clip.Title);
+
+        _clock.Advance(TimeSpan.FromSeconds(30) + WatchRoom.EndGrace);
+        Assert.True(room.AdvanceIfOverdue());
+        Assert.Null(room.Snapshot().Playback);
+        Assert.False(room.AdvanceIfOverdue());
+    }
+
+    [Fact]
+    public void APausedClip_OrOneOfUnknownLength_NeverMovesOnByItself()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        room.Enqueue("c1", NewClip("first"));
+        room.Enqueue("c1", NewClip("second"));
+
+        _clock.Advance(TimeSpan.FromSeconds(5));
+        room.SetPlayback("c1", false, 5);
+        _clock.Advance(TimeSpan.FromMinutes(10));
+        Assert.False(room.AdvanceIfOverdue());
+        Assert.Equal("first", room.Snapshot().Playback!.Clip.Title);
+
+        // Played again from 5 s, it has 25 s left from now.
+        room.SetPlayback("c1", true, 5);
+        _clock.Advance(TimeSpan.FromSeconds(25));
+        Assert.False(room.AdvanceIfOverdue());
+        _clock.Advance(WatchRoom.EndGrace);
+        Assert.True(room.AdvanceIfOverdue());
+        Assert.Equal("second", room.Snapshot().Playback!.Clip.Title);
+
+        room.Enqueue("c1", NewClip("no length") with { DurationSeconds = 0 });
+        room.Next("c1", room.Snapshot().Playback!.ItemId);
+        Assert.Equal("no length", room.Snapshot().Playback!.Clip.Title);
+        _clock.Advance(TimeSpan.FromHours(1));
+        Assert.False(room.AdvanceIfOverdue());
+    }
+
+    [Fact]
+    public void AChangeAndItsStateAreTakenTogether()
+    {
+        WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
+        _rooms.Join(Instance, Member("c2", "bob"));
+
+        (bool applied, RoomStateView state) = room.Apply(r => r.Enqueue("c1", Clip) == EnqueueResult.Queued);
+        Assert.True(applied);
+        Assert.Equal(Clip, state.Playback!.Clip);
+
+        (bool refused, RoomStateView unchanged) = room.Apply(r => r.SetQueueLocked("c2", true));
+        Assert.False(refused);
+        Assert.Equal(state.Version, unchanged.Version);
+    }
+
+    [Fact]
     public void AnAbsentOwnersClipsAreHiddenAndSkipped_UntilTheyReturn()
     {
         WatchRoom room = _rooms.Join(Instance, Member("c1", "alice"));
@@ -287,7 +377,7 @@ public class WatchRoomTests
 
         // He leaves again; when his turn comes his clip is dropped.
         _rooms.Leave(Instance, "c2b");
-        room.Next("c1", null);
+        room.Next("c1", room.Snapshot().Playback!.ItemId);
         Assert.Equal("a1", room.Snapshot().Playback!.Clip.Title);
         _rooms.Join(Instance, Member("c2c", "bob"));
         Assert.Empty(room.Snapshot().Queue);

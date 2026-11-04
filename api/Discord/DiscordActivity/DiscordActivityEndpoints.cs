@@ -184,6 +184,11 @@ public static class DiscordActivitySetup
         builder.Services.AddScoped<ActivitySignInService>();
         builder.Services.AddScoped<ActivityClipService>();
         builder.Services.AddSingleton<WatchRoomRegistry>();
+        if (!builder.Environment.IsEnvironment("OpenApi"))
+        {
+            builder.Services.AddHostedService<WatchRoomClock>();
+        }
+
         builder.Services.AddSignalR();
 
         builder.Services.AddAuthentication()
