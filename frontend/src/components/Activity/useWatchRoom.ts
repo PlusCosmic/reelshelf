@@ -31,6 +31,11 @@ export type WatchRoom = {
   /** Server time minus local time, from the latest room state. */
   clockOffsetMs: () => number;
   error: string | null;
+  /**
+   * The current room token, read at call time. It is renewed before it expires, so anything that calls the
+   * API with it (the clip picker) asks here on every request instead of keeping the one the session began with.
+   */
+  getRoomToken: () => string;
   reactions: FloatingReaction[];
   react: (emoji: string) => void;
   addToQueue: (clipId: string) => void;
@@ -56,6 +61,7 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
   const offsetRef = useRef(0);
   const versionRef = useRef(-1);
   const connectionRef = useRef<HubConnection | null>(null);
+  const getRoomToken = useCallback(() => tokenRef.current, []);
 
   useEffect(() => {
     let disposed = false;
@@ -152,6 +158,7 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
     isHost: state?.hostDiscordUserId === session.participant.discordUserId,
     clockOffsetMs: () => offsetRef.current,
     error,
+    getRoomToken,
     reactions,
     react: (emoji) => invoke("React", emoji),
     addToQueue: (clipId) => invoke("AddToQueue", clipId),

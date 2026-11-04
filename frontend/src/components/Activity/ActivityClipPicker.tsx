@@ -39,11 +39,12 @@ const initialState: PickerState = {
 };
 
 export function ActivityClipPicker({
-  roomToken,
+  getRoomToken,
   queuedClipIds,
   onPick,
 }: {
-  roomToken: string;
+  /** The room token as it is now; it is renewed while the room is open, so each request asks again. */
+  getRoomToken: () => string;
   queuedClipIds: ReadonlySet<string>;
   onPick: (clip: ActivityClip) => void;
 }) {
@@ -69,7 +70,7 @@ export function ActivityClipPicker({
   // The spines are loaded once, so they keep their order and counts while the member moves between them.
   useEffect(() => {
     let cancelled = false;
-    fetchOwnGames(roomToken)
+    fetchOwnGames(getRoomToken())
       .then((loaded) => {
         if (!cancelled) setGames(loaded);
       })
@@ -79,7 +80,8 @@ export function ActivityClipPicker({
     return () => {
       cancelled = true;
     };
-  }, [roomToken]);
+    // A renewed token mustn't reload the spines, so the getter isn't a dependency.
+  }, []);
 
   const range = useMemo(() => dayRangeBounds(fromDay, toDay), [fromDay, toDay]);
   const rangeStart = range.start?.getTime() ?? null;
@@ -93,7 +95,7 @@ export function ActivityClipPicker({
       loading: "replace",
       failed: false,
     }));
-    fetchOwnClips(roomToken, {
+    fetchOwnClips(getRoomToken(), {
       search: query,
       page: 1,
       gameId,
@@ -114,13 +116,14 @@ export function ActivityClipPicker({
         if (version === listVersion.current)
           setState({ ...initialState, loading: null, failed: true });
       });
-  }, [roomToken, query, gameId, order, rangeStart, rangeEnd]);
+    // A renewed token mustn't reset the list, so the getter isn't a dependency.
+  }, [query, gameId, order, rangeStart, rangeEnd]);
 
   const loadMore = () => {
     const version = listVersion.current;
     const next = state.page + 1;
     setState((current) => ({ ...current, loading: "more" }));
-    fetchOwnClips(roomToken, {
+    fetchOwnClips(getRoomToken(), {
       search: query,
       page: next,
       gameId,
