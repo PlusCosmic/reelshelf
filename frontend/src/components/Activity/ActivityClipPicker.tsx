@@ -42,11 +42,14 @@ export function ActivityClipPicker({
   getRoomToken,
   queuedClipIds,
   onPick,
+  disabled = false,
 }: {
   /** The room token as it is now; it is renewed while the room is open, so each request asks again. */
   getRoomToken: () => string;
   queuedClipIds: ReadonlySet<string>;
   onPick: (clip: ActivityClip) => void;
+  /** While the room isn't connected: browsing still works, but nothing can be added. */
+  disabled?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -279,6 +282,7 @@ export function ActivityClipPicker({
                     clip={clip}
                     queued={queuedClipIds.has(clip.clipId)}
                     showGame={gameId === null}
+                    disabled={disabled}
                     onPick={onPick}
                   />
                 </li>
@@ -318,11 +322,13 @@ function PickerRow({
   clip,
   queued,
   showGame,
+  disabled,
   onPick,
 }: {
   clip: ActivityClip;
   queued: boolean;
   showGame: boolean;
+  disabled: boolean;
   onPick: (clip: ActivityClip) => void;
 }) {
   const thumbnail = activityThumbnailUrl(clip.media);
@@ -332,7 +338,7 @@ function PickerRow({
       className="rs-activity-clip"
       aria-current={queued ? "true" : undefined}
       aria-label={activityCopy.picker.add(clip.title)}
-      disabled={!clip.ready || queued}
+      disabled={disabled || !clip.ready || queued}
       onClick={() => onPick(clip)}
     >
       {thumbnail ? (
