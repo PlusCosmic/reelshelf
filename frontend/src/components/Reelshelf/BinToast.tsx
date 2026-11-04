@@ -186,11 +186,7 @@ export function BinProvider({ children }: { children: ReactNode }) {
                   {restoreClips.isPending ? copy.undoing : copy.undo}
                   <kbd>{copy.undoHint}</kbd>
                 </button>
-                <Link
-                  to="/bin"
-                  className="rs-bin-toast-link"
-                  onClick={close}
-                >
+                <Link to="/bin" className="rs-bin-toast-link" onClick={close}>
                   {copy.openBin}
                 </Link>
               </>

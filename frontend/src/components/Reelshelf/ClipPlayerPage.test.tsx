@@ -368,7 +368,7 @@ describe("ClipPlayerPage", () => {
     expect(await view.findByText("That's the lot.")).toBeTruthy();
     expect(view.container.textContent).toContain("binned 1 clip");
 
-    const options = mocks.bin.mock.calls[0]?.[1] as unknown as {
+    const options = (mocks.bin.mock.calls[0] as unknown[])[1] as {
       onUndone: (clipIds: string[]) => void;
     };
     act(() => options.onUndone(["a"]));
