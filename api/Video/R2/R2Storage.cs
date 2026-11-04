@@ -287,6 +287,101 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
         }
     }
 
+    /// <summary>Every object under <paramref name="prefix"/>, with its size.</summary>
+    public async Task<List<(string Key, long Size)>> ListAsync(string prefix)
+    {
+        List<(string Key, long Size)> objects = [];
+        string? continuationToken = null;
+        do
+        {
+            ListObjectsV2Response page = await _client.ListObjectsV2Async(new ListObjectsV2Request
+            {
+                BucketName = _options.Bucket, Prefix = prefix, ContinuationToken = continuationToken
+            });
+            objects.AddRange((page.S3Objects ?? []).Select(item => (item.Key, item.Size ?? 0)));
+            continuationToken = page.IsTruncated == true ? page.NextContinuationToken : null;
+        } while (continuationToken is not null);
+
+        return objects;
+    }
+
+    /// <summary>The largest object S3's CopyObject copies in one request; larger ones are copied in parts.</summary>
+    public const long MaxSingleCopyBytes = 5L * 1024 * 1024 * 1024;
+
+    private const long CopyPartSize = 1L * 1024 * 1024 * 1024;
+
+    /// <summary>
+    /// Copies an object of <paramref name="size"/> bytes to another key in the bucket, server side, keeping its
+    /// <c>Content-Type</c> and <c>Cache-Control</c>.
+    /// </summary>
+    public async Task CopyAsync(string sourceKey, long size, string destinationKey, CancellationToken cancellationToken)
+    {
+        if (size <= MaxSingleCopyBytes)
+        {
+            await _client.CopyObjectAsync(new CopyObjectRequest
+            {
+                SourceBucket = _options.Bucket,
+                SourceKey = sourceKey,
+                DestinationBucket = _options.Bucket,
+                DestinationKey = destinationKey
+            }, cancellationToken);
+            return;
+        }
+
+        GetObjectMetadataResponse metadata = await _client.GetObjectMetadataAsync(
+            new GetObjectMetadataRequest { BucketName = _options.Bucket, Key = sourceKey }, cancellationToken);
+        InitiateMultipartUploadRequest start = new()
+        {
+            BucketName = _options.Bucket, Key = destinationKey, ContentType = metadata.Headers.ContentType
+        };
+        start.Headers.CacheControl = metadata.Headers.CacheControl;
+        InitiateMultipartUploadResponse upload = await _client.InitiateMultipartUploadAsync(start, cancellationToken);
+        try
+        {
+            List<PartETag> parts = [];
+            for (long first = 0; first < size; first += CopyPartSize)
+            {
+                CopyPartResponse copied = await _client.CopyPartAsync(new CopyPartRequest
+                {
+                    SourceBucket = _options.Bucket,
+                    SourceKey = sourceKey,
+                    DestinationBucket = _options.Bucket,
+                    DestinationKey = destinationKey,
+                    UploadId = upload.UploadId,
+                    PartNumber = parts.Count + 1,
+                    FirstByte = first,
+                    LastByte = Math.Min(first + CopyPartSize, size) - 1
+                }, cancellationToken);
+                parts.Add(new PartETag(parts.Count + 1, copied.ETag));
+            }
+
+            await _client.CompleteMultipartUploadAsync(new CompleteMultipartUploadRequest
+            {
+                BucketName = _options.Bucket, Key = destinationKey, UploadId = upload.UploadId, PartETags = parts
+            }, cancellationToken);
+        }
+        catch
+        {
+            await AbortMultipartUploadsAsync(destinationKey);
+            throw;
+        }
+    }
+
+    /// <summary>Reads an object, or null when there is no such object.</summary>
+    public async Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken)
+    {
+        try
+        {
+            GetObjectResponse response = await _client.GetObjectAsync(
+                new GetObjectRequest { BucketName = _options.Bucket, Key = key }, cancellationToken);
+            return response.ResponseStream;
+        }
+        catch (AmazonS3Exception error) when (error.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
     /// <summary>The object's size in bytes, or null when there is no such object.</summary>
     public async Task<long?> GetObjectSizeAsync(string key, CancellationToken cancellationToken)
     {

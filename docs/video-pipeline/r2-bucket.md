@@ -34,6 +34,7 @@ An R2 clip's video id is its clip id (`R2ObjectKeys`):
 | `clips/{clipId}/v{n}/preview.mp4`                                          | The animated preview (no consumer yet)                                               |
 | `exports/{userId}/{exportId}/{leaseId}/reelshelf-clips-{n}.zip`            | An export's zips (ADR-0007), under 4 GiB, kept 28 days; one folder per run (V58)     |
 | `game-art/{categoryId}/{cover,key-art,logo}/{size}/{imageId}.{ext}`        | Our copies of IGDB categories' images (`GameArtMirror`), checked against IGDB daily  |
+| `quarantine/{evidenceId}/{original key}`                                   | A removed clip's objects, off public access until its evidence copy exists           |
 
 The clip records its current version in `clip.video_version` (V42), with that version's codecs and height in
 `video_codecs` and `video_height` for its playback source (`video/mp4; codecs="..."`). A trim writes version
@@ -53,6 +54,16 @@ containers, so the account deletion's container step does nothing for R2.
 - **Delete `exports/` after 29 days.** The API deletes an export's zips when it expires after 28 days; this is the
   backstop. Leave `exports/` out of the Infrequent Access rule: its read fee and 30-day minimum cost more than they
   save on files kept 28 days and read once.
+
+None of these rules may touch `quarantine/`: a clip removed after a child-safety or terrorism report waits there,
+sometimes for days, until its evidence copy exists (`docs/moderation.md`), and it must not be deleted before. The
+three rules above are scoped to the multipart uploads, `clips/` and `exports/`, so they don't; keep any new rule
+scoped to its own prefix.
+
+**WAF rule on the media domain:** block `/quarantine/*`
+(`starts_with(http.request.uri.path, "/quarantine/")` → Block). Quarantine keys are never handed out and carry a
+random id, so this is defence in depth. It is set by hand for now and still needs adding to the infrastructure
+repo's Cloudflare config.
 
 Nothing expires `uploads/` on its own: a source whose transcode never succeeds stays until the clip is deleted or
 purged. A rule expiring `uploads/` after a week or two would also be safe, since a transcode never runs that late.

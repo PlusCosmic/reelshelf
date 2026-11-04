@@ -8,11 +8,16 @@ namespace Reelshelf.Moderation;
 
 public static class ClipEvidenceStatuses
 {
+    /// <summary>The evidence copy isn't made yet; the processor is working on it.</summary>
     public const string Pending = "pending";
+
+    /// <summary>The evidence copy exists, and the clip's video is gone from its host and the quarantine.</summary>
     public const string Preserved = "preserved";
+
     /// <summary>
-    /// The evidence couldn't be kept within <c>EvidenceMaxAttempts</c>. The video is still deleted from public storage
-    /// and purged, retried until that works (<c>media_deleted_at</c>, <c>cdn_purge</c>), then swept like the rest.
+    /// Needs attention: the copy still isn't made after <c>EvidenceMaxAttempts</c>. It is never given up on (retried
+    /// with a capped back-off) and nothing of the clip is deleted until it is made; an R2 clip's files stay in the
+    /// quarantine, off public access, and a Bunny clip's video stays at Bunny.
     /// </summary>
     public const string Failed = "failed";
 }
@@ -83,45 +88,32 @@ public readonly record struct ClipEvidenceClaim(Guid Id, DateTimeOffset ClaimedA
 public interface IClipEvidenceStore
 {
     /// <summary>
-    /// Moves pending records out of attempts to <c>failed</c> (their evidence couldn't be kept) and answers them. A
-    /// failed record is still taken off public storage: <see cref="ClaimTakedown"/> claims it straight away.
+    /// Claims the oldest record not yet preserved (<c>pending</c>, or <c>failed</c> and needing attention) past its
+    /// retry delay, or one whose claim went stale; null when there is none. There is no limit on attempts.
     /// </summary>
-    Task<List<ClipEvidence>> FailExhausted(TimeSpan staleAfter, int maxAttempts);
+    Task<ClipEvidence?> Claim(TimeSpan staleAfter);
 
     /// <summary>
-    /// Claims the oldest pending record past its retry delay, or one whose claim went stale; null when there is none.
+    /// Claims a record, of any status, whose quarantine step is done (<c>cdn_purge</c>) and whose second sweep is due.
     /// </summary>
-    Task<ClipEvidence?> Claim(TimeSpan staleAfter, int maxAttempts);
-
-    /// <summary>
-    /// Claims a failed record whose video isn't yet deleted and purged, past its retry delay. These are retried without
-    /// a limit: a removed clip's video must not stay public because its evidence couldn't be kept.
-    /// </summary>
-    Task<ClipEvidence?> ClaimTakedown(TimeSpan staleAfter);
-
-    /// <summary>Claims a preserved or failed record, off public storage, whose second sweep is due.</summary>
     Task<ClipEvidence?> ClaimSweep(TimeSpan sweepAfter, TimeSpan staleAfter);
 
     // Each step write is dropped, answering false, when the claim is no longer the record's current one.
+    Task<bool> SaveCdnPurge(ClipEvidenceClaim claim, string result);
     Task<bool> SaveFiles(ClipEvidenceClaim claim, IReadOnlyList<string> keys);
     Task<bool> MarkMediaDeleted(ClipEvidenceClaim claim);
-    Task<bool> SaveCdnPurge(ClipEvidenceClaim claim, string result);
     Task<bool> MarkPreserved(ClipEvidenceClaim claim);
-
-    /// <summary>
-    /// Ends a failed record's takedown: it stays <c>failed</c>, keeping the error that failed it, unless its copy had
-    /// been saved before a later step ran out of attempts, which makes it <c>preserved</c>.
-    /// </summary>
-    Task<bool> MarkTakenDown(ClipEvidenceClaim claim);
-
     Task<bool> MarkSwept(ClipEvidenceClaim claim);
 
-    /// <summary>Puts the record back to be retried after <paramref name="retryAfter"/>.</summary>
-    Task<bool> Fail(ClipEvidenceClaim claim, string error, TimeSpan retryAfter);
+    /// <summary>
+    /// Puts the record back to be retried after <paramref name="retryAfter"/>; with <paramref name="needsAttention"/>,
+    /// a pending record becomes <c>failed</c>, which is still retried.
+    /// </summary>
+    Task<bool> Fail(ClipEvidenceClaim claim, string error, TimeSpan retryAfter, bool needsAttention = false);
 
     /// <summary>
-    /// Records whose retention is over and whose work is done: never one still pending, or whose video isn't yet
-    /// deleted and purged, since the record is the only pointer left to that video.
+    /// Records whose retention is over and that are preserved: never one whose evidence copy doesn't exist yet, or
+    /// whose video isn't yet deleted, since the record is the only pointer left to that video.
     /// </summary>
     Task<List<Guid>> GetExpired(int limit);
 
@@ -138,36 +130,13 @@ public sealed class ClipEvidenceStatements(NpgsqlConnection connection) : IClipE
     /// <summary>Matches the record only while the claim is its current one.</summary>
     private const string Claimed = "id = @Id AND claimed_at = @ClaimedAt";
 
-    public async Task<List<ClipEvidence>> FailExhausted(TimeSpan staleAfter, int maxAttempts) =>
-        (await connection.QueryAsync<ClipEvidence>($"""
-            UPDATE clip_evidence SET status = 'failed', claimed_at = NULL, available_at = now()
-            WHERE status = 'pending' AND attempts >= @maxAttempts
-              AND (claimed_at IS NULL OR claimed_at < now() - @staleAfter)
-            RETURNING {Columns}
-            """, new { maxAttempts, staleAfter })).ToList();
-
-    public async Task<ClipEvidence?> Claim(TimeSpan staleAfter, int maxAttempts)
+    public async Task<ClipEvidence?> Claim(TimeSpan staleAfter)
     {
         return await connection.QuerySingleOrDefaultAsync<ClipEvidence>($"""
             UPDATE clip_evidence SET claimed_at = now(), attempts = attempts + 1
             WHERE id = (
                 SELECT id FROM clip_evidence
-                WHERE status = 'pending' AND available_at <= now() AND attempts < @maxAttempts
-                  AND (claimed_at IS NULL OR claimed_at < now() - @staleAfter)
-                ORDER BY available_at
-                LIMIT 1
-                FOR UPDATE SKIP LOCKED)
-            RETURNING {Columns}
-            """, new { maxAttempts, staleAfter });
-    }
-
-    public async Task<ClipEvidence?> ClaimTakedown(TimeSpan staleAfter)
-    {
-        return await connection.QuerySingleOrDefaultAsync<ClipEvidence>($"""
-            UPDATE clip_evidence SET claimed_at = now()
-            WHERE id = (
-                SELECT id FROM clip_evidence
-                WHERE status = 'failed' AND (media_deleted_at IS NULL OR cdn_purge IS NULL) AND available_at <= now()
+                WHERE status IN ('pending', 'failed') AND available_at <= now()
                   AND (claimed_at IS NULL OR claimed_at < now() - @staleAfter)
                 ORDER BY available_at
                 LIMIT 1
@@ -182,8 +151,8 @@ public sealed class ClipEvidenceStatements(NpgsqlConnection connection) : IClipE
             UPDATE clip_evidence SET claimed_at = now()
             WHERE id = (
                 SELECT id FROM clip_evidence
-                WHERE status IN ('preserved', 'failed') AND media_deleted_at IS NOT NULL AND cdn_purge IS NOT NULL
-                  AND swept_at IS NULL AND removed_at < now() - @sweepAfter
+                WHERE cdn_purge IS NOT NULL AND swept_at IS NULL AND removed_at < now() - @sweepAfter
+                  AND available_at <= now()
                   AND (claimed_at IS NULL OR claimed_at < now() - @staleAfter)
                 ORDER BY removed_at
                 LIMIT 1
@@ -207,34 +176,27 @@ public sealed class ClipEvidenceStatements(NpgsqlConnection connection) : IClipE
     public async Task<bool> MarkPreserved(ClipEvidenceClaim claim) =>
         await connection.ExecuteAsync($"""
             UPDATE clip_evidence SET status = 'preserved', claimed_at = NULL, last_error = NULL
-            WHERE {Claimed} AND status = 'pending'
-            """, new { claim.Id, claim.ClaimedAt }) > 0;
-
-    public async Task<bool> MarkTakenDown(ClipEvidenceClaim claim) =>
-        await connection.ExecuteAsync($"""
-            UPDATE clip_evidence
-            SET claimed_at = NULL,
-                status = CASE WHEN files IS NULL THEN 'failed' ELSE 'preserved' END,
-                last_error = CASE WHEN files IS NULL THEN last_error END
-            WHERE {Claimed} AND status = 'failed'
+            WHERE {Claimed} AND status IN ('pending', 'failed') AND files IS NOT NULL AND media_deleted_at IS NOT NULL
             """, new { claim.Id, claim.ClaimedAt }) > 0;
 
     public async Task<bool> MarkSwept(ClipEvidenceClaim claim) =>
         await connection.ExecuteAsync($"UPDATE clip_evidence SET swept_at = now(), claimed_at = NULL WHERE {Claimed}",
             new { claim.Id, claim.ClaimedAt }) > 0;
 
-    public async Task<bool> Fail(ClipEvidenceClaim claim, string error, TimeSpan retryAfter) =>
+    public async Task<bool> Fail(ClipEvidenceClaim claim, string error, TimeSpan retryAfter,
+        bool needsAttention = false) =>
         await connection.ExecuteAsync($"""
             UPDATE clip_evidence
-            SET claimed_at = NULL, last_error = @error, available_at = now() + @retryAfter
+            SET claimed_at = NULL, last_error = @error, available_at = now() + @retryAfter,
+                status = CASE WHEN @needsAttention AND status = 'pending' THEN 'failed' ELSE status END
             WHERE {Claimed}
-            """, new { claim.Id, claim.ClaimedAt, error, retryAfter }) > 0;
+            """, new { claim.Id, claim.ClaimedAt, error, retryAfter, needsAttention }) > 0;
 
     public async Task<List<Guid>> GetExpired(int limit) =>
         (await connection.QueryAsync<Guid>("""
             SELECT id FROM clip_evidence
-            WHERE delete_after < now() AND status <> 'pending'
-              AND media_deleted_at IS NOT NULL AND cdn_purge IS NOT NULL
+            WHERE delete_after < now() AND status = 'preserved'
+              AND files IS NOT NULL AND media_deleted_at IS NOT NULL
             ORDER BY delete_after
             LIMIT @limit
             """, new { limit })).ToList();

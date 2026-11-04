@@ -34,22 +34,44 @@ One transaction (`ContentReportStatements.Remove`):
 3. closes every open report on the clip as `removed`;
 4. deletes the clip row, so nothing in Reelshelf lists or plays it from then on.
 
-`ClipEvidenceProcessor` (run by `ClipEvidenceBackgroundService`) then, retrying from wherever it stopped:
+`ClipEvidenceProcessor` (run by `ClipEvidenceBackgroundService`) then works through four steps. The law requires the
+content to be kept (see [Legal basis](#legal-basis)), so nothing of it is deleted until the evidence copy exists, but
+it comes off public access first:
 
-1. writes `{evidenceId}/record.json` (the snapshots and the decision) and copies the video to
-   `{evidenceId}/video.mp4` in the evidence bucket: an R2 clip's `av1.mp4`, or a Bunny clip's HLS stream remuxed to
-   MP4, exactly as an export reads them;
-2. deletes the video from its host, every R2 version of the clip, and any Bunny copy;
-3. purges every output URL of versions 1 to `video_version + 1` from the media domain's cache (outputs are cached
-   `immutable` for a year, so deleting them from R2 isn't enough);
-4. after `Moderation:SweepAfter` (3 hours), deletes and purges the clip's R2 folder once more, for anything a
-   transcode worker uploaded with presigned URLs it held at removal.
+1. **Quarantine** (done once `cdn_purge` is set). Every object of the clip in the media bucket, everything under
+   `clips/{clipId}/` and `uploads/{clipId}` (an open browser upload into it is aborted first), is copied server side
+   to `quarantine/{evidenceId}/{its key}` in the same bucket, and only then are the originals deleted. Then every
+   output URL of versions 1 to `video_version + 1` is purged from the media domain's cache (outputs are cached
+   `immutable` for a year, so deleting them from R2 isn't enough). This uses the media bucket's own credentials, so
+   it works whatever state the evidence bucket is in. A key already quarantined is never overwritten.
+2. **Preserve** (`files`). `{evidenceId}/record.json` (the snapshots and the decision) and the video go to the
+   evidence bucket: an R2 clip's current `av1.mp4` read from the quarantine (or, if it never finished encoding, its
+   uploaded source as `{evidenceId}/source`), or a Bunny clip's HLS stream remuxed to MP4 as an export reads it, as
+   `{evidenceId}/video.mp4`.
+3. **Delete** (`media_deleted_at`). Only once the copy exists: the video is deleted at its host, with every R2
+   version and any Bunny copy, and `quarantine/{evidenceId}/` is deleted. The record is then `preserved`.
+4. **Sweep** (`swept_at`), after `Moderation:SweepAfter` (3 hours). Anything a transcode worker uploaded into
+   `clips/{clipId}/` with presigned URLs it held at removal is quarantined (or, once the record is preserved,
+   deleted), and the URLs purged again.
 
-Each step is recorded as it finishes, and only under the claim that ran it (`claimed_at`): a processor whose claim
-went stale (`EvidenceStaleAfter`) and was taken over writes nothing more. If the copy keeps failing, the video is
-still deleted and purged; see [When an evidence copy fails](#when-an-evidence-copy-fails).
+A **Bunny** clip can't be quarantined without the same download preserving does, so its video stays at Bunny, where
+its URL still plays, until the copy is made; only its R2 objects, if a migration left any, are quarantined. A
+failing copy of a Bunny clip is retried like any other and gets the same alerts.
 
-After the retention, the evidence files and record are deleted.
+Each step is recorded as it finishes and is safe to repeat, so a failed attempt resumes where it stopped. Steps are
+written only under the claim that ran them (`claimed_at`): a processor whose claim went stale (`EvidenceStaleAfter`)
+and was taken over writes nothing more.
+
+After the retention, the evidence files and record are deleted, only once the record is `preserved`: a record whose
+evidence copy doesn't exist yet is never deleted.
+
+### Statuses
+
+| `status`    | Meaning                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| `pending`   | The copy isn't made yet; being worked on. An R2 clip is quarantined from the first attempt on.                      |
+| `failed`    | Needs attention: still no copy after `EvidenceMaxAttempts`. Still retried, and nothing is deleted; see below.       |
+| `preserved` | The copy is in the evidence bucket, and the video is gone from its host and the quarantine. Kept for the retention. |
 
 ### Suspension
 
@@ -71,35 +93,61 @@ admin can't suspend themselves.
    permission, and set `Moderation__Cloudflare__ZoneId` and `Moderation__Cloudflare__ApiToken`. Without them,
    removal still deletes the files but records `cdn_purge = 'not_configured'`, and the admin page tells you to purge
    the clip's URLs by hand.
+5. **Block `/quarantine/*` on the media domain.** Quarantine keys are never handed out and carry a random evidence
+   id, but the media domain serves the whole media bucket, so as defence in depth add a WAF custom rule on the media
+   domain's zone: `(http.host eq "<media domain>" and starts_with(http.request.uri.path, "/quarantine/"))` →
+   **Block**. It is set once, by hand for now; it still needs adding to the infrastructure repo's Cloudflare config.
+   Check it by requesting any `/quarantine/...` URL on the media domain: it must answer Cloudflare's 403, not R2's 404. The media bucket's lifecycle rules must leave `quarantine/` alone (`docs/video-pipeline/r2-bucket.md`).
 
 Other settings: `Moderation:ContactEmail` (where owners dispute a takedown), `Moderation:ReportsPerMinute` (5),
-`EvidenceMaxAttempts` (5), `EvidenceRetryAfter` (5 minutes), `EvidenceStaleAfter` (30 minutes) and `SweepAfter`
-(3 hours, which must stay above `Transcoding:PresignLifetime`).
+`EvidenceMaxAttempts` (5), `EvidenceRetryAfter` (5 minutes), `EvidenceMaxRetryAfter` (1 hour), `EvidenceStaleAfter`
+(30 minutes) and `SweepAfter` (3 hours, which must stay above `Transcoding:PresignLifetime`).
 
 ## When an evidence copy fails
 
-While a record is retrying, the admin page shows the error it is retrying after, and nothing is deleted before the
-copy exists. Fix the cause (usually the bucket or token) within `EvidenceMaxAttempts` × `EvidenceRetryAfter` (about
-25 minutes at the defaults); raising `Moderation__EvidenceMaxAttempts` gives pending records more attempts at once.
-Each attempt resumes from the step it stopped at, so nothing already copied is copied again.
+Nothing of a removed clip is ever deleted before the evidence copy exists, and preserving is never given up on.
 
-After `EvidenceMaxAttempts` the record is `failed`: the evidence wasn't kept. The API logs it at Error and the admin
-page shows the last error. Taking the video off public storage matters more than keeping it, and the clip row is
-already gone, so the record is the only thing left pointing at the video: a failed record's video is still deleted
-from its host and purged from the media domain, retried every `EvidenceRetryAfter` with no limit until both are done
-(`media_deleted_at`, `cdn_purge`), and swept after `SweepAfter` like any other. If the copy had been saved before a
-later step ran out of attempts, the record becomes `preserved` once that is done.
+While a record is `pending`, attempts are `EvidenceRetryAfter` apart and the admin page shows the error it is
+retrying after. After `EvidenceMaxAttempts` the record is `failed`, which means **needs attention**, not given up: the
+API logs it at Error, the admin page says the copy still isn't made, and it is retried with a back-off that doubles
+from `EvidenceRetryAfter` up to `EvidenceMaxRetryAfter` (1 hour) for as long as it takes. Meanwhile:
 
-A failed record's video can't be copied afterwards: it is gone from public storage. What was snapshotted at removal
-(`clip_evidence.clip` and `owner`, with the reason and note) stays in the database for the retention; read it from
-there if the authorities ask.
+- an **R2** clip is in the quarantine, off public access, and its URLs are purged;
+- a **Bunny** clip's video is still at Bunny, and still plays from its Bunny URL, since nothing else holds a copy.
+  This is the case to fix first.
 
-A record is never deleted after its retention while it is pending, or before its video is deleted and purged.
+Fix the cause (usually the evidence bucket or the token's access to it, or Bunny for a Bunny clip). The next attempt
+picks it up, resuming from the step it stopped at; to retry at once rather than wait out the back-off:
+
+```sql
+UPDATE clip_evidence SET available_at = now() WHERE id = '<evidence id>';
+```
+
+Once the copy is made, the record goes to `preserved` and the error clears. A record whose copy doesn't exist yet is
+never deleted at the end of its retention.
+
+## Legal basis
+
+Why removed child-safety and terrorism content is kept, privately, rather than deleted:
+
+- **UK, Online Safety Act 2023 s66** (the duty to report detected CSEA content to the NCA, in force since 7 April 2026) and the **Online Safety (CSEA Content Reporting by Regulated User-to-User Service Providers) Regulations 2026
+  (SI 2026/268), reg 8**: content reported to the NCA must be kept for one year from the date the report was sent,
+  and the report's reference for five years.
+- **EU, Terrorist Content Online Regulation (2021/784) art. 6**: removed terrorist content must be kept for six
+  months.
+- **US, 18 U.S.C. 2258A(h)**, if it applies: content reported to NCMEC must be kept for one year.
+- **UK, Protection of Children Act 1978 s1B**: holding indecent images of children is an offence unless it is
+  necessary for preventing, detecting or investigating crime. This is why the copy must stay private and
+  access-controlled (the evidence bucket, with no public access, and the blocked quarantine) and why it is never
+  opened.
+
+`EvidenceRetention` (365 days from removal) covers these for now; retention counted from the date of the report to
+the authorities is a follow-up.
 
 ## Giving evidence to the authorities
 
 The evidence id is on the report (`content_report.evidence_id`). Download `{evidenceId}/record.json` and
-`{evidenceId}/video.mp4` from the evidence bucket in the Cloudflare dashboard, or with any S3 client using the R2
+`{evidenceId}/video.mp4` (or `{evidenceId}/source`) from the evidence bucket in the Cloudflare dashboard, or with any S3 client using the R2
 credentials. Don't open the video. If the authorities ask for it to be kept longer, extend it:
 
 ```sql
