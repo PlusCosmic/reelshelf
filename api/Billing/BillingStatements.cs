@@ -38,8 +38,19 @@ public interface IBillingStore
     /// <summary>Accounts with a subscription that grants <paramref name="minimum"/> or a better tier now.</summary>
     Task<List<Guid>> GetUserIdsWithTierAtLeast(AccountTier minimum);
 
-    /// <summary>Inserts or replaces the subscription. False when the account is gone or being deleted.</summary>
-    Task<bool> UpsertSubscription(BillingSubscription subscription);
+    /// <summary>
+    /// Inserts or replaces the subscription, and answers the account the stored row belongs to: a row already
+    /// recorded keeps its account, so that is another account when Stripe's customer no longer matches. Null when
+    /// nothing was recorded because the account is gone or being deleted.
+    /// </summary>
+    Task<Guid?> UpsertSubscription(BillingSubscription subscription);
+
+    /// <summary>
+    /// Holds the subscription's sync lock until disposed, so two syncs of it can't commit in the opposite order of
+    /// their reads from Stripe. Store calls made meanwhile run inside it and are committed when it is disposed; under
+    /// <see cref="LockCheckouts"/> it joins that transaction and is held until the checkout lock is released.
+    /// </summary>
+    Task<IAsyncDisposable> LockSubscription(string subscriptionId);
 
     /// <summary>
     /// Holds the account's checkout lock until disposed, so two requests can't each start a Checkout. Store calls
@@ -109,10 +120,11 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
         return (await connection.QueryAsync<Guid>(sql, new { tiers })).ToList();
     }
 
-    public async Task<bool> UpsertSubscription(BillingSubscription subscription)
+    public async Task<Guid?> UpsertSubscription(BillingSubscription subscription)
     {
         // The account may have been deleted, or marked for deletion, meanwhile: its deletion may already have
-        // cancelled what it knew of, so the caller cancels this one instead of recording it.
+        // cancelled what it knew of, so the caller cancels this one instead of recording it. A recorded
+        // subscription never moves to another account; the caller logs the disagreement instead.
         const string sql = """
             INSERT INTO billing_subscription (
                 id, user_id, status, lookup_key, tier, current_period_end, cancel_at_period_end, cancel_at, ended_at,
@@ -121,7 +133,6 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
                    @ScheduledLookupKey, @ScheduledAt
             WHERE EXISTS (SELECT 1 FROM app_user WHERE id = @UserId AND deletion_requested_at IS NULL)
             ON CONFLICT (id) DO UPDATE SET
-                user_id = EXCLUDED.user_id,
                 status = EXCLUDED.status,
                 lookup_key = EXCLUDED.lookup_key,
                 tier = EXCLUDED.tier,
@@ -132,8 +143,9 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
                 scheduled_lookup_key = EXCLUDED.scheduled_lookup_key,
                 scheduled_at = EXCLUDED.scheduled_at,
                 updated_at = now()
+            RETURNING user_id
             """;
-        int rows = await connection.ExecuteAsync(sql, new
+        return await connection.QuerySingleOrDefaultAsync<Guid?>(sql, new
         {
             subscription.Id,
             subscription.UserId,
@@ -147,11 +159,25 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
             subscription.ScheduledLookupKey,
             subscription.ScheduledAt
         });
-        return rows > 0;
     }
 
-    public async Task<IAsyncDisposable> LockCheckouts(Guid userId)
+    /// <summary>The transaction a lock taken through this store holds open; locks taken meanwhile join it.</summary>
+    private NpgsqlTransaction? _transaction;
+
+    public Task<IAsyncDisposable> LockCheckouts(Guid userId) => Lock($"billing-checkout:{userId}");
+
+    public Task<IAsyncDisposable> LockSubscription(string subscriptionId) =>
+        Lock($"billing-subscription:{subscriptionId}");
+
+    private async Task<IAsyncDisposable> Lock(string key)
     {
+        if (_transaction is { } open)
+        {
+            // Already inside a lock's transaction: this one is held with it, until it commits.
+            await connection.ExecuteAsync("SELECT pg_advisory_xact_lock(hashtext(@key))", new { key }, open);
+            return NestedLock.Instance;
+        }
+
         // A transaction-level lock on a connection kept open until disposed; the other statements share it.
         bool openedConnection = connection.State != System.Data.ConnectionState.Open;
         if (openedConnection)
@@ -160,9 +186,23 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
         }
 
         NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
-        await connection.ExecuteAsync("SELECT pg_advisory_xact_lock(hashtext(@key))",
-            new { key = $"billing-checkout:{userId}" }, transaction);
-        return new CheckoutLock(connection, transaction, openedConnection);
+        try
+        {
+            await connection.ExecuteAsync("SELECT pg_advisory_xact_lock(hashtext(@key))", new { key }, transaction);
+        }
+        catch
+        {
+            await transaction.DisposeAsync();
+            if (openedConnection)
+            {
+                await connection.CloseAsync();
+            }
+
+            throw;
+        }
+
+        _transaction = transaction;
+        return new TransactionLock(connection, transaction, openedConnection, () => _transaction = null);
     }
 
     public async Task<string?> GetCheckoutSessionId(Guid userId)
@@ -177,8 +217,11 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
             "UPDATE app_user SET stripe_checkout_session_id = @sessionId WHERE id = @userId", new { userId, sessionId });
     }
 
-    private sealed class CheckoutLock(NpgsqlConnection connection, NpgsqlTransaction transaction, bool openedConnection)
-        : IAsyncDisposable
+    private sealed class TransactionLock(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        bool openedConnection,
+        Action released) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
         {
@@ -188,6 +231,7 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
             }
             finally
             {
+                released();
                 await transaction.DisposeAsync();
                 if (openedConnection)
                 {
@@ -195,6 +239,13 @@ public sealed class BillingStatements(NpgsqlConnection connection) : IBillingSto
                 }
             }
         }
+    }
+
+    private sealed class NestedLock : IAsyncDisposable
+    {
+        public static readonly NestedLock Instance = new();
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     internal static string TierName(AccountTier tier)
