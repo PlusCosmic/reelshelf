@@ -7,6 +7,7 @@ import {
 import { IconMoon, IconSun } from "@tabler/icons-react";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { commonCopy } from "@/copy/common";
+import { shellCopy } from "@/copy/shell";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
 import { useCurrentUser } from "@/hooks/auth.queries";
 
@@ -104,12 +105,16 @@ function AuthenticatedShell({
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const { data: user, isLoading, isError } = useCurrentUser();
-  const signedIn = !!user && !isError;
+  const { data: user, isLoading, isError, refetch } = useCurrentUser();
+  // Only the API saying there is no session counts as signed out (fetchMe answers null on a 401); a failed check
+  // keeps the hint, the address and a session already loaded.
+  const signedIn = !!user;
+  const signedOut = !isLoading && !isError && !user;
 
   useEffect(() => {
-    if (!isLoading) rememberSignedIn(signedIn);
-  }, [isLoading, signedIn]);
+    if (signedIn) rememberSignedIn(true);
+    else if (signedOut) rememberSignedIn(false);
+  }, [signedIn, signedOut]);
 
   if (isLoading) {
     // Someone who has never signed in on this browser gets the front page straight away, rather
@@ -119,6 +124,10 @@ function AuthenticatedShell({
       return <LandingPage theme={theme} onToggleTheme={onToggleTheme} />;
     }
     return <ShellPending />;
+  }
+
+  if (!signedIn && isError) {
+    return <ShellUnavailable onRetry={() => void refetch()} />;
   }
 
   if (!signedIn) {
@@ -137,6 +146,19 @@ function AuthenticatedShell({
 
 function ShellPending() {
   return <div className="rs-landing rs-landing-pending" aria-busy="true" />;
+}
+
+function ShellUnavailable({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="rs-landing rs-landing-pending">
+      <div className="rs-section rs-empty" role="alert">
+        <p>{shellCopy.sessionUnavailable}</p>
+        <button type="button" className="rs-primary" onClick={onRetry}>
+          {commonCopy.tryAgain}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function PublicShell({

@@ -46,6 +46,7 @@ import {
   isShortcutKey,
   readSortTally,
   recordSort,
+  unrecordSort,
   type SortTally,
 } from "./sortThrough";
 import type { ClipLinkSearch } from "./primitives/ClipViews";
@@ -526,6 +527,11 @@ export function ClipPlayerPage({
   const [tally, setTally] = useState<SortTally>(readSortTally);
   // Sorting reached the end of the list.
   const [sortDone, setSortDone] = useState(false);
+  // The clip a keep is moving on from, so presses while the next clip loads count once.
+  const keptFrom = useRef<string | null>(null);
+  useEffect(() => {
+    keptFrom.current = null;
+  }, [clipId]);
   const { data: playlist } = useQuery({
     queryKey: ["playlists", collectionId],
     queryFn: () => fetchPlaylistById(collectionId!),
@@ -617,14 +623,21 @@ export function ClipPlayerPage({
       await bin(
         { clipIds: [current.clipId] },
         {
-          onUndone: () =>
+          onUndone: () => {
+            // Back to sorting the clip that was put back, which no longer counts as binned.
+            if (list.sort) {
+              setTally(unrecordSort("binned"));
+              setSortDone(false);
+              keptFrom.current = null;
+            }
             void navigate({
               to: "/games/$slug/$clipId",
               params: { slug: current.categorySlug, clipId: current.clipId },
               search: list,
               replace: true,
               state: { fromList },
-            }),
+            });
+          },
         },
       );
     } catch {
@@ -636,6 +649,8 @@ export function ClipPlayerPage({
   };
 
   const keep = (current: Clip) => {
+    if (keptFrom.current === current.clipId) return;
+    keptFrom.current = current.clipId;
     setTally(recordSort("kept"));
     void stepOn(current);
   };

@@ -2,20 +2,9 @@ import type { GameCategoryResponse } from "@/api-client";
 import { gamingSessionDate } from "@/shared/utils/gamingSession";
 import { uploadCopy } from "@/copy/upload";
 
-type BulkUploadStatus =
-  | "ready"
-  | "needs_game"
-  | "hashing"
-  | "creating"
-  | "uploading"
-  | "paused"
-  | "uploaded"
-  | "filing"
-  | "saved"
-  | "filing_error"
-  | "duplicate"
-  | "cancelled"
-  | "error";
+// Whether a dropped file has a game yet. Everything after that (hashing, uploading, errors) is the uploader's own
+// UploadStatus in UploadsProvider, which maps these rows to its items.
+type BulkUploadStatus = "ready" | "needs_game";
 
 export type GameAssignmentSource = "source_path" | "fallback_context";
 

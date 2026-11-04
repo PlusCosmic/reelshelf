@@ -94,8 +94,9 @@ export const adminCopy = {
     removal: {
       nothingKept: "Nothing was kept: the clip had already been deleted.",
       failed: (error: string | null | undefined) =>
-        `The clip couldn't be kept or taken off public storage: ${error ?? "no error was recorded"}. Fix the cause, then retry it by hand (docs/moderation.md).`,
-      pending: "Keeping a private copy and taking it off public storage…",
+        `Needs attention: the private evidence copy still isn't made (${error ?? "no error was recorded"}). It is still being retried, and nothing is deleted until it works. The video is quarantined, off public access, unless the clip is on Bunny, where it stays until the copy is made. Fix the cause (docs/moderation.md).`,
+      pending:
+        "Quarantining the clip off public access and keeping a private copy…",
       retrying: (error: string) => ` Retrying after: ${error}`,
       kept: (date: string) =>
         `Kept privately as evidence until ${date}, and gone from public storage.`,

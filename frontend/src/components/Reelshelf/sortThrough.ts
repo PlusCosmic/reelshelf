@@ -40,6 +40,14 @@ export function recordSort(kind: keyof SortTally): SortTally {
   return next;
 }
 
+/** Takes back one recorded sort, such as a bin that was undone; never below 0. */
+export function unrecordSort(kind: keyof SortTally): SortTally {
+  const tally = readSortTally();
+  const next = { ...tally, [kind]: Math.max(0, tally[kind] - 1) };
+  writeSortTally(next);
+  return next;
+}
+
 /** Whether a key press is for the page's shortcuts, not text being typed or a shortcut of the browser's own. */
 export function isShortcutKey(event: KeyboardEvent) {
   const target = event.target;

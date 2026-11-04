@@ -79,6 +79,8 @@ export function ClipVideoPlayer({
       video.removeEventListener("loadedmetadata", onMetadata);
       video.removeEventListener("loadeddata", onFirstFrame);
       detach();
+      // The problem belonged to this attempt; coming back to these sources tries them afresh.
+      setProblem((current) => (current?.key === key ? null : current));
     };
   }, [key]);
 

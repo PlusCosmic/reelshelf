@@ -255,11 +255,18 @@ public class TranscodeQueueTests
         await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Transcode, new TranscodeRunInput("a"));
 
         ClaimedTranscodeRun first = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.ReportProgressAsync(first.RunId, first.LeaseId, 40, false));
         Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.FailAsync(first.RunId, first.LeaseId, "R2 timed out", true));
         // Repeating the report is harmless.
         Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.FailAsync(first.RunId, first.LeaseId, "R2 timed out", true));
         Assert.Equal("pending", await test.RunStatusAsync(first.RunId));
         Assert.NotEqual("encode_failed", (await test.ClipStateAsync(clipId)).State);
+        // Waiting to retry, it has no heartbeat or progress, but keeps the lease so the repeat above is recognised.
+        (DateTime? heartbeat, int? progress, Guid? lease) = await test.Connection.QuerySingleAsync<(DateTime?, int?, Guid?)>(
+            "SELECT heartbeat_at, progress, lease_id FROM transcode_run WHERE id = @RunId", new { first.RunId });
+        Assert.Null(heartbeat);
+        Assert.Null(progress);
+        Assert.Equal(first.LeaseId, lease);
         Assert.Null(await test.Queue.ClaimAsync());
 
         await test.Connection.ExecuteAsync("UPDATE transcode_run SET available_at = now() - interval '1 second'");

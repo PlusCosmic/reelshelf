@@ -42,6 +42,9 @@ public static class ModerationSetup
             builder.Services.AddSingleton<IEvidenceStorage, UnconfiguredEvidenceStorage>();
         }
 
+        builder.Services.AddSingleton<IEvidenceQuarantine>(provider =>
+            provider.GetService<R2Storage>() is { } media ? new R2EvidenceQuarantine(media) : new NoEvidenceQuarantine());
+
         if (r2 is null)
         {
             builder.Services.AddSingleton<ICdnPurger>(new NoCdnPurger(CdnPurgeResults.NotNeeded));

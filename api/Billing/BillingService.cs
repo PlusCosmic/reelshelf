@@ -360,6 +360,12 @@ public sealed class BillingService(
 
         logger.LogInformation("Stripe subscription {SubscriptionId} of account {UserId} is {Status} on {LookupKey}",
             subscription.Id, userId, subscription.Status, subscription.LookupKey);
+        if (!SubscriptionStatuses.IsKnown(subscription.Status))
+        {
+            logger.LogWarning(
+                "Stripe subscription {SubscriptionId} has status {Status}, which Reelshelf doesn't know; it grants no tier and counts as open",
+                subscription.Id, subscription.Status);
+        }
 
         List<BillingSubscription> all = await store.GetSubscriptions(userId);
         if (all.Count(other => SubscriptionStatuses.IsOpen(other.Status)) > 1)
