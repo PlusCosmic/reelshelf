@@ -91,33 +91,56 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
     /// attempt. Manual and retry runs go before automatic ones, so they never wait behind a backfill; otherwise
     /// the oldest goes first. A run that already failed an attempt waits <paramref name="retryAfter"/> before it
     /// is retried.
+    /// Runs that would be claimable but have used <paramref name="maxAttempts"/> are failed first and never claimed.
+    /// Each claim gets a fresh <c>claim_id</c>, which the processor passes back to <see cref="CompleteRunAsync"/> and
+    /// <see cref="FailRunAsync"/>, so only the latest claim's result is written.
     /// SKIP LOCKED keeps two API instances from claiming the same run.
     /// </summary>
-    public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter)
+    public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter, int maxAttempts)
     {
+        const string giveUpSql = """
+            UPDATE clip_transcription_run
+            SET status = 'failed', error = 'Gave up after ' || @MaxAttempts || ' attempts', claim_id = NULL,
+                completed_at = now()
+            WHERE id IN (
+                SELECT id FROM clip_transcription_run
+                WHERE attempts >= @MaxAttempts
+                  AND ((status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
+                    OR (status = 'running' AND started_at < now() - @StaleAfter))
+                FOR UPDATE SKIP LOCKED)
+            """;
+        object parameters = new { RetryAfter = retryAfter, StaleAfter = staleAfter, MaxAttempts = maxAttempts };
+        await connection.ExecuteAsync(giveUpSql, parameters);
+
         string sql = $"""
             UPDATE clip_transcription_run run
-            SET status = 'running', attempts = run.attempts + 1, started_at = now()
+            SET status = 'running', attempts = run.attempts + 1, started_at = now(), claim_id = gen_random_uuid()
             FROM clip
             JOIN game_category game ON game.id = clip.game_category_id
             WHERE clip.id = run.clip_id
               AND run.id = (
                   SELECT id FROM clip_transcription_run
-                  WHERE (status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
-                     OR (status = 'running' AND started_at < now() - @StaleAfter)
+                  WHERE attempts < @MaxAttempts
+                    AND ((status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
+                      OR (status = 'running' AND started_at < now() - @StaleAfter))
                   ORDER BY trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height,
+            RETURNING run.id, run.claim_id, run.clip_id, clip.video_id, clip.video_host, clip.video_version, clip.video_codecs, clip.video_height,
                       clip.video_state, {ClipVideoColumns.ThumbnailsReadySql("clip")}, run.trigger, run.model, run.attempts,
                       game.name AS game_name, game.slug AS game_slug
             """;
-        return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql,
-            new { RetryAfter = retryAfter, StaleAfter = staleAfter });
+        return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql, parameters);
     }
 
-    public async Task CompleteRunAsync(
+    /// <summary>
+    /// Records a claim's result. Nothing is written unless the run is still running under
+    /// <paramref name="claimId"/>: a run reclaimed after its processor went quiet, or already finished, keeps what it
+    /// has. Returns whether the result was written.
+    /// </summary>
+    public async Task<bool> CompleteRunAsync(
         Guid runId,
+        Guid claimId,
         TranscriptionPrompt prompt,
         ClipAudio audio,
         ClipTranscript? transcript,
@@ -142,11 +165,12 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
                 duration_ms = @DurationMs,
                 error = NULL,
                 completed_at = now()
-            WHERE id = @RunId
+            WHERE id = @RunId AND claim_id = @ClaimId AND status = 'running'
             """;
-        await connection.ExecuteAsync(sql, new
+        return await connection.ExecuteAsync(sql, new
         {
             RunId = runId,
+            ClaimId = claimId,
             FallbackModel = fallbackModel,
             PromptVersion = TranscriptionPrompt.Version,
             prompt.Prompt,
@@ -160,11 +184,14 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
             transcript?.InputTokens,
             transcript?.OutputTokens,
             DurationMs = durationMs
-        });
+        }) > 0;
     }
 
-    /// <summary>Records a failed attempt; the run goes back to pending unless <paramref name="retry"/> is false.</summary>
-    public async Task FailRunAsync(Guid runId, string error, TranscriptionPrompt? prompt, bool retry)
+    /// <summary>
+    /// Records a claim's failed attempt; the run goes back to pending unless <paramref name="retry"/> is false.
+    /// Nothing is written unless the run is still running under <paramref name="claimId"/>; returns whether it was.
+    /// </summary>
+    public async Task<bool> FailRunAsync(Guid runId, Guid claimId, string error, TranscriptionPrompt? prompt, bool retry)
     {
         const string sql = """
             UPDATE clip_transcription_run
@@ -174,17 +201,18 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
                 prompt = COALESCE(@Prompt, prompt),
                 keywords = COALESCE(@Keywords, keywords),
                 completed_at = CASE WHEN @Retry THEN NULL ELSE now() END
-            WHERE id = @RunId
+            WHERE id = @RunId AND claim_id = @ClaimId AND status = 'running'
             """;
-        await connection.ExecuteAsync(sql, new
+        return await connection.ExecuteAsync(sql, new
         {
             RunId = runId,
+            ClaimId = claimId,
             Error = error,
             PromptVersion = prompt is null ? null : TranscriptionPrompt.Version,
             Prompt = prompt?.Prompt,
             Keywords = prompt?.Keywords.ToArray(),
             Retry = retry
-        });
+        }) > 0;
     }
 
     public async Task<List<ClipTranscriptionRunRow>> GetRunsForClipAsync(Guid clipId)
@@ -326,6 +354,7 @@ public class ClipTranscriptionStatements(NpgsqlConnection connection)
     public class ClaimedRunRow : IClipVideoColumns
     {
         public Guid Id { get; set; }
+        public Guid ClaimId { get; set; }
         public Guid ClipId { get; set; }
         public Guid VideoId { get; set; }
         public string VideoHost { get; set; } = "";

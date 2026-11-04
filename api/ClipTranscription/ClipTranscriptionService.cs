@@ -191,31 +191,31 @@ public class ClipTranscriptionService(
             return false;
         }
 
-        ClipTranscriptionStatements.ClaimedRunRow? run = await statements.ClaimNextRunAsync(RetryAfter, StaleAfter);
+        ClipTranscriptionOptions current = options.CurrentValue;
+        ClipTranscriptionStatements.ClaimedRunRow? run =
+            await statements.ClaimNextRunAsync(RetryAfter, StaleAfter, current.MaxAttempts);
         if (run is null)
         {
             return false;
         }
 
-        ClipTranscriptionOptions current = options.CurrentValue;
-        if (run.Attempts > current.MaxAttempts)
-        {
-            await statements.FailRunAsync(run.Id, $"Gave up after {current.MaxAttempts} attempts", null, retry: false);
-            return true;
-        }
-
         bool canRetry = run.Attempts < current.MaxAttempts;
         TranscriptionPrompt prompt = TranscriptionPrompt.For(run.GameName, run.GameSlug, run.Model);
         bool? heardSpeech = null;
-        string audioPath = Path.Combine(Path.GetTempPath(), "clip-transcription", $"{run.Id:N}.m4a");
+        string audioPath = Path.Combine(Path.GetTempPath(), "clip-transcription", $"{run.ClaimId:N}.m4a");
         try
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
             ClipAudio audio = await ClipAudioExtractor.ExtractAsync(mediaUrls.ServerStream(run.ToVideoRef()), audioPath, cancellationToken);
             if (!audio.HasAudio)
             {
-                await statements.CompleteRunAsync(run.Id, prompt, audio, null, null,
-                    (int)stopwatch.ElapsedMilliseconds);
+                if (!await statements.CompleteRunAsync(run.Id, run.ClaimId, prompt, audio, null, null,
+                        (int)stopwatch.ElapsedMilliseconds))
+                {
+                    LogDropped(run, "result");
+                    return true;
+                }
+
                 heardSpeech = false;
                 logger.LogInformation("Clip {ClipId} has no audio track; nothing to transcribe", run.ClipId);
                 return true;
@@ -223,7 +223,7 @@ public class ClipTranscriptionService(
 
             if (audio.Bytes > MaxUploadBytes)
             {
-                await statements.FailRunAsync(run.Id,
+                await FailAsync(run,
                     $"The clip's audio is {audio.Bytes / (1024 * 1024)} MB, over the {MaxUploadBytes / (1024 * 1024)} MB upload limit",
                     prompt, retry: false);
                 return true;
@@ -246,8 +246,13 @@ public class ClipTranscriptionService(
                 }
             }
 
-            await statements.CompleteRunAsync(run.Id, prompt, audio, transcript, fallbackModel,
-                (int)stopwatch.ElapsedMilliseconds);
+            if (!await statements.CompleteRunAsync(run.Id, run.ClaimId, prompt, audio, transcript, fallbackModel,
+                    (int)stopwatch.ElapsedMilliseconds))
+            {
+                LogDropped(run, "result");
+                return true;
+            }
+
             heardSpeech = transcript.Text.Length > 0;
             logger.LogInformation(
                 "Transcribed clip {ClipId} with {Model}: {Seconds:0}s of audio, {Characters} characters",
@@ -258,7 +263,7 @@ public class ClipTranscriptionService(
             logger.LogWarning(ex, "Transcription attempt {Attempt} failed for clip {ClipId} with {Model}",
                 run.Attempts, run.ClipId, run.Model);
             bool retry = canRetry && ex is not ClipTranscriptionException { Retryable: false };
-            await statements.FailRunAsync(run.Id, ex.Message, prompt, retry);
+            await FailAsync(run, ex.Message, prompt, retry);
         }
         finally
         {
@@ -270,6 +275,21 @@ public class ClipTranscriptionService(
         }
 
         return true;
+    }
+
+    /// <summary>Records a failed attempt under the run's claim, logging when it was reclaimed or finished meanwhile.</summary>
+    private async Task FailAsync(ClipTranscriptionStatements.ClaimedRunRow run, string error, TranscriptionPrompt? prompt, bool retry)
+    {
+        if (!await statements.FailRunAsync(run.Id, run.ClaimId, error, prompt, retry))
+        {
+            LogDropped(run, "failure");
+        }
+    }
+
+    private void LogDropped(ClipTranscriptionStatements.ClaimedRunRow run, string what)
+    {
+        logger.LogWarning("Dropped transcription {What} for run {RunId} (clip {ClipId}): it was reclaimed or finished meanwhile",
+            what, run.Id, run.ClipId);
     }
 
     /// <summary>
