@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Reelshelf.Test.Plans;
 
-/// <summary>Runs the grace and export queries against a real Postgres, on the V47 migration itself.</summary>
+/// <summary>Runs the grace and export queries against a real Postgres, on the V47 and V58 migrations themselves.</summary>
 public class PlanEnforcementStatementsTests
 {
     [PostgresFact]
@@ -33,8 +33,11 @@ public class PlanEnforcementStatementsTests
             await TestClipSchema.CreateAsync(connection);
             await connection.ExecuteAsync(
                 await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V47__plan_enforcement.sql")));
+            await connection.ExecuteAsync(
+                await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V58__clip_export_lease.sql")));
             await AccountsAsync(connection, new PlanEnforcementStatements(dataSource.CreateConnection()));
             await ExportsAsync(connection, new ClipExportStatements(dataSource.CreateConnection()));
+            await LeasesAsync(connection, new ClipExportStatements(dataSource.CreateConnection()));
         }
         finally
         {
@@ -86,53 +89,119 @@ public class PlanEnforcementStatementsTests
         Assert.All(await statements.GetOwnedClips(busy), clip => Assert.Null(clip.KeptAt));
     }
 
+    private static readonly TimeSpan Stale = TimeSpan.FromMinutes(30);
+    private const int MaxAttempts = 3;
+
     private static async Task ExportsAsync(NpgsqlConnection connection, ClipExportStatements statements)
     {
         Guid owner = await connection.QuerySingleAsync<Guid>("SELECT id FROM app_user WHERE email = 'busy@example.com'");
         List<Guid> clipIds = (await connection.QueryAsync<Guid>(
             "SELECT id FROM clip WHERE owner_id = @owner ORDER BY created_at", new { owner })).ToList();
 
-        Guid exportId = await statements.Create(owner, ClipExportReasons.GraceEnded, clipIds.Take(2).ToList());
+        Guid exportId = (await statements.Create(owner, ClipExportReasons.GraceEnded, clipIds.Take(2).ToList()))!.Value;
         ClipExport created = (await statements.Get(exportId))!;
         Assert.Equal((ClipExportStatuses.Pending, 0), (created.Status, created.Attempts));
         Assert.Equal(clipIds.Take(2), created.ClipIds);
+        Assert.Null(created.LeaseId);
 
-        ClipExport claimed = (await statements.Claim(TimeSpan.FromMinutes(30)))!;
+        // One waiting or running export per account and reason.
+        Assert.Null(await statements.Create(owner, ClipExportReasons.GraceEnded, [clipIds[0]]));
+
+        ClipExport claimed = (await statements.Claim(Stale, MaxAttempts))!;
         Assert.Equal((exportId, ClipExportStatuses.Running, 1), (claimed.Id, claimed.Status, claimed.Attempts));
-        Assert.Null(await statements.Claim(TimeSpan.FromMinutes(30)));
+        Assert.NotNull(claimed.LeaseId);
+        Assert.Null(await statements.Claim(Stale, MaxAttempts));
+        Assert.True(await statements.Heartbeat(exportId, claimed.LeaseId!.Value));
 
-        // Gone quiet: claimed again.
+        // Gone quiet: claimed again, under a new lease.
         await connection.ExecuteAsync("UPDATE clip_export SET heartbeat_at = now() - interval '1 hour'");
-        Assert.Equal(2, (await statements.Claim(TimeSpan.FromMinutes(30)))!.Attempts);
+        ClipExport reclaimed = (await statements.Claim(Stale, MaxAttempts))!;
+        Assert.Equal(2, reclaimed.Attempts);
+        Assert.NotEqual(claimed.LeaseId, reclaimed.LeaseId);
+        Guid lease = reclaimed.LeaseId!.Value;
 
         // A retry waits out its delay.
-        await statements.Fail(exportId, "storage is down", TimeSpan.FromMinutes(10));
+        Assert.True(await statements.Fail(exportId, lease, "storage is down", TimeSpan.FromMinutes(10)));
         Assert.Equal((ClipExportStatuses.Pending, "storage is down"),
             ((await statements.Get(exportId))!.Status, (await statements.Get(exportId))!.Error));
-        Assert.Null(await statements.Claim(TimeSpan.FromMinutes(30)));
+        Assert.Null(await statements.Claim(Stale, MaxAttempts));
         await connection.ExecuteAsync("UPDATE clip_export SET available_at = now()");
-        Assert.NotNull(await statements.Claim(TimeSpan.FromMinutes(30)));
+        lease = (await statements.Claim(Stale, MaxAttempts))!.LeaseId!.Value;
 
         List<ExportClipRow> rows = await statements.GetExportClips(owner, clipIds.Take(2).Append(Guid.NewGuid()).ToList());
         Assert.Equal(clipIds.Take(2), rows.Select(row => row.Id));
         Assert.Equal("Apex Legends", rows[0].GameName);
 
-        await statements.Complete(exportId, [new ClipExportPart(1, 1234, 2)], DateTimeOffset.UtcNow.AddDays(28));
+        Assert.True(await statements.Complete(exportId, lease, [new ClipExportPart(1, 1234, 2)],
+            DateTimeOffset.UtcNow.AddDays(28)));
         ClipExport ready = (await statements.Get(exportId))!;
         Assert.Equal(ClipExportStatuses.Ready, ready.Status);
         Assert.Equal([new ClipExportPart(1, 1234, 2)], ready.Parts);
         Assert.Null(ready.Error);
+        Assert.Equal(lease, ready.LeaseId);
         Assert.Empty(await statements.ExpireDue());
+
+        // Settled: even its own run can't touch it again, and a new one may be asked for.
+        Assert.False(await statements.Fail(exportId, lease, "late", TimeSpan.Zero));
+        Assert.False(await statements.Heartbeat(exportId, lease));
+        Assert.Equal(ClipExportStatuses.Ready, (await statements.Get(exportId))!.Status);
 
         await connection.ExecuteAsync("UPDATE clip_export SET expires_at = now() - interval '1 minute'");
         Assert.Equal([exportId], (await statements.ExpireDue()).Select(export => export.Id));
         Assert.Equal(ClipExportStatuses.Expired, (await statements.Get(exportId))!.Status);
 
-        Guid failing = await statements.Create(owner, ClipExportReasons.Requested, [clipIds[0]]);
-        await statements.Claim(TimeSpan.FromMinutes(30));
-        await statements.Fail(failing, "no", retryAfter: null);
+        Guid failing = (await statements.Create(owner, ClipExportReasons.Requested, [clipIds[0]]))!.Value;
+        ClipExport failingRun = (await statements.Claim(Stale, MaxAttempts))!;
+        Assert.True(await statements.Fail(failing, failingRun.LeaseId!.Value, "no", retryAfter: null));
         Assert.Equal(ClipExportStatuses.Failed, (await statements.Get(failing))!.Status);
         Assert.Equal([failing, exportId], (await statements.GetForUser(owner)).Select(export => export.Id));
+    }
+
+    /// <summary>A run whose export was claimed again can neither settle it nor keep it alive (#320).</summary>
+    private static async Task LeasesAsync(NpgsqlConnection connection, ClipExportStatements statements)
+    {
+        await connection.ExecuteAsync("DELETE FROM clip_export");
+        Guid owner = await connection.QuerySingleAsync<Guid>("SELECT id FROM app_user WHERE email = 'busy@example.com'");
+        Guid clip = await connection.QuerySingleAsync<Guid>("SELECT id FROM clip WHERE owner_id = @owner LIMIT 1",
+            new { owner });
+        Guid exportId = (await statements.Create(owner, ClipExportReasons.GraceEnded, [clip]))!.Value;
+
+        Guid first = (await statements.Claim(Stale, MaxAttempts))!.LeaseId!.Value;
+        await connection.ExecuteAsync("UPDATE clip_export SET heartbeat_at = now() - interval '1 hour'");
+        Guid second = (await statements.Claim(Stale, MaxAttempts))!.LeaseId!.Value;
+
+        // The first run woke up: it can't keep the export alive, fail it or complete it.
+        Assert.False(await statements.Heartbeat(exportId, first));
+        Assert.False(await statements.Fail(exportId, first, "stale", TimeSpan.Zero));
+        Assert.False(await statements.Complete(exportId, first, [new ClipExportPart(1, 1, 1)], DateTimeOffset.UtcNow));
+        ClipExport running = (await statements.Get(exportId))!;
+        Assert.Equal((ClipExportStatuses.Running, second, 2), (running.Status, running.LeaseId!.Value, running.Attempts));
+
+        // Once the second run has made it ready, the first can't turn it back into pending or failed.
+        Assert.True(await statements.Complete(exportId, second, [new ClipExportPart(1, 10, 1)],
+            DateTimeOffset.UtcNow.AddDays(28)));
+        Assert.False(await statements.Fail(exportId, first, "stale", retryAfter: null));
+        ClipExport ready = (await statements.Get(exportId))!;
+        Assert.Equal((ClipExportStatuses.Ready, second), (ready.Status, ready.LeaseId!.Value));
+        Assert.Equal([new ClipExportPart(1, 10, 1)], ready.Parts);
+
+        // Going quiet uses an attempt: the run that goes quiet on the last one fails the export, it isn't claimed.
+        await connection.ExecuteAsync("DELETE FROM clip_export");
+        Guid hanging = (await statements.Create(owner, ClipExportReasons.Requested, [clip]))!.Value;
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            Assert.Equal(attempt, (await statements.Claim(Stale, MaxAttempts))!.Attempts);
+            await connection.ExecuteAsync("UPDATE clip_export SET heartbeat_at = now() - interval '1 hour'");
+        }
+
+        Assert.Null(await statements.Claim(Stale, MaxAttempts));
+        ClipExport exhausted = (await statements.Get(hanging))!;
+        Assert.Equal((ClipExportStatuses.Failed, MaxAttempts), (exhausted.Status, exhausted.Attempts));
+        Assert.Equal("The export stopped responding", exhausted.Error);
+        Assert.Null(exhausted.LeaseId);
+
+        // No longer active, so another may be asked for.
+        Assert.NotNull(await statements.Create(owner, ClipExportReasons.Requested, [clip]));
     }
 
     private static async Task<Guid> InsertClip(NpgsqlConnection connection, Guid owner, Guid game, DateTimeOffset createdAt)

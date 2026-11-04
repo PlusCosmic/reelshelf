@@ -240,23 +240,30 @@ public class OverLimitSweeperTests
             All[index] = All[index] with { Status = status };
         }
 
-        public Task<Guid> Create(Guid userId, string reason, IReadOnlyCollection<Guid> clipIds)
+        public Task<Guid?> Create(Guid userId, string reason, IReadOnlyCollection<Guid> clipIds)
         {
+            if (All.Any(other => other.UserId == userId && other.Reason == reason &&
+                    ClipExportStatuses.IsActive(other.Status)))
+            {
+                return Task.FromResult<Guid?>(null);
+            }
+
             ClipExport export = new(Guid.NewGuid(), userId, reason, ClipExportStatuses.Pending, clipIds.ToList(), [], 0,
                 null, Start.AddDays(14).AddSeconds(All.Count), null, null);
             All.Add(export);
-            return Task.FromResult(export.Id);
+            return Task.FromResult<Guid?>(export.Id);
         }
 
         public Task<List<ClipExport>> GetForUser(Guid userId) =>
             Task.FromResult(All.Where(export => export.UserId == userId).ToList());
 
         public Task<ClipExport?> Get(Guid exportId) => Task.FromResult(All.FirstOrDefault(export => export.Id == exportId));
-        public Task<ClipExport?> Claim(TimeSpan staleAfter) => throw new NotSupportedException();
-        public Task Heartbeat(Guid exportId) => throw new NotSupportedException();
-        public Task Complete(Guid exportId, IReadOnlyList<ClipExportPart> parts, DateTimeOffset expiresAt) =>
+        public Task<ClipExport?> Claim(TimeSpan staleAfter, int maxAttempts) => throw new NotSupportedException();
+        public Task<bool> Heartbeat(Guid exportId, Guid leaseId) => throw new NotSupportedException();
+        public Task<bool> Complete(Guid exportId, Guid leaseId, IReadOnlyList<ClipExportPart> parts,
+            DateTimeOffset expiresAt) => throw new NotSupportedException();
+        public Task<bool> Fail(Guid exportId, Guid leaseId, string error, TimeSpan? retryAfter) =>
             throw new NotSupportedException();
-        public Task Fail(Guid exportId, string error, TimeSpan? retryAfter) => throw new NotSupportedException();
         public Task<List<ClipExport>> ExpireDue() => throw new NotSupportedException();
         public Task<List<ExportClipRow>> GetExportClips(Guid userId, IReadOnlyCollection<Guid> clipIds) =>
             throw new NotSupportedException();
