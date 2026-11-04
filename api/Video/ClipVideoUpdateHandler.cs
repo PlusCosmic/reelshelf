@@ -44,9 +44,17 @@ public class ClipVideoUpdateHandler(
 
         try
         {
-            await clipsStatements.UpdateClipMetadata(clip.Id, clip.VideoHost, clip.VideoId, clip.Title ?? video.Title, video);
-
-            logger.LogInformation("[VIDEO UPDATE] Successfully updated clip metadata for ClipId: {ClipId}", clip.Id);
+            if (await clipsStatements.UpdateClipMetadata(clip.Id, clip.VideoHost, clip.VideoId, clip.Title ?? video.Title, video))
+            {
+                logger.LogInformation("[VIDEO UPDATE] Successfully updated clip metadata for ClipId: {ClipId}", clip.Id);
+            }
+            else
+            {
+                // Moved hosts meanwhile, or a stale read the clip has moved past (ClipVideoTransitions).
+                logger.LogInformation(
+                    "[VIDEO UPDATE] Left clip {ClipId} alone: {Status} is not a move from where it is now",
+                    clip.Id, video.Status);
+            }
         }
         catch (Exception ex)
         {

@@ -42,7 +42,9 @@ takes every new upload when `VideoHost:NewUploads=r2`.
   (`api/Bunny/BunnyWebhookEndpoints.cs`) calls it, and `TranscodeQueue` hands it our own worker's reports.
 - `ClipVideoStatus` (`api/Video/ClipVideoStatus.cs`, column `clip.video_state`) is the app's own status:
   `awaiting_upload`, `uploaded`, `processing`, `ready`, `encode_failed`, `upload_failed`. `clip.video_status`
-  still holds Bunny's raw number and is due to be dropped.
+  still holds Bunny's raw number and is due to be dropped. The moves each writer may make are one table,
+  `ClipVideoTransitions` in the same file; every statement that writes the column takes its from-states from it,
+  so a late or out-of-order report (a Bunny "processing" after "ready", progress after a failure) changes nothing.
 
 ## What a replacement host has to provide
 
