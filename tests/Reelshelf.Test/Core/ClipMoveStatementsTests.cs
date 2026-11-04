@@ -8,7 +8,8 @@ namespace Reelshelf.Test.Core;
 
 /// <summary>
 /// Moving clips between books against a real Postgres: only the owner's unbinned clips move, a filter moves every
-/// match, a book never ends up holding the same file twice, and a moved clip remembers the book it was filed in.
+/// match, a book never ends up holding the same file twice, and a moved clip remembers the book it was filed in. The
+/// schema starts with the baseline's duplicate key and runs V58 over it, as prod will.
 /// </summary>
 public class ClipMoveStatementsTests
 {
@@ -75,6 +76,38 @@ public class ClipMoveStatementsTests
     }
 
     [PostgresFact]
+    public async Task ClipsWithoutAHash_ShareABook_AndAlwaysMove()
+    {
+        await using TestDatabase test = await TestDatabase.CreateAsync();
+        // Twitch imports have no MD5; before V58 the second one in a book broke the duplicate key.
+        await test.AddClipAsync(ValorantId, "Import 1", md5: null);
+        await test.AddClipAsync(ValorantId, "Import 2", md5: null);
+        Guid fromApex = await test.AddClipAsync(ApexId, "Import 3", md5: null);
+        Guid fromFortnite = await test.AddClipAsync(FortniteId, "Import 4", md5: null);
+
+        List<ClipsStatements.MoveClipRow> rows = await test.Clips.MoveClips(test.OwnerId, ValorantId,
+            [fromApex, fromFortnite]);
+
+        Assert.All(rows, row => Assert.True(row.Moved));
+        Assert.Equal(4, await test.Connection.ExecuteScalarAsync<int>(
+            "SELECT count(*) FROM clip WHERE game_category_id = @ValorantId", new { ValorantId }));
+    }
+
+    [PostgresFact]
+    public async Task TheDuplicateKey_StillRefusesTheSameFileTwiceInABook()
+    {
+        await using TestDatabase test = await TestDatabase.CreateAsync();
+        await test.AddClipAsync(ValorantId, "First", "same");
+
+        PostgresException refused = await Assert.ThrowsAsync<PostgresException>(
+            () => test.AddClipAsync(ValorantId, "Second", "same"));
+        Assert.Equal(PostgresErrorCodes.UniqueViolation, refused.SqlState);
+        // The baseline's key is gone, not just joined by the new one.
+        Assert.Equal(0, await test.Connection.ExecuteScalarAsync<int>(
+            "SELECT count(*) FROM pg_constraint WHERE conrelid = 'clip'::regclass AND contype = 'u'"));
+    }
+
+    [PostgresFact]
     public async Task MovingAFilter_MovesEveryMatch_AndNothingElse()
     {
         await using TestDatabase test = await TestDatabase.CreateAsync();
@@ -129,8 +162,11 @@ public class ClipMoveStatementsTests
                 $"{PostgresFactAttribute.ConnectionString};Search Path={schema}");
             NpgsqlConnection connection = await dataSource.OpenConnectionAsync();
             await TestClipSchema.CreateAsync(connection);
+            await connection.ExecuteAsync(
+                "ALTER TABLE clip ADD UNIQUE NULLS NOT DISTINCT (owner_id, game_category_id, md5_hash)");
+            await connection.ExecuteAsync(await File.ReadAllTextAsync(
+                TestClipSchema.MigrationPath("V58__clip_md5_key_nulls_distinct.sql")));
             await connection.ExecuteAsync("""
-                ALTER TABLE clip ADD UNIQUE NULLS NOT DISTINCT (owner_id, game_category_id, md5_hash);
                 CREATE TABLE tag (id uuid PRIMARY KEY, name text NOT NULL);
                 CREATE TABLE clip_tag (clip_id uuid NOT NULL, tag_id uuid NOT NULL);
                 CREATE TABLE clip_view (clip_id uuid NOT NULL, user_id uuid NOT NULL);
@@ -142,7 +178,7 @@ public class ClipMoveStatementsTests
             return new TestDatabase(dataSource, connection, schema);
         }
 
-        public async Task<Guid> AddClipAsync(Guid categoryId, string title, string md5, Guid? owner = null,
+        public async Task<Guid> AddClipAsync(Guid categoryId, string title, string? md5, Guid? owner = null,
             int createdDaysAgo = 0)
         {
             Guid clipId = Guid.NewGuid();

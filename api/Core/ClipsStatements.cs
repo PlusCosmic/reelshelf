@@ -205,8 +205,8 @@ public class ClipsStatements(NpgsqlConnection connection)
     /// Moves the owner's clips to another book: the ids given, or with <paramref name="clipIds"/> null every clip
     /// matching the filter (as <see cref="GetClipsWithTags"/> reads it). Binned clips and clips already in the book are
     /// left out. A clip whose file the book already holds (the same MD5, which <c>clip</c>'s unique key allows once a
-    /// book) stays where it is, as does all but the oldest of several such clips moving together; those come back with
-    /// <see cref="MoveClipRow.Moved"/> false. Runs under the owner's <c>clip-storage:</c> lock, as an upload's insert
+    /// book, V58) stays where it is, as does all but the oldest of several such clips moving together; those come back
+    /// with <see cref="MoveClipRow.Moved"/> false. A clip without a hash (a Twitch import) is never a duplicate. Runs under the owner's <c>clip-storage:</c> lock, as an upload's insert
     /// does, so an upload can't file the same file into the book between the check and the move.
     /// </summary>
     public async Task<List<MoveClipRow>> MoveClips(
@@ -244,14 +244,14 @@ public class ClipsStatements(NpgsqlConnection connection)
                 FOR UPDATE
             ),
             movable AS (
-                SELECT DISTINCT ON (candidate.md5_hash) candidate.id
+                SELECT DISTINCT ON (COALESCE(candidate.md5_hash, candidate.id::text)) candidate.id
                 FROM candidate
-                WHERE NOT EXISTS (
+                WHERE candidate.md5_hash IS NULL OR NOT EXISTS (
                     SELECT 1 FROM clip held
                     WHERE held.owner_id = @ownerId
                       AND held.game_category_id = @toCategoryId
-                      AND held.md5_hash IS NOT DISTINCT FROM candidate.md5_hash)
-                ORDER BY candidate.md5_hash, candidate.created_at, candidate.id
+                      AND held.md5_hash = candidate.md5_hash)
+                ORDER BY COALESCE(candidate.md5_hash, candidate.id::text), candidate.created_at, candidate.id
             ),
             moved AS (
                 UPDATE clip c
