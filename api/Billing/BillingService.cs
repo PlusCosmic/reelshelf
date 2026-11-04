@@ -321,14 +321,71 @@ public sealed class BillingService(
         await SyncSubscription(stripeEvent.SubscriptionId, stripeEvent.UserId, cancellationToken);
     }
 
-    /// <summary>Reads the subscription from Stripe and records it against the account its customer belongs to.</summary>
+    /// <summary>
+    /// Reads the subscription from Stripe and records it against the account its customer belongs to. The read and
+    /// the write happen under the subscription's lock, so of two syncs of one subscription the later read always
+    /// commits last and an older state never overwrites a newer one.
+    /// </summary>
     public async Task SyncSubscription(string subscriptionId, Guid? userIdHint, CancellationToken cancellationToken)
+    {
+        SyncResult result;
+        await using (await store.LockSubscription(subscriptionId))
+        {
+            result = await ReadAndRecord(subscriptionId, userIdHint, cancellationToken);
+        }
+
+        if (result.Orphan is { } orphan)
+        {
+            await CancelOrphan(orphan.State, orphan.UserId, cancellationToken);
+            return;
+        }
+
+        if (result.Recorded is not { } subscription || result.OwnerId is not { } userId)
+        {
+            return;
+        }
+
+        if (EndsAt(subscription) is { } endsAt && (result.Before is null || EndsAt(result.Before) is null) &&
+            SubscriptionStatuses.GrantsTier(subscription.Status))
+        {
+            try
+            {
+                await planEnding.SubscriptionEndingAsync(userId, subscription, endsAt, cancellationToken);
+            }
+            catch (Exception error) when (error is not OperationCanceledException)
+            {
+                logger.LogWarning(error, "Could not tell account {UserId} its plan ends", userId);
+            }
+        }
+
+        logger.LogInformation("Stripe subscription {SubscriptionId} of account {UserId} is {Status} on {LookupKey}",
+            subscription.Id, userId, subscription.Status, subscription.LookupKey);
+
+        List<BillingSubscription> all = await store.GetSubscriptions(userId);
+        if (all.Count(other => SubscriptionStatuses.IsOpen(other.Status)) > 1)
+        {
+            // Two checkouts completed side by side. Both bill until the owner cancels one in the Customer Portal;
+            // the account gets the better tier meanwhile.
+            logger.LogWarning("Account {UserId} has more than one open Stripe subscription", userId);
+        }
+    }
+
+    /// <summary>What a sync recorded, or the subscription to cancel because its account is gone.</summary>
+    private sealed record SyncResult(
+        BillingSubscription? Recorded = null,
+        BillingSubscription? Before = null,
+        Guid? OwnerId = null,
+        (StripeSubscriptionState State, Guid UserId)? Orphan = null);
+
+    /// <summary>The part of a sync done under the subscription's lock: Stripe's read and the write it leads to.</summary>
+    private async Task<SyncResult> ReadAndRecord(string subscriptionId, Guid? userIdHint,
+        CancellationToken cancellationToken)
     {
         StripeSubscriptionState? state = await stripe.GetSubscriptionAsync(subscriptionId, cancellationToken);
         if (state is null)
         {
             logger.LogWarning("Stripe has no subscription {SubscriptionId}; nothing recorded", subscriptionId);
-            return;
+            return new SyncResult();
         }
 
         // The customer is linked by checkout.session.completed, but the subscription's own events can arrive
@@ -346,14 +403,13 @@ public sealed class BillingService(
             if (hinted is not null)
             {
                 // Checked out for an account that has since been deleted: nobody could ever manage it.
-                await CancelOrphan(state, hinted.Value, cancellationToken);
-                return;
+                return new SyncResult(Orphan: (state, hinted.Value));
             }
 
             logger.LogWarning(
                 "Stripe subscription {SubscriptionId} belongs to customer {CustomerId}, which no account has; nothing recorded",
                 state.Id, state.CustomerId);
-            return;
+            return new SyncResult();
         }
 
         BillingPlan? plan = BillingPlans.Find(state.LookupKey);
@@ -378,35 +434,23 @@ public sealed class BillingService(
 
         BillingSubscription? before = (await store.GetSubscriptions(userId.Value))
             .FirstOrDefault(existing => existing.Id == subscription.Id);
-        if (!await store.UpsertSubscription(subscription))
+        Guid? ownerId = await store.UpsertSubscription(subscription);
+        if (ownerId is null)
         {
-            await CancelOrphan(state, userId.Value, cancellationToken);
-            return;
+            return new SyncResult(Orphan: (state, userId.Value));
         }
 
-        if (EndsAt(subscription) is { } endsAt && (before is null || EndsAt(before) is null) &&
-            SubscriptionStatuses.GrantsTier(subscription.Status))
+        if (ownerId != userId)
         {
-            try
-            {
-                await planEnding.SubscriptionEndingAsync(userId.Value, subscription, endsAt, cancellationToken);
-            }
-            catch (Exception error) when (error is not OperationCanceledException)
-            {
-                logger.LogWarning(error, "Could not tell account {UserId} its plan ends", userId);
-            }
+            // A recorded subscription stays with its account, which is updated with Stripe's state; nobody is mailed
+            // about a subscription whose owner is in doubt.
+            logger.LogError(
+                "Stripe subscription {SubscriptionId} is recorded for account {OwnerId}, but its customer {CustomerId} is account {UserId}'s; it stays where it is",
+                state.Id, ownerId, state.CustomerId, userId);
+            return new SyncResult();
         }
 
-        logger.LogInformation("Stripe subscription {SubscriptionId} of account {UserId} is {Status} on {LookupKey}",
-            state.Id, userId, state.Status, state.LookupKey);
-
-        List<BillingSubscription> all = await store.GetSubscriptions(userId.Value);
-        if (all.Count(other => SubscriptionStatuses.IsOpen(other.Status)) > 1)
-        {
-            // Two checkouts completed side by side. Both bill until the owner cancels one in the Customer Portal;
-            // the account gets the better tier meanwhile.
-            logger.LogWarning("Account {UserId} has more than one open Stripe subscription", userId);
-        }
+        return new SyncResult(subscription, before, ownerId);
     }
 
     /// <summary>When a subscription that is set to end does, or null while it renews.</summary>

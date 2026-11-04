@@ -97,7 +97,13 @@ upload completes and passes its checks (#213, see [r2-bucket.md](r2-bucket.md#br
   quota counts from then on: `file_size` is cleared), and the `codecs` and `height` from `outputs` for the clip's
   playback source. After the commit the uploaded source is deleted (a transcode) and so is the version the clip moved
   off (a trim), and a transcode queues legend detection and transcription as Bunny's webhook does. A clip that is
-  already `ready` (a re-encode of a migrated clip, or a trim) stays ready and playable throughout. `thumbnails` and
+  already `ready` (a re-encode of a migrated clip, or a trim) stays ready and playable throughout. Completion moves
+  only a clip still on `r2` whose `video_version` is not past the job's (`ClipsStatements.SetTranscodeReady`), since
+  nothing stops two trims, or a trim and a `migrate`, running on one clip at once. Otherwise the job is superseded:
+  it still succeeds, the clip is left alone, the source stays, nothing is queued, and its own
+  `clips/{clipId}/v{n}/` is deleted unless the clip plays from that version (as for a `migrate` whose clip left
+  Bunny). So two trims finishing out of order leave the clip on the newer one, and a job left on a clip reverted to
+  Bunny writes nothing onto its row. A repeated report on such a clip does nothing. `thumbnails` and
   `fallback` record their output on the run until the work that uses them decides what they change. The legacy `clip.video_status` column holds Bunny's status number for the previous image; it is never
   written for these clips and stays NULL until the column is dropped.
 - **Early detection:** with `Transcoding:QueueDetectionOnThumbnails` (off by default), the first progress report
