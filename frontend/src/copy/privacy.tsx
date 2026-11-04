@@ -7,7 +7,7 @@ import { legalOperator } from "./legal";
  */
 export const privacyCopy = {
   title: "Privacy policy",
-  updated: "3 November 2026",
+  updated: "4 November 2026",
 } as const;
 
 export function PrivacyText() {
@@ -182,7 +182,9 @@ export function PrivacyText() {
         transcripts are deleted. Unlinking a sign-in method deletes its stored
         tokens. You can delete your whole account in Settings: it stops working
         straight away, and its clips are removed from storage and the rest of
-        its data deleted shortly after. Any paid plan is cancelled first, though
+        its data deleted shortly after, unless one of its clips has been
+        reported for child sexual abuse or terrorism and we haven't decided yet:
+        then they wait until we have. Any paid plan is cancelled first, though
         Stripe keeps its records of past payments for as long as the law
         requires. Collections you made go with it, including for their
         collaborators. If your account has more clips than its plan keeps, for

@@ -3,6 +3,7 @@ using Dapper;
 using Npgsql;
 using Reelshelf.Auth;
 using Reelshelf.Moderation;
+using Reelshelf.Users;
 using Xunit;
 
 namespace Reelshelf.Test.Moderation;
@@ -294,6 +295,42 @@ public class ContentReportStatementsTests
             (await access.GetChanges(owner))
             .Select(change => $"{change.OldValue ?? "(none)"}→{change.NewValue ?? "(none)"}: {change.Reason}")
             .Order(StringComparer.Ordinal));
+    }
+
+    [PostgresFact]
+    public async Task AnAccountBeingDeleted_KeepsItsReportedClip_UntilTheRemovedClipsEvidenceIsCopied()
+    {
+        await using TestDatabase test = await TestDatabase.CreateAsync();
+        AccountDeletionStatements deletion = new(test.Connection);
+        Guid admin = await test.AddUserAsync("admin", null, "Admin");
+        Guid owner = await test.AddUserAsync("owner", "owner@example.com");
+        (Guid clip, string token) = await test.AddSharedClipAsync(owner);
+        (Guid otherClip, string otherToken) = await test.AddSharedClipAsync(owner);
+        await test.ReportAsync(otherClip, otherToken, ContentReportReasons.Other);
+        Assert.NotNull(await deletion.MarkForDeletion(owner));
+        Assert.False(await deletion.IsHeldForReview(owner));
+
+        // Filed after the owner asked to be deleted, while the share link still works.
+        Guid urgent = await test.ReportAsync(clip, token, ContentReportReasons.ChildSafety);
+        Assert.True(await deletion.IsHeldForReview(owner));
+        Assert.False(await deletion.IsHeldForReview(admin));
+
+        await deletion.DeleteClips(owner, [clip, otherClip]);
+        Assert.Equal([clip], await test.Connection.QueryAsync<Guid>(
+            "SELECT id FROM clip WHERE owner_id = @owner", new { owner }));
+        Assert.False(await deletion.DeleteAccountIfEmpty(owner));
+
+        // Removing still works for an account being deleted, though it can't be suspended any more.
+        RemoveResult removed = await test.Statements.Remove(urgent, admin, "reported", TimeSpan.FromDays(365));
+        Assert.Equal((RemoveOutcome.Removed, clip), (removed.Outcome, removed.ClipId));
+        Assert.True(await deletion.IsHeldForReview(owner));
+        Assert.False(await deletion.DeleteAccountIfEmpty(owner));
+
+        // Once the evidence processor has copied the video, the deletion finishes.
+        await test.Connection.ExecuteAsync(
+            "UPDATE clip_evidence SET files = '[\"record.json\"]'::jsonb WHERE id = @id", new { id = removed.EvidenceId });
+        Assert.False(await deletion.IsHeldForReview(owner));
+        Assert.True(await deletion.DeleteAccountIfEmpty(owner));
     }
 
     private sealed class TestDatabase : IAsyncDisposable

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
   useChangePlan,
   useKeepPlan,
@@ -19,6 +19,12 @@ import {
   upgradeKeepsMoreClips,
 } from "@/shared/services/plans";
 import { ApiError } from "@/shared/services/apiError";
+import {
+  type BillingReturn,
+  type BillingReturnPhase,
+  rememberCheckout,
+  useBillingReturn,
+} from "@/components/Reelshelf/billingReturn";
 import { commonCopy } from "@/copy/common";
 import { planCopy } from "@/copy/plan";
 
@@ -27,8 +33,7 @@ const alerts = planCopy.alerts;
 const returnCopy = planCopy.returnBanner;
 const offerCopy = planCopy.offers;
 
-/** Where the browser came back from: Checkout (`success`, `cancelled`) or the Customer Portal (`portal`). */
-export type BillingReturn = "success" | "cancelled" | "portal" | undefined;
+export type { BillingReturn } from "@/components/Reelshelf/billingReturn";
 
 /** Statuses of a subscription that could still bill, so changes go through the Customer Portal instead of Checkout. */
 const openStatuses = new Set([
@@ -47,9 +52,6 @@ const currentStatuses = new Set(["active", "trialing", "past_due"]);
 
 /** The plan the cards point people to: Pro is the best value per clip. */
 const recommendedTier = "pro";
-
-/** After Checkout or the portal, Stripe's webhook updates the plan within seconds; poll for that long. */
-const pollAfterReturnMs = 30_000;
 
 type Tone = "info" | "success" | "warning" | "error";
 
@@ -84,32 +86,16 @@ export function PlanSettings({
 }: {
   billingReturn: BillingReturn;
 }) {
-  const [polling, setPolling] = useState(
-    billingReturn === "success" || billingReturn === "portal",
-  );
   const plan = usePlan();
-  const { refetch } = plan;
   const offers = usePlanOffers();
   const portal = useOpenBillingPortal();
   const keep = useKeepPlan();
 
-  // Until the webhook lands the account still reads as before, so refetch every couple of seconds for a while.
-  const upgraded = plan.data
-    ? plan.data.tier !== "free" || plan.data.subscription !== null
-    : false;
-  const waitingForCheckout = billingReturn === "success" && !upgraded;
-  useEffect(() => {
-    if (!polling || (billingReturn === "success" && upgraded)) return;
-    const interval = window.setInterval(() => void refetch(), 2_000);
-    const timeout = window.setTimeout(
-      () => setPolling(false),
-      pollAfterReturnMs,
-    );
-    return () => {
-      window.clearInterval(interval);
-      window.clearTimeout(timeout);
-    };
-  }, [polling, billingReturn, upgraded, refetch]);
+  // Until the webhook lands the account still reads as before, so the plan is refetched for a while.
+  const returnPhase = useBillingReturn(billingReturn, plan.data, plan.refetch);
+  // The plans stay hidden until a payment just made shows up (or the wait gives up), so it can't be made twice.
+  const awaitingCheckout =
+    billingReturn === "success" && returnPhase !== "confirmed";
 
   if (!plan.data) {
     return plan.isError ? (
@@ -159,8 +145,8 @@ export function PlanSettings({
     <div className="rs-plan">
       <ReturnBanner
         billingReturn={billingReturn}
-        upgradedTo={upgraded ? tier : null}
-        stillWaiting={waitingForCheckout && !polling}
+        phase={returnPhase}
+        upgradedTo={subscriptionTierName(current)}
       />
 
       <div className="rs-plan-summary">
@@ -246,8 +232,7 @@ export function PlanSettings({
         </p>
       ) : null}
 
-      {/* Hidden until a payment just made shows up, so it can't be made twice. */}
-      {(canUpgrade || changeable) && offers.data && !waitingForCheckout ? (
+      {(canUpgrade || changeable) && offers.data && !awaitingCheckout ? (
         <PlanOffers
           offers={offers.data}
           currentTier={current.tier}
@@ -505,12 +490,13 @@ function planAlert(
 /** Coming back from Checkout: what happened, and whether the payment has shown up yet. */
 function ReturnBanner({
   billingReturn,
+  phase,
   upgradedTo,
-  stillWaiting,
 }: {
   billingReturn: BillingReturn;
-  upgradedTo: string | null;
-  stillWaiting: boolean;
+  phase: BillingReturnPhase;
+  /** The tier the new subscription is for. */
+  upgradedTo: string;
 }) {
   if (billingReturn === "cancelled") {
     return (
@@ -519,15 +505,16 @@ function ReturnBanner({
       </PlanAlert>
     );
   }
+  // A portal return polls quietly: whatever changed shows in the plan itself.
   if (billingReturn !== "success") return null;
-  if (upgradedTo) {
+  if (phase === "confirmed") {
     return (
       <PlanAlert tone="success" title={returnCopy.upgraded.title(upgradedTo)}>
         <p>{returnCopy.upgraded.body}</p>
       </PlanAlert>
     );
   }
-  if (stillWaiting) {
+  if (phase === "timedOut") {
     return (
       <PlanAlert tone="warning" title={returnCopy.slow.title}>
         <p>{returnCopy.slow.body}</p>
@@ -715,7 +702,10 @@ function PlanOffers({
           className="rs-primary"
           type="button"
           disabled={pending}
-          onClick={() => checkout.mutate(price.lookupKey)}
+          onClick={() => {
+            rememberCheckout(price.lookupKey);
+            checkout.mutate(price.lookupKey);
+          }}
         >
           {offer.tier === lapsedTier
             ? offerCopy.resubscribeTo(name)

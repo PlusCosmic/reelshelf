@@ -279,6 +279,88 @@ public class AccountDeletionServiceTests
         Assert.Equal([bunnyCopy], bunny.DeletedVideos);
     }
 
+    [Fact]
+    public async Task Process_WhileAClipIsHeldForReview_CancelsTheSubscriptionsButDeletesNothing()
+    {
+        FakeSubscriptions subscriptions = new();
+        ClipExportBuilderTests.FakeStorage exports = new();
+        exports.Objects[ExportParts.Key(UserId, Guid.NewGuid(), 1)] = [1];
+        var (service, store, host, _, _) = Build(subscriptions: subscriptions, exports: exports);
+        store.AddClips(3);
+        store.Collections.Add(Guid.NewGuid());
+        await service.Request(UserId);
+        // A child-safety report filed after the account asked to be deleted.
+        store.HeldClips.Add(store.Clips[1].ClipId);
+
+        Assert.False(await service.Process(UserId, CancellationToken.None));
+        Assert.False(await service.Process(UserId, CancellationToken.None));
+
+        Assert.Equal([UserId, UserId], subscriptions.Cancelled);
+        Assert.Equal(3, store.Clips.Count);
+        Assert.Empty(host.DeletedVideos);
+        Assert.Empty(host.DeletedCollections);
+        Assert.Single(exports.Objects);
+        Assert.False(store.AccountDeleted);
+
+        // Dismissed: the next pass deletes everything.
+        store.HeldClips.Clear();
+        Assert.True(await service.Process(UserId, CancellationToken.None));
+        Assert.Empty(store.Clips);
+        Assert.Equal(3, host.DeletedVideos.Count);
+        Assert.Empty(exports.Objects);
+        Assert.True(store.AccountDeleted);
+    }
+
+    [Fact]
+    public async Task Process_AfterTheHeldClipIsRemoved_WaitsForItsEvidenceThenDeletesTheRest()
+    {
+        var (service, store, host, _, _) = Build();
+        store.AddClips(2);
+        await service.Request(UserId);
+        OwnedClipVideo reported = store.Clips[0];
+        store.HeldClips.Add(reported.ClipId);
+        Assert.False(await service.Process(UserId, CancellationToken.None));
+
+        // An admin removes it: the row goes, and its video waits for the evidence processor to copy it.
+        store.Clips.Remove(reported);
+        store.HeldClips.Clear();
+        store.EvidencePending = true;
+        Assert.False(await service.Process(UserId, CancellationToken.None));
+        Assert.Single(store.Clips);
+        Assert.Empty(host.DeletedVideos);
+
+        store.EvidencePending = false;
+        Assert.True(await service.Process(UserId, CancellationToken.None));
+        Assert.DoesNotContain(reported.VideoId, host.DeletedVideos);
+        Assert.Single(host.DeletedVideos);
+        Assert.True(store.AccountDeleted);
+    }
+
+    [Fact]
+    public async Task Process_WhenAReportIsFiledMidPass_StopsBeforeTheNextBatchAndKeepsTheHeldClip()
+    {
+        var (service, store, host, _, _) = Build();
+        store.AddClips(50);
+        await service.Request(UserId);
+        OwnedClipVideo late = store.Clips[^1];
+        // Filed while the first batch of videos goes, just after the check at the start of the pass.
+        store.AfterHoldCheck = checks =>
+        {
+            if (checks == 0)
+            {
+                store.HeldClips.Add(late.ClipId);
+            }
+        };
+
+        Assert.False(await service.Process(UserId, CancellationToken.None));
+
+        Assert.Equal(20, host.DeletedVideos.Count);
+        Assert.Equal(30, store.Clips.Count);
+        Assert.Contains(late, store.Clips);
+        Assert.DoesNotContain(late.VideoId, host.DeletedVideos);
+        Assert.False(store.AccountDeleted);
+    }
+
     private sealed class FakeSubscriptions : IAccountSubscriptions
     {
         public bool Fail { get; set; }
@@ -341,6 +423,17 @@ public class AccountDeletionServiceTests
         public List<OwnedVideoContainer> OtherContainers { get; } = [];
         public Action? OnClipsDeleted { get; set; }
 
+        /// <summary>Clips under an open child-safety or terrorism report.</summary>
+        public HashSet<Guid> HeldClips { get; } = [];
+
+        /// <summary>A removed clip's video still waits to be copied as evidence.</summary>
+        public bool EvidencePending { get; set; }
+
+        /// <summary>Called after each hold check has been answered, with how many checks came before it.</summary>
+        public Action<int>? AfterHoldCheck { get; set; }
+
+        private int _holdChecks;
+
         public void AddClips(int count, string videoHost = VideoHostNames.Bunny)
         {
             for (int i = 0; i < count; i++)
@@ -367,9 +460,16 @@ public class AccountDeletionServiceTests
 
         public Task<List<OwnedClipVideo>> GetClipVideos(Guid userId) => Task.FromResult(Clips.ToList());
 
+        public Task<bool> IsHeldForReview(Guid userId)
+        {
+            bool held = EvidencePending || Clips.Any(clip => HeldClips.Contains(clip.ClipId));
+            AfterHoldCheck?.Invoke(_holdChecks++);
+            return Task.FromResult(held);
+        }
+
         public Task DeleteClips(Guid userId, IReadOnlyCollection<Guid> clipIds)
         {
-            Clips.RemoveAll(clip => clipIds.Contains(clip.ClipId));
+            Clips.RemoveAll(clip => clipIds.Contains(clip.ClipId) && !HeldClips.Contains(clip.ClipId));
             OnClipsDeleted?.Invoke();
             return Task.CompletedTask;
         }
@@ -379,7 +479,7 @@ public class AccountDeletionServiceTests
 
         public Task<bool> DeleteAccountIfEmpty(Guid userId)
         {
-            if (!Marked || Clips.Count > 0)
+            if (!Marked || Clips.Count > 0 || EvidencePending)
             {
                 return Task.FromResult(false);
             }
