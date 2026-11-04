@@ -5,16 +5,24 @@ Anyone watching a share link can report the clip. Admins deal with reports at `/
 
 ## What each decision does
 
-| Report reason                          | Decision  | What happens                                                                                                                                                                                                                                      |
-| -------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Any                                    | Dismiss   | The report is closed. The clip is left alone.                                                                                                                                                                                                     |
-| Anything but child safety or terrorism | Take down | Sharing is blocked (`clip.sharing_blocked_at`), the clip's share links are revoked, and every open report on it is closed. The owner is emailed that the clip broke the terms, without the rule or the reporter. The clip stays in their library. |
-| Child safety or terrorism              | Remove    | See below. The owner isn't emailed.                                                                                                                                                                                                               |
+| Report reason                          | Decision  | What happens                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Any                                    | Dismiss   | The report is closed. The clip is left alone.                                                                                                                                                                                                                                                                     |
+| Anything but child safety or terrorism | Take down | Sharing is blocked (`clip.sharing_blocked_at`), the clip's share links are revoked, and every open report on it is closed but child-safety or terrorism ones, which stay open for removal. The owner is emailed that the clip broke the terms, without the rule or the reporter. The clip stays in their library. |
+| Child safety or terrorism              | Remove    | See below. The owner isn't emailed.                                                                                                                                                                                                                                                                               |
 
 A child-safety or terrorism report hides the share link the moment it is filed, and every Admin with an email
 address is mailed. While it is open the clip is held as possible evidence: the share link stays hidden, the owner
 can't delete the clip (the over-limit sweep skips it too), and the owner can't delete their account. Both refusals
 say only that it can't be done right now.
+
+An account that asked to be deleted before the report was filed is held too: each pass of the account deletion job
+(`AccountDeletionService.Process`, checked again before each batch of 20 videos) still cancels its Stripe
+subscriptions but deletes no video, clip row, collection or export while `IAccountDeletionStore.IsHeldForReview` is
+true, and logs a warning that the deletion waits on a review. The account stays held until the report is dismissed, or
+the clip is removed and the evidence processor has copied its video (`clip_evidence.files` is set); then the next pass
+deletes the rest. `DeleteClips` also leaves out a clip under an open urgent report, should one be filed mid-batch.
+Removing works for such an account, but it isn't suspended, since it is already being deleted.
 
 ### Removing a clip
 

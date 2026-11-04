@@ -114,13 +114,30 @@ public class ClipSummaryStatements(NpgsqlConnection connection)
     /// the oldest goes first. A run that already failed an attempt waits <paramref name="retryAfter"/> before it
     /// is retried. Returns what the summarizer is told about the clip, including the owner's legend from the
     /// latest succeeded legend detection run on Apex clips.
+    /// Runs that would be claimable but have used <paramref name="maxAttempts"/> are failed first and never claimed.
+    /// Each claim gets a fresh <c>claim_id</c>, which the processor passes back to <see cref="CompleteRunAsync"/> and
+    /// <see cref="FailRunAsync"/>, so only the latest claim's result is written.
     /// SKIP LOCKED keeps two API instances from claiming the same run.
     /// </summary>
-    public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter)
+    public async Task<ClaimedRunRow?> ClaimNextRunAsync(TimeSpan retryAfter, TimeSpan staleAfter, int maxAttempts)
     {
+        const string giveUpSql = """
+            UPDATE clip_summary_run
+            SET status = 'failed', error = 'Gave up after ' || @MaxAttempts || ' attempts', claim_id = NULL,
+                completed_at = now()
+            WHERE id IN (
+                SELECT id FROM clip_summary_run
+                WHERE attempts >= @MaxAttempts
+                  AND ((status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
+                    OR (status = 'running' AND started_at < now() - @StaleAfter))
+                FOR UPDATE SKIP LOCKED)
+            """;
+        object parameters = new { RetryAfter = retryAfter, StaleAfter = staleAfter, MaxAttempts = maxAttempts };
+        await connection.ExecuteAsync(giveUpSql, parameters);
+
         const string sql = """
             UPDATE clip_summary_run run
-            SET status = 'running', attempts = run.attempts + 1, started_at = now()
+            SET status = 'running', attempts = run.attempts + 1, started_at = now(), claim_id = gen_random_uuid()
             FROM clip
             JOIN game_category game ON game.id = clip.game_category_id,
                  clip_transcription_run source
@@ -128,12 +145,13 @@ public class ClipSummaryStatements(NpgsqlConnection connection)
               AND source.id = run.source_transcription_run_id
               AND run.id = (
                   SELECT id FROM clip_summary_run
-                  WHERE (status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
-                     OR (status = 'running' AND started_at < now() - @StaleAfter)
+                  WHERE attempts < @MaxAttempts
+                    AND ((status = 'pending' AND (started_at IS NULL OR started_at < now() - @RetryAfter))
+                      OR (status = 'running' AND started_at < now() - @StaleAfter))
                   ORDER BY trigger = 'auto', created_at
                   LIMIT 1
                   FOR UPDATE SKIP LOCKED)
-            RETURNING run.id, run.clip_id, run.trigger, run.provider, run.model, run.reasoning_effort,
+            RETURNING run.id, run.claim_id, run.clip_id, run.trigger, run.provider, run.model, run.reasoning_effort,
                       run.embedding_model, run.attempts, clip.title, clip.created_at AS clip_created_at,
                       game.name AS game_name, source.transcript, source.has_audio,
                       CASE WHEN game.slug = 'apex-legends' THEN (
@@ -145,12 +163,17 @@ public class ClipSummaryStatements(NpgsqlConnection connection)
                           LIMIT 1)
                       END AS player_legend
             """;
-        return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql,
-            new { RetryAfter = retryAfter, StaleAfter = staleAfter });
+        return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql, parameters);
     }
 
-    public async Task CompleteRunAsync(
+    /// <summary>
+    /// Records a claim's result. Nothing is written unless the run is still running under
+    /// <paramref name="claimId"/>: a run reclaimed after its processor went quiet, or already finished, keeps what it
+    /// has. Returns whether the result was written.
+    /// </summary>
+    public async Task<bool> CompleteRunAsync(
         Guid runId,
+        Guid claimId,
         string promptVersion,
         ClipSummarization summarization,
         ClipEmbedding embedding,
@@ -173,12 +196,13 @@ public class ClipSummaryStatements(NpgsqlConnection connection)
                 duration_ms = @DurationMs,
                 error = NULL,
                 completed_at = now()
-            WHERE id = @RunId
+            WHERE id = @RunId AND claim_id = @ClaimId AND status = 'running'
             """;
         ClipSummaryResult result = summarization.Result;
-        await connection.ExecuteAsync(sql, new
+        return await connection.ExecuteAsync(sql, new
         {
             RunId = runId,
+            ClaimId = claimId,
             PromptVersion = promptVersion,
             result.Description,
             MoodTags = result.MoodTags.ToArray(),
@@ -191,11 +215,20 @@ public class ClipSummaryStatements(NpgsqlConnection connection)
             OutputTokens = (int?)summarization.OutputTokens,
             EmbeddingTokens = (int?)embedding.InputTokens,
             DurationMs = durationMs
-        });
+        }) > 0;
     }
 
-    /// <summary>Records a failed attempt; the run goes back to pending unless <paramref name="retry"/> is false.</summary>
-    public async Task FailRunAsync(Guid runId, string error, string? promptVersion, string? rawResponse, bool retry)
+    /// <summary>
+    /// Records a claim's failed attempt; the run goes back to pending unless <paramref name="retry"/> is false.
+    /// Nothing is written unless the run is still running under <paramref name="claimId"/>; returns whether it was.
+    /// </summary>
+    public async Task<bool> FailRunAsync(
+        Guid runId,
+        Guid claimId,
+        string error,
+        string? promptVersion,
+        string? rawResponse,
+        bool retry)
     {
         const string sql = """
             UPDATE clip_summary_run
@@ -204,16 +237,17 @@ public class ClipSummaryStatements(NpgsqlConnection connection)
                 prompt_version = COALESCE(@PromptVersion, prompt_version),
                 raw_response = COALESCE(@RawResponse, raw_response),
                 completed_at = CASE WHEN @Retry THEN NULL ELSE now() END
-            WHERE id = @RunId
+            WHERE id = @RunId AND claim_id = @ClaimId AND status = 'running'
             """;
-        await connection.ExecuteAsync(sql, new
+        return await connection.ExecuteAsync(sql, new
         {
             RunId = runId,
+            ClaimId = claimId,
             Error = error,
             PromptVersion = promptVersion,
             RawResponse = rawResponse,
             Retry = retry
-        });
+        }) > 0;
     }
 
     public async Task<List<ClipSummaryRunRow>> GetRunsForClipAsync(Guid clipId)
@@ -296,6 +330,7 @@ public class ClipSummaryStatements(NpgsqlConnection connection)
     public class ClaimedRunRow
     {
         public Guid Id { get; set; }
+        public Guid ClaimId { get; set; }
         public Guid ClipId { get; set; }
         public string Trigger { get; set; } = "";
         public string Provider { get; set; } = "";

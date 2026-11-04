@@ -1014,7 +1014,9 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Replaces the placeholder video id on a reserved clip row with the video the host created for it.
+    /// Replaces the placeholder video id on a reserved clip row with the video the host created for it. Only a clip
+    /// still reserved (<see cref="ClipVideoChange.Attach"/>) takes it; any other throws, and the caller discards the
+    /// video.
     /// </summary>
     public async Task<ClipRow> AttachVideo(Guid clipId, HostedVideo video)
     {
@@ -1029,14 +1031,15 @@ public class ClipsStatements(NpgsqlConnection connection)
                 video_status = @videoStatus,
                 video_state = @videoState,
                 encode_progress = @encodeProgress
-            WHERE id = @clipId
+            WHERE id = @clipId AND video_state = ANY(@fromStates)
             RETURNING id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress, file_size
             """;
 
         HostedVideoInfo info = video.Info;
-        return await connection.QuerySingleAsync<ClipRow>(sql, new
+        return await connection.QuerySingleOrDefaultAsync<ClipRow>(sql, new
         {
             clipId,
+            fromStates = ClipVideoTransitions.FromStates(ClipVideoChange.Attach, info.Status),
             videoId = video.VideoId,
             title = info.Title,
             length = info.LengthSeconds,
@@ -1046,7 +1049,7 @@ public class ClipsStatements(NpgsqlConnection connection)
             videoStatus = info.HostStatus,
             videoState = info.Status.ToDatabase(),
             encodeProgress = info.EncodeProgress
-        });
+        }) ?? throw new InvalidOperationException($"Clip {clipId} is no longer a reserved clip waiting for its video");
     }
 
     /// <summary>
@@ -1062,9 +1065,12 @@ public class ClipsStatements(NpgsqlConnection connection)
     /// Copies what the video host reports onto the clip row. <paramref name="title"/> is passed separately because
     /// some callers keep the clip's own title over the host's. Only while the clip is still on
     /// <paramref name="videoHost"/> with <paramref name="videoId"/>, the video the info was read from: a clip that
-    /// moved to R2 meanwhile (a <c>migrate</c> job completing) keeps what its move wrote.
+    /// moved to R2 meanwhile (a <c>migrate</c> job completing) keeps what its move wrote. And only when the reported
+    /// state is a move <see cref="ClipVideoChange.HostReport"/> allows from the clip's (the same state again included,
+    /// so a ready clip's metadata is still refreshed): a stale read, such as "processing" landing after "ready",
+    /// writes none of the row, since everything in it is as old as its state. Returns whether the row was written.
     /// </summary>
-    public async Task UpdateClipMetadata(Guid clipId, string videoHost, Guid videoId, string? title, HostedVideoInfo video)
+    public async Task<bool> UpdateClipMetadata(Guid clipId, string videoHost, Guid videoId, string? title, HostedVideoInfo video)
     {
         const string sql = """
             UPDATE clip
@@ -1077,12 +1083,14 @@ public class ClipsStatements(NpgsqlConnection connection)
                 video_state = @videoState,
                 encode_progress = @encodeProgress
             WHERE id = @clipId AND video_host = @videoHost AND video_id = @videoId
+              AND video_state = ANY(@fromStates)
             """;
-        await connection.ExecuteAsync(sql, new
+        return await connection.ExecuteAsync(sql, new
         {
             clipId,
             videoHost,
             videoId,
+            fromStates = ClipVideoTransitions.FromStates(ClipVideoChange.HostReport, video.Status),
             title,
             length = video.LengthSeconds,
             thumbnailFileName = video.ThumbnailFileName,
@@ -1091,30 +1099,39 @@ public class ClipsStatements(NpgsqlConnection connection)
             videoStatus = video.HostStatus,
             videoState = video.Status.ToDatabase(),
             encodeProgress = video.EncodeProgress
-        });
+        }) > 0;
     }
 
     /// <summary>
-    /// A transcode worker's progress on a clip's first encode. A clip that is already ready (a re-encode of one
-    /// migrated from another host) stays ready and playable. The legacy <c>video_status</c> column is Bunny's
-    /// number and is left alone: clips our own worker encodes have none.
+    /// A transcode worker's progress on a clip's first encode. Only a clip waiting for it or already processing moves
+    /// (<see cref="ClipVideoChange.TranscodeProgress"/>), so a ready clip stays playable and a failed one stays failed;
+    /// the percentage is written only with the state, never onto a clip the report doesn't move. The legacy
+    /// <c>video_status</c> column is Bunny's number and is left alone: clips our own worker encodes have none.
     /// </summary>
     public async Task SetTranscodeProgress(Guid clipId, int encodeProgress)
     {
         const string sql = """
             UPDATE clip
             SET video_state = 'processing', encode_progress = @encodeProgress
-            WHERE id = @clipId AND video_state <> 'ready'
+            WHERE id = @clipId AND video_state = ANY(@fromStates)
             """;
-        await connection.ExecuteAsync(sql, new { clipId, encodeProgress });
+        await connection.ExecuteAsync(sql, new
+        {
+            clipId,
+            encodeProgress,
+            fromStates = ClipVideoTransitions.FromStates(ClipVideoChange.TranscodeProgress, ClipVideoStatus.Processing)
+        });
     }
 
     /// <summary>
     /// A transcode worker finished a new video version for the clip (a first encode, or a trim): it is ready on that
     /// version, with the output's length, size, codecs and height. The source upload is gone by now, so the AV1 size
     /// alone counts toward the quota (<see cref="StorageBytesExpression"/>) and the declared upload size is cleared.
-    /// <c>video_status</c> is left alone, as in <see cref="SetTranscodeProgress"/>. Returns the version the clip was
-    /// on before, so the caller can delete that version's files when it differs; null when there is no such clip.
+    /// <c>video_status</c> is left alone, as in <see cref="SetTranscodeProgress"/>. Only a clip still on R2 whose
+    /// version is not newer than <paramref name="videoVersion"/> moves, so a job finishing after the clip was moved
+    /// back to Bunny, or after a later version replaced the job's (two trims finishing out of order), changes nothing.
+    /// Returns the version the clip was on before, so the caller can delete that version's files when it differs;
+    /// null when the job was superseded that way (or there is no such clip).
     /// </summary>
     public async Task<int?> SetTranscodeReady(
         Guid clipId,
@@ -1137,6 +1154,8 @@ public class ClipsStatements(NpgsqlConnection connection)
                 video_height = @height
             FROM (SELECT id, video_version FROM clip WHERE id = @clipId FOR UPDATE) old_clip
             WHERE clip.id = old_clip.id
+              AND clip.video_host = 'r2'
+              AND clip.video_version <= @videoVersion
             RETURNING old_clip.video_version
             """;
         return await connection.QuerySingleOrDefaultAsync<int?>(sql,
@@ -1177,18 +1196,24 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// A server-side upload finished: the clip's source is stored and waiting for its transcode. Only a clip still
-    /// waiting for its bytes moves, so a repeated upload can't take a clip that is already further along back.
-    /// Returns whether the clip moved.
+    /// An upload finished (the Twitch import's, or a browser's completion): the clip's source is stored and waiting
+    /// for its transcode. Only a clip still waiting for its bytes moves (<see cref="ClipVideoChange.SourceUploaded"/>),
+    /// so a repeated upload can't take a clip that is already further along back, and an <c>upload_failed</c> one,
+    /// whose file was rejected and deleted, stays failed, as the browser path's own check says. Returns whether the
+    /// clip moved.
     /// </summary>
     public async Task<bool> SetSourceUploaded(Guid clipId)
     {
         const string sql = """
             UPDATE clip
             SET video_state = 'uploaded', date_uploaded = now(), encode_progress = 0
-            WHERE id = @clipId AND video_state IN ('awaiting_upload', 'upload_failed')
+            WHERE id = @clipId AND video_state = ANY(@fromStates)
             """;
-        return await connection.ExecuteAsync(sql, new { clipId }) > 0;
+        return await connection.ExecuteAsync(sql, new
+        {
+            clipId,
+            fromStates = ClipVideoTransitions.FromStates(ClipVideoChange.SourceUploaded, ClipVideoStatus.Uploaded)
+        }) > 0;
     }
 
     /// <summary>A server-side upload into the clip failed before its source was stored.</summary>
@@ -1197,9 +1222,13 @@ public class ClipsStatements(NpgsqlConnection connection)
         const string sql = """
             UPDATE clip
             SET video_state = 'upload_failed'
-            WHERE id = @clipId AND video_state = 'awaiting_upload'
+            WHERE id = @clipId AND video_state = ANY(@fromStates)
             """;
-        await connection.ExecuteAsync(sql, new { clipId });
+        await connection.ExecuteAsync(sql, new
+        {
+            clipId,
+            fromStates = ClipVideoTransitions.FromStates(ClipVideoChange.UploadFailed, ClipVideoStatus.UploadFailed)
+        });
     }
 
     /// <summary>
@@ -1211,20 +1240,32 @@ public class ClipsStatements(NpgsqlConnection connection)
         const string sql = """
             UPDATE clip
             SET video_state = 'uploaded', encode_progress = 0
-            WHERE id = @clipId AND video_state = 'processing'
+            WHERE id = @clipId AND video_state = ANY(@fromStates)
             """;
-        await connection.ExecuteAsync(sql, new { clipId });
+        await connection.ExecuteAsync(sql, new
+        {
+            clipId,
+            fromStates = ClipVideoTransitions.FromStates(ClipVideoChange.TranscodeReleased, ClipVideoStatus.Uploaded)
+        });
     }
 
-    /// <summary>A clip's transcode failed for good. A clip that is already ready keeps the video it has.</summary>
+    /// <summary>
+    /// A clip's transcode failed for good. Only a clip waiting for it or processing fails
+    /// (<see cref="ClipVideoChange.TranscodeFailed"/>): a ready one keeps the video it has, and an
+    /// <c>upload_failed</c> one keeps saying its upload is what failed.
+    /// </summary>
     public async Task SetTranscodeFailed(Guid clipId)
     {
         const string sql = """
             UPDATE clip
             SET video_state = 'encode_failed'
-            WHERE id = @clipId AND video_state <> 'ready'
+            WHERE id = @clipId AND video_state = ANY(@fromStates)
             """;
-        await connection.ExecuteAsync(sql, new { clipId });
+        await connection.ExecuteAsync(sql, new
+        {
+            clipId,
+            fromStates = ClipVideoTransitions.FromStates(ClipVideoChange.TranscodeFailed, ClipVideoStatus.EncodeFailed)
+        });
     }
 
     public class ClipRow : IClipVideoColumns

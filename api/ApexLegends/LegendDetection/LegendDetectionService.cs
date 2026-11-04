@@ -451,30 +451,25 @@ public class LegendDetectionService(
     /// <summary>Processes the next queued run. Returns false when there was nothing to do.</summary>
     public async Task<bool> ProcessNextRunAsync(CancellationToken cancellationToken)
     {
-        LegendDetectionStatements.ClaimedRunRow? run = await statements.ClaimNextRunAsync(RetryAfter, StaleAfter);
+        int maxAttempts = options.CurrentValue.MaxAttempts;
+        LegendDetectionStatements.ClaimedRunRow? run =
+            await statements.ClaimNextRunAsync(RetryAfter, StaleAfter, maxAttempts);
         if (run is null)
         {
             return false;
         }
 
-        int maxAttempts = options.CurrentValue.MaxAttempts;
-        if (run.Attempts > maxAttempts)
-        {
-            await statements.FailRunAsync(run.Id, $"Gave up after {maxAttempts} attempts", null, null, retry: false);
-            return true;
-        }
-
         bool canRetry = run.Attempts < maxAttempts;
         if (!recognizerFactory.IsConfigured(run.Provider))
         {
-            await statements.FailRunAsync(run.Id, $"Provider '{run.Provider}' is not configured", null, null, retry: false);
+            await FailAsync(run, $"Provider '{run.Provider}' is not configured", null, null, retry: false);
             return true;
         }
 
         List<LegendFrame> frames = await DownloadFramesAsync(run.ToVideoRef(), cancellationToken);
         if (frames.Count == 0)
         {
-            await statements.FailRunAsync(run.Id, "No thumbnails could be downloaded", null, null, canRetry);
+            await FailAsync(run, "No thumbnails could be downloaded", null, null, canRetry);
             return true;
         }
 
@@ -486,9 +481,18 @@ public class LegendDetectionService(
                 frames.Select(frame => LegendHudCropper.PrepareAsync(frame, cancellationToken)));
             Stopwatch stopwatch = Stopwatch.StartNew();
             LegendRecognition recognition = await recognizer.RecognizeAsync(screenshots, cancellationToken);
-            await statements.CompleteRunAsync(run.Id, recognizer.PromptVersion, frames.Count, recognition,
-                (int)stopwatch.ElapsedMilliseconds);
-            completed = recognition.Result;
+            (bool written, bool archived) = await statements.CompleteRunAsync(run.Id, run.ClaimId,
+                recognizer.PromptVersion, frames.Count, recognition, (int)stopwatch.ElapsedMilliseconds);
+            if (!written)
+            {
+                logger.LogWarning(
+                    "Dropped legend detection result for run {RunId} (clip {ClipId}): it was reclaimed or finished meanwhile",
+                    run.Id, run.ClipId);
+                return true;
+            }
+
+            // An archived run's answer is kept for comparison but no longer counts, so it never escalates.
+            completed = archived ? null : recognition.Result;
 
             logger.LogInformation(
                 "Legend detection for clip {ClipId} with {Provider}/{Model} ({ReasoningEffort}): {Legend} ({Confidence:0.00})",
@@ -501,7 +505,7 @@ public class LegendDetectionService(
             logger.LogWarning(ex, "Legend detection attempt {Attempt} failed for clip {ClipId} with {Provider}/{Model}",
                 run.Attempts, run.ClipId, run.Provider, run.Model);
             string? rawResponse = ex.Data["RawResponse"] as string;
-            await statements.FailRunAsync(run.Id, ex.Message, recognizer.PromptVersion, rawResponse, canRetry);
+            await FailAsync(run, ex.Message, recognizer.PromptVersion, rawResponse, canRetry);
         }
 
         // Outside the try: the run has already succeeded, so a failure here must not mark it failed.
@@ -511,6 +515,22 @@ public class LegendDetectionService(
         }
 
         return true;
+    }
+
+    /// <summary>Records a failed attempt under the run's claim, logging when it was reclaimed or finished meanwhile.</summary>
+    private async Task FailAsync(
+        LegendDetectionStatements.ClaimedRunRow run,
+        string error,
+        string? promptVersion,
+        string? rawResponse,
+        bool retry)
+    {
+        if (!await statements.FailRunAsync(run.Id, run.ClaimId, error, promptVersion, rawResponse, retry))
+        {
+            logger.LogWarning(
+                "Dropped legend detection failure for run {RunId} (clip {ClipId}): it was reclaimed or finished meanwhile",
+                run.Id, run.ClipId);
+        }
     }
 
     /// <summary>

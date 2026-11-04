@@ -100,35 +100,35 @@ public sealed class WatchRoomHub(
     public async Task RemoveFromQueue(Guid itemId)
     {
         WatchRoom room = Room();
-        await ApplyChange(room, room.Remove(Context.ConnectionId, itemId));
+        await ApplyChange(room, r => r.Remove(Context.ConnectionId, itemId));
     }
 
     public async Task MoveInQueue(Guid itemId, int toIndex)
     {
         WatchRoom room = Room();
-        await ApplyChange(room, room.Move(Context.ConnectionId, itemId, toIndex));
+        await ApplyChange(room, r => r.Move(Context.ConnectionId, itemId, toIndex));
     }
 
     public async Task LockQueue(bool locked)
     {
         WatchRoom room = Room();
-        await ApplyChange(room, room.SetQueueLocked(Context.ConnectionId, locked));
+        await ApplyChange(room, r => r.SetQueueLocked(Context.ConnectionId, locked));
     }
 
     /// <summary>
-    /// Moves on to the next queued clip: the host skipping, or the host's player reaching the end of
-    /// <paramref name="currentItemId"/>.
+    /// Moves on from <paramref name="currentItemId"/> to the next queued clip: the host skipping it, or the host's
+    /// player reaching its end. Without the item it is refused, so two of the host's devices can't skip twice.
     /// </summary>
     public async Task Next(Guid? currentItemId)
     {
         WatchRoom room = Room();
-        await ApplyChange(room, room.Next(Context.ConnectionId, currentItemId));
+        await ApplyChange(room, r => currentItemId is { } itemId && r.Next(Context.ConnectionId, itemId));
     }
 
     public async Task PlayNow(Guid itemId)
     {
         WatchRoom room = Room();
-        await ApplyChange(room, room.PlayNow(Context.ConnectionId, itemId));
+        await ApplyChange(room, r => r.PlayNow(Context.ConnectionId, itemId));
     }
 
     /// <summary>
@@ -153,19 +153,20 @@ public sealed class WatchRoomHub(
     private async Task SetPlayback(bool? playing, double positionSeconds)
     {
         WatchRoom room = Room();
-        await ApplyChange(room, room.SetPlayback(Context.ConnectionId, playing, positionSeconds));
+        await ApplyChange(room, r => r.SetPlayback(Context.ConnectionId, playing, positionSeconds));
     }
 
-    private async Task ApplyChange(WatchRoom room, bool applied)
+    private async Task ApplyChange(WatchRoom room, Func<WatchRoom, bool> change)
     {
+        (bool applied, RoomStateView state) = room.Apply(change);
         if (!applied)
         {
             // Not allowed (not the host any more, or not their clip) or out of date: resend the room so the caller's screen catches up.
-            await Clients.Caller.SendAsync(RoomStateMethod, room.Snapshot());
+            await Clients.Caller.SendAsync(RoomStateMethod, state);
             return;
         }
 
-        await Broadcast(room);
+        await Clients.Group(GroupName(room.InstanceId)).SendAsync(RoomStateMethod, state);
     }
 
     private Task Broadcast(WatchRoom room) =>
@@ -178,5 +179,5 @@ public sealed class WatchRoomHub(
 
     private static HubException NotInRoom() => new("This room has closed. Rejoin the Activity.");
 
-    private static string GroupName(string instanceId) => $"watch-room:{instanceId}";
+    internal static string GroupName(string instanceId) => $"watch-room:{instanceId}";
 }

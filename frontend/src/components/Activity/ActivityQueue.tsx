@@ -23,6 +23,7 @@ export function ActivityQueue({
 }) {
   const queue = room.state?.queue ?? [];
   const locked = room.state?.queueLocked ?? false;
+  const { live } = room;
 
   return (
     <section className="rs-activity-queue">
@@ -36,6 +37,7 @@ export function ActivityQueue({
             type="button"
             className="rs-small-button"
             aria-pressed={locked}
+            disabled={!live}
             onClick={() => room.lockQueue(!locked)}
           >
             {locked ? (
@@ -76,6 +78,7 @@ export function ActivityQueue({
                         type="button"
                         className="rs-icon-button"
                         aria-label={activityCopy.queue.playNow(item.title)}
+                        disabled={!live}
                         onClick={() => room.playNow(item.itemId)}
                       >
                         <IconPlayerPlay size={16} aria-hidden="true" />
@@ -84,7 +87,7 @@ export function ActivityQueue({
                         type="button"
                         className="rs-icon-button"
                         aria-label={activityCopy.queue.moveUp(item.title)}
-                        disabled={index === 0}
+                        disabled={!live || index === 0}
                         onClick={() => room.moveInQueue(item.itemId, index - 1)}
                       >
                         <IconArrowUp size={16} aria-hidden="true" />
@@ -93,7 +96,7 @@ export function ActivityQueue({
                         type="button"
                         className="rs-icon-button"
                         aria-label={activityCopy.queue.moveDown(item.title)}
-                        disabled={index === queue.length - 1}
+                        disabled={!live || index === queue.length - 1}
                         onClick={() => room.moveInQueue(item.itemId, index + 1)}
                       >
                         <IconArrowDown size={16} aria-hidden="true" />
@@ -105,6 +108,7 @@ export function ActivityQueue({
                       type="button"
                       className="rs-icon-button"
                       aria-label={activityCopy.queue.remove(item.title)}
+                      disabled={!live}
                       onClick={() => room.removeFromQueue(item.itemId)}
                     >
                       <IconX size={16} aria-hidden="true" />
