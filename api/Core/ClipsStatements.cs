@@ -1035,8 +1035,11 @@ public class ClipsStatements(NpgsqlConnection connection)
     /// A transcode worker finished a new video version for the clip (a first encode, or a trim): it is ready on that
     /// version, with the output's length, size, codecs and height. The source upload is gone by now, so the AV1 size
     /// alone counts toward the quota (<see cref="StorageBytesExpression"/>) and the declared upload size is cleared.
-    /// <c>video_status</c> is left alone, as in <see cref="SetTranscodeProgress"/>. Returns the version the clip was
-    /// on before, so the caller can delete that version's files when it differs; null when there is no such clip.
+    /// <c>video_status</c> is left alone, as in <see cref="SetTranscodeProgress"/>. Only a clip still on R2 whose
+    /// version is not newer than <paramref name="videoVersion"/> moves, so a job finishing after the clip was moved
+    /// back to Bunny, or after a later version replaced the job's (two trims finishing out of order), changes nothing.
+    /// Returns the version the clip was on before, so the caller can delete that version's files when it differs;
+    /// null when the job was superseded that way (or there is no such clip).
     /// </summary>
     public async Task<int?> SetTranscodeReady(
         Guid clipId,
@@ -1059,6 +1062,8 @@ public class ClipsStatements(NpgsqlConnection connection)
                 video_height = @height
             FROM (SELECT id, video_version FROM clip WHERE id = @clipId FOR UPDATE) old_clip
             WHERE clip.id = old_clip.id
+              AND clip.video_host = 'r2'
+              AND clip.video_version <= @videoVersion
             RETURNING old_clip.video_version
             """;
         return await connection.QuerySingleOrDefaultAsync<int?>(sql,

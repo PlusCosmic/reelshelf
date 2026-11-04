@@ -112,6 +112,85 @@ public class TranscodeQueueTests
     }
 
     [PostgresFact]
+    public async Task Trims_FinishingOutOfOrder_LeaveTheClipOnTheNewerVersion_AndDeleteTheOlderTrimsOutputs()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync();
+        Guid clipId = await test.AddClipAsync("ready");
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Trim, new TranscodeRunInput(TrimEndSeconds: 9), videoVersion: 2);
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Trim, new TranscodeRunInput(TrimEndSeconds: 5), videoVersion: 3);
+        ClaimedTranscodeRun older = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        ClaimedTranscodeRun newer = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        Assert.Equal((2, 3), (older.VideoVersion, newer.VideoVersion));
+
+        using JsonDocument newerOutputs = JsonDocument.Parse("""{"codecs": "av01.0.05M.08,opus", "height": 720}""");
+        Assert.Equal(TranscodeReportOutcome.Applied,
+            await test.Queue.CompleteAsync(newer.RunId, newer.LeaseId, newerOutputs.RootElement, 5, 2_000_000));
+        Assert.Equal([(clipId, 1)], test.Storage.DeletedVersions);
+
+        using JsonDocument olderOutputs = JsonDocument.Parse("""{"codecs": "av01.0.08M.08,opus", "height": 1080}""");
+        Assert.Equal(TranscodeReportOutcome.Applied,
+            await test.Queue.CompleteAsync(older.RunId, older.LeaseId, olderOutputs.RootElement, 9, 4_000_000));
+
+        // The older trim still succeeds, but the clip stays on the newer version and only the older trim's files go.
+        Assert.Equal("succeeded", await test.RunStatusAsync(older.RunId));
+        ClipAfter clip = await test.ClipAsync(clipId);
+        Assert.Equal(("ready", 5, 2_000_000L, 3, "av01.0.05M.08,opus", 720),
+            (clip.VideoState, clip.Length, clip.StorageSize, clip.VideoVersion, clip.VideoCodecs, clip.VideoHeight));
+        Assert.Equal([(clipId, 1), (clipId, 2)], test.Storage.DeletedVersions);
+        Assert.Empty(test.Storage.DeletedSources);
+
+        // A repeat of the superseded report changes and deletes nothing more.
+        Assert.Equal(TranscodeReportOutcome.Applied,
+            await test.Queue.CompleteAsync(older.RunId, older.LeaseId, olderOutputs.RootElement, 9, 4_000_000));
+        Assert.Equal(3, (await test.ClipAsync(clipId)).VideoVersion);
+        Assert.Equal([(clipId, 1), (clipId, 2)], test.Storage.DeletedVersions);
+    }
+
+    [PostgresFact]
+    public async Task Completion_OnAClipBackOnBunny_IsSuperseded_AndWritesNothingOntoIt()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync();
+        Guid bunnyVideoId = Guid.NewGuid();
+        Guid clipId = await test.AddBunnyClipAsync(bunnyVideoId);
+        // Moved to R2 on version 2 before, then reverted to its Bunny copy with its version left alone, while a trim
+        // to version 3 was still queued.
+        await test.Connection.ExecuteAsync("UPDATE clip SET video_version = 2 WHERE id = @ClipId", new { ClipId = clipId });
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Trim, new TranscodeRunInput(TrimEndSeconds: 5), videoVersion: 3);
+        ClaimedTranscodeRun job = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+
+        using JsonDocument outputs = JsonDocument.Parse("""{"codecs": "av01.0.05M.08,opus", "height": 720}""");
+        Assert.Equal(TranscodeReportOutcome.Applied,
+            await test.Queue.CompleteAsync(job.RunId, job.LeaseId, outputs.RootElement, 5, 2_000_000));
+
+        Assert.Equal("succeeded", await test.RunStatusAsync(job.RunId));
+        ClipAfter clip = await test.ClipAsync(clipId);
+        Assert.Equal(("ready", 30, 999L, 4, 2, (string?)null, (int?)null, 50_000_000L),
+            (clip.VideoState, clip.Length, clip.StorageSize, clip.VideoStatus, clip.VideoVersion, clip.VideoCodecs,
+                clip.VideoHeight, clip.FileSize));
+        Assert.Equal((VideoHostNames.Bunny, bunnyVideoId, (Guid?)null, false), await test.HostAsync(clipId));
+        // Only the job's own outputs go: the source and every other version are left alone.
+        Assert.Equal([(clipId, 3)], test.Storage.DeletedVersions);
+        Assert.Empty(test.Storage.DeletedSources);
+        Assert.Empty(test.Storage.KeptVersions);
+    }
+
+    [PostgresFact]
+    public async Task Transcode_OnAClipBackOnBunny_IsSuperseded_AndKeepsItsSource()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync();
+        Guid clipId = await test.AddBunnyClipAsync(Guid.NewGuid());
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Transcode, new TranscodeRunInput($"uploads/{clipId}"));
+        ClaimedTranscodeRun job = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+
+        Assert.Equal(TranscodeReportOutcome.Applied, await test.Queue.CompleteAsync(job.RunId, job.LeaseId, null, 5, 2_000_000));
+
+        ClipAfter clip = await test.ClipAsync(clipId);
+        Assert.Equal((30, 999L, 1), (clip.Length, clip.StorageSize, clip.VideoVersion));
+        Assert.Equal([(clipId, 1)], test.Storage.DeletedVersions);
+        Assert.Empty(test.Storage.DeletedSources);
+    }
+
+    [PostgresFact]
     public async Task Completion_WithOutputsItCantUse_StillReadiesTheClip()
     {
         await using TestQueue test = await TestQueue.CreateAsync();
