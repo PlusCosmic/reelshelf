@@ -67,6 +67,37 @@ public class ContentReportStatementsTests
     }
 
     [PostgresFact]
+    public async Task TakeDown_LeavesAnOpenUrgentReportOnTheClipOpen_SoTheClipStaysHeldAndCanBeRemoved()
+    {
+        await using TestDatabase test = await TestDatabase.CreateAsync();
+        Guid admin = await test.AddUserAsync("admin", null, "Admin");
+        Guid owner = await test.AddUserAsync("owner", "owner@example.com");
+        (Guid clip, string token) = await test.AddSharedClipAsync(owner);
+        Guid copyright = await test.ReportAsync(clip, token, ContentReportReasons.Copyright);
+        Guid other = await test.ReportAsync(clip, token, ContentReportReasons.Other);
+        Guid urgent = await test.ReportAsync(clip, token, ContentReportReasons.ChildSafety);
+
+        TakeDownResult result = await test.Statements.TakeDown(copyright, admin, "copyright");
+
+        Assert.Equal(ResolveOutcome.Resolved, result.Outcome);
+        Assert.Equal(ContentReportStatuses.TakenDown, (await test.Statements.Get(copyright))!.Status);
+        Assert.Equal(ContentReportStatuses.TakenDown, (await test.Statements.Get(other))!.Status);
+        ContentReportRow stillOpen = (await test.Statements.Get(urgent))!;
+        Assert.Equal((ContentReportStatuses.Open, null, null), (stillOpen.Status, stillOpen.ResolvedByName,
+            stillOpen.ResolutionNote));
+        Assert.Null(await test.Statements.FindShare(token));
+        Assert.True(await test.Statements.IsHeldForReview(clipId: clip));
+        Assert.True(await test.Statements.IsHeldForReview(ownerId: owner));
+        Assert.Equal([urgent], (await test.Statements.List(open: true, 10)).Select(row => row.Id));
+
+        RemoveResult removed = await test.Statements.Remove(urgent, admin, "reported", TimeSpan.FromDays(365));
+        Assert.Equal((RemoveOutcome.Removed, clip, true), (removed.Outcome, removed.ClipId, removed.OwnerSuspended));
+        Assert.Equal(ContentReportStatuses.Removed, (await test.Statements.Get(urgent))!.Status);
+        // Reports already taken down keep their own resolution.
+        Assert.Equal(ContentReportStatuses.TakenDown, (await test.Statements.Get(copyright))!.Status);
+    }
+
+    [PostgresFact]
     public async Task AReport_OutlivesItsClip()
     {
         await using TestDatabase test = await TestDatabase.CreateAsync();
