@@ -25,7 +25,7 @@ public sealed record MoveClipsResponse(List<MovedClip> Moved, List<Guid> Skipped
 /// <summary>
 /// Moves clips between an owner's books, for clips filed under the wrong game. Only the clip's book changes: its video,
 /// tags, collections, share links and plan usage stay as they are, and a Bunny video stays in the collection it was
-/// uploaded to (see V57). Clips moved into Apex Legends get the automatic legend detection they'd have had there.
+/// uploaded to (see V59). Clips moved into Apex Legends get the automatic legend detection they'd have had there.
 /// </summary>
 public sealed class ClipMoveService(
     ClipsStatements clips,

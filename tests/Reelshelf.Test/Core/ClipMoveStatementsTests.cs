@@ -10,7 +10,7 @@ namespace Reelshelf.Test.Core;
 /// <summary>
 /// Moving clips between books against a real Postgres: only the owner's unbinned clips move, a filter moves every
 /// match, a book never ends up holding the same file twice, and a moved clip remembers the book it was filed in. The
-/// schema starts with the baseline's duplicate key and runs V58 over it, as prod will.
+/// schema starts with the baseline's duplicate key and runs V60 over it, as prod will.
 /// </summary>
 public class ClipMoveStatementsTests
 {
@@ -80,7 +80,7 @@ public class ClipMoveStatementsTests
     public async Task ClipsWithoutAHash_ShareABook_AndAlwaysMove()
     {
         await using TestDatabase test = await TestDatabase.CreateAsync();
-        // Twitch imports have no MD5; before V58 the second one in a book broke the duplicate key.
+        // Twitch imports have no MD5; before V60 the second one in a book broke the duplicate key.
         await test.AddClipAsync(ValorantId, "Import 1", md5: null);
         await test.AddClipAsync(ValorantId, "Import 2", md5: null);
         Guid fromApex = await test.AddClipAsync(ApexId, "Import 3", md5: null);
@@ -193,7 +193,7 @@ public class ClipMoveStatementsTests
             await connection.ExecuteAsync(
                 "ALTER TABLE clip ADD UNIQUE NULLS NOT DISTINCT (owner_id, game_category_id, md5_hash)");
             await connection.ExecuteAsync(await File.ReadAllTextAsync(
-                TestClipSchema.MigrationPath("V58__clip_md5_key_nulls_distinct.sql")));
+                TestClipSchema.MigrationPath("V60__clip_md5_key_nulls_distinct.sql")));
             await connection.ExecuteAsync("""
                 CREATE TABLE tag (id uuid PRIMARY KEY, name text NOT NULL);
                 CREATE TABLE clip_tag (clip_id uuid NOT NULL, tag_id uuid NOT NULL);

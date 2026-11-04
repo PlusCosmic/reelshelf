@@ -57,7 +57,7 @@ public class BunnyCopyStatements(NpgsqlConnection connection) : IBunnyCopyStore
     /// <summary>
     /// A collection holds the owner's Bunny videos for one game category, so it's in use while any of the owner's
     /// clips filed in that category is on Bunny (a reserved upload included) or still has a Bunny copy. A clip moved
-    /// to another book keeps its video in the collection it was uploaded to (<c>filed_category_id</c>, V57).
+    /// to another book keeps its video in the collection it was uploaded to (<c>filed_category_id</c>, V59).
     /// </summary>
     private const string CollectionIsUnused = """
         NOT EXISTS (
