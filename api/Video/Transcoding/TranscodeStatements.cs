@@ -139,7 +139,10 @@ public class TranscodeStatements(NpgsqlConnection connection)
 
     /// <summary>
     /// Records a failed attempt. A retryable failure with attempts left goes back to pending and waits
-    /// <paramref name="retryAfter"/>; anything else fails the job. Null when it is not running under this lease.
+    /// <paramref name="retryAfter"/>, with no heartbeat or progress; anything else fails the job. Null when it is not
+    /// running under this lease. Either way the job keeps the failing attempt's <c>lease_id</c> (and its
+    /// <c>error</c>) until the next claim replaces it, so the same worker repeating its report is recognised and
+    /// accepted.
     /// </summary>
     public async Task<FinishedRunRow?> FailRunAsync(
         Guid runId,
@@ -155,6 +158,8 @@ public class TranscodeStatements(NpgsqlConnection connection)
                 available_at = CASE WHEN @Retryable AND attempts < @MaxAttempts THEN now() + @RetryAfter
                                     ELSE available_at END,
                 finished_at = CASE WHEN @Retryable AND attempts < @MaxAttempts THEN NULL ELSE now() END,
+                heartbeat_at = CASE WHEN @Retryable AND attempts < @MaxAttempts THEN NULL ELSE heartbeat_at END,
+                progress = CASE WHEN @Retryable AND attempts < @MaxAttempts THEN NULL ELSE progress END,
                 error = @Error
             WHERE id = @RunId AND lease_id = @LeaseId AND status = 'running'
             RETURNING id, clip_id, type, status, video_version

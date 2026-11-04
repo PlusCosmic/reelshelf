@@ -1,5 +1,6 @@
 import type { CurrentUserResponse, LinkedIdentity } from "@/api-client";
 import { createUserApi } from "./apiClients";
+import { ApiError } from "./apiError";
 
 export interface CurrentUser {
   id: string;
@@ -17,9 +18,18 @@ export interface CurrentUser {
   isAdmin: boolean;
 }
 
+/**
+ * The signed-in account, or null when the API says there is no session (401). Any other failure (the network, a
+ * 5xx) throws, since it says nothing about whether the browser is signed in.
+ */
 export async function fetchMe(): Promise<CurrentUser | null> {
-  const user = await createUserApi().getMe();
-  return user ? fromCurrentUserResponse(user) : null;
+  try {
+    const user = await createUserApi().getMe();
+    return user ? fromCurrentUserResponse(user) : null;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null;
+    throw error;
+  }
 }
 
 export type { LinkedIdentity };

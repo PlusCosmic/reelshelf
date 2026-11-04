@@ -59,7 +59,9 @@ public static class ClipVideoColumns
     /// The <c>thumbnails_ready</c> column for a query over <c>clip</c> aliased <paramref name="clip"/>: the clip is
     /// ready, or a worker has reported the thumbnails of its current version (a transcode uploads them before it
     /// encodes). A trim's new version reports its own, but the clip stays on the old, ready version until the trim
-    /// succeeds. Reads <c>transcode_run_clip_idx</c>.
+    /// succeeds. Failed and released runs count too: their uploaded frames stay under the version until the clip is
+    /// deleted or moves off it, so an <c>encode_failed</c> clip still shows the frames its worker made. Reads
+    /// <c>transcode_run_clip_idx</c>.
     /// </summary>
     public static string ThumbnailsReadySql(string clip) =>
         $"""

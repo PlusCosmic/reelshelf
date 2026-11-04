@@ -43,7 +43,8 @@ public static class OverLimitEndpoints
 
     /// <summary>
     /// Picks a clip to keep when the account is over its limit, or unpicks it. 409 when the owner has already picked as
-    /// many clips as the plan keeps; 404 when the clip isn't theirs.
+    /// many clips as the plan keeps; 404 when the clip isn't theirs
+    /// or (picking it) is in the bin.
     /// </summary>
     private static async Task<Results<NoContent, NotFound, Conflict<string>>> SetKept(
         Guid clipId,

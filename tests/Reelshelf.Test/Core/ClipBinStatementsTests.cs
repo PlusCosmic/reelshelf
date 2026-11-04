@@ -51,6 +51,26 @@ public class ClipBinStatementsTests
     }
 
     [PostgresFact]
+    public async Task Binning_ClearsTheClipsPick()
+    {
+        await using TestDatabase test = await TestDatabase.CreateAsync();
+        Guid byId = await test.AddClipAsync(ApexId, "By id");
+        Guid byFilter = await test.AddClipAsync(OtherId, "By filter");
+        Guid untouched = await test.AddClipAsync(ApexId, "Untouched");
+        await test.Connection.ExecuteAsync("UPDATE clip SET kept_at = now()");
+
+        await test.Clips.BinClips(test.OwnerId, [byId]);
+        await test.Clips.BinMatchingClips(test.OwnerId, OtherId, null, null, null, false);
+        await test.Clips.RestoreClips(test.OwnerId, [byId, byFilter]);
+
+        Dictionary<Guid, DateTimeOffset?> kept = (await test.Connection.QueryAsync<(Guid Id, DateTimeOffset? KeptAt)>(
+            "SELECT id, kept_at FROM clip")).ToDictionary(row => row.Id, row => row.KeptAt);
+        Assert.Null(kept[byId]);
+        Assert.Null(kept[byFilter]);
+        Assert.NotNull(kept[untouched]);
+    }
+
+    [PostgresFact]
     public async Task BinningAFilter_BinsEveryMatch_AndNothingElse()
     {
         await using TestDatabase test = await TestDatabase.CreateAsync();

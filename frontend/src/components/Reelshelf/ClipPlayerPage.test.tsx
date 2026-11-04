@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Clip, PlaylistWithDetails } from "@/api-client";
 import { ClipPlayerPage } from "./ClipPlayerPage";
@@ -343,5 +343,39 @@ describe("ClipPlayerPage", () => {
 
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(await view.findByText("That's the lot.")).toBeTruthy();
+  });
+
+  it("counts K once while the next clip is on its way", async () => {
+    window.sessionStorage.clear();
+    mocks.neighbours = { older: mocks.clips.get("b"), newer: null };
+    const view = renderPage("a", undefined, { sort: true });
+
+    for (let press = 0; press < 3; press++)
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "k" }));
+
+    await vi.waitFor(() =>
+      expect(view.container.textContent).toContain("1 kept · 0 binned"),
+    );
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("takes an undone bin off the tally and carries on sorting", async () => {
+    window.sessionStorage.clear();
+    mocks.neighbours = { older: null, newer: null };
+    const view = renderPage("a", undefined, { sort: true });
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "x" }));
+    expect(await view.findByText("That's the lot.")).toBeTruthy();
+    expect(view.container.textContent).toContain("binned 1 clip");
+
+    const options = (mocks.bin.mock.calls[0] as unknown[])[1] as {
+      onUndone: (clipIds: string[]) => void;
+    };
+    act(() => options.onUndone(["a"]));
+
+    await vi.waitFor(() =>
+      expect(view.container.textContent).toContain("0 kept · 0 binned"),
+    );
+    expect(view.queryByText("That's the lot.")).toBeNull();
   });
 });

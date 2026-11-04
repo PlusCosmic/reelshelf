@@ -93,6 +93,12 @@ export function BinProvider({ children }: { children: ReactNode }) {
     [binClips, show],
   );
 
+  // Closing the note lets go of it too: focus or a pointer on a note that is gone mustn't keep the next one up.
+  const close = useCallback(() => {
+    setNotice(null);
+    setHeld(false);
+  }, []);
+
   const announceRestored = useCallback(
     (count: number) => show({ kind: "restored", count }),
     [show],
@@ -100,10 +106,13 @@ export function BinProvider({ children }: { children: ReactNode }) {
 
   const undo = useEffectEvent(async () => {
     if (notice?.kind !== "binned" || restoreClips.isPending) return;
+    const undoing = noticeId.current;
     try {
       const result = await restoreClips.mutateAsync(notice.clipIds);
       notice.onUndone?.(result.clipIds);
-      show({ kind: "restored", count: result.clipIds.length });
+      // A newer note (clips binned meanwhile) keeps its own undo rather than giving way to this one.
+      if (noticeId.current === undoing)
+        show({ kind: "restored", count: result.clipIds.length });
     } catch {
       show({ kind: "error", message: copy.undoFailed });
     }
@@ -112,9 +121,9 @@ export function BinProvider({ children }: { children: ReactNode }) {
   // The note goes after a while, but never from under a pointer or keyboard focus.
   useEffect(() => {
     if (!notice || held) return;
-    const timer = window.setTimeout(() => setNotice(null), NOTICE_MS);
+    const timer = window.setTimeout(close, NOTICE_MS);
     return () => window.clearTimeout(timer);
-  }, [notice, held, shownId]);
+  }, [notice, held, shownId, close]);
 
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (notice?.kind !== "binned" || isTyping(event.target)) return;
@@ -177,11 +186,7 @@ export function BinProvider({ children }: { children: ReactNode }) {
                   {restoreClips.isPending ? copy.undoing : copy.undo}
                   <kbd>{copy.undoHint}</kbd>
                 </button>
-                <Link
-                  to="/bin"
-                  className="rs-bin-toast-link"
-                  onClick={() => setNotice(null)}
-                >
+                <Link to="/bin" className="rs-bin-toast-link" onClick={close}>
                   {copy.openBin}
                 </Link>
               </>
@@ -190,7 +195,7 @@ export function BinProvider({ children }: { children: ReactNode }) {
               type="button"
               className="rs-icon-button rs-bin-toast-close"
               aria-label={copy.dismiss}
-              onClick={() => setNotice(null)}
+              onClick={close}
             >
               <IconX size={14} />
             </button>

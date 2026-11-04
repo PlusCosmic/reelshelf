@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Reelshelf.Test.Plans;
 
-/// <summary>Runs the grace and export queries against a real Postgres, on the V47 and V58 migrations themselves.</summary>
+/// <summary>Runs the grace and export queries against a real Postgres, on the V47, V58 and V59 migrations themselves.</summary>
 public class PlanEnforcementStatementsTests
 {
     [PostgresFact]
@@ -35,6 +35,13 @@ public class PlanEnforcementStatementsTests
                 await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V47__plan_enforcement.sql")));
             await connection.ExecuteAsync(
                 await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V58__clip_export_lease.sql")));
+            // V59's state constraints hold every write below; it also reads content_report.
+            await connection.ExecuteAsync("""
+                CREATE TABLE content_report (status text NOT NULL, created_at timestamptz NOT NULL,
+                    resolved_by uuid, resolved_at timestamptz)
+                """);
+            await connection.ExecuteAsync(
+                await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V59__state_check_constraints.sql")));
             await AccountsAsync(connection, new PlanEnforcementStatements(dataSource.CreateConnection()));
             await ExportsAsync(connection, new ClipExportStatements(dataSource.CreateConnection()));
             await LeasesAsync(connection, new ClipExportStatements(dataSource.CreateConnection()));
@@ -87,6 +94,13 @@ public class PlanEnforcementStatementsTests
         Assert.Equal((first, "Apex Legends"), (picked.Id, picked.GameName));
         Assert.True(await statements.SetKept(busy, first, keep: false));
         Assert.All(await statements.GetOwnedClips(busy), clip => Assert.Null(clip.KeptAt));
+
+        // A binned clip can't be picked, though unpicking it still answers.
+        await connection.ExecuteAsync("UPDATE clip SET binned_at = now() WHERE id = @first", new { first });
+        Assert.False(await statements.SetKept(busy, first, keep: true));
+        Assert.True(await statements.SetKept(busy, first, keep: false));
+        Assert.All(await statements.GetOwnedClips(busy), clip => Assert.Null(clip.KeptAt));
+        await connection.ExecuteAsync("UPDATE clip SET binned_at = NULL WHERE id = @first", new { first });
     }
 
     private static readonly TimeSpan Stale = TimeSpan.FromMinutes(30);
