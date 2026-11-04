@@ -56,13 +56,14 @@ public class BunnyCopyStatements(NpgsqlConnection connection) : IBunnyCopyStore
 
     /// <summary>
     /// A collection holds the owner's Bunny videos for one game category, so it's in use while any of the owner's
-    /// clips in that category is on Bunny (a reserved upload included) or still has a Bunny copy.
+    /// clips filed in that category is on Bunny (a reserved upload included) or still has a Bunny copy. A clip moved
+    /// to another book keeps its video in the collection it was uploaded to (<c>filed_category_id</c>, V57).
     /// </summary>
     private const string CollectionIsUnused = """
         NOT EXISTS (
             SELECT 1 FROM clip
             WHERE clip.owner_id = clip_collection.owner_id
-              AND clip.game_category_id = clip_collection.game_category_id
+              AND COALESCE(clip.filed_category_id, clip.game_category_id) = clip_collection.game_category_id
               AND (clip.video_host = 'bunny' OR clip.bunny_video_id IS NOT NULL))
         """;
 

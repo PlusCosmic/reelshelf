@@ -30,10 +30,24 @@ public static class ClipsEndpoints
         group.MapGet("legends", GetClipLegends).WithName("GetClipLegends");
         group.MapPatch("videos/{clipId:guid}/title", UpdateClipTitle).WithName("UpdateClipTitle")
             .RequirePermission(Permissions.ClipsEdit);
+        group.MapPost("move", MoveClips).WithName("MoveClips")
+            .RequirePermission(Permissions.ClipsEdit);
         group.MapDelete("videos/{clipId:guid}", DeleteClip).WithName("DeleteClip")
             .RequirePermission(Permissions.ClipsDelete);
         group.MapPost("backfill-metadata", BackfillClipMetadata).WithName("BackfillClipMetadata")
             .RequirePermission(Permissions.AdminUsers);
+    }
+
+    /// <summary>
+    /// Moves clips to another book: the ids given, or every clip matching the filter. Answers the ones it moved, each
+    /// with the book it came from so the move can be undone, and the ones the book already held a copy of.
+    /// </summary>
+    private static async Task<Ok<MoveClipsResponse>> MoveClips(
+        ClipMoveService moveService,
+        AuthenticatedUser user,
+        MoveClipsRequest request)
+    {
+        return TypedResults.Ok(await moveService.Move(user.Id, request));
     }
 
     private static async Task<Ok<ClipLibraryResponse>> GetLibrary(

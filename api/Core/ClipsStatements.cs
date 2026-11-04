@@ -198,6 +198,81 @@ public class ClipsStatements(NpgsqlConnection connection)
         return (await connection.QueryAsync<Guid>(sql, new { ownerId, clipIds = clipIds.ToArray() })).ToList();
     }
 
+    /// <summary>A clip <see cref="MoveClips"/> looked at: moved out of <paramref name="FromCategoryId"/>, or left there.</summary>
+    public sealed record MoveClipRow(Guid ClipId, Guid FromCategoryId, bool Moved);
+
+    /// <summary>
+    /// Moves the owner's clips to another book: the ids given, or with <paramref name="clipIds"/> null every clip
+    /// matching the filter (as <see cref="GetClipsWithTags"/> reads it). Binned clips and clips already in the book are
+    /// left out. A clip whose file the book already holds (the same MD5, which <c>clip</c>'s unique key allows once a
+    /// book) stays where it is, as does all but the oldest of several such clips moving together; those come back with
+    /// <see cref="MoveClipRow.Moved"/> false. Runs under the owner's <c>clip-storage:</c> lock, as an upload's insert
+    /// does, so an upload can't file the same file into the book between the check and the move.
+    /// </summary>
+    public async Task<List<MoveClipRow>> MoveClips(
+        Guid ownerId,
+        Guid toCategoryId,
+        IReadOnlyCollection<Guid>? clipIds,
+        Guid? gameCategoryId = null,
+        List<string>? tags = null,
+        string? search = null,
+        string? legend = null,
+        bool unviewedOnly = false)
+    {
+        StringBuilder where;
+        DynamicParameters parameters;
+        if (clipIds is not null)
+        {
+            where = new("c.owner_id = @ownerId AND c.binned_at IS NULL AND c.id = ANY(@clipIds)");
+            parameters = new DynamicParameters();
+            parameters.Add("ownerId", ownerId);
+            parameters.Add("clipIds", clipIds.ToArray());
+        }
+        else
+        {
+            (where, parameters) = ClipFilter(ownerId, gameCategoryId, tags, search, null, null, unviewedOnly, ownerId,
+                legend, binned: false);
+        }
+
+        parameters.Add("toCategoryId", toCategoryId);
+        // A clip moved before keeps the category its Bunny video was filed under (V57), however often it moves again.
+        string sql = $"""
+            WITH candidate AS (
+                SELECT c.id, c.game_category_id, c.md5_hash, c.created_at
+                FROM clip c
+                WHERE {where} AND c.game_category_id <> @toCategoryId
+                FOR UPDATE
+            ),
+            movable AS (
+                SELECT DISTINCT ON (candidate.md5_hash) candidate.id
+                FROM candidate
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM clip held
+                    WHERE held.owner_id = @ownerId
+                      AND held.game_category_id = @toCategoryId
+                      AND held.md5_hash IS NOT DISTINCT FROM candidate.md5_hash)
+                ORDER BY candidate.md5_hash, candidate.created_at, candidate.id
+            ),
+            moved AS (
+                UPDATE clip c
+                SET game_category_id = @toCategoryId,
+                    filed_category_id = COALESCE(c.filed_category_id, c.game_category_id)
+                FROM movable
+                WHERE c.id = movable.id
+                RETURNING c.id
+            )
+            SELECT candidate.id AS clip_id, candidate.game_category_id AS from_category_id, moved.id IS NOT NULL AS moved
+            FROM candidate
+            LEFT JOIN moved ON moved.id = candidate.id
+            """;
+
+        await using OwnerStorageLock storageLock = await BeginOwnerStorageLock(ownerId);
+        List<MoveClipRow> rows = (await connection.QueryAsync<MoveClipRow>(sql, parameters, storageLock.Transaction))
+            .ToList();
+        await storageLock.CommitAsync();
+        return rows;
+    }
+
     /// <summary>The owner's binned clips with these ids, or every one when <paramref name="clipIds"/> is null, oldest first.</summary>
     public async Task<List<Guid>> GetBinnedClipIds(Guid ownerId, IReadOnlyCollection<Guid>? clipIds, int limit)
     {
@@ -538,6 +613,9 @@ public class ClipsStatements(NpgsqlConnection connection)
     public sealed class OwnerStorageLock(NpgsqlConnection connection, NpgsqlTransaction transaction, bool openedConnection)
         : IAsyncDisposable
     {
+        /// <summary>The transaction the lock is held in, for statements that must run under it.</summary>
+        public NpgsqlTransaction Transaction => transaction;
+
         public Task CommitAsync() => transaction.CommitAsync();
 
         public async ValueTask DisposeAsync()

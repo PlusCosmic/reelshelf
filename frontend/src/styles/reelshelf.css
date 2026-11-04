@@ -9459,6 +9459,65 @@ html:has(.rs-library-route) {
   color: #fff;
 }
 
+/* Choosing the book chosen clips move to. */
+.rs-move-books {
+  display: grid;
+  gap: 4px;
+  max-height: min(50vh, 420px);
+  margin: 0 0 16px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.rs-move-book {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rs-move-book:hover:not(:disabled),
+.rs-move-book:focus-visible {
+  border-color: var(--line);
+  background: var(--bg-soft);
+}
+
+.rs-move-book:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.rs-move-book-cloth {
+  flex: none;
+  width: 14px;
+  height: 28px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.rs-move-book-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-move-book-count {
+  color: var(--fg-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* The undo note after a delete, at the foot of every signed-in page. */
 .rs-bin-toast-layer {
   position: fixed;

@@ -694,6 +694,36 @@
         }
       }
     },
+    "/api/clips/move": {
+      "post": {
+        "tags": [
+          "ClipsEndpoints"
+        ],
+        "operationId": "MoveClips",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveClipsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoveClipsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clips/backfill-metadata": {
       "post": {
         "tags": [
@@ -7367,6 +7397,79 @@
           },
           "is_primary": {
             "type": "boolean"
+          }
+        }
+      },
+      "MoveClipsRequest": {
+        "required": [
+          "category_id",
+          "clip_ids",
+          "filter"
+        ],
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clip_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "filter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BinClipsFilter"
+              }
+            ]
+          }
+        }
+      },
+      "MoveClipsResponse": {
+        "required": [
+          "moved",
+          "skipped_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "moved": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MovedClip"
+            }
+          },
+          "skipped_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "MovedClip": {
+        "required": [
+          "clip_id",
+          "from_category_id"
+        ],
+        "type": "object",
+        "properties": {
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from_category_id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },

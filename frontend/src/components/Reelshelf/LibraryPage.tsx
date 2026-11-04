@@ -52,6 +52,7 @@ import {
   withoutEmpty,
   type LibrarySearch,
 } from "./libraryList";
+import { MoveClipsDialog } from "./MoveClipsDialog";
 import { SelectionBar } from "./SelectionBar";
 import { isShortcutKey, startSortTally } from "./sortThrough";
 import { GameBanner } from "./GameBanner";
@@ -154,7 +155,9 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
     select: (router): LibrarySearch =>
       readLibrarySearch(router.location.search as Record<string, unknown>),
   });
-  const { bin, pending: binning } = useBin();
+  const { bin, pending: binning, move, moving } = useBin();
+  // Choosing a book for the chosen clips: the shelf's books, or "game" while the add-a-game search is open.
+  const [movePicker, setMovePicker] = useState<"books" | "game" | null>(null);
   const [selection, select] = useClipSelection();
   // The search box answers each key at once; the URL (and the list) follow once typing settles.
   const [query, setQuery] = useState(urlSearch.q ?? "");
@@ -261,9 +264,9 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
   }, [debouncedQuery, isCurrentPage]);
 
   const chosen = chosenCount(selection, matching);
-  const binChosen = async () => {
-    if (chosen === 0 || binning) return;
-    const target = selection.allMatching
+  /** The chosen clips: those picked, or every clip the list's filters match. */
+  const chosenTarget = () =>
+    selection.allMatching
       ? {
           filter: {
             categoryId: selectedId,
@@ -273,6 +276,19 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
           },
         }
       : { clipIds: [...selection.selected] };
+  const moveChosen = async (book: { id: string; name: string }) => {
+    if (chosen === 0 || moving) return;
+    try {
+      await move(chosenTarget(), book);
+      select({ type: "clear" });
+      setMovePicker(null);
+    } catch {
+      // The note says nothing moved; the choice and the picker stay for another try.
+    }
+  };
+  const binChosen = async () => {
+    if (chosen === 0 || binning) return;
+    const target = chosenTarget();
     try {
       await bin(target);
       select({ type: "clear" });
@@ -748,13 +764,33 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
               loaded={order.length}
               allMatching={selection.allMatching}
               binning={binning}
+              moving={moving}
               onSelectAll={() => select({ type: "allMatching" })}
+              onMove={() => setMovePicker("books")}
               onBin={() => void binChosen()}
               onClear={() => select({ type: "clear" })}
             />
           ) : null}
         </>
       )}
+
+      {movePicker === "books" && selection.active ? (
+        <MoveClipsDialog
+          count={selection.allMatching ? "all" : chosen}
+          books={shelf.filter((game) => game.id !== selectedId)}
+          pending={moving}
+          onMove={(book) => void moveChosen(book)}
+          onAnotherGame={() => setMovePicker("game")}
+          onClose={() => setMovePicker(null)}
+        />
+      ) : null}
+
+      <AddCategoryModal
+        opened={movePicker === "game" && selection.active}
+        pendingClipCount={selection.allMatching ? matching : chosen}
+        onClose={() => setMovePicker(null)}
+        onAdded={(category) => void moveChosen(category)}
+      />
 
       {removing ? (
         <RemoveBookDialog

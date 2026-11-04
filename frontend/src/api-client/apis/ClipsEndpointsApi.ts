@@ -23,6 +23,8 @@ import type {
   FindDuplicateVideosRequest,
   FindDuplicateVideosResponse,
   LegendCount,
+  MoveClipsRequest,
+  MoveClipsResponse,
   PagedClipsResponse,
   TopTag,
   UpdateTitleRequest,
@@ -46,6 +48,10 @@ import {
   FindDuplicateVideosResponseToJSON,
   LegendCountFromJSON,
   LegendCountToJSON,
+  MoveClipsRequestFromJSON,
+  MoveClipsRequestToJSON,
+  MoveClipsResponseFromJSON,
+  MoveClipsResponseToJSON,
   PagedClipsResponseFromJSON,
   PagedClipsResponseToJSON,
   TopTagFromJSON,
@@ -99,6 +105,10 @@ export interface GetVideoByIdRequest {
 
 export interface MarkVideoAsViewedRequest {
   clipId: string;
+}
+
+export interface MoveClipsOperationRequest {
+  moveClipsRequest: MoveClipsRequest;
 }
 
 export interface RemoveTagFromClipRequest {
@@ -686,6 +696,53 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.markVideoAsViewedRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   */
+  async moveClipsRaw(
+    requestParameters: MoveClipsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<MoveClipsResponse>> {
+    if (requestParameters["moveClipsRequest"] == null) {
+      throw new runtime.RequiredError(
+        "moveClipsRequest",
+        'Required parameter "moveClipsRequest" was null or undefined when calling moveClips().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clips/move`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: MoveClipsRequestToJSON(requestParameters["moveClipsRequest"]),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      MoveClipsResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async moveClips(
+    requestParameters: MoveClipsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<MoveClipsResponse> {
+    const response = await this.moveClipsRaw(requestParameters, initOverrides);
+    return await response.value();
   }
 
   /**
