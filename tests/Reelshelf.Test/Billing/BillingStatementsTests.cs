@@ -31,6 +31,7 @@ public class BillingStatementsTests
             await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V49__scheduled_plan_change.sql")));
             await RunAsync(connection, new BillingStatements(dataSource.CreateConnection()));
             await CheckoutLockAsync(connection, dataSource);
+            await SubscriptionLockAsync(connection, dataSource);
         }
         finally
         {
@@ -56,7 +57,7 @@ public class BillingStatementsTests
         DateTimeOffset periodEnd = DateTimeOffset.Parse("2026-11-23T10:00:00Z");
         BillingSubscription subscription = new("sub_1", harry, "active", "pro_yearly", AccountTier.Pro, periodEnd,
             false, null, null);
-        Assert.True(await statements.UpsertSubscription(subscription));
+        Assert.Equal(harry, await statements.UpsertSubscription(subscription));
         Assert.Equal(subscription, Assert.Single(await statements.GetSubscriptions(harry)));
 
         // A downgrade waiting for the end of the period is kept with it.
@@ -64,7 +65,7 @@ public class BillingStatementsTests
         {
             ScheduledLookupKey = "plus_monthly", ScheduledAt = periodEnd
         };
-        Assert.True(await statements.UpsertSubscription(downgrading));
+        Assert.Equal(harry, await statements.UpsertSubscription(downgrading));
         Assert.Equal(downgrading, Assert.Single(await statements.GetSubscriptions(harry)));
 
         // An upsert replaces the row.
@@ -72,23 +73,30 @@ public class BillingStatementsTests
         {
             Status = "canceled", CancelAtPeriodEnd = true, EndedAt = periodEnd, CancelAt = periodEnd
         };
-        Assert.True(await statements.UpsertSubscription(cancelled));
+        Assert.Equal(harry, await statements.UpsertSubscription(cancelled));
         Assert.Equal(cancelled, Assert.Single(await statements.GetSubscriptions(harry)));
 
+        // A recorded subscription never moves to another account: the upsert names the one it stays with.
+        BillingSubscription elsewhere = cancelled with { UserId = other, Status = "active" };
+        Assert.Equal(harry, await statements.UpsertSubscription(elsewhere));
+        Assert.Equal(elsewhere with { UserId = harry }, Assert.Single(await statements.GetSubscriptions(harry)));
+        Assert.Empty(await statements.GetSubscriptions(other));
+        Assert.Equal(harry, await statements.UpsertSubscription(cancelled));
+
         Assert.Empty(await statements.GetUserIdsWithTierAtLeast(AccountTier.Plus));
-        Assert.True(await statements.UpsertSubscription(subscription with { Id = "sub_live", Status = "past_due" }));
+        Assert.Equal(harry, await statements.UpsertSubscription(subscription with { Id = "sub_live", Status = "past_due" }));
         Assert.Equal([harry], await statements.GetUserIdsWithTierAtLeast(AccountTier.Pro));
         Assert.Equal([harry], await statements.GetUserIdsWithTierAtLeast(AccountTier.Plus));
 
                 // An unknown plan is recorded without a tier.
         BillingSubscription legacy = new("sub_2", harry, "active", "legacy", null, null, false, null, null);
-        Assert.True(await statements.UpsertSubscription(legacy));
+        Assert.Equal(harry, await statements.UpsertSubscription(legacy));
         Assert.Contains(legacy, await statements.GetSubscriptions(harry));
 
         // Nor is one of an account being deleted, or of one already gone; the account's rows go with it.
         await connection.ExecuteAsync("UPDATE app_user SET deletion_requested_at = now() WHERE id = @other", new { other });
-        Assert.False(await statements.UpsertSubscription(subscription with { Id = "sub_4", UserId = other }));
-        Assert.False(await statements.UpsertSubscription(subscription with { Id = "sub_3", UserId = Guid.NewGuid() }));
+        Assert.Null(await statements.UpsertSubscription(subscription with { Id = "sub_4", UserId = other }));
+        Assert.Null(await statements.UpsertSubscription(subscription with { Id = "sub_3", UserId = Guid.NewGuid() }));
         await connection.ExecuteAsync("DELETE FROM app_user WHERE id = @harry", new { harry });
         Assert.Empty(await statements.GetSubscriptions(harry));
     }
@@ -119,6 +127,60 @@ public class BillingStatementsTests
         }
 
         Assert.Equal("cs_1", await first.GetCheckoutSessionId(harry));
+    }
+
+    private static async Task SubscriptionLockAsync(NpgsqlConnection connection, NpgsqlDataSource dataSource)
+    {
+        Guid harry = Guid.NewGuid();
+        await connection.ExecuteAsync("INSERT INTO app_user (id) VALUES (@harry)", new { harry });
+        BillingStatements first = new(dataSource.CreateConnection());
+        BillingStatements second = new(dataSource.CreateConnection());
+        BillingSubscription active = new("sub_locked", harry, "active", "plus_monthly", AccountTier.Plus, null, false,
+            null, null);
+
+        // A second sync of the subscription waits for the first to commit, so it reads Stripe after that write.
+        Task<IAsyncDisposable> waiting;
+        await using (await first.LockSubscription("sub_locked"))
+        {
+            Assert.Equal(harry, await first.UpsertSubscription(active));
+            waiting = second.LockSubscription("sub_locked");
+            await Task.Delay(200);
+            Assert.False(waiting.IsCompleted);
+
+            // Another subscription isn't held up.
+            await using (await new BillingStatements(dataSource.CreateConnection()).LockSubscription("sub_other"))
+            {
+            }
+        }
+
+        await using (await waiting)
+        {
+            Assert.Equal(active, Assert.Single(await second.GetSubscriptions(harry)));
+            Assert.Equal(harry, await second.UpsertSubscription(active with { Status = "canceled" }));
+        }
+
+        Assert.Equal("canceled", Assert.Single(await first.GetSubscriptions(harry)).Status);
+
+        // Under the checkout lock, a subscription's lock joins its transaction and is held until it commits.
+        Task<IAsyncDisposable> afterCheckout;
+        await using (await first.LockCheckouts(harry))
+        {
+            await using (await first.LockSubscription("sub_locked"))
+            {
+                Assert.Equal(harry, await first.UpsertSubscription(active));
+            }
+
+            afterCheckout = second.LockSubscription("sub_locked");
+            await Task.Delay(200);
+            Assert.False(afterCheckout.IsCompleted);
+            await first.SetCheckoutSessionId(harry, "cs_locked");
+        }
+
+        await using (await afterCheckout)
+        {
+            Assert.Equal("active", Assert.Single(await second.GetSubscriptions(harry)).Status);
+            Assert.Equal("cs_locked", await second.GetCheckoutSessionId(harry));
+        }
     }
 
     private static string MigrationPath(string name)
