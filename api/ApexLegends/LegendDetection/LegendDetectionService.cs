@@ -36,35 +36,69 @@ public class LegendDetectionService(
     /// </summary>
     public async Task QueueForEncodedClipAsync(ClipsStatements.ClipRow clip)
     {
+        if (await AutomaticRunSettingsAsync(clip.GameCategoryId) is not { } run)
+        {
+            return;
+        }
+
+        if (await statements.QueueAutoRunAsync(clip.Id, run.Provider, run.Model, run.ReasoningEffort))
+        {
+            logger.LogInformation("Queued legend detection for clip {ClipId}", clip.Id);
+        }
+    }
+
+    /// <summary>
+    /// Queues the automatic run for clips its owner just moved to <paramref name="toCategoryId"/>, when automatic
+    /// detection is on and that is Apex Legends, as if they had finished encoding there. Only ready clips without an
+    /// automatic run are queued; one still encoding gets its run when the encode finishes, which reads its book then.
+    /// </summary>
+    public async Task QueueForMovedClipsAsync(IReadOnlyCollection<Guid> clipIds, Guid toCategoryId)
+    {
+        if (clipIds.Count == 0 || await AutomaticRunSettingsAsync(toCategoryId) is not { } run)
+        {
+            return;
+        }
+
+        int queued = await statements.QueueAutoRunsForClipsAsync(clipIds, toCategoryId, run.Provider, run.Model,
+            run.ReasoningEffort);
+        if (queued > 0)
+        {
+            logger.LogInformation("Queued legend detection for {Count} clips moved to Apex Legends", queued);
+        }
+    }
+
+    private sealed record AutomaticRun(string Provider, string Model, string? ReasoningEffort);
+
+    /// <summary>
+    /// The provider, model and effort an automatic run uses, or null when there is none to queue: automatic detection
+    /// is off or not configured, or <paramref name="gameCategoryId"/> isn't Apex Legends.
+    /// </summary>
+    private async Task<AutomaticRun?> AutomaticRunSettingsAsync(Guid gameCategoryId)
+    {
         LegendDetectionOptions current = options.CurrentValue;
         string model = ModelOrDefault(current.Provider, current.Model);
         if (!current.AutoDetect || !recognizerFactory.IsConfigured(current.Provider) || model.Length == 0)
         {
-            return;
+            return null;
         }
 
         GameCategory? apex = await gameCategoryStatements.GetBySlugAsync(ApexLegendsSlug);
-        if (apex is null || apex.Id != clip.GameCategoryId)
+        if (apex is null || apex.Id != gameCategoryId)
         {
-            return;
+            return null;
         }
 
-        string? reasoningEffort;
         try
         {
-            reasoningEffort = recognizerFactory.SupportsReasoningEffort(current.Provider)
+            string? reasoningEffort = recognizerFactory.SupportsReasoningEffort(current.Provider)
                 ? LegendReasoningEffort.Normalize(current.ReasoningEffort)
                 : null;
+            return new AutomaticRun(current.Provider.ToLowerInvariant(), model, reasoningEffort);
         }
         catch (ArgumentException ex)
         {
             logger.LogWarning("Not queueing legend detection: LegendDetection:ReasoningEffort is invalid. {Error}", ex.Message);
-            return;
-        }
-
-        if (await statements.QueueAutoRunAsync(clip.Id, current.Provider.ToLowerInvariant(), model, reasoningEffort))
-        {
-            logger.LogInformation("Queued legend detection for clip {ClipId}", clip.Id);
+            return null;
         }
     }
 

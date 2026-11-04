@@ -25,11 +25,12 @@ public sealed record MoveClipsResponse(List<MovedClip> Moved, List<Guid> Skipped
 /// <summary>
 /// Moves clips between an owner's books, for clips filed under the wrong game. Only the clip's book changes: its video,
 /// tags, collections, share links and plan usage stay as they are, and a Bunny video stays in the collection it was
-/// uploaded to (see V57).
+/// uploaded to (see V57). Clips moved into Apex Legends get the automatic legend detection they'd have had there.
 /// </summary>
 public sealed class ClipMoveService(
     ClipsStatements clips,
     GameCategoryStatements gameCategories,
+    LegendDetectionService legendDetection,
     ILogger<ClipMoveService> logger)
 {
     /// <summary>The most ids one call takes, as the bin does.</summary>
@@ -80,6 +81,18 @@ public sealed class ClipMoveService(
         List<Guid> skipped = rows.Where(row => !row.Moved).Select(row => row.ClipId).ToList();
         logger.LogInformation("Account {UserId} moved {Moved} clips to category {CategoryId} ({Skipped} skipped as duplicates)",
             userId, moved.Count, request.CategoryId, skipped.Count);
+
+        // The move has happened; failing to queue detection only leaves the clips for the backfill.
+        try
+        {
+            await legendDetection.QueueForMovedClipsAsync(moved.Select(clip => clip.ClipId).ToList(), request.CategoryId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to queue legend detection for clips moved to category {CategoryId}",
+                request.CategoryId);
+        }
+
         return new MoveClipsResponse(moved, skipped);
     }
 }

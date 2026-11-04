@@ -1,5 +1,6 @@
 using Dapper;
 using Npgsql;
+using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Core;
 using Reelshelf.Test.Video;
 using Xunit;
@@ -108,6 +109,31 @@ public class ClipMoveStatementsTests
     }
 
     [PostgresFact]
+    public async Task ClipsMovedIntoApex_GetOneAutomaticLegendRun_OnceReady()
+    {
+        await using TestDatabase test = await TestDatabase.CreateAsync();
+        Guid ready = await test.AddClipAsync(ValorantId, "Ready", "a");
+        Guid encoding = await test.AddClipAsync(ValorantId, "Encoding", "b");
+        await test.Connection.ExecuteAsync("UPDATE clip SET video_state = 'processing' WHERE id = @encoding",
+            new { encoding });
+        Guid alreadyRun = await test.AddClipAsync(ValorantId, "Already run", "c");
+        await test.Connection.ExecuteAsync("""
+            INSERT INTO legend_detection_run (clip_id, trigger, provider, model) VALUES (@alreadyRun, 'auto', 'openai', 'old')
+            """, new { alreadyRun });
+        Guid elsewhere = await test.AddClipAsync(FortniteId, "Not moved", "d");
+        List<Guid> moved = (await test.Clips.MoveClips(test.OwnerId, ApexId, [ready, encoding, alreadyRun]))
+            .Where(row => row.Moved).Select(row => row.ClipId).ToList();
+        LegendDetectionStatements legend = new(test.NewConnection());
+
+        Assert.Equal(1, await legend.QueueAutoRunsForClipsAsync([.. moved, elsewhere], ApexId, "openai", "new", null));
+        Assert.Equal(0, await legend.QueueAutoRunsForClipsAsync(moved, ApexId, "openai", "new", null));
+        Assert.Equal(
+            new[] { (alreadyRun, "old"), (ready, "new") }.OrderBy(run => run.Item1),
+            (await test.Connection.QueryAsync<(Guid, string)>("SELECT clip_id, model FROM legend_detection_run"))
+                .OrderBy(run => run.Item1));
+    }
+
+    [PostgresFact]
     public async Task MovingAFilter_MovesEveryMatch_AndNothingElse()
     {
         await using TestDatabase test = await TestDatabase.CreateAsync();
@@ -148,6 +174,8 @@ public class ClipMoveStatementsTests
 
         public Guid OwnerId { get; } = Guid.NewGuid();
 
+        public NpgsqlConnection NewConnection() => _dataSource.CreateConnection();
+
         public static async Task<TestDatabase> CreateAsync()
         {
             DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -171,6 +199,15 @@ public class ClipMoveStatementsTests
                 CREATE TABLE clip_tag (clip_id uuid NOT NULL, tag_id uuid NOT NULL);
                 CREATE TABLE clip_view (clip_id uuid NOT NULL, user_id uuid NOT NULL);
                 CREATE TABLE game_category (id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL);
+                CREATE TABLE legend_detection_run (
+                    clip_id uuid NOT NULL,
+                    status text NOT NULL DEFAULT 'pending',
+                    trigger text NOT NULL,
+                    provider text NOT NULL,
+                    model text NOT NULL,
+                    reasoning_effort text,
+                    archived_at timestamptz);
+                CREATE UNIQUE INDEX ON legend_detection_run (clip_id) WHERE trigger = 'auto' AND archived_at IS NULL;
                 INSERT INTO game_category (id, name, slug) VALUES (@ApexId, 'Apex Legends', 'apex-legends'),
                                                                    (@ValorantId, 'Valorant', 'valorant'),
                                                                    (@FortniteId, 'Fortnite', 'fortnite');
