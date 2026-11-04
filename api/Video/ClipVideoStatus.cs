@@ -71,3 +71,106 @@ public static class ClipVideoStatuses
     public static bool IsUploaded(this ClipVideoStatus status) =>
         status is not (ClipVideoStatus.AwaitingUpload or ClipVideoStatus.UploadFailed or ClipVideoStatus.EncodeFailed);
 }
+
+/// <summary>
+/// What is moving a clip's <c>clip.video_state</c>. Each writer in <see cref="Core.ClipsStatements"/> is one of these,
+/// and <see cref="ClipVideoTransitions"/> says which states each may leave for which.
+/// </summary>
+public enum ClipVideoChange
+{
+    /// <summary>A reserved clip gets the video its host created for it (<c>AttachVideo</c>).</summary>
+    Attach,
+
+    /// <summary>
+    /// What a polled host (Bunny) reports about the video, from its webhook, the status refresh or the metadata
+    /// backfill (<c>UpdateClipMetadata</c>).
+    /// </summary>
+    HostReport,
+
+    /// <summary>The source reached R2, from the Twitch import or a browser upload's completion (<c>SetSourceUploaded</c>).</summary>
+    SourceUploaded,
+
+    /// <summary>An upload into R2 failed or its file was rejected (<c>SetUploadFailed</c>).</summary>
+    UploadFailed,
+
+    /// <summary>Our worker's progress on a <c>transcode</c> (<c>SetTranscodeProgress</c>).</summary>
+    TranscodeProgress,
+
+    /// <summary>A shutting-down worker handed a <c>transcode</c> back (<c>SetTranscodeReleased</c>).</summary>
+    TranscodeReleased,
+
+    /// <summary>A <c>transcode</c> failed for good (<c>SetTranscodeFailed</c>).</summary>
+    TranscodeFailed,
+
+    /// <summary>A <c>transcode</c> or <c>trim</c> finished (<c>SetTranscodeReady</c>).</summary>
+    TranscodeReady,
+
+    /// <summary>A <c>migrate</c> finished (<c>SetMigratedToR2</c>).</summary>
+    MigratedToR2
+}
+
+/// <summary>
+/// The one list of the moves <c>clip.video_state</c> may make. Every statement that writes the column (but the two job
+/// completions, below) takes its allowed from-states from <see cref="FromStates"/> and puts them in its <c>WHERE</c>,
+/// so a report that arrives late or out of order changes nothing (none of the row's columns, not only the state)
+/// instead of moving the clip back.
+/// <list type="bullet">
+/// <item><see cref="ClipVideoChange.Attach"/>: only a reserved clip (<c>awaiting_upload</c>), to whatever the host reports.</item>
+/// <item><see cref="ClipVideoChange.HostReport"/>: the same state again (a refresh), forward along
+/// <c>awaiting_upload</c> → <c>uploaded</c> → <c>processing</c> → <c>ready</c>, or to a failure the host reports.
+/// Nothing but a reported failure leaves <c>ready</c>: Reelshelf never asks Bunny to re-encode, so a later
+/// "processing" is a stale read. A failure is left only for a state the host says it got further to
+/// (<c>upload_failed</c> for any later state, a resumed upload; <c>encode_failed</c> only for <c>ready</c>).</item>
+/// <item><see cref="ClipVideoChange.SourceUploaded"/> and <see cref="ClipVideoChange.UploadFailed"/>: only from
+/// <c>awaiting_upload</c>. <c>upload_failed</c> is final for an R2 clip: its file was rejected and deleted (or the
+/// Twitch import deleted the clip), and the uploader prepares a new clip for another try.</item>
+/// <item><see cref="ClipVideoChange.TranscodeProgress"/>: <c>uploaded</c> or <c>processing</c> → <c>processing</c>.</item>
+/// <item><see cref="ClipVideoChange.TranscodeReleased"/>: <c>processing</c> → <c>uploaded</c>.</item>
+/// <item><see cref="ClipVideoChange.TranscodeFailed"/>: <c>uploaded</c> or <c>processing</c> → <c>encode_failed</c>.</item>
+/// <item><see cref="ClipVideoChange.TranscodeReady"/> and <see cref="ClipVideoChange.MigratedToR2"/>: any state →
+/// <c>ready</c>. A finished job's output is the newest video the clip has; these are guarded instead by the job still
+/// owning the clip (its host and version, #321), which the lease keeps to one job per clip.</item>
+/// </list>
+/// </summary>
+public static class ClipVideoTransitions
+{
+    private static readonly ClipVideoStatus[] All = Enum.GetValues<ClipVideoStatus>();
+
+    // (change, from, to): every from-state may move to every to-state for that change.
+    private static readonly (ClipVideoChange Change, ClipVideoStatus[] From, ClipVideoStatus[] To)[] Rules =
+    [
+        (ClipVideoChange.Attach, [ClipVideoStatus.AwaitingUpload], All),
+
+        (ClipVideoChange.HostReport, [ClipVideoStatus.AwaitingUpload], All),
+        (ClipVideoChange.HostReport, [ClipVideoStatus.Uploaded],
+            [ClipVideoStatus.Uploaded, ClipVideoStatus.Processing, ClipVideoStatus.Ready, ClipVideoStatus.EncodeFailed, ClipVideoStatus.UploadFailed]),
+        (ClipVideoChange.HostReport, [ClipVideoStatus.Processing],
+            [ClipVideoStatus.Processing, ClipVideoStatus.Ready, ClipVideoStatus.EncodeFailed, ClipVideoStatus.UploadFailed]),
+        (ClipVideoChange.HostReport, [ClipVideoStatus.Ready],
+            [ClipVideoStatus.Ready, ClipVideoStatus.EncodeFailed, ClipVideoStatus.UploadFailed]),
+        (ClipVideoChange.HostReport, [ClipVideoStatus.EncodeFailed],
+            [ClipVideoStatus.EncodeFailed, ClipVideoStatus.Ready]),
+        (ClipVideoChange.HostReport, [ClipVideoStatus.UploadFailed],
+            [ClipVideoStatus.UploadFailed, ClipVideoStatus.Uploaded, ClipVideoStatus.Processing, ClipVideoStatus.Ready, ClipVideoStatus.EncodeFailed]),
+
+        (ClipVideoChange.SourceUploaded, [ClipVideoStatus.AwaitingUpload], [ClipVideoStatus.Uploaded]),
+        (ClipVideoChange.UploadFailed, [ClipVideoStatus.AwaitingUpload], [ClipVideoStatus.UploadFailed]),
+        (ClipVideoChange.TranscodeProgress, [ClipVideoStatus.Uploaded, ClipVideoStatus.Processing], [ClipVideoStatus.Processing]),
+        (ClipVideoChange.TranscodeReleased, [ClipVideoStatus.Processing], [ClipVideoStatus.Uploaded]),
+        (ClipVideoChange.TranscodeFailed, [ClipVideoStatus.Uploaded, ClipVideoStatus.Processing], [ClipVideoStatus.EncodeFailed]),
+        (ClipVideoChange.TranscodeReady, All, [ClipVideoStatus.Ready]),
+        (ClipVideoChange.MigratedToR2, All, [ClipVideoStatus.Ready])
+    ];
+
+    /// <summary>Whether <paramref name="change"/> may move a clip from <paramref name="from"/> to <paramref name="to"/>.</summary>
+    public static bool CanMove(ClipVideoChange change, ClipVideoStatus from, ClipVideoStatus to) =>
+        Rules.Any(rule => rule.Change == change && rule.From.Contains(from) && rule.To.Contains(to));
+
+    /// <summary>
+    /// The states, in their <c>clip.video_state</c> spelling, that <paramref name="change"/> may move to
+    /// <paramref name="to"/>, for a statement's <c>video_state = ANY(@fromStates)</c>. Empty when the change never
+    /// leads there, so the statement changes nothing.
+    /// </summary>
+    public static string[] FromStates(ClipVideoChange change, ClipVideoStatus to) =>
+        All.Where(from => CanMove(change, from, to)).Select(from => from.ToDatabase()).ToArray();
+}

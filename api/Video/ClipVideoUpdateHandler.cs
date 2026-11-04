@@ -44,9 +44,17 @@ public class ClipVideoUpdateHandler(
 
         try
         {
-            await clipsStatements.UpdateClipMetadata(clip.Id, clip.VideoHost, clip.VideoId, clip.Title ?? video.Title, video);
-
-            logger.LogInformation("[VIDEO UPDATE] Successfully updated clip metadata for ClipId: {ClipId}", clip.Id);
+            if (await clipsStatements.UpdateClipMetadata(clip.Id, clip.VideoHost, clip.VideoId, clip.Title ?? video.Title, video))
+            {
+                logger.LogInformation("[VIDEO UPDATE] Successfully updated clip metadata for ClipId: {ClipId}", clip.Id);
+            }
+            else
+            {
+                // Moved hosts meanwhile, or a stale read the clip has moved past (ClipVideoTransitions).
+                logger.LogInformation(
+                    "[VIDEO UPDATE] Left clip {ClipId} alone: {Status} is not a move from where it is now",
+                    clip.Id, video.Status);
+            }
         }
         catch (Exception ex)
         {
@@ -87,8 +95,8 @@ public class ClipVideoUpdateHandler(
 
     /// <summary>
     /// A transcode or trim finished: the clip is ready on <paramref name="videoVersion"/>, with the output's length,
-    /// size, codecs and height. Returns the version it was on before (null when there is no such clip), whose files
-    /// the caller deletes when it differs.
+    /// size, codecs and height. Returns the version it was on before, whose files the caller deletes when it differs;
+    /// null when the job was superseded (the clip is no longer on R2, or already on a later version) and nothing moved.
     /// </summary>
     public Task<int?> ApplyTranscodeCompletedAsync(
         Guid clipId,

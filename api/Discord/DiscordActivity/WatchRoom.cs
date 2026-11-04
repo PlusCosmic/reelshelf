@@ -130,6 +130,12 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
 
     public static readonly TimeSpan ReactionWindow = TimeSpan.FromSeconds(3);
 
+    /// <summary>
+    /// How long past a playing clip's expected end the room waits for the host's player to report it before moving
+    /// on by itself (<see cref="AdvanceIfOverdue"/>), for a host whose stream failed or whose browser blocked play.
+    /// </summary>
+    public static readonly TimeSpan EndGrace = TimeSpan.FromSeconds(5);
+
     private readonly object _gate = new();
     private readonly Dictionary<string, RoomConnection> _connections = new(StringComparer.Ordinal);
     private readonly List<QueuedClip> _queue = [];
@@ -325,16 +331,15 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
     }
 
     /// <summary>
-    /// The host moves on to the next queued clip, or stops when the queue is empty. With
-    /// <paramref name="currentItemId"/> it only moves on from that clip, so a clip ending on two of the host's
-    /// devices skips once.
+    /// The host moves on from <paramref name="currentItemId"/> to the next queued clip, or stops when the queue is
+    /// empty. It only moves on from the clip that is playing, so a clip ending (or skipped) on two of the host's
+    /// devices, or ended by the room's own clock first, moves on once.
     /// </summary>
-    public bool Next(string connectionId, Guid? currentItemId)
+    public bool Next(string connectionId, Guid currentItemId)
     {
         lock (_gate)
         {
-            if (!IsHostLocked(connectionId) ||
-                (currentItemId is not null && _playback?.ItemId != currentItemId))
+            if (!IsHostLocked(connectionId) || _playback?.ItemId != currentItemId)
             {
                 return false;
             }
@@ -390,6 +395,46 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
             };
             _version++;
             return true;
+        }
+    }
+
+    /// <summary>
+    /// The room's own clock: moves on to the next clip once the playing clip is <see cref="EndGrace"/> past its
+    /// expected end (where it was at <see cref="RoomPlayback.UpdatedAt"/> plus the time left of its length), so the
+    /// room never waits for ever on a host whose player can't play. A paused clip, or one of unknown length, never
+    /// moves on by itself.
+    /// </summary>
+    public bool AdvanceIfOverdue()
+    {
+        lock (_gate)
+        {
+            if (_playback is not { Playing: true } playback || playback.Clip.DurationSeconds <= 0)
+            {
+                return false;
+            }
+
+            double left = Math.Max(0, playback.Clip.DurationSeconds - playback.PositionSeconds);
+            if (timeProvider.GetUtcNow() < playback.UpdatedAt + TimeSpan.FromSeconds(left) + EndGrace)
+            {
+                return false;
+            }
+
+            PlayNextLocked();
+            _version++;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="change"/> and takes the room's state under the same lock, so the state broadcast for a
+    /// change is the one it made, with no other change in between.
+    /// </summary>
+    public (bool Applied, RoomStateView State) Apply(Func<WatchRoom, bool> change)
+    {
+        lock (_gate)
+        {
+            bool applied = change(this);
+            return (applied, Snapshot());
         }
     }
 
@@ -564,4 +609,23 @@ public sealed class WatchRoomRegistry(TimeProvider timeProvider)
     }
 
     public WatchRoom? Find(string instanceId) => _rooms.GetValueOrDefault(instanceId);
+
+    /// <summary>
+    /// Moves every room whose playing clip is overdue on to its next clip (<see cref="WatchRoom.AdvanceIfOverdue"/>)
+    /// and returns those rooms with their new state, for <see cref="WatchRoomClock"/> to broadcast.
+    /// </summary>
+    public List<(WatchRoom Room, RoomStateView State)> AdvanceOverdue()
+    {
+        List<(WatchRoom, RoomStateView)> advanced = [];
+        foreach (WatchRoom room in _rooms.Values)
+        {
+            (bool applied, RoomStateView state) = room.Apply(r => r.AdvanceIfOverdue());
+            if (applied)
+            {
+                advanced.Add((room, state));
+            }
+        }
+
+        return advanced;
+    }
 }

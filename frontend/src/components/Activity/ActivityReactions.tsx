@@ -31,8 +31,11 @@ export function ActivityReactionLayer({
 /** The emoji anyone in the room, guests included, can send while a clip plays. */
 export function ActivityReactionBar({
   onReact,
+  disabled = false,
 }: {
   onReact: (emoji: string) => void;
+  /** While the room isn't connected, when a reaction would go nowhere. */
+  disabled?: boolean;
 }) {
   return (
     <div
@@ -46,6 +49,7 @@ export function ActivityReactionBar({
           type="button"
           className="rs-icon-button"
           aria-label={activityCopy.reactions.react(emoji)}
+          disabled={disabled}
           onClick={() => onReact(emoji)}
         >
           {emoji}

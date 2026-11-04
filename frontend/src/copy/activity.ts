@@ -14,6 +14,9 @@ export const activityCopy = {
   room: {
     connecting: "Connecting to the room…",
     reconnecting: "Reconnecting to the room…",
+    couldNotConnect: "Couldn't connect to the room.",
+    expired:
+      "Your time in the room ran out. Close the Activity and open it again to rejoin.",
     somethingWentWrong:
       "Something went wrong in the room. Try rejoining from the voice channel.",
     present: "In the room",

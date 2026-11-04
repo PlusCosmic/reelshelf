@@ -111,11 +111,21 @@ export function ActivityPlayer({
   };
 
   const startPlaying = (video: HTMLVideoElement) => {
+    const startingItemId = playbackRef.current.itemId;
     video.play().catch(() => {
       // This viewer hasn't clicked anything yet, so the browser refuses sound: play muted and offer sound.
       video.muted = true;
       setMutedForAutoplay(true);
-      void video.play().catch(() => undefined);
+      video.play().catch(() => {
+        // Refused even muted, with no pause event: the host tells the room it is paused, so followers don't
+        // play on alone and the room's clock doesn't end a clip nobody saw. Pressing play reports it again.
+        if (
+          loadedItemIdRef.current === startingItemId &&
+          playbackRef.current.itemId === startingItemId
+        ) {
+          hostRef.current?.onPause(video.currentTime);
+        }
+      });
     });
   };
 

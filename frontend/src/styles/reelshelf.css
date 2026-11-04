@@ -4758,6 +4758,19 @@ html:has(.rs-library-route) {
   color: var(--fg-soft);
 }
 
+/* A banner with a button (a failed connection's retry). */
+.rs-activity-banner.has-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rs-activity-banner.has-action p {
+  margin: 0;
+}
+
 .rs-activity-tag {
   padding: 1px 8px;
   border-radius: 999px;

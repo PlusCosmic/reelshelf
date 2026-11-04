@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   AccountPlanResponse,
@@ -330,6 +336,74 @@ describe("PlanSettings", () => {
 
     expect(screen.getByText("Confirming your payment…")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Upgrade/ })).toBeNull();
+  });
+
+  it("keeps confirming a payment while the account only has a granted tier or a lapsed plan", () => {
+    mocks.offers = offers;
+    mocks.plan = { ...free, tier: "plus", grantedTier: "plus" };
+    const { unmount } = render(<PlanSettings billingReturn="success" />);
+    expect(screen.getByText("Confirming your payment…")).toBeTruthy();
+    expect(screen.queryByText(/You're on/)).toBeNull();
+    unmount();
+
+    mocks.plan = {
+      ...free,
+      subscription: subscription({
+        status: "canceled",
+        endedAt: new Date("2026-10-01T00:00:00Z"),
+      }),
+    };
+    render(<PlanSettings billingReturn="success" />);
+    expect(screen.getByText("Confirming your payment…")).toBeTruthy();
+    expect(screen.queryByText(/You're on/)).toBeNull();
+  });
+
+  it("confirms the payment once the subscription bought shows up, naming its tier", () => {
+    window.sessionStorage.setItem(
+      "reelshelf.billing.checkoutLookupKey",
+      "pro_monthly",
+    );
+    mocks.offers = offers;
+    // An admin granted Plus; the Pro subscription bought is what the banner names.
+    mocks.plan = {
+      ...free,
+      tier: "pro",
+      grantedTier: "plus",
+      canManageBilling: true,
+      subscription: subscription({ tier: "pro", lookupKey: "pro_monthly" }),
+    };
+    render(<PlanSettings billingReturn="success" />);
+    expect(screen.getByText("You're on Pro now.")).toBeTruthy();
+    expect(
+      window.sessionStorage.getItem("reelshelf.billing.checkoutLookupKey"),
+    ).toBeNull();
+  });
+
+  it("gives up confirming after a fixed window", () => {
+    vi.useFakeTimers();
+    try {
+      mocks.offers = offers;
+      mocks.plan = free;
+      render(<PlanSettings billingReturn="success" />);
+      act(() => vi.advanceTimersByTime(29_000));
+      expect(screen.getByText("Confirming your payment…")).toBeTruthy();
+      act(() => vi.advanceTimersByTime(1_000));
+      expect(
+        screen.getByText(
+          "Your payment is taking longer than usual to confirm.",
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Upgrade/ })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says nothing on a return from the portal", () => {
+    mocks.offers = offers;
+    mocks.plan = { ...free, subscription: subscription({}) };
+    render(<PlanSettings billingReturn="portal" />);
+    expect(screen.queryByText(/Confirming|You're on/)).toBeNull();
   });
 
   it("offers nothing to an unlimited account or while billing is off", () => {

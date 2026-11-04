@@ -135,24 +135,18 @@ public class ClipSummaryService(
             return false;
         }
 
-        ClipSummaryStatements.ClaimedRunRow? run = await statements.ClaimNextRunAsync(RetryAfter, StaleAfter);
+        int maxAttempts = options.CurrentValue.MaxAttempts;
+        ClipSummaryStatements.ClaimedRunRow? run =
+            await statements.ClaimNextRunAsync(RetryAfter, StaleAfter, maxAttempts);
         if (run is null)
         {
             return false;
         }
 
-        int maxAttempts = options.CurrentValue.MaxAttempts;
-        if (run.Attempts > maxAttempts)
-        {
-            await statements.FailRunAsync(run.Id, $"Gave up after {maxAttempts} attempts", null, null, retry: false);
-            return true;
-        }
-
         bool canRetry = run.Attempts < maxAttempts;
         if (!summarizerFactory.IsConfigured(run.Provider))
         {
-            await statements.FailRunAsync(run.Id, $"Provider '{run.Provider}' is not configured", null, null,
-                retry: false);
+            await FailAsync(run, $"Provider '{run.Provider}' is not configured", null, null, retry: false);
             return true;
         }
 
@@ -165,8 +159,12 @@ public class ClipSummaryService(
             ClipSummarization summarization = await summarizer.SummarizeAsync(input, cancellationToken);
             ClipEmbedding embedding = await summarizerFactory.CreateEmbedder(run.EmbeddingModel)
                 .EmbedAsync(summarization.Result.EmbeddingText(), cancellationToken);
-            await statements.CompleteRunAsync(run.Id, resources.PromptVersion, summarization, embedding,
-                (int)stopwatch.ElapsedMilliseconds);
+            if (!await statements.CompleteRunAsync(run.Id, run.ClaimId, resources.PromptVersion, summarization,
+                    embedding, (int)stopwatch.ElapsedMilliseconds))
+            {
+                LogDropped(run, "result");
+                return true;
+            }
 
             logger.LogInformation(
                 "Summarised clip {ClipId} with {Provider}/{Model} ({ReasoningEffort}): {MoodTags}",
@@ -178,10 +176,30 @@ public class ClipSummaryService(
             logger.LogWarning(ex, "Summary attempt {Attempt} failed for clip {ClipId} with {Provider}/{Model}",
                 run.Attempts, run.ClipId, run.Provider, run.Model);
             string? rawResponse = ex is JsonException ? ex.Data["RawResponse"] as string : null;
-            await statements.FailRunAsync(run.Id, ex.Message, resources.PromptVersion, rawResponse, canRetry);
+            await FailAsync(run, ex.Message, resources.PromptVersion, rawResponse, canRetry);
         }
 
         return true;
+    }
+
+    /// <summary>Records a failed attempt under the run's claim, logging when it was reclaimed or finished meanwhile.</summary>
+    private async Task FailAsync(
+        ClipSummaryStatements.ClaimedRunRow run,
+        string error,
+        string? promptVersion,
+        string? rawResponse,
+        bool retry)
+    {
+        if (!await statements.FailRunAsync(run.Id, run.ClaimId, error, promptVersion, rawResponse, retry))
+        {
+            LogDropped(run, "failure");
+        }
+    }
+
+    private void LogDropped(ClipSummaryStatements.ClaimedRunRow run, string what)
+    {
+        logger.LogWarning("Dropped clip summary {What} for run {RunId} (clip {ClipId}): it was reclaimed or finished meanwhile",
+            what, run.Id, run.ClipId);
     }
 
     /// <summary>

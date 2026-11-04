@@ -39,13 +39,17 @@ const initialState: PickerState = {
 };
 
 export function ActivityClipPicker({
-  roomToken,
+  getRoomToken,
   queuedClipIds,
   onPick,
+  disabled = false,
 }: {
-  roomToken: string;
+  /** The room token as it is now; it is renewed while the room is open, so each request asks again. */
+  getRoomToken: () => string;
   queuedClipIds: ReadonlySet<string>;
   onPick: (clip: ActivityClip) => void;
+  /** While the room isn't connected: browsing still works, but nothing can be added. */
+  disabled?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -69,7 +73,7 @@ export function ActivityClipPicker({
   // The spines are loaded once, so they keep their order and counts while the member moves between them.
   useEffect(() => {
     let cancelled = false;
-    fetchOwnGames(roomToken)
+    fetchOwnGames(getRoomToken())
       .then((loaded) => {
         if (!cancelled) setGames(loaded);
       })
@@ -79,7 +83,8 @@ export function ActivityClipPicker({
     return () => {
       cancelled = true;
     };
-  }, [roomToken]);
+    // A renewed token mustn't reload the spines, so the getter isn't a dependency.
+  }, []);
 
   const range = useMemo(() => dayRangeBounds(fromDay, toDay), [fromDay, toDay]);
   const rangeStart = range.start?.getTime() ?? null;
@@ -93,7 +98,7 @@ export function ActivityClipPicker({
       loading: "replace",
       failed: false,
     }));
-    fetchOwnClips(roomToken, {
+    fetchOwnClips(getRoomToken(), {
       search: query,
       page: 1,
       gameId,
@@ -114,13 +119,14 @@ export function ActivityClipPicker({
         if (version === listVersion.current)
           setState({ ...initialState, loading: null, failed: true });
       });
-  }, [roomToken, query, gameId, order, rangeStart, rangeEnd]);
+    // A renewed token mustn't reset the list, so the getter isn't a dependency.
+  }, [query, gameId, order, rangeStart, rangeEnd]);
 
   const loadMore = () => {
     const version = listVersion.current;
     const next = state.page + 1;
     setState((current) => ({ ...current, loading: "more" }));
-    fetchOwnClips(roomToken, {
+    fetchOwnClips(getRoomToken(), {
       search: query,
       page: next,
       gameId,
@@ -276,6 +282,7 @@ export function ActivityClipPicker({
                     clip={clip}
                     queued={queuedClipIds.has(clip.clipId)}
                     showGame={gameId === null}
+                    disabled={disabled}
                     onPick={onPick}
                   />
                 </li>
@@ -315,11 +322,13 @@ function PickerRow({
   clip,
   queued,
   showGame,
+  disabled,
   onPick,
 }: {
   clip: ActivityClip;
   queued: boolean;
   showGame: boolean;
+  disabled: boolean;
   onPick: (clip: ActivityClip) => void;
 }) {
   const thumbnail = activityThumbnailUrl(clip.media);
@@ -329,7 +338,7 @@ function PickerRow({
       className="rs-activity-clip"
       aria-current={queued ? "true" : undefined}
       aria-label={activityCopy.picker.add(clip.title)}
-      disabled={!clip.ready || queued}
+      disabled={disabled || !clip.ready || queued}
       onClick={() => onPick(clip)}
     >
       {thumbnail ? (

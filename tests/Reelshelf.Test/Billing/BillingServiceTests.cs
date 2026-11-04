@@ -260,6 +260,58 @@ public class BillingServiceTests
     }
 
     [Fact]
+    public async Task ASync_ReadsStripeAndRecordsUnderTheSubscriptionsLock()
+    {
+        var (service, stripe, store) = Build();
+        store.Customers[User.Id] = "cus_1";
+        stripe.Subscriptions["sub_1"] = State("sub_1", "cus_1");
+        stripe.OnSubscriptionRead = id =>
+        {
+            Assert.Contains(id, store.HeldSubscriptionLocks);
+            store.Log.Add($"read {id}");
+        };
+
+        await service.HandleWebhook(new BillingWebhookEvent("evt_1", "invoice.paid", "sub_1", "cus_1", null),
+            CancellationToken.None);
+
+        Assert.Equal(["lock sub_1", "read sub_1", "upsert sub_1", "release sub_1"], store.Log);
+    }
+
+    [Fact]
+    public async Task ASettledCheckout_SyncsUnderTheSubscriptionsLockToo()
+    {
+        var (service, stripe, store) = Build();
+        await service.StartCheckout(User, "plus_monthly", CancellationToken.None);
+        stripe.Sessions["cs_1"] = stripe.Sessions["cs_1"] with { Status = "complete", SubscriptionId = "sub_1" };
+        stripe.Subscriptions["sub_1"] = State("sub_1", "cus_1", userId: User.Id);
+        stripe.OnSubscriptionRead = id => Assert.Contains(id, store.HeldSubscriptionLocks);
+
+        await service.StartCheckout(User, "pro_monthly", CancellationToken.None);
+
+        Assert.Equal(["lock sub_1", "upsert sub_1", "release sub_1"], store.Log);
+    }
+
+    [Fact]
+    public async Task ASubscriptionRecordedForAnotherAccount_StaysWithIt()
+    {
+        var (service, stripe, store) = Build();
+        Guid other = Guid.NewGuid();
+        store.Users.Add(other);
+        store.Customers[User.Id] = "cus_1";
+        store.Subscriptions.Add(new BillingSubscription("sub_1", other, "active", "plus_monthly", AccountTier.Plus,
+            null, false, null, null));
+        stripe.Subscriptions["sub_1"] = State("sub_1", "cus_1", status: "canceled");
+
+        await service.HandleWebhook(new BillingWebhookEvent("evt_1", "customer.subscription.deleted", "sub_1", "cus_1",
+            null), CancellationToken.None);
+
+        BillingSubscription recorded = Assert.Single(store.Subscriptions);
+        Assert.Equal(other, recorded.UserId);
+        Assert.Equal("canceled", recorded.Status);
+        Assert.Empty(stripe.Cancelled);
+    }
+
+    [Fact]
     public async Task ASubscriptionNoAccountOwns_IsNotRecorded()
     {
         var (service, stripe, store) = Build();

@@ -269,6 +269,111 @@ describe("S3MultipartUpload", () => {
     expect(api.complete).toHaveBeenCalledWith("clip-1", "upload-1", allParts);
   });
 
+  it("carries on when started again before an aborted run has unwound", async () => {
+    const api = fakeApi();
+    const store = memoryStore();
+    // Each PUT waits for the test to let it answer, so the aborted run is still waiting when start comes.
+    const held: (() => void)[] = [];
+    let open = 0;
+    let maxOpen = 0;
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      open++;
+      maxOpen = Math.max(maxOpen, open);
+      await new Promise<void>((resolve) => held.push(resolve));
+      open--;
+      const partNumber = new URL(String(input)).searchParams.get("partNumber");
+      return new Response(null, {
+        status: 200,
+        headers: { ETag: `"etag-${partNumber}"` },
+      });
+    }) as unknown as typeof globalThis.fetch;
+    const { upload, finished } = run({ api, store, fetch });
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    upload.start();
+    await settle();
+    expect(held).toHaveLength(3);
+
+    upload.abort();
+    upload.start();
+    await settle();
+    // The new run waits for the aborted one rather than sending the same parts beside it.
+    expect(held).toHaveLength(3);
+
+    // The aborted run's parts land; their ETags are kept, and the new run completes with them.
+    held.splice(0).forEach((resolve) => resolve());
+    expect(await finished).toBeNull();
+    expect(maxOpen).toBe(3);
+    expect(api.complete).toHaveBeenCalledTimes(1);
+    expect(api.complete).toHaveBeenCalledWith("clip-1", "upload-1", allParts);
+    expect(store.entries.has(resumeKey)).toBe(false);
+  });
+
+  it("starts nothing more when aborted again before the previous run unwound", async () => {
+    const api = fakeApi();
+    const store = memoryStore();
+    const held: (() => void)[] = [];
+    const fetch = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        await new Promise<void>((resolve) => held.push(resolve));
+        if (init?.signal?.aborted)
+          throw new DOMException("Aborted", "AbortError");
+        return new Response(null, { status: 200, headers: { ETag: '"e"' } });
+      },
+    ) as unknown as typeof globalThis.fetch;
+    const onSuccess = vi.fn();
+    const onError = vi.fn();
+    const upload = new S3MultipartUpload({
+      file: new File([new Uint8Array(FILE_SIZE)], "clip.mp4"),
+      clipId: "clip-1",
+      multipart,
+      resumeKey,
+      api,
+      store,
+      fetch,
+      now: () => NOW,
+      sleep: async () => undefined,
+      onProgress: () => undefined,
+      onSuccess,
+      onError,
+    });
+
+    upload.start();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    upload.abort();
+    upload.start();
+    upload.abort();
+    held.splice(0).forEach((resolve) => resolve());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(api.complete).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("cuts a retry's wait short on abort, so a resume isn't held up behind it", async () => {
+    const api = fakeApi();
+    const storage = fakeStorage({ 1: 1 });
+    // A wait that never ends unless the upload stops waiting for it.
+    const sleep = vi.fn(() => new Promise<void>(() => undefined));
+    const { upload, finished } = run({
+      api,
+      store: memoryStore(),
+      fetch: storage.fetch,
+      sleep,
+    });
+
+    upload.start();
+    await vi.waitFor(() => expect(sleep).toHaveBeenCalled());
+    upload.abort();
+    sleep.mockImplementation(async () => undefined);
+    upload.start();
+
+    expect(await finished).toBeNull();
+    expect(api.complete).toHaveBeenCalledWith("clip-1", "upload-1", allParts);
+  });
+
   it("asks for a part's URL again when storage refuses the old one", async () => {
     const api = fakeApi();
     let refused = false;
