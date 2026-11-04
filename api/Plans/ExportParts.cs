@@ -68,7 +68,19 @@ public static class ExportParts
 
     public static string Prefix(Guid userId, Guid exportId) => $"{AccountPrefix(userId)}{exportId}/";
 
+    /// <summary>
+    /// Where one run of an export writes its parts: <c>exports/{userId}/{exportId}/{leaseId}/</c>, so a run that lost
+    /// its lease never overwrites or deletes another run's parts. Exports made before leases (V58) have none, and
+    /// their parts are directly under the export's prefix.
+    /// </summary>
+    public static string RunPrefix(ClipExport export) =>
+        export.LeaseId is { } lease ? $"{Prefix(export.UserId, export.Id)}{lease}/" : Prefix(export.UserId, export.Id);
+
     public static string FileName(int index) => $"reelshelf-clips-{index}.zip";
 
+    /// <summary>A part of an export made before leases (V58).</summary>
     public static string Key(Guid userId, Guid exportId, int index) => Prefix(userId, exportId) + FileName(index);
+
+    /// <summary>A part written by <paramref name="export"/>'s run, under its lease.</summary>
+    public static string Key(ClipExport export, int index) => RunPrefix(export) + FileName(index);
 }

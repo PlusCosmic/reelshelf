@@ -200,7 +200,10 @@ public class TranscodeQueue(
     /// follow-ups, which are idempotent. A migrate's clip moves from Bunny to R2 on the job's version in the same
     /// transaction, with nothing queued after, and once that commits every other version under the clip's prefix (an
     /// earlier move's) is deleted; if the clip is no longer on Bunny by then, the run still succeeds, the clip is left
-    /// alone and the job's version is deleted (unless the clip plays from that version itself).
+    /// alone and the job's version is deleted (unless the clip plays from that version itself). A transcode or trim
+    /// whose clip is no longer on R2, or is already on a later version, is superseded the same way: the run succeeds,
+    /// the clip is left alone, nothing is queued, the source stays, and the job's version is deleted unless the clip
+    /// plays from it. A repeated report on a clip that isn't on R2 on the job's version or later does nothing.
     /// </summary>
     public async Task<TranscodeReportOutcome> CompleteAsync(
         Guid runId,
@@ -220,6 +223,7 @@ public class TranscodeQueue(
         TranscodeOutputs reported = TranscodeOutputs.From(outputs);
 
         int? replacedVersion = null;
+        bool superseded = false;
         bool? migrated = null;
         TranscodeStatements.FinishedRunRow? run = await statements.InTransactionAsync(async () =>
         {
@@ -228,6 +232,7 @@ public class TranscodeQueue(
             {
                 int? previousVersion = await updateHandler.ApplyTranscodeCompletedAsync(completed.ClipId,
                     completed.VideoVersion, clipLength, sizeBytes, reported.Codecs, reported.Height);
+                superseded = previousVersion is null;
                 replacedVersion = previousVersion is { } previous && previous != completed.VideoVersion ? previous : null;
             }
             else if (completed is { Type: TranscodeRunTypes.Migrate })
@@ -257,6 +262,17 @@ public class TranscodeQueue(
                 Id = state.Id, ClipId = state.ClipId, Type = state.Type, Status = state.Status,
                 VideoVersion = state.VideoVersion
             };
+
+            // A repeat can't tell whether the first report moved the clip. One whose clip is no longer on R2 on the
+            // job's version or a later one was superseded (or the clip moved since), so it retries nothing.
+            if (run.Type is TranscodeRunTypes.Transcode or TranscodeRunTypes.Trim)
+            {
+                TranscodeStatements.ClipVersionRow? clip = await statements.GetClipVersionAsync(run.ClipId);
+                if (clip is not { VideoHost: VideoHostNames.R2 } || clip.VideoVersion < run.VideoVersion)
+                {
+                    return TranscodeReportOutcome.Applied;
+                }
+            }
         }
         else
         {
@@ -276,9 +292,18 @@ public class TranscodeQueue(
             }
             else if (migrated == false)
             {
-                await DeleteAbandonedMigrationAsync(run);
+                await DeleteSupersededOutputsAsync(run);
             }
 
+            return TranscodeReportOutcome.Applied;
+        }
+
+        if (superseded)
+        {
+            logger.LogWarning(
+                "{Type} job {RunId} for clip {ClipId} was superseded: the clip is no longer on R2 or is past version {Version}",
+                run.Type, run.Id, run.ClipId, run.VideoVersion);
+            await DeleteSupersededOutputsAsync(run);
             return TranscodeReportOutcome.Applied;
         }
 
@@ -351,11 +376,12 @@ public class TranscodeQueue(
     }
 
     /// <summary>
-    /// Deletes the outputs of a migrate job whose clip left Bunny before it completed, so nothing plays from them. A
-    /// clip that is on R2 on the job's version by then plays from those very keys, so they stay. Failures are logged,
-    /// as in <see cref="CleanUpAfterCompletionAsync"/>.
+    /// Deletes the outputs of a job that finished without moving its clip: a migrate whose clip left Bunny first, or
+    /// a transcode or trim whose clip left R2 or reached a later version first. A clip that is on R2 on the job's
+    /// version by then plays from those very keys, so they stay. The clip's current version and the uploaded source
+    /// are never touched. Failures are logged, as in <see cref="CleanUpAfterCompletionAsync"/>.
     /// </summary>
-    private async Task DeleteAbandonedMigrationAsync(TranscodeStatements.FinishedRunRow run)
+    private async Task DeleteSupersededOutputsAsync(TranscodeStatements.FinishedRunRow run)
     {
         try
         {
@@ -363,20 +389,20 @@ public class TranscodeQueue(
             if (clip is { VideoHost: VideoHostNames.R2 } && clip.VideoVersion == run.VideoVersion)
             {
                 logger.LogWarning(
-                    "Migrate job {RunId} finished after clip {ClipId} was already on R2 version {Version}; kept its files",
-                    run.Id, run.ClipId, run.VideoVersion);
+                    "{Type} job {RunId} finished after clip {ClipId} was already on R2 version {Version}; kept its files",
+                    run.Type, run.Id, run.ClipId, run.VideoVersion);
                 return;
             }
 
             await storage.DeleteVersionAsync(run.ClipId, run.VideoVersion);
             logger.LogInformation(
-                "Migrate job {RunId} finished after clip {ClipId} left Bunny; deleted its version {Version} outputs",
-                run.Id, run.ClipId, run.VideoVersion);
+                "{Type} job {RunId} for clip {ClipId} was superseded; deleted its version {Version} outputs",
+                run.Type, run.Id, run.ClipId, run.VideoVersion);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Could not delete the outputs of migrate job {RunId} for clip {ClipId}", run.Id,
-                run.ClipId);
+            logger.LogWarning(ex, "Could not delete the outputs of {Type} job {RunId} for clip {ClipId}", run.Type,
+                run.Id, run.ClipId);
         }
     }
 

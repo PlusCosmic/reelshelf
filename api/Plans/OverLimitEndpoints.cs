@@ -102,8 +102,15 @@ public static class OverLimitEndpoints
             return TypedResults.BadRequest("None of your clips are over your plan's limit.");
         }
 
-        Guid exportId = await exports.Create(user.Id, ClipExportReasons.Requested, over.Select(clip => clip.Id).ToList());
-        ClipExport export = (await exports.Get(exportId))!;
+        Guid? exportId = await exports.Create(user.Id, ClipExportReasons.Requested,
+            over.Select(clip => clip.Id).ToList());
+        if (exportId is null)
+        {
+            // Another request got in first.
+            return TypedResults.Conflict("A download is already being made. It'll be ready soon.");
+        }
+
+        ClipExport export = (await exports.Get(exportId.Value))!;
         return TypedResults.Accepted($"/api/me/exports", ClipExportResponse.From(export));
     }
 
@@ -124,7 +131,7 @@ public static class OverLimitEndpoints
         }
 
         context.Response.Headers.CacheControl = "no-store";
-        string url = storage.DownloadUrl(ExportParts.Key(export.UserId, export.Id, index), ExportParts.FileName(index));
+        string url = storage.DownloadUrl(ExportParts.Key(export, index), ExportParts.FileName(index));
         return TypedResults.Redirect(url);
     }
 }
