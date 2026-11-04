@@ -82,6 +82,18 @@ describe("ClipVideoPlayer", () => {
     expect(view.queryByRole("alert")).toBeNull();
   });
 
+  it("tries a clip afresh on coming back to it, without its old error", () => {
+    const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
+    act(() => stream.attached[0].callbacks.onFatal());
+    view.rerender(<ClipVideoPlayer sources={hls(second)} title="B" />);
+    view.rerender(<ClipVideoPlayer sources={hls(first)} title="A" />);
+
+    expect(stream.attached).toHaveLength(3);
+    expect(view.queryByRole("alert")).toBeNull();
+    act(() => stream.attached[2].callbacks.onFatal());
+    expect(view.getByRole("alert").textContent).toContain("didn't play");
+  });
+
   it("says the clip can't play on this device when no source can, until the next clip", () => {
     const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
     act(() => stream.attached[0].callbacks.onUnsupported());
