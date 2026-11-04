@@ -7,7 +7,7 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
     : IUserIdentityStore, IProviderTokenStore, Plans.IClipLimitWarningStore
 {
     private const string UserColumns =
-        "id, username, username_chosen_at, global_name, avatar_url, email, onboarding_completed_at, role, granted_tier, suspended_at";
+        "id, username, username_chosen_at, global_name, avatar_url, email, role, granted_tier, suspended_at";
 
     private const string IdentityColumns =
         "id, user_id, provider, provider_user_id, username, display_name, avatar_url, email, linked_at";
@@ -370,7 +370,10 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         return updated == 1;
     }
 
-    /// <summary>Records the address the user chose for account mail and marks onboarding done.</summary>
+    /// <summary>
+    /// Records the address the user chose for account mail. <c>onboarding_completed_at</c> is still written but no
+    /// longer read: onboarding is done once <c>email</c> is set (and the username, where one is needed).
+    /// </summary>
     public async Task SetUserEmail(Guid userId, string email)
     {
         const string sql = @"
@@ -397,7 +400,7 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
     public async Task<List<UserRow>> GetUsersWhoAddedMe(Guid userId)
     {
         const string sql = @"
-            SELECT DISTINCT u.id, u.username, u.global_name, u.avatar_url, u.email, u.onboarding_completed_at, u.role, u.granted_tier
+            SELECT DISTINCT u.id, u.username, u.global_name, u.avatar_url, u.email, u.role, u.granted_tier
             FROM playlist_collaborators pc
             JOIN playlists p ON p.id = pc.playlist_id
             JOIN app_user u ON u.id = p.creator_user_id
@@ -462,7 +465,6 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         public string? GlobalName { get; set; }
         public string? AvatarUrl { get; set; }
         public string? Email { get; set; }
-        public DateTimeOffset? OnboardingCompletedAt { get; set; }
         public string Role { get; set; } = "Editor";
         public string? GrantedTier { get; set; }
 

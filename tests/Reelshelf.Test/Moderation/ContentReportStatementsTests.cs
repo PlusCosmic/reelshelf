@@ -475,8 +475,13 @@ public class ContentReportStatementsTests
                     video_version integer NOT NULL DEFAULT 3,
                     video_state text NOT NULL DEFAULT 'ready',
                     bunny_video_id uuid,
+                    migrated_at timestamptz,
+                    kept_at timestamptz,
+                    binned_at timestamptz,
                     created_at timestamptz NOT NULL DEFAULT now()
                 );
+                CREATE TABLE clip_export (status text NOT NULL, error text, created_at timestamptz NOT NULL,
+                    completed_at timestamptz, expires_at timestamptz);
                 CREATE TABLE clip_share (
                     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                     token text NOT NULL UNIQUE,
@@ -486,7 +491,11 @@ public class ContentReportStatementsTests
                     revoked_at timestamptz
                 );
                 """);
-            foreach (string migration in new[] { "V51__content_reports.sql", "V52__clip_removal_and_suspension.sql" })
+            foreach (string migration in new[]
+                     {
+                         "V51__content_reports.sql", "V52__clip_removal_and_suspension.sql",
+                         "V59__state_check_constraints.sql"
+                     })
             {
                 await connection.ExecuteAsync(await File.ReadAllTextAsync(Path.Combine(RepositoryRoot(), "migrations",
                     "db", "migrations", migration)));

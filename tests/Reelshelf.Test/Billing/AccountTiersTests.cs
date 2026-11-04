@@ -86,4 +86,21 @@ public class AccountTiersTests
     {
         Assert.Null(BillingPlans.Find(lookupKey));
     }
+
+    [Theory]
+    [InlineData("active", true)]
+    [InlineData("paused", true)]
+    [InlineData("incomplete_expired", true)]
+    [InlineData("some_new_status", false)]
+    public void SubscriptionStatuses_KnowsStripesSet(string status, bool known)
+    {
+        Assert.Equal(known, SubscriptionStatuses.IsKnown(status));
+    }
+
+    [Fact]
+    public void AnUnknownStatus_GrantsNothing_ButCountsAsOpen()
+    {
+        Assert.False(SubscriptionStatuses.GrantsTier("some_new_status"));
+        Assert.True(SubscriptionStatuses.IsOpen("some_new_status"));
+    }
 }

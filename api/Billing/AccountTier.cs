@@ -48,6 +48,20 @@ public static class BillingPlans
 /// </summary>
 public static class SubscriptionStatuses
 {
+    /// <summary>
+    /// Every status Stripe documents for a subscription. The column has no check constraint, since Stripe may add
+    /// one; an unknown status is stored as read, logged on upsert, grants nothing and counts as open.
+    /// </summary>
+    public static readonly IReadOnlySet<string> Known = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "incomplete", "incomplete_expired", "trialing", "active", "past_due", "canceled", "unpaid", "paused"
+    };
+
+    public static bool IsKnown(string status)
+    {
+        return Known.Contains(status);
+    }
+
     public static bool GrantsTier(string status)
     {
         return status is "active" or "trialing" or "past_due";
