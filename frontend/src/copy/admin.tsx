@@ -94,7 +94,7 @@ export const adminCopy = {
     removal: {
       nothingKept: "Nothing was kept: the clip had already been deleted.",
       failed: (error: string | null | undefined) =>
-        `The clip couldn't be kept or taken off public storage: ${error ?? "no error was recorded"}. Fix the cause, then retry it by hand (docs/moderation.md).`,
+        `No private copy of the clip could be kept: ${error ?? "no error was recorded"}. It is still taken off public storage, retried until that works. What was recorded at removal stays in the database (docs/moderation.md).`,
       pending: "Keeping a private copy and taking it off public storage…",
       retrying: (error: string) => ` Retrying after: ${error}`,
       kept: (date: string) =>

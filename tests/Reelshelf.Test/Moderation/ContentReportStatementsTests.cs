@@ -148,21 +148,22 @@ public class ContentReportStatementsTests
         Assert.Equal((id, 1, clip), (claimed.Id, claimed.Attempts, claimed.ReadClip().Id));
         Assert.Null(await evidence.Claim(stale, maxAttempts: 2));
 
-        await evidence.SaveFiles(id, [$"{id}/record.json"]);
-        await evidence.Fail(id, "Bunny is down", TimeSpan.Zero);
+        Assert.True(await evidence.SaveFiles(claimed.ClaimToken, [$"{id}/record.json"]));
+        Assert.True(await evidence.Fail(claimed.ClaimToken, "Bunny is down", TimeSpan.Zero));
         ClipEvidence retried = (await evidence.Claim(stale, maxAttempts: 2))!;
         Assert.Equal((2, $"[\"{id}/record.json\"]"), (retried.Attempts, retried.Files));
 
-        await evidence.MarkMediaDeleted(id);
-        await evidence.SaveCdnPurge(id, CdnPurgeResults.Purged);
-        await evidence.MarkPreserved(id);
+        Assert.True(await evidence.MarkMediaDeleted(retried.ClaimToken));
+        Assert.True(await evidence.SaveCdnPurge(retried.ClaimToken, CdnPurgeResults.Purged));
+        Assert.True(await evidence.MarkPreserved(retried.ClaimToken));
         ContentReportRow row = (await test.Statements.Get(report))!;
         Assert.Equal((ClipEvidenceStatuses.Preserved, CdnPurgeResults.Purged, (string?)null),
             (row.EvidenceStatus, row.EvidenceCdnPurge, row.EvidenceError));
 
         Assert.Null(await evidence.ClaimSweep(TimeSpan.FromHours(3), stale));
-        Assert.Equal(id, (await evidence.ClaimSweep(TimeSpan.Zero, stale))!.Id);
-        await evidence.MarkSwept(id);
+        ClipEvidence sweep = (await evidence.ClaimSweep(TimeSpan.Zero, stale))!;
+        Assert.Equal(id, sweep.Id);
+        Assert.True(await evidence.MarkSwept(sweep.ClaimToken));
         Assert.Null(await evidence.ClaimSweep(TimeSpan.Zero, stale));
 
         Assert.Empty(await evidence.GetExpired(10));
@@ -182,12 +183,81 @@ public class ContentReportStatementsTests
         Guid id = (await test.Statements.Remove(report, admin, "x", TimeSpan.FromDays(365))).EvidenceId!.Value;
         ClipEvidenceStatements evidence = new(test.Connection);
 
-        await evidence.Claim(TimeSpan.FromMinutes(30), maxAttempts: 1);
-        await evidence.Fail(id, "storage is down", TimeSpan.Zero);
+        TimeSpan stale = TimeSpan.FromMinutes(30);
 
-        Assert.Null(await evidence.Claim(TimeSpan.FromMinutes(30), maxAttempts: 1));
+        ClipEvidence claimed = (await evidence.Claim(stale, maxAttempts: 1))!;
+        await evidence.Fail(claimed.ClaimToken, "storage is down", TimeSpan.Zero);
+
+        Assert.Equal([id], (await evidence.FailExhausted(stale, maxAttempts: 1)).Select(record => record.Id));
+        Assert.Empty(await evidence.FailExhausted(stale, maxAttempts: 1));
+        Assert.Null(await evidence.Claim(stale, maxAttempts: 1));
         ContentReportRow row = (await test.Statements.Get(report))!;
         Assert.Equal((ClipEvidenceStatuses.Failed, "storage is down"), (row.EvidenceStatus, row.EvidenceError));
+
+        // Its video still has to go, retried for as long as that takes; until it has, the record never expires.
+        await test.Connection.ExecuteAsync("UPDATE clip_evidence SET delete_after = now() - interval '1 day'");
+        Assert.Null(await evidence.ClaimSweep(TimeSpan.Zero, stale));
+        ClipEvidence takedown = (await evidence.ClaimTakedown(stale))!;
+        Assert.Equal((id, 1), (takedown.Id, takedown.Attempts));
+        Assert.Null(await evidence.ClaimTakedown(stale));
+        Assert.True(await evidence.Fail(takedown.ClaimToken, "Bunny is down", TimeSpan.Zero));
+        Assert.Empty(await evidence.GetExpired(10));
+
+        takedown = (await evidence.ClaimTakedown(stale))!;
+        Assert.True(await evidence.MarkMediaDeleted(takedown.ClaimToken));
+        Assert.Empty(await evidence.GetExpired(10));
+        Assert.True(await evidence.SaveCdnPurge(takedown.ClaimToken, CdnPurgeResults.Purged));
+        Assert.True(await evidence.MarkTakenDown(takedown.ClaimToken));
+        Assert.Null(await evidence.ClaimTakedown(stale));
+        Assert.Equal(ClipEvidenceStatuses.Failed, (await test.Statements.Get(report))!.EvidenceStatus);
+
+        Assert.Equal(id, (await evidence.ClaimSweep(TimeSpan.Zero, stale))!.Id);
+        Assert.Equal([id], await evidence.GetExpired(10));
+    }
+
+    [PostgresFact]
+    public async Task APendingRecordPastItsRetention_IsNeverExpired()
+    {
+        await using TestDatabase test = await TestDatabase.CreateAsync();
+        Guid admin = await test.AddUserAsync("admin", null, "Admin");
+        (Guid clip, string token) = await test.AddSharedClipAsync(await test.AddUserAsync("owner", null));
+        Guid report = await test.ReportAsync(clip, token, ContentReportReasons.ChildSafety);
+        await test.Statements.Remove(report, admin, "x", TimeSpan.FromDays(365));
+        await test.Connection.ExecuteAsync("UPDATE clip_evidence SET delete_after = now() - interval '1 day'");
+
+        Assert.Empty(await new ClipEvidenceStatements(test.Connection).GetExpired(10));
+    }
+
+    [PostgresFact]
+    public async Task AStaleClaim_WritesNothing_OnceTheRecordIsClaimedAgain()
+    {
+        await using TestDatabase test = await TestDatabase.CreateAsync();
+        Guid admin = await test.AddUserAsync("admin", null, "Admin");
+        (Guid clip, string token) = await test.AddSharedClipAsync(await test.AddUserAsync("owner", null));
+        Guid report = await test.ReportAsync(clip, token, ContentReportReasons.ChildSafety);
+        await test.Statements.Remove(report, admin, "x", TimeSpan.FromDays(365));
+        ClipEvidenceStatements evidence = new(test.Connection);
+
+        ClipEvidence first = (await evidence.Claim(TimeSpan.FromMinutes(30), maxAttempts: 5))!;
+        // Its processor goes quiet for an hour, so the claim is stale and another processor takes the record.
+        await test.Connection.ExecuteAsync("UPDATE clip_evidence SET claimed_at = claimed_at - interval '1 hour'");
+        ClipEvidenceClaim stale = first.ClaimToken with { ClaimedAt = first.ClaimedAt!.Value.AddHours(-1) };
+        ClipEvidence second = (await evidence.Claim(TimeSpan.FromMinutes(30), maxAttempts: 5))!;
+        Assert.Equal((first.Id, 2), (second.Id, second.Attempts));
+
+        Assert.False(await evidence.SaveFiles(stale, ["late.json"]));
+        Assert.False(await evidence.MarkMediaDeleted(stale));
+        Assert.False(await evidence.SaveCdnPurge(stale, CdnPurgeResults.Purged));
+        Assert.False(await evidence.Fail(stale, "late", TimeSpan.Zero));
+        Assert.False(await evidence.MarkPreserved(stale));
+
+        Assert.True(await evidence.SaveFiles(second.ClaimToken, ["record.json"]));
+        Assert.True(await evidence.MarkMediaDeleted(second.ClaimToken));
+        Assert.True(await evidence.SaveCdnPurge(second.ClaimToken, CdnPurgeResults.Purged));
+        Assert.True(await evidence.MarkPreserved(second.ClaimToken));
+        Assert.False(await evidence.Fail(second.ClaimToken, "after it finished", TimeSpan.Zero));
+        ContentReportRow row = (await test.Statements.Get(report))!;
+        Assert.Equal((ClipEvidenceStatuses.Preserved, (string?)null), (row.EvidenceStatus, row.EvidenceError));
     }
 
     [PostgresFact]

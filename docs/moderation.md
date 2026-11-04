@@ -37,6 +37,10 @@ One transaction (`ContentReportStatements.Remove`):
 4. after `Moderation:SweepAfter` (3 hours), deletes and purges the clip's R2 folder once more, for anything a
    transcode worker uploaded with presigned URLs it held at removal.
 
+Each step is recorded as it finishes, and only under the claim that ran it (`claimed_at`): a processor whose claim
+went stale (`EvidenceStaleAfter`) and was taken over writes nothing more. If the copy keeps failing, the video is
+still deleted and purged; see [When an evidence copy fails](#when-an-evidence-copy-fails).
+
 After the retention, the evidence files and record are deleted.
 
 ### Suspension
@@ -66,16 +70,23 @@ Other settings: `Moderation:ContactEmail` (where owners dispute a takedown), `Mo
 
 ## When an evidence copy fails
 
-After `EvidenceMaxAttempts` the record is `failed` and the admin page shows the last error. Fix the cause (usually
-the bucket or token), then retry it:
+While a record is retrying, the admin page shows the error it is retrying after, and nothing is deleted before the
+copy exists. Fix the cause (usually the bucket or token) within `EvidenceMaxAttempts` × `EvidenceRetryAfter` (about
+25 minutes at the defaults); raising `Moderation__EvidenceMaxAttempts` gives pending records more attempts at once.
+Each attempt resumes from the step it stopped at, so nothing already copied is copied again.
 
-```sql
-UPDATE clip_evidence SET status = 'pending', attempts = 0, available_at = now(), last_error = NULL
-WHERE id = '<evidence id>';
-```
+After `EvidenceMaxAttempts` the record is `failed`: the evidence wasn't kept. The API logs it at Error and the admin
+page shows the last error. Taking the video off public storage matters more than keeping it, and the clip row is
+already gone, so the record is the only thing left pointing at the video: a failed record's video is still deleted
+from its host and purged from the media domain, retried every `EvidenceRetryAfter` with no limit until both are done
+(`media_deleted_at`, `cdn_purge`), and swept after `SweepAfter` like any other. If the copy had been saved before a
+later step ran out of attempts, the record becomes `preserved` once that is done.
 
-It resumes from the step it stopped at: nothing already copied is copied again, and nothing is deleted before the
-copy exists.
+A failed record's video can't be copied afterwards: it is gone from public storage. What was snapshotted at removal
+(`clip_evidence.clip` and `owner`, with the reason and note) stays in the database for the retention; read it from
+there if the authorities ask.
+
+A record is never deleted after its retention while it is pending, or before its video is deleted and purged.
 
 ## Giving evidence to the authorities
 

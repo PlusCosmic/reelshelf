@@ -11,8 +11,11 @@ namespace Reelshelf.Moderation;
 /// itself already deleted the clip row, so nothing in Reelshelf lists or plays it; this copies the video into the
 /// private evidence bucket, deletes it from its host, purges the media domain's cache, and a few hours later sweeps
 /// the clip's R2 folder again for anything a transcode worker uploaded with URLs it already held. Each step is recorded
-/// as it finishes and is safe to repeat, so a failed record is retried from where it stopped. Evidence past its
-/// retention is deleted.
+/// as it finishes and is safe to repeat, so a failed record is retried from where it stopped, and is written only under
+/// the claim that did it, so a processor whose claim went stale writes nothing. A record whose copy runs out of
+/// attempts is <c>failed</c> (no evidence kept), but its video is still deleted and purged, retried until that works:
+/// the clip row is gone, so the record is the only thing left pointing at that video. Evidence past its retention is
+/// deleted, once its video is gone from public storage.
 /// </summary>
 public sealed class ClipEvidenceProcessor(
     IClipEvidenceStore store,
@@ -44,41 +47,61 @@ public sealed class ClipEvidenceProcessor(
     public async Task<bool> ProcessNextAsync(CancellationToken cancellationToken)
     {
         ModerationOptions current = options.CurrentValue;
+        foreach (ClipEvidence failed in await store.FailExhausted(current.EvidenceStaleAfter, current.EvidenceMaxAttempts))
+        {
+            logger.LogError("Evidence {EvidenceId} of clip {ClipId} couldn't be kept after {Attempts} attempts ({Error}); " +
+                            "its video is still being deleted from public storage. See docs/moderation.md",
+                failed.Id, failed.ClipId, failed.Attempts, failed.LastError);
+        }
+
         if (await store.Claim(current.EvidenceStaleAfter, current.EvidenceMaxAttempts) is { } pending)
         {
-            await RunAsync(pending, () => PreserveAsync(pending, cancellationToken), current);
+            await RunAsync(pending, claim => PreserveAsync(pending, claim, cancellationToken), current);
             return true;
         }
 
-        if (await store.ClaimSweep(current.SweepAfter, current.EvidenceStaleAfter) is { } preserved)
+        if (await store.ClaimTakedown(current.EvidenceStaleAfter) is { } failedRecord)
         {
-            await RunAsync(preserved, () => SweepAsync(preserved, cancellationToken), current);
+            await RunAsync(failedRecord, claim => TakeDownAsync(failedRecord, claim, cancellationToken), current);
+            return true;
+        }
+
+        if (await store.ClaimSweep(current.SweepAfter, current.EvidenceStaleAfter) is { } done)
+        {
+            await RunAsync(done, claim => SweepAsync(done, claim, cancellationToken), current);
             return true;
         }
 
         return false;
     }
 
-    private async Task RunAsync(ClipEvidence record, Func<Task> work, ModerationOptions current)
+    private async Task RunAsync(ClipEvidence record, Func<ClipEvidenceClaim, Task> work, ModerationOptions current)
     {
+        // Taken once, as the claim handed it out: every write of this run carries it.
+        ClipEvidenceClaim claim = record.ClaimToken;
         try
         {
-            await work();
+            await work(claim);
         }
         catch (OperationCanceledException)
         {
             // Shutting down; the claim goes stale and the record is claimed again.
             throw;
         }
+        catch (ClaimLostException)
+        {
+            logger.LogWarning("Evidence {EvidenceId} of clip {ClipId} was claimed again after this claim went stale; " +
+                              "leaving it to that claim", record.Id, record.ClipId);
+        }
         catch (Exception error)
         {
-            logger.LogError(error, "Evidence {EvidenceId} of clip {ClipId} failed (attempt {Attempt}); it will be retried",
-                record.Id, record.ClipId, record.Attempts);
-            await store.Fail(record.Id, error.Message, current.EvidenceRetryAfter);
+            logger.LogError(error, "Evidence {EvidenceId} of clip {ClipId} ({Status}, attempt {Attempt}) failed; " +
+                                   "it will be retried", record.Id, record.ClipId, record.Status, record.Attempts);
+            await store.Fail(claim, error.Message, current.EvidenceRetryAfter);
         }
     }
 
-    private async Task PreserveAsync(ClipEvidence record, CancellationToken cancellationToken)
+    private async Task PreserveAsync(ClipEvidence record, ClipEvidenceClaim claim, CancellationToken cancellationToken)
     {
         EvidenceClip clip = record.ReadClip();
 
@@ -91,13 +114,41 @@ public sealed class ClipEvidenceProcessor(
                 keys.Add(videoKey);
             }
 
-            await store.SaveFiles(record.Id, keys);
+            Held(await store.SaveFiles(claim, keys));
         }
 
+        await DeleteFromPublicStorageAsync(record, claim, clip, cancellationToken);
+
+        Held(await store.MarkPreserved(claim));
+        logger.LogInformation("Clip {ClipId} is preserved as evidence {EvidenceId} and gone from public storage",
+            clip.Id, record.Id);
+    }
+
+    /// <summary>A failed record's video, deleted and purged although no evidence of it was kept.</summary>
+    private async Task TakeDownAsync(ClipEvidence record, ClipEvidenceClaim claim, CancellationToken cancellationToken)
+    {
+        EvidenceClip clip = record.ReadClip();
+        await DeleteFromPublicStorageAsync(record, claim, clip, cancellationToken);
+        Held(await store.MarkTakenDown(claim));
+        if (record.Files is null)
+        {
+            logger.LogError("Clip {ClipId} is gone from public storage, but its evidence {EvidenceId} couldn't be kept: " +
+                            "{Error}", clip.Id, record.Id, record.LastError);
+        }
+        else
+        {
+            logger.LogInformation("Clip {ClipId} is preserved as evidence {EvidenceId} and gone from public storage",
+                clip.Id, record.Id);
+        }
+    }
+
+    private async Task DeleteFromPublicStorageAsync(ClipEvidence record, ClipEvidenceClaim claim, EvidenceClip clip,
+        CancellationToken cancellationToken)
+    {
         if (record.MediaDeletedAt is null)
         {
             await media.DeleteAsync(clip);
-            await store.MarkMediaDeleted(record.Id);
+            Held(await store.MarkMediaDeleted(claim));
         }
 
         if (record.CdnPurge is null)
@@ -109,21 +160,28 @@ public sealed class ClipEvidenceProcessor(
                                   "or purge its URLs by hand", clip.Id);
             }
 
-            await store.SaveCdnPurge(record.Id, purge);
+            Held(await store.SaveCdnPurge(claim, purge));
         }
-
-        await store.MarkPreserved(record.Id);
-        logger.LogInformation("Clip {ClipId} is preserved as evidence {EvidenceId} and gone from public storage",
-            clip.Id, record.Id);
     }
 
-    private async Task SweepAsync(ClipEvidence record, CancellationToken cancellationToken)
+    private async Task SweepAsync(ClipEvidence record, ClipEvidenceClaim claim, CancellationToken cancellationToken)
     {
         EvidenceClip clip = record.ReadClip();
         await media.SweepAsync(clip.Id);
         await cdn.PurgeClipAsync(clip.Id, MaxVersion(clip), cancellationToken);
-        await store.MarkSwept(record.Id);
+        Held(await store.MarkSwept(claim));
     }
+
+    /// <summary>Stops the work when a step write was dropped because the claim is no longer current.</summary>
+    private static void Held(bool written)
+    {
+        if (!written)
+        {
+            throw new ClaimLostException();
+        }
+    }
+
+    private sealed class ClaimLostException : Exception;
 
     /// <summary>A <c>migrate</c> job running at removal writes the version after the clip's own.</summary>
     private static int MaxVersion(EvidenceClip clip) => clip.VideoVersion + 1;
