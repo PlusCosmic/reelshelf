@@ -8,6 +8,7 @@
 - `workers/Reelshelf.Worker/` is the transcode worker, a .NET 10 console app with its own `Dockerfile`; its tests are `tests/Reelshelf.Worker.Test/`.
 - Every word the frontend shows people lives in `frontend/src/copy/`, one module per area (`landingCopy`, `libraryCopy`, ...; conventions in its `README.md`), so copy is reviewed and changed in one place. The `reelshelf/no-jsx-copy` lint rule (`frontend/eslint-rules/no-jsx-copy.js`) fails on words written straight into JSX outside that folder (text, strings in `{...}`, and readable attributes such as `aria-label`, `title`, `placeholder`); tests are exempt. Plan limits the signed-out pages and terms quote come from `copy/planLimits.ts`, which mirrors `TierLimits`. API messages and emails are still written in `api/`.
 - `frontend/src/api-client/` and `frontend/src/routeTree.gen.ts` are generated and committed; do not hand-edit them.
+- This repository is public. Nothing committed here (docs, ADRs, comments, commit messages, PRs, issues) mentions the operator's personal circumstances: where they live or might move, their legal or business status, or their finances. A choice is explained by its engineering reasons. ADRs and design docs describe the plan being built and how it works, with at most a short "Considered" section at the end; they don't list options not being pursued or ideas for later.
 
 ## Commands
 
