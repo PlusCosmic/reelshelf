@@ -8,7 +8,7 @@ namespace Reelshelf.Worker;
 /// <summary>
 /// Tells the worker its VM is about to be taken away. On a Spot VM the job can't count on SIGTERM and the shutdown
 /// grace: Batch on GCE stopped the container about 9 s into a preemption without either (the 2026-10-22 smoke test,
-/// docs/video-pipeline/batch-overflow.md). So the worker watches for the notice itself and hands its job back at once.
+/// reelshelf-docs/video-pipeline/batch-overflow.md). So the worker watches for the notice itself and hands its job back at once.
 /// </summary>
 public interface IPreemptionNotice
 {

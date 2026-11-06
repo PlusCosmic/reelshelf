@@ -10,7 +10,7 @@ namespace Reelshelf.Moderation;
 /// <summary>
 /// Keeps a clip removed after a child-safety or terrorism report, privately, and takes it off public access. The
 /// removal itself already deleted the clip row, so nothing in Reelshelf lists or plays it. The law requires the
-/// content to be kept (docs/moderation.md, "Legal basis"), so nothing of it is deleted until a copy is in the private
+/// content to be kept (reelshelf-docs/moderation.md, "Legal basis"), so nothing of it is deleted until a copy is in the private
 /// evidence bucket:
 /// <list type="number">
 /// <item><b>Quarantine</b> (done once <c>cdn_purge</c> is set): every object of the clip in the media bucket is copied
@@ -121,7 +121,7 @@ public sealed class ClipEvidenceProcessor(
                 logger.LogError(error,
                     "Evidence {EvidenceId} of clip {ClipId} still isn't preserved after {Attempts} attempts and needs " +
                     "attention; nothing of the clip is deleted until it is (an R2 clip stays quarantined, a Bunny clip " +
-                    "at Bunny). Retrying in {Delay}. See docs/moderation.md",
+                    "at Bunny). Retrying in {Delay}. See reelshelf-docs/moderation.md",
                     record.Id, record.ClipId, record.Attempts, delay);
             }
             else

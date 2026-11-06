@@ -7,7 +7,7 @@ namespace Reelshelf.Worker;
 /// <summary>
 /// A claimed job, as <c>POST /api/worker/claim</c> returns it (the API's <c>WorkerJobResponse</c>).
 /// <see cref="SourceUrl"/> is a presigned GET for the input (for <c>migrate</c>, a public HLS playlist URL) and <see cref="UploadUrls"/> a presigned PUT per output
-/// file name; see docs/video-pipeline/workers-and-jobs.md.
+/// file name; see reelshelf-docs/video-pipeline/workers-and-jobs.md.
 /// </summary>
 public sealed record WorkerJob(
     Guid RunId,

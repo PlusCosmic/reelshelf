@@ -3,7 +3,7 @@ using System.Globalization;
 namespace Reelshelf.Worker;
 
 /// <summary>
-/// The ffmpeg command lines for each step (docs/video-pipeline/storage-transcoding-queue.md, "Encoding notes"),
+/// The ffmpeg command lines for each step (reelshelf-docs/video-pipeline/storage-transcoding-queue.md, "Encoding notes"),
 /// without the binary. They are argument lists, never a shell string, so nothing in a path or filter is quoted.
 /// </summary>
 public static class EncodeArguments

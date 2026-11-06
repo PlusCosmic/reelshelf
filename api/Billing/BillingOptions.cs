@@ -9,7 +9,7 @@ public sealed class BillingOptions
 {
     public const string SectionName = "Billing";
 
-    /// <summary>A restricted key (<c>rk_</c>) with the permissions in docs/billing.md, or a secret key.</summary>
+    /// <summary>A restricted key (<c>rk_</c>) with the permissions in reelshelf-docs/billing.md, or a secret key.</summary>
     public string SecretKey { get; set; } = "";
 
     /// <summary>The signing secret of the webhook endpoint (<c>whsec_</c>).</summary>

@@ -76,4 +76,4 @@ bun run generate:api-client  # after API contract changes
 DatabaseConnectionString="Host=...;Database=...;Username=...;Password=..." bun run migrate
 ```
 
-The interesting decisions are written up as ADRs in [`docs/adr/`](docs/adr/): gaming sessions as auto-generated playlists, open sign-up with storage tiers, linked identities across sign-in providers, and server-side Twitch clip import. Repository conventions, commands, and deployment notes live in [`AGENTS.md`](AGENTS.md); the domain vocabulary is in [`CONTEXT.md`](CONTEXT.md).
+The interesting decisions are written up as ADRs (kept in a private docs repo): gaming sessions as auto-generated playlists, open sign-up with storage tiers, linked identities across sign-in providers, and server-side Twitch clip import. Repository conventions, commands, and deployment notes live in [`AGENTS.md`](AGENTS.md); the domain vocabulary is in [`CONTEXT.md`](CONTEXT.md).

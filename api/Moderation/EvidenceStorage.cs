@@ -40,7 +40,7 @@ public sealed class UnconfiguredEvidenceStorage : IEvidenceStorage
 /// Takes a removed clip's objects off public access in the media bucket without deleting the only copy: each is copied
 /// server side to <c>quarantine/{evidenceId}/{its key}</c>, then the original is deleted. Quarantine keys are never
 /// handed out, the evidence id in them is random, and the media domain's WAF blocks <c>/quarantine/*</c>
-/// (docs/moderation.md). It uses the media bucket's own credentials, so it works whatever state the evidence bucket is
+/// (reelshelf-docs/moderation.md). It uses the media bucket's own credentials, so it works whatever state the evidence bucket is
 /// in. The quarantine is deleted once the evidence copy exists.
 /// </summary>
 public interface IEvidenceQuarantine

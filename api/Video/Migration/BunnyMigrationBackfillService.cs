@@ -6,7 +6,7 @@ namespace Reelshelf.Video.Migration;
 /// <summary>
 /// Keeps up to <see cref="MigrationOptions.BatchSize"/> <c>migrate</c> jobs queued while
 /// <see cref="MigrationOptions.Enabled"/> is on, so the transcode workers move the ready Bunny clips to R2 a few at
-/// a time, behind every other job (docs/video-pipeline/bunny-migration.md). Queues nothing without R2, since the
+/// a time, behind every other job (reelshelf-docs/video-pipeline/bunny-migration.md). Queues nothing without R2, since the
 /// claim wouldn't hand the jobs out. Never registered in the <c>OpenApi</c> environment.
 /// </summary>
 public class BunnyMigrationBackfillService(
