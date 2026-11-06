@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Everything the desktop uploader does that isn't Windows: settings, watching the recordings folder, the ledger,
+      matching books, uploads and the tray's state. Windows-only parts (Credential Manager, the full-screen check,
+      toasts) sit behind the interfaces in Platform/, which the app implements. Tested on Linux in CI.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Reelshelf.Uploader.Core.Test" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Reelshelf.Uploader.ApiClient\Reelshelf.Uploader.ApiClient.csproj" />
+    </ItemGroup>
+
+</Project>
