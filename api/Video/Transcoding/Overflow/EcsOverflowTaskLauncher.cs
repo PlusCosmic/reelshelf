@@ -98,7 +98,7 @@ public sealed class AwsEcsTasks(IAmazonECS ecs) : IEcsTasks
 }
 
 /// <summary>
-/// An overflow pool of ECS tasks (docs/video-pipeline/fargate-overflow.md, ec2-overflow.md), <see cref="Pool"/>: the
+/// An overflow pool of ECS tasks (reelshelf-docs/video-pipeline/fargate-overflow.md, ec2-overflow.md), <see cref="Pool"/>: the
 /// Fargate Spot pool <c>ecs</c> or the EC2 Spot pool <c>ec2</c>, each with its own settings
 /// (<see cref="OverflowOptions.EcsPoolSettings"/>), client and cluster. Tasks of the pool's task definition, one worker
 /// each, run on its capacity provider with <c>startedBy</c> = <see cref="OverflowOptions.StartedBy"/> so

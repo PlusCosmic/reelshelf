@@ -240,7 +240,7 @@ function AccountAccess({
             !!account.grantedTier,
           )}
         </p>
-        {/* PostHog targets a named account by this id (docs/feature-flags.md). */}
+        {/* PostHog targets a named account by this id (reelshelf-docs/feature-flags.md). */}
         <p className="rs-meta">
           {copy.accountId} <code>{account.id}</code>
         </p>

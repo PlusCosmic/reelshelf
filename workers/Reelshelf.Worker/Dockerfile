@@ -1,4 +1,4 @@
-# The transcode worker (docs/video-pipeline/workers-and-jobs.md). Build from the repository root:
+# The transcode worker (reelshelf-docs/video-pipeline/workers-and-jobs.md). Build from the repository root:
 #   docker build -f workers/Reelshelf.Worker/Dockerfile -t reelshelf-worker .
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release

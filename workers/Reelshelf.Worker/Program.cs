@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Reelshelf.Worker;
 
-// The transcode worker (docs/video-pipeline/workers-and-jobs.md): claims jobs from the API, encodes with ffmpeg and
+// The transcode worker (reelshelf-docs/video-pipeline/workers-and-jobs.md): claims jobs from the API, encodes with ffmpeg and
 // uploads through presigned URLs. Configured from the Worker section, usually as Worker__* environment variables.
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 builder.Logging.AddSimpleConsole(console =>

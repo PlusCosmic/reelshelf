@@ -47,7 +47,7 @@ public enum OverflowTickOutcome
 }
 
 /// <summary>
-/// The overflow pool's decision (docs/video-pipeline/workers-and-jobs.md#the-overflow-pool). Each tick counts the
+/// The overflow pool's decision (reelshelf-docs/video-pipeline/workers-and-jobs.md#the-overflow-pool). Each tick counts the
 /// claimable backlog and the overflow tasks already running or provisioning in every pool, and once the oldest
 /// claimable job has waited <see cref="OverflowOptions.ScaleUpAfter"/> starts
 /// <c>min(pending - running, MaxTasks - running, MaxStartPerTick)</c> tasks, then none for

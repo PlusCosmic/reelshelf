@@ -1,7 +1,7 @@
 namespace Reelshelf.Video.Migration;
 
 /// <summary>
-/// Moving the clips still on Bunny onto our own pipeline (docs/video-pipeline/bunny-migration.md). Read on every
+/// Moving the clips still on Bunny onto our own pipeline (reelshelf-docs/video-pipeline/bunny-migration.md). Read on every
 /// pass, so turning it on or off needs no restart.
 /// </summary>
 public sealed class MigrationOptions

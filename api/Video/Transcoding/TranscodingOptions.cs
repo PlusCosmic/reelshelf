@@ -47,7 +47,7 @@ public sealed class TranscodingOptions
     public int EffectiveMaxReleases => Math.Max(0, MaxReleases);
 }
 
-/// <summary>The job types in <c>transcode_run.type</c>; see docs/video-pipeline/workers-and-jobs.md.</summary>
+/// <summary>The job types in <c>transcode_run.type</c>; see reelshelf-docs/video-pipeline/workers-and-jobs.md.</summary>
 public static class TranscodeRunTypes
 {
     /// <summary>The uploaded source into a new AV1 video version, with its thumbnail and detection frames.</summary>
@@ -64,7 +64,7 @@ public static class TranscodeRunTypes
 
     /// <summary>
     /// A ready Bunny clip's HLS stream re-encoded into version 1 of an R2 clip, which its completion switches the clip
-    /// to (docs/video-pipeline/bunny-migration.md). Queued by <see cref="Migration.BunnyMigrationBackfillService"/>.
+    /// to (reelshelf-docs/video-pipeline/bunny-migration.md). Queued by <see cref="Migration.BunnyMigrationBackfillService"/>.
     /// </summary>
     public const string Migrate = "migrate";
 

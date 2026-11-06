@@ -9,7 +9,7 @@ namespace Reelshelf.Video.Transcoding;
 /// presigned GET for the job's input and <paramref name="UploadUrls"/> a presigned PUT for each output, by file name
 /// (<c>av1.mp4</c>, <c>thumbnail.jpg</c>, <c>thumbnail_1.jpg</c>..<c>thumbnail_5.jpg</c>, <c>preview.mp4</c>); each PUT
 /// signs <c>Content-Type</c> and <c>Cache-Control</c>, which the worker must send as given in
-/// docs/video-pipeline/workers-and-jobs.md. Both are null while R2 is not configured.
+/// reelshelf-docs/video-pipeline/workers-and-jobs.md. Both are null while R2 is not configured.
 /// </summary>
 public sealed record WorkerJobResponse(
     Guid RunId,
@@ -33,7 +33,7 @@ public sealed record WorkerFailRequest(Guid LeaseId, string Error, bool Retryabl
 public sealed record WorkerReleaseRequest(Guid LeaseId);
 
 /// <summary>
-/// The transcode workers' API (docs/video-pipeline/workers-and-jobs.md). Workers authenticate with one of the
+/// The transcode workers' API (reelshelf-docs/video-pipeline/workers-and-jobs.md). Workers authenticate with one of the
 /// worker secrets through <see cref="WorkerAuthentication.Policy"/>, never the site cookie, and every endpoint requires it.
 /// The endpoints are left out of the OpenAPI document: the worker is not a client of the generated frontend API.
 /// Claims, completions, failures and releases are logged with the name of the secret the worker used.

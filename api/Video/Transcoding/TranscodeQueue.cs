@@ -37,7 +37,7 @@ public sealed record ClaimedTranscodeRun(
 /// through <see cref="ClipVideoUpdateHandler"/>. A <c>transcode</c> drives the clip's status; a finished
 /// <c>transcode</c> or <c>trim</c> moves the clip to its new video version, after which the storage deletes the
 /// uploaded source and any version it replaced. A finished <c>migrate</c> moves its Bunny clip to R2; until then it
-/// never touches the clip, which keeps playing from Bunny (docs/video-pipeline/bunny-migration.md). The other types
+/// never touches the clip, which keeps playing from Bunny (reelshelf-docs/video-pipeline/bunny-migration.md). The other types
 /// record their output on the run until the features that use them land.
 /// </summary>
 public class TranscodeQueue(

@@ -94,7 +94,7 @@ export const adminCopy = {
     removal: {
       nothingKept: "Nothing was kept: the clip had already been deleted.",
       failed: (error: string | null | undefined) =>
-        `Needs attention: the private evidence copy still isn't made (${error ?? "no error was recorded"}). It is still being retried, and nothing is deleted until it works. The video is quarantined, off public access, unless the clip is on Bunny, where it stays until the copy is made. Fix the cause (docs/moderation.md).`,
+        `Needs attention: the private evidence copy still isn't made (${error ?? "no error was recorded"}). It is still being retried, and nothing is deleted until it works. The video is quarantined, off public access, unless the clip is on Bunny, where it stays until the copy is made. Fix the cause (reelshelf-docs/moderation.md).`,
       pending:
         "Quarantining the clip off public access and keeping a private copy…",
       retrying: (error: string) => ` Retrying after: ${error}`,

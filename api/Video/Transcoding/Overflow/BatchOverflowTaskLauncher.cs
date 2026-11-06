@@ -50,7 +50,7 @@ public sealed class GoogleBatchJobs(BatchServiceClient client) : IBatchJobs
 }
 
 /// <summary>
-/// The overflow pool on Google Cloud Batch (docs/video-pipeline/batch-overflow.md): each scale-up is one job of
+/// The overflow pool on Google Cloud Batch (reelshelf-docs/video-pipeline/batch-overflow.md): each scale-up is one job of
 /// <c>count</c> tasks, one worker VM each, labelled <c>pool</c> = <see cref="OverflowOptions.StartedBy"/> so
 /// counting finds them again. A job none of whose tasks has started within
 /// <see cref="OverflowBatchOptions.ProvisionTimeout"/> is deleted while counting, so a job stuck on quota or Spot

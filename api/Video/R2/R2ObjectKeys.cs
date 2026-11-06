@@ -10,7 +10,7 @@ namespace Reelshelf.Video.R2;
 /// <see cref="Preview"/>). The clip records its current version (<c>clip.video_version</c>); a trim writes the next
 /// one, and the old one is deleted once the clip moves to it.</item>
 /// </list>
-/// The worker never builds these: it is handed presigned URLs at claim time (docs/video-pipeline/workers-and-jobs.md).
+/// The worker never builds these: it is handed presigned URLs at claim time (reelshelf-docs/video-pipeline/workers-and-jobs.md).
 /// </summary>
 public static class R2ObjectKeys
 {

@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace Reelshelf.Video.Transcoding.Overflow;
 
 /// <summary>
-/// The overflow pool (<c>Overflow:*</c>, docs/video-pipeline/workers-and-jobs.md#the-overflow-pool): one-shot transcode
+/// The overflow pool (<c>Overflow:*</c>, reelshelf-docs/video-pipeline/workers-and-jobs.md#the-overflow-pool): one-shot transcode
 /// workers that the API starts when <c>transcode_run</c> backs up, on the backends <see cref="Pools"/> lists, most
 /// preferred first: ECS tasks on AWS EC2 Spot instances (<see cref="Ec2"/>) and on Fargate Spot (<see cref="Ecs"/>), and
 /// Google Cloud Batch (<see cref="Batch"/>).
@@ -195,7 +195,7 @@ public sealed partial class OverflowOptions
 }
 
 /// <summary>
-/// The overflow pool on Google Cloud Batch (<c>Overflow:Batch:*</c>, docs/video-pipeline/batch-overflow.md). Every
+/// The overflow pool on Google Cloud Batch (<c>Overflow:Batch:*</c>, reelshelf-docs/video-pipeline/batch-overflow.md). Every
 /// scale-up is one job of that many tasks, one worker VM each, from <see cref="InstanceTemplate"/>, which holds the
 /// machine type, Spot, the boot disk, the network and the Standard network tier (Batch gives the VMs it describes
 /// itself a Premium-tier IP). PlusCosmic/infrastructure's gcp/overflow-workers/setup.sh creates the resources and
@@ -326,7 +326,7 @@ public sealed class OverflowBatchOptions
 }
 
 /// <summary>
-/// An overflow pool of ECS tasks (docs/video-pipeline/fargate-overflow.md, ec2-overflow.md): tasks of
+/// An overflow pool of ECS tasks (reelshelf-docs/video-pipeline/fargate-overflow.md, ec2-overflow.md): tasks of
 /// <see cref="TaskDefinition"/>, one worker each, started with <c>RunTask</c> on <see cref="CapacityProvider"/> in
 /// <see cref="Cluster"/>. The task definition holds the task's size, network mode, roles, secret, volumes and sandbox;
 /// the API changes only its image, to <see cref="WorkerImage"/>, by registering a new revision, and sends
@@ -451,7 +451,7 @@ public abstract class OverflowEcsPoolOptions
 }
 
 /// <summary>
-/// The overflow pool on AWS Fargate Spot (<c>Overflow:Ecs:*</c>, docs/video-pipeline/fargate-overflow.md): an
+/// The overflow pool on AWS Fargate Spot (<c>Overflow:Ecs:*</c>, reelshelf-docs/video-pipeline/fargate-overflow.md): an
 /// <c>awsvpc</c> task definition, so <see cref="OverflowEcsPoolOptions.Subnets"/> and
 /// <see cref="OverflowEcsPoolOptions.SecurityGroups"/> are required, and every task gets a public IP.
 /// </summary>
@@ -468,7 +468,7 @@ public sealed class OverflowEcsOptions : OverflowEcsPoolOptions
 }
 
 /// <summary>
-/// The overflow pool on EC2 Spot instances (<c>Overflow:Ec2:*</c>, docs/video-pipeline/ec2-overflow.md): ECS tasks
+/// The overflow pool on EC2 Spot instances (<c>Overflow:Ec2:*</c>, reelshelf-docs/video-pipeline/ec2-overflow.md): ECS tasks
 /// on its own cluster's Auto Scaling group capacity provider (<see cref="CapacityProvider"/>, required), which starts
 /// an instance for each and scales back to zero. The task definition is usually <c>host</c> mode, using the instance's
 /// public IP, so <see cref="OverflowEcsPoolOptions.Subnets"/> and <see cref="OverflowEcsPoolOptions.SecurityGroups"/>

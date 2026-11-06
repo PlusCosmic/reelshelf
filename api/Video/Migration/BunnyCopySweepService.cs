@@ -6,7 +6,7 @@ namespace Reelshelf.Video.Migration;
 public sealed record BunnyCopySweepResult(int VideosDeleted, int CollectionsDeleted, int Failures);
 
 /// <summary>
-/// One pass of the Bunny delete sweep (docs/video-pipeline/bunny-migration.md): deletes, through the Bunny host, the
+/// One pass of the Bunny delete sweep (reelshelf-docs/video-pipeline/bunny-migration.md): deletes, through the Bunny host, the
 /// Bunny copy of every clip that moved to R2 longer ago than the grace period and clears its <c>bunny_video_id</c>,
 /// then deletes the Bunny collections nothing refers to any more. It works in small batches with a pause between
 /// Bunny calls. Bunny's delete counts a video or collection it no longer knows about as deleted; any other error is
