@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.Core.Models;
+using System.Security.Claims;
 using Reelshelf.Auth;
+using Reelshelf.Devices;
 
 namespace Reelshelf.Core;
 
@@ -15,6 +17,7 @@ public static class ClipsEndpoints
         group.MapGet("library", GetLibrary).WithName("GetClipLibrary");
         group.MapGet("", GetClips).WithName("GetClips");
         group.MapPost("categories/{categoryId:guid}/videos", CreateVideo).WithName("CreateVideo")
+            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice)
             .RequirePermission(Permissions.ClipsCreate)
             .RequireRateLimiting(RateLimitPolicies.ClipPrepare);
         group.MapPost("categories/{categoryId:guid}/videos/duplicates", FindDuplicateVideos).WithName("FindDuplicateVideos")
@@ -32,7 +35,9 @@ public static class ClipsEndpoints
             .RequirePermission(Permissions.ClipsEdit);
         group.MapPost("move", MoveClips).WithName("MoveClips")
             .RequirePermission(Permissions.ClipsEdit);
+        // The uploader cancels an upload by deleting the clip it just prepared; a device can delete nothing else.
         group.MapDelete("videos/{clipId:guid}", DeleteClip).WithName("DeleteClip")
+            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice)
             .RequirePermission(Permissions.ClipsDelete);
     }
 
@@ -241,11 +246,27 @@ public static class ClipsEndpoints
         return TypedResults.Ok();
     }
 
-    private static async Task<Results<Ok, NotFound>> DeleteClip(
+    private static async Task<Results<Ok, NotFound, ForbidHttpResult>> DeleteClip(
         ClipService clipService,
+        ClipsStatements clipsStatements,
         AuthenticatedUser user,
+        ClaimsPrincipal principal,
         Guid clipId)
     {
+        if (DeviceTokenAuthentication.DeviceId(principal) is not null)
+        {
+            ClipsStatements.ClipRow? clip = await clipsStatements.GetClipById(clipId);
+            if (clip is null || clip.OwnerId != user.Id)
+            {
+                return TypedResults.NotFound();
+            }
+
+            if (clip.VideoStatus != Video.ClipVideoStatus.AwaitingUpload)
+            {
+                return TypedResults.Forbid();
+            }
+        }
+
         bool success = await clipService.DeleteClip(clipId, user.Id);
         if (!success)
         {

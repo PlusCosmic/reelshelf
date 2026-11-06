@@ -1,7 +1,9 @@
 {
   "private": true,
   "name": "reelshelf",
-  "workspaces": ["frontend"],
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
     "build": "bun run --cwd frontend build",
     "check": "bun run build && bun run typecheck && bun run lint && bun run test && bun run format:check",
@@ -15,9 +17,10 @@
     "generate:openapi:reelshelf": "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_CLI_HOME=/tmp DOTNET_CLI_TELEMETRY_OPTOUT=1 ASPNETCORE_ENVIRONMENT=OpenApi dotnet build api/Reelshelf.csproj /p:OpenApiGenerateDocumentsOnBuild=true /p:OpenApiDocumentsDirectory=$PWD/frontend/src/api-client --disable-build-servers",
     "generate:openapi": "bun run generate:openapi:reelshelf",
     "generate:api-client:reelshelf": "bun run generate:openapi:reelshelf && bun run --cwd frontend generate:api-client",
-    "generate:api-clients": "bun run generate:api-client:reelshelf",
+    "generate:api-client:uploader": "dotnet tool restore && dotnet kiota generate -l CSharp -d frontend/src/api-client/Reelshelf.json -o desktop/Reelshelf.Uploader.ApiClient/Generated -c ReelshelfApiClient -n Reelshelf.Uploader.ApiClient --exclude-backward-compatible --clean-output --log-level Warning --include-path '/api/devices/authorize#POST' --include-path '/api/devices/token#POST' --include-path '/api/devices/current#DELETE' --include-path '/api/games/categories#GET' --include-path '/api/me/plan#GET' --include-path '/api/clips/categories/{categoryId}/videos#POST' --include-path '/api/clips/videos/{clipId}#DELETE' --include-path '/api/clips/videos/{clipId}/upload/parts' --include-path '/api/clips/videos/{clipId}/upload/complete#POST'",
+    "generate:api-clients": "bun run generate:api-client:reelshelf && bun run generate:api-client:uploader",
     "generate:api-client": "bun run generate:api-clients",
-    "check:api-client-drift": "bun run generate:api-clients && prettier --write \"frontend/src/api-client/**/*.ts\" && git diff --exit-code -- frontend/src/api-client",
+    "check:api-client-drift": "bun run generate:api-clients && prettier --write \"frontend/src/api-client/**/*.ts\" && git diff --exit-code -- frontend/src/api-client desktop/Reelshelf.Uploader.ApiClient/Generated && test -z \"$(git status --porcelain -- frontend/src/api-client desktop/Reelshelf.Uploader.ApiClient/Generated)\"",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\""
   },

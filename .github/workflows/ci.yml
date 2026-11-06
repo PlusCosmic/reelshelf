@@ -135,3 +135,39 @@ jobs:
       # fails if the committed client differs from the regenerated output.
       - name: Check committed API client matches the API
         run: bun run check:api-client-drift
+
+  # The desktop uploader's Windows app (desktop/Reelshelf.Uploader.sln): builds it, runs its Windows-only tests and
+  # builds the MSIX to prove packaging works. Not a required check until the app has shipped once; Core and its tests
+  # are in Reelshelf.sln and run in the API job.
+  windows-uploader:
+    name: Windows uploader
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore desktop/Reelshelf.Uploader.sln
+
+      - name: Build
+        run: dotnet build desktop/Reelshelf.Uploader.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test tests/Reelshelf.Uploader.Test/Reelshelf.Uploader.Test.csproj --no-build --configuration Release
+
+      - name: Build the MSIX
+        shell: pwsh
+        run: ./desktop/Reelshelf.Uploader.Package/package.ps1 -Mode Store
+
+      - name: Upload the MSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: reelshelf-uploader-msix
+          path: desktop/Reelshelf.Uploader.Package/out/*.msix
+          if-no-files-found: error

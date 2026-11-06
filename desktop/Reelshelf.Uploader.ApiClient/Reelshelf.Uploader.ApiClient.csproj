@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The desktop uploader's client for the Reelshelf API. Generated/ is Kiota's output from
+      frontend/src/api-client/Reelshelf.json, limited to the endpoints the uploader uses; regenerate it with
+      `bun run generate:api-client` and never edit it by hand. The rest is hand-written.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <IsPackable>false</IsPackable>
+        <!-- Kiota's generated code has no XML docs on some members and uses obsolete-marked helpers. -->
+        <NoWarn>$(NoWarn);CS1591;CS0618</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Kiota.Bundle" Version="2.1.6" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="Generated/kiota-lock.json" />
+        <None Remove="Generated/.kiota.log" />
+    </ItemGroup>
+
+</Project>

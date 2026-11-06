@@ -36,7 +36,17 @@ public static class RateLimitPolicies
     /// <summary>Reporting a shared clip, which anyone with the link can do without signing in.</summary>
     public const string ContentReport = "content-report";
 
+    /// <summary>Starting a device sign-in (ADR-0010). Anonymous, so it partitions by address.</summary>
+    public const string DeviceAuthorize = "device-authorize";
+
+    /// <summary>A device polling for its token. Anonymous, so it partitions by address.</summary>
+    public const string DeviceToken = "device-token";
+
     private const int DefaultIgdbRequestsPerMinute = 30;
+
+    private const int DefaultDeviceAuthorizationsPerMinute = 10;
+
+    private const int DefaultDeviceTokenPollsPerMinute = 30;
 
     // The uploader runs at most three uploads at once, so a legitimate client prepares clips no faster than
     // it finishes them; this bound only bites on scripted bursts of never-uploaded reservations.
@@ -83,6 +93,10 @@ public static class RateLimitPolicies
                 builder.Configuration.GetValue<int?>("Billing:SessionsPerMinute") ?? DefaultBillingSessionsPerMinute);
             options.AddPerUserSlidingWindow(ContentReport,
                 builder.Configuration.GetValue<int?>("Moderation:ReportsPerMinute") ?? DefaultContentReportsPerMinute);
+            options.AddPerUserSlidingWindow(DeviceAuthorize,
+                builder.Configuration.GetValue<int?>("Devices:AuthorizationsPerMinute") ?? DefaultDeviceAuthorizationsPerMinute);
+            options.AddPerUserSlidingWindow(DeviceToken,
+                builder.Configuration.GetValue<int?>("Devices:TokenPollsPerMinute") ?? DefaultDeviceTokenPollsPerMinute);
         });
     }
 

@@ -28,13 +28,16 @@ public static class MultipartUploadEndpoints
 
         group.MapPost("parts", PresignUploadParts).WithName("PresignUploadParts")
             .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice)
             .RequirePermission(Permissions.ClipsCreate);
         group.MapGet("parts", ListUploadParts).WithName("ListUploadParts")
             .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice)
             .RequirePermission(Permissions.ClipsCreate);
         // Completing runs ffprobe, so it shares preparation's budget.
         group.MapPost("complete", CompleteUpload).WithName("CompleteUpload")
             .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice)
             .RequirePermission(Permissions.ClipsCreate)
             .RequireRateLimiting(RateLimitPolicies.ClipPrepare);
     }

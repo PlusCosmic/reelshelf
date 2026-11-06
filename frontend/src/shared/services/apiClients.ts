@@ -6,6 +6,7 @@ import {
   ClipSummaryEndpointsApi,
   ClipTranscriptionEndpointsApi,
   ContentReportEndpointsApi,
+  DeviceEndpointsApi,
   Configuration as ClipsConfiguration,
   DiscordActivityEndpointsApi,
   UserEndpointsApi,
@@ -106,4 +107,8 @@ export function createDiscordActivityApi(roomToken?: string) {
       headers: roomToken ? { Authorization: `Bearer ${roomToken}` } : undefined,
     }),
   );
+}
+
+export function createDeviceApi() {
+  return new DeviceEndpointsApi(new ClipsConfiguration(clientOptions));
 }

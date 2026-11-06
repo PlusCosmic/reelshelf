@@ -70,6 +70,7 @@ One module per area of the site, named after it, exporting one object named `<ar
 | `collections.ts`, `share.tsx`, `reportReasons.ts`                     | Collections, the share page and its report form                                      |
 | `upload.ts`, `twitchImport.tsx`, `addGame.ts`                         | Uploading, Twitch import and adding a game                                           |
 | `plan.tsx`, `settings.tsx`                                            | Settings, the plan and billing, `/plan`                                              |
+| `device.ts`                                                           | The desktop uploader: `/device`, Settings → Devices and the Store links              |
 | `activity.ts`                                                         | The Discord Activity watch room                                                      |
 | `admin.tsx`, `legendDetection.tsx`, `clipTranscription.ts`, `runs.ts` | The admin pages and internal review tools (`runs.ts` holds words both tools share)   |
 

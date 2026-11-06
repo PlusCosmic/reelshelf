@@ -4005,6 +4005,240 @@
           }
         }
       }
+    },
+    "/api/devices/authorize": {
+      "post": {
+        "tags": [
+          "DeviceEndpoints"
+        ],
+        "operationId": "AuthorizeDevice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceAuthorizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceAuthorizationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/authorize/{userCode}": {
+      "get": {
+        "tags": [
+          "DeviceEndpoints"
+        ],
+        "operationId": "GetDeviceAuthorization",
+        "parameters": [
+          {
+            "name": "userCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceAuthorizationRequest"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/devices/authorize/{userCode}/approve": {
+      "post": {
+        "tags": [
+          "DeviceEndpoints"
+        ],
+        "operationId": "ApproveDevice",
+        "parameters": [
+          {
+            "name": "userCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/devices/authorize/{userCode}/deny": {
+      "post": {
+        "tags": [
+          "DeviceEndpoints"
+        ],
+        "operationId": "DenyDevice",
+        "parameters": [
+          {
+            "name": "userCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/devices/token": {
+      "post": {
+        "tags": [
+          "DeviceEndpoints"
+        ],
+        "operationId": "GetDeviceToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceTokenError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/current": {
+      "delete": {
+        "tags": [
+          "DeviceEndpoints"
+        ],
+        "operationId": "SignOutCurrentDevice",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/me/devices": {
+      "get": {
+        "tags": [
+          "DeviceEndpoints"
+        ],
+        "operationId": "GetMyDevices",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/devices/{deviceId}": {
+      "delete": {
+        "tags": [
+          "DeviceEndpoints"
+        ],
+        "operationId": "RemoveMyDevice",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6064,6 +6298,129 @@
           "legend_confidence": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "DeviceAuthorizationRequest": {
+        "required": [
+          "device_name",
+          "expires_at"
+        ],
+        "type": "object",
+        "properties": {
+          "device_name": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeviceAuthorizationResponse": {
+        "required": [
+          "device_code",
+          "user_code",
+          "verification_uri",
+          "verification_uri_complete",
+          "interval",
+          "expires_in"
+        ],
+        "type": "object",
+        "properties": {
+          "device_code": {
+            "type": "string"
+          },
+          "user_code": {
+            "type": "string"
+          },
+          "verification_uri": {
+            "type": "string"
+          },
+          "verification_uri_complete": {
+            "type": "string"
+          },
+          "interval": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expires_in": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DeviceAuthorizeRequest": {
+        "required": [
+          "device_name"
+        ],
+        "type": "object",
+        "properties": {
+          "device_name": {
+            "type": "string"
+          }
+        }
+      },
+      "DeviceSummary": {
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "last_used_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_used_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeviceTokenError": {
+        "required": [
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "DeviceTokenRequest": {
+        "required": [
+          "device_code"
+        ],
+        "type": "object",
+        "properties": {
+          "device_code": {
+            "type": "string"
+          }
+        }
+      },
+      "DeviceTokenResponse": {
+        "required": [
+          "access_token",
+          "token_type"
+        ],
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string"
           }
         }
       },
@@ -8759,6 +9116,9 @@
     },
     {
       "name": "DiscordActivityEndpoints"
+    },
+    {
+      "name": "DeviceEndpoints"
     }
   ]
 }
