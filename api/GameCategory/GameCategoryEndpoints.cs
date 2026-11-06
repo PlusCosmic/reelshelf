@@ -9,7 +9,8 @@ public static class GameCategoryEndpoints
     {
         var group = app.MapGroup("games").RequireAuthorization();
 
-        group.MapGet("/categories", GetUserCategories).WithName("GetUserGameCategories");
+        group.MapGet("/categories", GetUserCategories).WithName("GetUserGameCategories")
+            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice);
         group.MapGet("/categories/{categoryId:guid}", GetCategoryById).WithName("GetGameCategoryById");
         // Both routes call IGDB with the application's shared credentials, so they carry a per-user limit.
         group.MapGet("/search", SearchGames).WithName("SearchGames")

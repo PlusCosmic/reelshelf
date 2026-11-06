@@ -20,7 +20,8 @@ public static class UserEndpoints
         meGroup.MapGet("/", GetMe).WithName("GetMe");
         meGroup.MapPut("/email", SetEmail).WithName("SetMyEmail");
         meGroup.MapPut("/username", SetUsername).WithName("SetMyUsername");
-        meGroup.MapGet("/plan", GetPlan).WithName("GetMyPlan");
+        meGroup.MapGet("/plan", GetPlan).WithName("GetMyPlan")
+            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice);
         meGroup.MapGet("/features", GetFeatures).WithName("GetMyFeatures");
         meGroup.MapGet("/identities", GetLinkedIdentities).WithName("GetMyLinkedIdentities");
         meGroup.MapDelete("/identities/{provider}", UnlinkIdentity).WithName("UnlinkMyIdentity");

@@ -17,6 +17,7 @@ using Reelshelf.FeatureFlags;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
+using Reelshelf.Devices;
 using Reelshelf.Discord.DiscordActivity;
 using Reelshelf.Email;
 using Reelshelf.Users;
@@ -72,6 +73,8 @@ internal static class ReelshelfApiConfiguration
 
         app.UseExceptionHandler();
         app.UseCors();
+        // An uploader too old for this API is told so before anything else runs (ADR-0010).
+        app.UseClientVersionGate();
         app.UseAuthentication();
         app.UseAuthorization();
         // After authentication so per-user rate-limit partitions can key on the signed-in identity.
@@ -105,6 +108,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapTwitchClipsEndpoints();
         apiGroup.MapDiscordActivityEndpoints();
         apiGroup.MapWorkerEndpoints();
+        apiGroup.MapDeviceEndpoints();
 
         // OpenAPI is useful during development and explicit client-generation jobs, but should not be public by default.
         if (app.Environment.IsDevelopment() ||
@@ -240,6 +244,8 @@ internal static class ReelshelfApiConfiguration
         builder.AddReelshelfAuthentication();
         builder.AddDiscordActivity();
         builder.AddTranscodeWorkers();
+        // The desktop uploader's device tokens (ADR-0010), accepted only where CookieOrDevice is required.
+        builder.AddDevices();
         builder.AddReelshelfRateLimiting();
     }
 

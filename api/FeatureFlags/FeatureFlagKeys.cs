@@ -16,8 +16,14 @@ public static class FeatureFlagKeys
     /// </summary>
     public const string PaidPlans = "paid-plans";
 
+    /// <summary>
+    /// The desktop uploader (ADR-0010): device sign-in, <c>/device</c>, Settings → Devices and the links to the Store
+    /// listing. Upload endpoints aren't flagged, so a token already issued keeps working while it is off.
+    /// </summary>
+    public const string DesktopUploader = "desktop-uploader";
+
     /// <summary>The flags <c>GET /api/me/features</c> answers about; a key PostHog has but this list lacks is ignored.</summary>
-    public static readonly IReadOnlyList<string> All = [PaidPlans];
+    public static readonly IReadOnlyList<string> All = [PaidPlans, DesktopUploader];
 
     public static bool IsKnown(string key)
     {
