@@ -3,11 +3,15 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
+import { reloadOnStaleChunk } from "./shared/utils/staleChunkReload";
 import "@fontsource-variable/instrument-sans";
 // The full build carries Fraunces' optical size, SOFT and WONK axes, which the display type uses.
 import "@fontsource-variable/fraunces/full.css";
 import "@fontsource-variable/fraunces/full-italic.css";
 import "./styles/reelshelf.css";
+
+// After a deploy, a chunk this tab hasn't loaded yet is gone; reload into the new build instead of failing.
+reloadOnStaleChunk();
 
 // Inside Discord (served from its proxy origin) the app is the watch room only; the SDK stays out of the
 // regular bundle.
