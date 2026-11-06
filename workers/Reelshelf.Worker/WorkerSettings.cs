@@ -66,12 +66,6 @@ public sealed class WorkerSettings
     public long MaxSourceBytes { get; set; } = 8L * 1024 * 1024 * 1024;
 
     /// <summary>
-    /// How long a <c>migrate</c> job's remux of its HLS source may take, retries included. It is network-bound
-    /// (a copy, no encode); a remux that runs out of time fails as retryable.
-    /// </summary>
-    public TimeSpan RemuxTimeout { get; set; } = TimeSpan.FromMinutes(20);
-
-    /// <summary>
     /// On SIGTERM a job whose encode has started gets this long to finish before it is stopped and released back to
     /// the queue (which refunds its attempt); one that hasn't started encoding is released at once. The container's
     /// stop timeout must be longer.
@@ -121,11 +115,6 @@ public sealed class WorkerSettings
         if (ExitWhenIdleAfter <= TimeSpan.Zero)
         {
             return "Worker:ExitWhenIdleAfter must be positive when set";
-        }
-
-        if (RemuxTimeout <= TimeSpan.Zero)
-        {
-            return "Worker:RemuxTimeout must be positive";
         }
 
         if (Niceness is < 0 or > 19)

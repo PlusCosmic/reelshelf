@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Reelshelf.Auth;
 using Reelshelf.Core;
-using Reelshelf.Exceptions;
 using Reelshelf.Video;
 
 namespace Reelshelf.FFmpeg;
@@ -17,17 +16,14 @@ public static class FFmpegEndpoints
     }
 
     /// <summary>
-    /// A clip whose host keeps it as a file (R2) is a redirect to a short-lived presigned URL that downloads it as an
-    /// attachment, with no work here. Anything else (Bunny) is remuxed from its stream into an MP4 on this server.
+    /// A redirect to a short-lived presigned URL that downloads the clip's file as an attachment, with no work here.
     /// </summary>
-    private static async Task<Results<RedirectHttpResult, FileStreamHttpResult, NotFound<string>, ProblemHttpResult>> DownloadVideo(
-        FFmpegService ffmpegService,
+    private static async Task<Results<RedirectHttpResult, NotFound<string>>> DownloadVideo(
         ClipsStatements clipsStatements,
         ClipVideoHosts videoHosts,
         AuthenticatedUser user,
         HttpContext httpContext,
-        Guid videoId,
-        CancellationToken cancellationToken)
+        Guid videoId)
     {
         // Only videos the caller may view can be downloaded; a video id alone is not an entitlement.
         ClipsStatements.ClipRow? clip = await clipsStatements.GetClipByVideoId(videoId);
@@ -36,60 +32,18 @@ public static class FFmpegEndpoints
             return TypedResults.NotFound("Video not found");
         }
 
-        string fileName = DownloadFileName.For(clip.Title, videoId);
-        if (videoHosts.DownloadsFor(clip.VideoHost) is { } downloads)
+        if (videoHosts.DownloadsFor(clip.VideoHost) is not { } downloads)
         {
-            if (clip.VideoStatus != ClipVideoStatus.Ready)
-            {
-                return TypedResults.NotFound("Video is not ready to download");
-            }
-
-            // The URL expires within minutes; never let a cache hand out the redirect after that.
-            httpContext.Response.Headers.CacheControl = "no-store";
-            return TypedResults.Redirect(downloads.DownloadUrl(clip.ToVideoRef(), fileName));
+            return TypedResults.NotFound("Video not found");
         }
 
-        try
+        if (clip.VideoStatus != ClipVideoStatus.Ready)
         {
-            FFmpegService.DownloadedVideo download = await ffmpegService.DownloadHlsVideoAsync(clip.ToVideoRef(), cancellationToken);
-            FileStream fileStream;
-            try
-            {
-                fileStream = new FileStream(download.Path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.DeleteOnClose);
-            }
-            catch
-            {
-                download.Dispose();
-                throw;
-            }
+            return TypedResults.NotFound("Video is not ready to download");
+        }
 
-            // Keep the download permit until the response has been written, so the number of finished files
-            // waiting on slow clients is bounded by MaxConcurrentDownloads too.
-            httpContext.Response.RegisterForDispose(download);
-
-            return TypedResults.File(
-                fileStream,
-                contentType: "video/mp4",
-                fileDownloadName: fileName,
-                enableRangeProcessing: true);
-        }
-        catch (FileNotFoundException ex)
-        {
-            return TypedResults.NotFound(ex.Message);
-        }
-        catch (ServiceUnavailableException ex)
-        {
-            return TypedResults.Problem(
-                detail: ex.Message,
-                title: "Downloads busy",
-                statusCode: StatusCodes.Status503ServiceUnavailable);
-        }
-        catch (Exception ex)
-        {
-            return TypedResults.Problem(
-                detail: ex.Message,
-                title: "Failed to download video",
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
+        // The URL expires within minutes; never let a cache hand out the redirect after that.
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return TypedResults.Redirect(downloads.DownloadUrl(clip.ToVideoRef(), DownloadFileName.For(clip.Title, videoId)));
     }
 }

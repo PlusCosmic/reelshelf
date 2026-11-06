@@ -10,7 +10,7 @@ namespace Reelshelf.Twitch;
 
 /// <summary>
 /// Lists a user's own Twitch clips and copies chosen ones into their library. The copy runs server-side:
-/// Twitch hands out a temporary download URL, the API streams that file straight into the Bunny video that
+/// Twitch hands out a temporary download URL, the API streams that file straight into the video that
 /// <see cref="ClipService.CreateClip"/> reserved, and from there the clip behaves like any browser upload.
 /// </summary>
 public sealed class TwitchClipService(

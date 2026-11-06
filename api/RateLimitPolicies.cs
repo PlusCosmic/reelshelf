@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Reelshelf;
 
 /// <summary>
-/// Named rate-limit policies for endpoints that spend a shared, finite budget (upstream API quota, Bunny
+/// Named rate-limit policies for endpoints that spend a shared, finite budget (upstream API quota, storage
 /// operations). Partitions are per signed-in user (falling back to the client address for anonymous calls)
 /// so one account cannot exhaust the budget for everyone.
 /// </summary>
@@ -14,7 +14,7 @@ public static class RateLimitPolicies
     /// <summary>Game search and add-from-IGDB, which call IGDB with the application's shared credentials.</summary>
     public const string Igdb = "igdb";
 
-    /// <summary>Clip preparation, which reserves storage and creates a Bunny video before any bytes arrive.</summary>
+    /// <summary>Clip preparation, which reserves storage and starts an upload before any bytes arrive.</summary>
     public const string ClipPrepare = "clip-prepare";
 
     /// <summary>

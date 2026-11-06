@@ -16,10 +16,10 @@ namespace Reelshelf.Moderation;
 /// <item><b>Quarantine</b> (done once <c>cdn_purge</c> is set): every object of the clip in the media bucket is copied
 /// server side to <c>quarantine/{evidenceId}/</c> and the original deleted, then its URLs are purged from the media
 /// domain. This needs only the media bucket, so it happens even while the evidence bucket fails.</item>
-/// <item><b>Preserve</b> (<c>files</c>): <c>record.json</c> and the video go to the evidence bucket, an R2 clip's from
-/// the quarantine, a Bunny clip's from Bunny.</item>
-/// <item><b>Delete</b> (<c>media_deleted_at</c>): only then is the video deleted at its host (a Bunny clip's stays at
-/// Bunny until here), with any Bunny copy and the quarantine; the record is <c>preserved</c>.</item>
+/// <item><b>Preserve</b> (<c>files</c>): <c>record.json</c> and the video go to the evidence bucket, from the
+/// quarantine.</item>
+/// <item><b>Delete</b> (<c>media_deleted_at</c>): only then is the video deleted at its host, with the quarantine; the
+/// record is <c>preserved</c>.</item>
 /// <item><b>Sweep</b> (<c>swept_at</c>), after <c>SweepAfter</c>: anything a transcode worker uploaded into
 /// <c>clips/{clipId}/</c> since is quarantined again (deleted, once preserved) and purged.</item>
 /// </list>
@@ -33,7 +33,6 @@ public sealed class ClipEvidenceProcessor(
     IClipEvidenceStore store,
     IEvidenceStorage evidence,
     IEvidenceQuarantine quarantine,
-    IExportVideoSource videos,
     IEvidenceMediaDeleter media,
     ICdnPurger cdn,
     IOptionsMonitor<ModerationOptions> options,
@@ -120,8 +119,8 @@ public sealed class ClipEvidenceProcessor(
             {
                 logger.LogError(error,
                     "Evidence {EvidenceId} of clip {ClipId} still isn't preserved after {Attempts} attempts and needs " +
-                    "attention; nothing of the clip is deleted until it is (an R2 clip stays quarantined, a Bunny clip " +
-                    "at Bunny). Retrying in {Delay}. See reelshelf-docs/moderation.md",
+                    "attention; nothing of the clip is deleted until it is (its files stay quarantined). " +
+                    "Retrying in {Delay}. See reelshelf-docs/moderation.md",
                     record.Id, record.ClipId, record.Attempts, delay);
             }
             else
@@ -214,7 +213,7 @@ public sealed class ClipEvidenceProcessor(
 
     private sealed class ClaimLostException : Exception;
 
-    /// <summary>A <c>migrate</c> job running at removal writes the version after the clip's own.</summary>
+    /// <summary>A trim running at removal writes the version after the clip's own.</summary>
     private static int MaxVersion(EvidenceClip clip) => clip.VideoVersion + 1;
 
     /// <summary>The snapshots and the decision, so the bucket holds everything even if the database is lost.</summary>
@@ -239,8 +238,8 @@ public sealed class ClipEvidenceProcessor(
     }
 
     /// <summary>
-    /// The clip's video: an R2 clip's current <c>av1.mp4</c> from the quarantine, or, when it never finished encoding,
-    /// its uploaded source; a Bunny clip's as an export reads it. Null when there is none.
+    /// The clip's video: its current <c>av1.mp4</c> from the quarantine, or, when it never finished encoding, its
+    /// uploaded source. Null when there is none.
     /// </summary>
     private async Task<string?> CopyVideoAsync(Guid evidenceId, EvidenceClip clip, CancellationToken cancellationToken)
     {
@@ -268,28 +267,9 @@ public sealed class ClipEvidenceProcessor(
             return null;
         }
 
-        ExportClipRow row = new()
-        {
-            Id = clip.Id,
-            Title = clip.Title,
-            CreatedAt = clip.CreatedAt,
-            GameName = clip.GameName,
-            StorageSize = clip.StorageSize,
-            VideoHost = clip.VideoHost,
-            VideoId = clip.VideoId,
-            VideoVersion = clip.VideoVersion,
-            VideoCodecs = clip.VideoCodecs,
-            VideoHeight = clip.VideoHeight,
-            VideoState = clip.VideoState
-        };
-        await using ExportVideo? video = await videos.OpenAsync(row, cancellationToken);
-        if (video is null)
-        {
-            logger.LogWarning("Clip {ClipId} had no finished video to preserve; only its record is kept", clip.Id);
-            return null;
-        }
-
-        return await UploadAsync(evidenceId, VideoFile, video.Content, "video/mp4", cancellationToken);
+        logger.LogWarning("Clip {ClipId} was on {VideoHost}, which no longer exists; only its record is kept",
+            clip.Id, clip.VideoHost);
+        return null;
     }
 
     private async Task<string> UploadAsync(Guid evidenceId, string file, Stream content, string contentType,

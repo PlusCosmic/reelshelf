@@ -22,21 +22,18 @@ public static class VideoHostRegistration
     }
 
     /// <summary>
-    /// Registers the routing for every host added with <see cref="AddClipVideoHost{THost, TMediaUrls}"/>, and the
-    /// policy for new uploads from <c>VideoHost</c> configuration. Call it after the hosts are added: it throws at
-    /// startup when <c>VideoHost:NewUploads</c> names a host that isn't registered, rather than failing every new
-    /// upload, or quietly sending them to Bunny and leaving clips to move later.
+    /// Registers the routing for every host added with <see cref="AddClipVideoHost{THost, TMediaUrls}"/>. Call it
+    /// after the hosts are added: with <paramref name="requireR2"/> it throws at startup when the <c>r2</c> host,
+    /// which every new clip goes to, isn't registered (<c>R2:*</c> unset), rather than failing every upload.
     /// </summary>
-    public static IServiceCollection AddClipVideoHostRouting(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddClipVideoHostRouting(this IServiceCollection services, bool requireR2)
     {
-        NewUploadVideoHostPolicy policy = NewUploadVideoHostPolicy.FromConfiguration(configuration);
-        if (!IsRegistered(services, policy.NewUploads))
+        if (requireR2 && !IsRegistered(services, VideoHostNames.R2))
         {
             throw new InvalidOperationException(
-                $"VideoHost:NewUploads is '{policy.NewUploads}', but no video host is registered under that name");
+                "No video host is registered: set R2:AccountId, R2:AccessKeyId, R2:SecretAccessKey, R2:Bucket and R2:MediaBaseUrl");
         }
 
-        services.AddSingleton(policy);
         services.AddScoped<ClipVideoHosts>();
         return services;
     }

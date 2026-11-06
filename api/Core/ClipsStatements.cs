@@ -9,33 +9,6 @@ namespace Reelshelf.Core;
 public class ClipsStatements(NpgsqlConnection connection)
 {
     // Queries
-    public async Task<ClipCollectionRow?> GetCollectionByOwnerAndCategory(Guid ownerId, Guid gameCategoryId)
-    {
-        const string sql = """
-            SELECT id, owner_id, collection_id, game_category_id
-            FROM clip_collection
-            WHERE owner_id = @ownerId AND game_category_id = @gameCategoryId
-            LIMIT 1
-            """;
-
-        return await connection.QuerySingleOrDefaultAsync<ClipCollectionRow>(sql, new { ownerId, gameCategoryId });
-    }
-
-    /// <summary>
-    /// Inserts the owner's collection for a category, or returns the one a concurrent upload inserted first.
-    /// </summary>
-    public async Task<ClipCollectionRow> InsertCollection(Guid ownerId, Guid collectionId, Guid gameCategoryId)
-    {
-        const string sql = """
-            INSERT INTO clip_collection (owner_id, collection_id, game_category_id)
-            VALUES (@ownerId, @collectionId, @gameCategoryId)
-            ON CONFLICT (owner_id, game_category_id) DO UPDATE SET collection_id = clip_collection.collection_id
-            RETURNING id, owner_id, collection_id, game_category_id
-            """;
-
-        return await connection.QuerySingleAsync<ClipCollectionRow>(sql, new { ownerId, collectionId, gameCategoryId });
-    }
-
     /// <summary>
     /// The legend the owner played in an Apex Legends clip: its label when an admin has set one (a label with no
     /// legend means it can't be told, so no run overrides it), else the latest succeeded run outside evals, as clip
@@ -235,7 +208,6 @@ public class ClipsStatements(NpgsqlConnection connection)
         }
 
         parameters.Add("toCategoryId", toCategoryId);
-        // A clip moved before keeps the category its Bunny video was filed under (V60), however often it moves again.
         string sql = $"""
             WITH candidate AS (
                 SELECT c.id, c.game_category_id, c.md5_hash, c.created_at
@@ -255,8 +227,7 @@ public class ClipsStatements(NpgsqlConnection connection)
             ),
             moved AS (
                 UPDATE clip c
-                SET game_category_id = @toCategoryId,
-                    filed_category_id = COALESCE(c.filed_category_id, c.game_category_id)
+                SET game_category_id = @toCategoryId
                 FROM movable
                 WHERE c.id = movable.id
                 RETURNING c.id
@@ -509,8 +480,8 @@ public class ClipsStatements(NpgsqlConnection connection)
     /// <summary>
     /// Bytes of storage attributed to a single clip row.
     /// Counts the larger of the client-declared file size (known at creation, before anything is uploaded)
-    /// and Bunny's reported storage size (trusted, but only available after encoding), so an under-declared
-    /// size stops mattering once Bunny reports the real one.
+    /// and the stored size (the encoded output's, known once it is ready), so an under-declared size stops
+    /// mattering once the clip is encoded.
     /// Every place that reports storage must use this expression, or the numbers disagree across the UI.
     /// </summary>
     public const string StorageBytesExpression = "GREATEST(COALESCE(file_size, 0), COALESCE(storage_size, 0))";
@@ -638,7 +609,7 @@ public class ClipsStatements(NpgsqlConnection connection)
     public async Task<List<ClipRow>> GetAbandonedClips(DateTimeOffset reservedBefore)
     {
         const string sql = """
-            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress, file_size, bunny_video_id
+            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress, file_size
             FROM clip
             WHERE reserved_at < @reservedBefore
               AND COALESCE(storage_size, 0) = 0
@@ -935,7 +906,6 @@ public class ClipsStatements(NpgsqlConnection connection)
                 c.video_codecs,
                 c.video_height,
                 c.encode_progress,
-                c.bunny_video_id,
                 {ClipVideoColumns.ThumbnailsReadySql("c")},
                 {PlayerLegendSql("c")} AS player_legend,
                 c.binned_at,
@@ -944,7 +914,7 @@ public class ClipsStatements(NpgsqlConnection connection)
             LEFT JOIN clip_tag ct ON c.id = ct.clip_id
             LEFT JOIN tag t ON ct.tag_id = t.id
             WHERE c.id = @clipId AND c.owner_id = @ownerId
-            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress, c.bunny_video_id, c.binned_at
+            GROUP BY c.id, c.owner_id, c.video_id, c.game_category_id, c.md5_hash, c.created_at, c.title, c.length, c.thumbnail_file_name, c.date_uploaded, c.storage_size, c.video_state, c.video_host, c.video_version, c.video_codecs, c.video_height, c.encode_progress, c.binned_at
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ClipWithTagsRow>(sql, new { clipId, ownerId });
@@ -1000,19 +970,6 @@ public class ClipsStatements(NpgsqlConnection connection)
         return (await connection.QueryAsync<ClipRow>(sql, new { gameCategoryId })).ToList();
     }
 
-    public async Task<List<ClipRow>> GetClipsNeedingStatusUpdate()
-    {
-        const string sql = """
-            SELECT id, owner_id, video_id, game_category_id, md5_hash, created_at, title, length, thumbnail_file_name, date_uploaded, storage_size, video_state, video_host, video_version, video_codecs, video_height, encode_progress
-            FROM clip
-            WHERE video_state <> @Ready
-            """;
-        return (await connection.QueryAsync<ClipRow>(sql, new
-        {
-            Ready = ClipVideoStatus.Ready.ToDatabase()
-        })).ToList();
-    }
-
     /// <summary>
     /// Replaces the placeholder video id on a reserved clip row with the video the host created for it. Only a clip
     /// still reserved (<see cref="ClipVideoChange.Attach"/>) takes it; any other throws, and the caller discards the
@@ -1028,7 +985,6 @@ public class ClipsStatements(NpgsqlConnection connection)
                 thumbnail_file_name = @thumbnailFileName,
                 date_uploaded = @dateUploaded,
                 storage_size = @storageSize,
-                video_status = @videoStatus,
                 video_state = @videoState,
                 encode_progress = @encodeProgress
             WHERE id = @clipId AND video_state = ANY(@fromStates)
@@ -1046,7 +1002,6 @@ public class ClipsStatements(NpgsqlConnection connection)
             thumbnailFileName = info.ThumbnailFileName,
             dateUploaded = info.UploadedAt,
             storageSize = info.StorageSize,
-            videoStatus = info.HostStatus,
             videoState = info.Status.ToDatabase(),
             encodeProgress = info.EncodeProgress
         }) ?? throw new InvalidOperationException($"Clip {clipId} is no longer a reserved clip waiting for its video");
@@ -1062,51 +1017,9 @@ public class ClipsStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
-    /// Copies what the video host reports onto the clip row. <paramref name="title"/> is passed separately because
-    /// some callers keep the clip's own title over the host's. Only while the clip is still on
-    /// <paramref name="videoHost"/> with <paramref name="videoId"/>, the video the info was read from: a clip that
-    /// moved to R2 meanwhile (a <c>migrate</c> job completing) keeps what its move wrote. And only when the reported
-    /// state is a move <see cref="ClipVideoChange.HostReport"/> allows from the clip's (the same state again included,
-    /// so a ready clip's metadata is still refreshed): a stale read, such as "processing" landing after "ready",
-    /// writes none of the row, since everything in it is as old as its state. Returns whether the row was written.
-    /// </summary>
-    public async Task<bool> UpdateClipMetadata(Guid clipId, string videoHost, Guid videoId, string? title, HostedVideoInfo video)
-    {
-        const string sql = """
-            UPDATE clip
-            SET title = @title,
-                length = @length,
-                thumbnail_file_name = @thumbnailFileName,
-                date_uploaded = @dateUploaded,
-                storage_size = @storageSize,
-                video_status = @videoStatus,
-                video_state = @videoState,
-                encode_progress = @encodeProgress
-            WHERE id = @clipId AND video_host = @videoHost AND video_id = @videoId
-              AND video_state = ANY(@fromStates)
-            """;
-        return await connection.ExecuteAsync(sql, new
-        {
-            clipId,
-            videoHost,
-            videoId,
-            fromStates = ClipVideoTransitions.FromStates(ClipVideoChange.HostReport, video.Status),
-            title,
-            length = video.LengthSeconds,
-            thumbnailFileName = video.ThumbnailFileName,
-            dateUploaded = video.UploadedAt,
-            storageSize = video.StorageSize,
-            videoStatus = video.HostStatus,
-            videoState = video.Status.ToDatabase(),
-            encodeProgress = video.EncodeProgress
-        }) > 0;
-    }
-
-    /// <summary>
     /// A transcode worker's progress on a clip's first encode. Only a clip waiting for it or already processing moves
     /// (<see cref="ClipVideoChange.TranscodeProgress"/>), so a ready clip stays playable and a failed one stays failed;
-    /// the percentage is written only with the state, never onto a clip the report doesn't move. The legacy
-    /// <c>video_status</c> column is Bunny's number and is left alone: clips our own worker encodes have none.
+    /// the percentage is written only with the state, never onto a clip the report doesn't move.
     /// </summary>
     public async Task SetTranscodeProgress(Guid clipId, int encodeProgress)
     {
@@ -1127,9 +1040,8 @@ public class ClipsStatements(NpgsqlConnection connection)
     /// A transcode worker finished a new video version for the clip (a first encode, or a trim): it is ready on that
     /// version, with the output's length, size, codecs and height. The source upload is gone by now, so the AV1 size
     /// alone counts toward the quota (<see cref="StorageBytesExpression"/>) and the declared upload size is cleared.
-    /// <c>video_status</c> is left alone, as in <see cref="SetTranscodeProgress"/>. Only a clip still on R2 whose
-    /// version is not newer than <paramref name="videoVersion"/> moves, so a job finishing after the clip was moved
-    /// back to Bunny, or after a later version replaced the job's (two trims finishing out of order), changes nothing.
+    /// Only a clip whose version is not newer than <paramref name="videoVersion"/> moves, so a job finishing after a
+    /// later version replaced the job's (two trims finishing out of order) changes nothing.
     /// Returns the version the clip was on before, so the caller can delete that version's files when it differs;
     /// null when the job was superseded that way (or there is no such clip).
     /// </summary>
@@ -1160,39 +1072,6 @@ public class ClipsStatements(NpgsqlConnection connection)
             """;
         return await connection.QuerySingleOrDefaultAsync<int?>(sql,
             new { clipId, videoVersion, lengthSeconds, storageSize, codecs, height });
-    }
-
-    /// <summary>
-    /// A <c>migrate</c> job finished: the Bunny clip moves to R2 on the job's <paramref name="videoVersion"/>, with the
-    /// output's length, size, codecs
-    /// and height, and is ready there. Its Bunny video id is kept in <c>bunny_video_id</c> for the delete sweep, and
-    /// <c>migrated_at</c> starts the grace period. As for a transcode, the AV1 size alone counts toward the quota and
-    /// the legacy <c>video_status</c> is cleared, like every R2 clip's. The Bunny collection (<c>clip_collection</c>) is
-    /// left for the sweep. Only a clip still on Bunny moves; returns whether this one did.
-    /// </summary>
-    public async Task<bool> SetMigratedToR2(Guid clipId, int videoVersion, int lengthSeconds, long storageSize,
-        string? codecs, int? height)
-    {
-        // SET reads the row as it was, so bunny_video_id takes the Bunny id before video_id becomes the clip id.
-        const string sql = """
-            UPDATE clip
-            SET bunny_video_id = video_id,
-                migrated_at = now(),
-                video_host = 'r2',
-                video_id = id,
-                video_version = @videoVersion,
-                video_codecs = @codecs,
-                video_height = @height,
-                length = @lengthSeconds,
-                storage_size = @storageSize,
-                file_size = NULL,
-                video_status = NULL,
-                video_state = 'ready',
-                encode_progress = 100
-            WHERE id = @clipId AND video_host = 'bunny'
-            """;
-        return await connection.ExecuteAsync(sql,
-            new { clipId, videoVersion, lengthSeconds, storageSize, codecs, height }) > 0;
     }
 
     /// <summary>
@@ -1300,9 +1179,6 @@ public class ClipsStatements(NpgsqlConnection connection)
         public bool ThumbnailsReady { get; set; }
         public int? EncodeProgress { get; set; }
         public long? FileSize { get; set; }
-
-        /// <summary>A migrated clip's Bunny copy waiting out its grace period. Only the queries that delete clips select it.</summary>
-        public Guid? BunnyVideoId { get; set; }
     }
 
     public class CategoryTotalsRow
@@ -1324,14 +1200,6 @@ public class ClipsStatements(NpgsqlConnection connection)
     {
         public Guid ClipId { get; set; }
         public Guid TagId { get; set; }
-    }
-
-    public class ClipCollectionRow
-    {
-        public Guid Id { get; set; }
-        public Guid OwnerId { get; set; }
-        public Guid CollectionId { get; set; }
-        public Guid GameCategoryId { get; set; }
     }
 
     public class ClipViewRow
@@ -1411,12 +1279,6 @@ public class ClipsStatements(NpgsqlConnection connection)
 
         /// <summary>When the owner put the clip in the bin; null while it is in their library.</summary>
         public DateTimeOffset? BinnedAt { get; set; }
-
-        /// <summary>
-        /// A migrated clip's Bunny copy waiting out its grace period, so deleting the clip deletes it too. Only
-        /// <see cref="GetClipWithTagsByIdAndOwner"/> selects it.
-        /// </summary>
-        public Guid? BunnyVideoId { get; set; }
     }
 
     public record PagedClipWithTagsRows(List<ClipWithTagsRow> Rows, int TotalCount);

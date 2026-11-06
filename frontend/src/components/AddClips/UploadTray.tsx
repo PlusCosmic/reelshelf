@@ -76,7 +76,7 @@ function Ring({ value, tone }: { value: number; tone: "upload" | "process" }) {
 
 /**
  * The corner tray for clips on their way in. It follows the owner round the app: uploads first,
- * which need this tab, then Bunny's processing, which doesn't, then links to the books they landed
+ * which need this tab, then their processing, which doesn't, then links to the books they landed
  * in.
  */
 export function UploadTray() {
@@ -85,7 +85,7 @@ export function UploadTray() {
   const { data: categories = [] } = useCategories();
   const [open, setOpen] = useState(false);
 
-  // Uploaded clips are polled until Bunny has finished with them.
+  // Uploaded clips are polled until they have finished processing.
   const uploaded = items.filter(
     (item) => item.status === "uploaded" && item.clipId,
   );

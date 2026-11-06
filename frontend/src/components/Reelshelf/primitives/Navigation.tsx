@@ -14,7 +14,6 @@ import { libraryCopy } from "@/copy/library";
 import { useCurrentUser, useShareClip } from "@/hooks/queries";
 import { apiConfig } from "@/shared/config/apiConfig";
 import { ApiError } from "@/shared/services/apiError";
-import { isHlsSource } from "@/shared/utils/videoStream";
 import { AddToCollectionDialog } from "../collections/AddToCollectionDialog";
 
 /**
@@ -32,7 +31,6 @@ export function PlayerActions({
 }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [collectOpen, setCollectOpen] = useState(false);
-  const [preparing, setPreparing] = useState(false);
   const { data: currentUser } = useCurrentUser();
   // Only the owner can share or delete; collaborators and share viewers see the clip but not these
   // actions, and the API rejects them for anyone else anyway.
@@ -40,7 +38,6 @@ export function PlayerActions({
   const canShare = isOwner;
   // A clip already in the bin is put back from the note above the player instead.
   const canDelete = isOwner && !!onBin && !clip.binnedAt;
-  const remuxesDownload = clip.video.sources.some(isHlsSource);
 
   return (
     <>
@@ -63,25 +60,15 @@ export function PlayerActions({
           <IconFolderPlus size={13} />
           {libraryCopy.actions.addToCollection}
         </button>
-        {/* A plain link, never fetch: an R2 clip is a redirect to a presigned URL in the bucket, which
-            the browser saves as it is. An HLS (Bunny) clip is remuxed on the server before the file
-            starts, which can take a moment; the label says so rather than the button seeming to do
-            nothing. */}
+        {/* A plain link, never fetch: the download is a redirect to a presigned URL in the bucket, which
+            the browser saves as it is. */}
         <a
           className="rs-small-button"
           href={`${apiConfig.baseUrl}/api/ffmpeg/download/${clip.videoId}`}
           download
-          aria-disabled={preparing}
-          onClick={() => {
-            if (!remuxesDownload) return;
-            setPreparing(true);
-            window.setTimeout(() => setPreparing(false), 8000);
-          }}
         >
           <IconDownload size={13} />
-          {preparing
-            ? libraryCopy.actions.preparingDownload
-            : libraryCopy.actions.download}
+          {libraryCopy.actions.download}
         </a>
         {canDelete ? (
           <button

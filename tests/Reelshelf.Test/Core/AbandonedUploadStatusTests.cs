@@ -47,6 +47,6 @@ public class AbandonedUploadStatusTests
 
     private static HostedVideoInfo Video(ClipVideoStatus status, long storageSize)
     {
-        return new HostedVideoInfo("clip", 0, status, 0, storageSize, DateTimeOffset.UnixEpoch, null, HostStatus: 0);
+        return new HostedVideoInfo("clip", 0, status, 0, storageSize, DateTimeOffset.UnixEpoch, null);
     }
 }

@@ -31,13 +31,11 @@ public sealed class UnconfiguredExportStorage : IExportStorage
 }
 
 /// <summary>
-/// A clip's current video for an export: an R2 clip's <c>av1.mp4</c> read through a presigned GET, or a Bunny clip's
-/// HLS stream remuxed into an MP4 on disk by <see cref="FFmpeg.FFmpegService"/>, as its download is. Clips that
-/// aren't ready have nothing to export.
+/// A clip's current video for an export: its <c>av1.mp4</c> read through a presigned GET. Clips that aren't ready have
+/// nothing to export.
 /// </summary>
 public sealed class ClipExportVideoSource(
     IClipVideoReader r2,
-    FFmpeg.FFmpegService ffmpeg,
     IHttpClientFactory httpClientFactory) : IExportVideoSource
 {
     public const string HttpClientName = "clip-export";
@@ -50,44 +48,22 @@ public sealed class ClipExportVideoSource(
         }
 
         ClipVideoRef video = clip.ToVideoRef();
-        if (video.VideoHost == VideoHostNames.R2)
+        if (video.VideoHost != VideoHostNames.R2 || r2.VideoUrl(video) is not { } url)
         {
-            string? url = r2.VideoUrl(video);
-            if (url is null)
-            {
-                return null;
-            }
-
-            HttpClient client = httpClientFactory.CreateClient(HttpClientName);
-            HttpResponseMessage response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken);
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                response.Dispose();
-                return null;
-            }
-
-            response.EnsureSuccessStatusCode();
-            return new ExportVideo(await response.Content.ReadAsStreamAsync(cancellationToken), response.Dispose);
+            return null;
         }
 
-        FFmpeg.FFmpegService.DownloadedVideo downloaded = await ffmpeg.DownloadHlsVideoAsync(video, cancellationToken);
-        try
+        HttpClient client = httpClientFactory.CreateClient(HttpClientName);
+        HttpResponseMessage response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            FileStream file = new(downloaded.Path, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024,
-                FileOptions.Asynchronous);
-            return new ExportVideo(file, () =>
-            {
-                downloaded.Dispose();
-                ffmpeg.DeleteDownloadedVideo(downloaded.Path);
-            });
+            response.Dispose();
+            return null;
         }
-        catch
-        {
-            downloaded.Dispose();
-            ffmpeg.DeleteDownloadedVideo(downloaded.Path);
-            throw;
-        }
+
+        response.EnsureSuccessStatusCode();
+        return new ExportVideo(await response.Content.ReadAsStreamAsync(cancellationToken), response.Dispose);
     }
 }
 

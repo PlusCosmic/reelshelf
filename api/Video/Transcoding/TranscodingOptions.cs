@@ -62,23 +62,16 @@ public static class TranscodeRunTypes
     /// <summary>The on-demand H.264 file.</summary>
     public const string Fallback = "fallback";
 
-    /// <summary>
-    /// A ready Bunny clip's HLS stream re-encoded into version 1 of an R2 clip, which its completion switches the clip
-    /// to (reelshelf-docs/video-pipeline/bunny-migration.md). Queued by <see cref="Migration.BunnyMigrationBackfillService"/>.
-    /// </summary>
-    public const string Migrate = "migrate";
-
-    public static readonly IReadOnlyList<string> All = [Transcode, Thumbnails, Trim, Fallback, Migrate];
+    public static readonly IReadOnlyList<string> All = [Transcode, Thumbnails, Trim, Fallback];
 
     /// <summary>
     /// Default claim order: someone is waiting on a new upload, a trim or a fallback, while regenerating thumbnails
-    /// is backfill work, and moving clips off Bunny waits behind everything else.
+    /// is backfill work.
     /// </summary>
     public static int DefaultPriority(string type) => type switch
     {
         Transcode => 0,
         Trim or Fallback => 1,
-        Migrate => 10,
         _ => 2
     };
 }

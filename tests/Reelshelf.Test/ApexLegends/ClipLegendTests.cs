@@ -135,7 +135,7 @@ public class ClipLegendTests
         private readonly NpgsqlDataSource _dataSource;
         private readonly string _schema;
         private readonly ClipProjection _projection =
-            new(ClipMediaUrlsTests.Create("https://cdn.example", "https://media.example"));
+            new(ClipMediaUrlsTests.Create());
 
         private TestDatabase(NpgsqlDataSource dataSource, NpgsqlConnection connection, string schema)
         {

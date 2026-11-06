@@ -85,7 +85,7 @@ public class EvalStorageTests
         Assert.Equal([wrong, failed], misses.Select(miss => miss.ClipId));
         Assert.Equal("Ash", misses[0].PlayerLegend);
         Assert.Null(misses[0].LabelLegend);
-        Assert.All(misses, miss => Assert.Equal("bunny", miss.VideoHost));
+        Assert.All(misses, miss => Assert.Equal("r2", miss.VideoHost));
         Assert.All(misses, miss => Assert.Equal((ClipVideoStatus.Ready, true), (miss.VideoStatus, miss.ThumbnailsReady)));
 
         // A second eval answers two of the three clips; the third is still queued, so the cascade leaves it out.
@@ -144,7 +144,7 @@ public class EvalStorageTests
     private static async Task CreateTablesAsync(NpgsqlConnection connection)
     {
         await connection.ExecuteAsync("""
-            CREATE TABLE clip (id uuid PRIMARY KEY, video_id uuid NOT NULL, video_host text NOT NULL DEFAULT 'bunny',
+            CREATE TABLE clip (id uuid PRIMARY KEY, video_id uuid NOT NULL, video_host text NOT NULL DEFAULT 'r2',
                                video_version integer NOT NULL DEFAULT 1, video_codecs text, video_height integer, title text,
                                video_state text NOT NULL DEFAULT 'ready');
             -- What the media columns' thumbnails_ready reads.

@@ -33,16 +33,14 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-const hls = (url: string): PlaybackSource[] => [
-  { url, type: "application/vnd.apple.mpegurl" },
-];
-const first = "https://cdn.example/a/playlist.m3u8";
-const second = "https://cdn.example/b/playlist.m3u8";
+const mp4 = (url: string): PlaybackSource[] => [{ url, type: "video/mp4" }];
+const first = "https://media.example/clips/a/v1/av1.mp4";
+const second = "https://media.example/clips/b/v1/av1.mp4";
 
 describe("ClipVideoPlayer", () => {
   it("detaches the old stream when the sources change and on unmount", () => {
-    const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
-    view.rerender(<ClipVideoPlayer sources={hls(second)} title="B" />);
+    const view = render(<ClipVideoPlayer sources={mp4(first)} title="A" />);
+    view.rerender(<ClipVideoPlayer sources={mp4(second)} title="B" />);
     expect(
       stream.attached.map((entry) => [entry.sources[0].url, entry.detached]),
     ).toEqual([
@@ -55,38 +53,38 @@ describe("ClipVideoPlayer", () => {
   });
 
   it("keeps the stream when the same sources arrive in a new array", () => {
-    const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
-    view.rerender(<ClipVideoPlayer sources={hls(first)} title="A" />);
+    const view = render(<ClipVideoPlayer sources={mp4(first)} title="A" />);
+    view.rerender(<ClipVideoPlayer sources={mp4(first)} title="A" />);
     expect(stream.attached).toHaveLength(1);
     expect(stream.attached[0].detached).toBe(false);
   });
 
   it("goes black behind the video only once the current clip has a frame", () => {
-    const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
+    const view = render(<ClipVideoPlayer sources={mp4(first)} title="A" />);
     const video = view.container.querySelector("video")!;
     expect(video.hasAttribute("data-loaded")).toBe(false);
 
     act(() => void video.dispatchEvent(new Event("loadeddata")));
     expect(video.hasAttribute("data-loaded")).toBe(true);
 
-    view.rerender(<ClipVideoPlayer sources={hls(second)} title="B" />);
+    view.rerender(<ClipVideoPlayer sources={mp4(second)} title="B" />);
     expect(video.hasAttribute("data-loaded")).toBe(false);
   });
 
   it("says so when the stream can't be played, until the next clip", () => {
-    const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
+    const view = render(<ClipVideoPlayer sources={mp4(first)} title="A" />);
     act(() => stream.attached[0].callbacks.onFatal());
     expect(view.getByRole("alert").textContent).toContain("didn't play");
 
-    view.rerender(<ClipVideoPlayer sources={hls(second)} title="B" />);
+    view.rerender(<ClipVideoPlayer sources={mp4(second)} title="B" />);
     expect(view.queryByRole("alert")).toBeNull();
   });
 
   it("tries a clip afresh on coming back to it, without its old error", () => {
-    const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
+    const view = render(<ClipVideoPlayer sources={mp4(first)} title="A" />);
     act(() => stream.attached[0].callbacks.onFatal());
-    view.rerender(<ClipVideoPlayer sources={hls(second)} title="B" />);
-    view.rerender(<ClipVideoPlayer sources={hls(first)} title="A" />);
+    view.rerender(<ClipVideoPlayer sources={mp4(second)} title="B" />);
+    view.rerender(<ClipVideoPlayer sources={mp4(first)} title="A" />);
 
     expect(stream.attached).toHaveLength(3);
     expect(view.queryByRole("alert")).toBeNull();
@@ -95,18 +93,18 @@ describe("ClipVideoPlayer", () => {
   });
 
   it("says the clip can't play on this device when no source can, until the next clip", () => {
-    const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
+    const view = render(<ClipVideoPlayer sources={mp4(first)} title="A" />);
     act(() => stream.attached[0].callbacks.onUnsupported());
     expect(view.getByRole("alert").textContent).toBe(
       "This clip can't play on this device.",
     );
 
-    view.rerender(<ClipVideoPlayer sources={hls(second)} title="B" />);
+    view.rerender(<ClipVideoPlayer sources={mp4(second)} title="B" />);
     expect(view.queryByRole("alert")).toBeNull();
   });
 
   it("remembers the volume, so the next player starts with it", () => {
-    const view = render(<ClipVideoPlayer sources={hls(first)} title="A" />);
+    const view = render(<ClipVideoPlayer sources={mp4(first)} title="A" />);
     const video = view.container.querySelector("video")!;
     expect(video.volume).toBe(1);
     expect(video.muted).toBe(false);
@@ -116,7 +114,7 @@ describe("ClipVideoPlayer", () => {
     act(() => void video.dispatchEvent(new Event("volumechange")));
     view.unmount();
 
-    const next = render(<ClipVideoPlayer sources={hls(second)} title="B" />);
+    const next = render(<ClipVideoPlayer sources={mp4(second)} title="B" />);
     const nextVideo = next.container.querySelector("video")!;
     expect(nextVideo.volume).toBe(0.3);
     expect(nextVideo.muted).toBe(true);

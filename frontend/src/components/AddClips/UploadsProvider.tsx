@@ -76,8 +76,7 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [items, setItems] = useState<UploadItem[]>([]);
   const [paused, setPaused] = useState(false);
-  // tus for Bunny, S3 multipart for R2: both pause with abort and carry on with start. An upload is here from the
-  // moment it starts (or would, but for a pause) until it succeeds or fails.
+  // S3 multipart uploads, which pause with abort and carry on with start. An upload is here from the moment it starts (or would, but for a pause) until it succeeds or fails.
   const uploads = useRef(
     new Map<string, { start: () => void; abort: () => unknown }>(),
   );
@@ -88,7 +87,6 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
   const preparedClipIds = useRef(new Map<string, string>());
   // The item each file (by book and hash) is queued as, so the same file isn't uploaded twice into a book at once.
   const duplicateKeys = useRef(new Map<string, string>());
-  const freshIds = useRef(new Set<string>());
   const filedIds = useRef(new Set<string>());
   const filingSessions = useRef(new Set<string>());
   const batch = useRef(0);
@@ -122,7 +120,6 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
         if (!(error instanceof ApiError && error.status === 404)) return;
       }
       preparedClipIds.current.delete(id);
-      freshIds.current.add(id);
       void queryClient.invalidateQueries({ queryKey: planQueryKey });
       invalidateClipCollections(queryClient);
     },
@@ -207,14 +204,9 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
 
       void (async () => {
         try {
-          // The upload clients (tus, S3 multipart) load with the first upload rather than with the library.
+          // The upload client loads with the first upload rather than with the library.
           const [
-            {
-              createPreparedClipUpload,
-              createS3ClipUpload,
-              createTusClipUpload,
-              isS3MultipartUpload,
-            },
+            { createPreparedClipUpload, createS3ClipUpload },
             {
               localResumeStore,
               multipartResumeKey,
@@ -287,37 +279,14 @@ export function UploadsProvider({ children }: { children: ReactNode }) {
             upload.start();
           };
 
-          if (isS3MultipartUpload(response)) {
-            begin(
-              createS3ClipUpload({
-                file: item.file,
-                response,
-                resumeKey,
-                ...callbacks,
-              }),
-            );
-            return;
-          }
-
-          const upload = createTusClipUpload({
-            file: item.file,
-            response,
-            ...callbacks,
-          });
-
-          const previous = await upload.findPreviousUploads();
-          if (freshIds.current.delete(item.id)) {
-            await Promise.all(
-              previous.map((entry) =>
-                upload.options.urlStorage
-                  ?.removeUpload(entry.urlStorageKey)
-                  .catch(() => undefined),
-              ),
-            );
-          } else if (previous.length) {
-            upload.resumeFromPreviousUpload(previous[0]);
-          }
-          begin(upload);
+          begin(
+            createS3ClipUpload({
+              file: item.file,
+              response,
+              resumeKey,
+              ...callbacks,
+            }),
+          );
         } catch (error) {
           forgetDuplicateKey(item.id);
           void releasePreparedClip(item.id);

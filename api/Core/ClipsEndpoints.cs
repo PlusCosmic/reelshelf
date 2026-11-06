@@ -34,8 +34,6 @@ public static class ClipsEndpoints
             .RequirePermission(Permissions.ClipsEdit);
         group.MapDelete("videos/{clipId:guid}", DeleteClip).WithName("DeleteClip")
             .RequirePermission(Permissions.ClipsDelete);
-        group.MapPost("backfill-metadata", BackfillClipMetadata).WithName("BackfillClipMetadata")
-            .RequirePermission(Permissions.AdminUsers);
     }
 
     /// <summary>
@@ -255,14 +253,6 @@ public static class ClipsEndpoints
         }
 
         return TypedResults.Ok();
-    }
-
-    private static async Task<Ok<BackfillResult>> BackfillClipMetadata(
-        ClipsBackfillService backfillService,
-        AuthenticatedUser user)
-    {
-        BackfillResult result = await backfillService.BackfillClipMetadataAsync();
-        return TypedResults.Ok(result);
     }
 
     public const int MaxDuplicateHashes = 500;

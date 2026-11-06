@@ -56,12 +56,11 @@ public class TranscodeStatements(NpgsqlConnection connection)
     /// Claims the next job for a worker and counts the attempt: a pending one whose retry delay has passed, or a
     /// running one whose worker has not reported for <paramref name="staleAfter"/>, lowest priority first and then
     /// the oldest. Each claim issues a new lease, and the run comes back with its clip's current video version, which
-    /// a trim reads from, and its current host and video id, which a migrate job reads its Bunny stream by. With
-    /// <paramref name="includeMigrate"/> false, <c>migrate</c> jobs are left where they are. SKIP LOCKED keeps two
+    /// a trim reads from. SKIP LOCKED keeps two
     /// workers (or API instances) from claiming the same job; a row another claim changed meanwhile is re-checked
     /// against the conditions and skipped.
     /// </summary>
-    public async Task<ClaimedRunRow?> ClaimNextRunAsync(int maxAttempts, TimeSpan staleAfter, bool includeMigrate = true)
+    public async Task<ClaimedRunRow?> ClaimNextRunAsync(int maxAttempts, TimeSpan staleAfter)
     {
         const string sql = """
             UPDATE transcode_run run
@@ -77,18 +76,15 @@ public class TranscodeStatements(NpgsqlConnection connection)
                 WHERE attempts < @MaxAttempts
                   AND ((status = 'pending' AND available_at <= now())
                     OR (status = 'running' AND heartbeat_at < now() - @StaleAfter))
-                  AND (@IncludeMigrate OR type <> 'migrate')
                 ORDER BY priority, created_at
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED)
             RETURNING run.id, run.clip_id, run.type, run.video_version, run.input::text AS input, run.attempts,
                       run.lease_id,
-                      clip.video_version AS current_video_version,
-                      clip.video_host AS current_video_host,
-                      clip.video_id AS current_video_id
+                      clip.video_version AS current_video_version
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql,
-            new { MaxAttempts = maxAttempts, StaleAfter = staleAfter, IncludeMigrate = includeMigrate });
+            new { MaxAttempts = maxAttempts, StaleAfter = staleAfter });
     }
 
     /// <summary>
@@ -260,12 +256,6 @@ public class TranscodeStatements(NpgsqlConnection connection)
         public int Attempts { get; set; }
         public Guid LeaseId { get; set; }
         public int CurrentVideoVersion { get; set; } = 1;
-
-        /// <summary>The clip's <c>video_host</c> now; a migrate job is handed out only while it is still Bunny.</summary>
-        public string CurrentVideoHost { get; set; } = "";
-
-        /// <summary>The clip's <c>video_id</c> now: for a clip on Bunny, its Bunny video.</summary>
-        public Guid CurrentVideoId { get; set; }
     }
 
     public sealed class ProgressRunRow

@@ -66,8 +66,8 @@ function clip(
     videoStatus: "ready",
     sources: [
       {
-        url: "https://cdn.example/playlist.m3u8",
-        type: "application/vnd.apple.mpegurl",
+        url: "https://media.example/clips/clip/v1/av1.mp4",
+        type: "video/mp4",
       },
     ],
     frameUrls: [],

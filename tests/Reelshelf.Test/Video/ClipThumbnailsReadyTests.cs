@@ -56,26 +56,10 @@ public class ClipThumbnailsReadyTests
     {
         await using TestDatabase test = await TestDatabase.CreateAsync();
         Guid r2ClipId = await test.AddClipAsync("r2", "ready");
-        Guid bunnyClipId = await test.AddClipAsync("bunny", "ready");
 
         ClipVideo r2 = await test.ProjectAsync(r2ClipId);
         Assert.Equal($"https://media.example/clips/{r2ClipId}/v1/thumbnail.jpg", r2.ThumbnailUrl);
         Assert.Equal($"https://media.example/clips/{r2ClipId}/v1/av1.mp4", Assert.Single(r2.Sources).Url);
-
-        ClipVideo bunny = await test.ProjectAsync(bunnyClipId);
-        Assert.Equal($"https://cdn.example/{bunnyClipId}/thumbnail.jpg", bunny.ThumbnailUrl);
-        Assert.Equal($"https://cdn.example/{bunnyClipId}/playlist.m3u8", Assert.Single(bunny.Sources).Url);
-    }
-
-    [PostgresFact]
-    public async Task AProcessingBunnyClip_KeepsItsThumbnail_ButHasNoSources()
-    {
-        await using TestDatabase test = await TestDatabase.CreateAsync();
-        Guid clipId = await test.AddClipAsync("bunny", "processing");
-
-        ClipVideo video = await test.ProjectAsync(clipId);
-        Assert.Equal($"https://cdn.example/{clipId}/thumbnail.jpg", video.ThumbnailUrl);
-        Assert.Empty(video.Sources);
     }
 
     private sealed class TestDatabase : IAsyncDisposable
@@ -96,7 +80,7 @@ public class ClipThumbnailsReadyTests
         public ClipsStatements Clips { get; }
 
         public ClipProjection Projection { get; } =
-            new(ClipMediaUrlsTests.Create("https://cdn.example", "https://media.example"));
+            new(ClipMediaUrlsTests.Create());
 
         public Guid OwnerId { get; } = Guid.NewGuid();
 

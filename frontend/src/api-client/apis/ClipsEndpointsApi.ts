@@ -15,7 +15,6 @@
 import * as runtime from "../runtime";
 import type {
   AddTagRequest,
-  BackfillResult,
   Clip,
   ClipLibraryResponse,
   ClipShareResponse,
@@ -32,8 +31,6 @@ import type {
 import {
   AddTagRequestFromJSON,
   AddTagRequestToJSON,
-  BackfillResultFromJSON,
-  BackfillResultToJSON,
   ClipFromJSON,
   ClipToJSON,
   ClipLibraryResponseFromJSON,
@@ -187,41 +184,6 @@ export class ClipsEndpointsApi extends runtime.BaseAPI {
       requestParameters,
       initOverrides,
     );
-    return await response.value();
-  }
-
-  /**
-   */
-  async backfillClipMetadataRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<BackfillResult>> {
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/clips/backfill-metadata`;
-
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
-
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      BackfillResultFromJSON(jsonValue),
-    );
-  }
-
-  /**
-   */
-  async backfillClipMetadata(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<BackfillResult> {
-    const response = await this.backfillClipMetadataRaw(initOverrides);
     return await response.value();
   }
 

@@ -29,7 +29,6 @@ public static class WorkerSetup
         services.AddSingleton<WorkerApiClient>();
         services.AddSingleton<MediaTransfer>();
         services.AddSingleton<FfmpegRunner>();
-        services.AddSingleton<HlsRemux>();
         services.AddSingleton<JobRunner>();
         // The worker's metadata server is local and answers a hanging GET within its 300 s timeout.
         services.AddHttpClient(GcePreemptionWatcher.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(330));

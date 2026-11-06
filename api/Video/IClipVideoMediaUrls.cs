@@ -16,7 +16,7 @@ public interface IClipVideoMediaUrls
     List<PlaybackSource> Sources(ClipVideoRef video);
 
     /// <summary>
-    /// The stream server-side readers (ffmpeg) open: Bunny's HLS playlist, or our own pipeline's MP4. Players use
+    /// The file server-side readers (ffmpeg) open: our own pipeline's MP4. Players use
     /// <see cref="Sources"/>.
     /// </summary>
     Uri ServerStream(ClipVideoRef video);

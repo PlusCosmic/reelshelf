@@ -39,21 +39,6 @@ public class ClipMoveStatementsTests
         Assert.Equal(ValorantId, await test.CategoryOfAsync(fromFortnite));
         Assert.Equal(ApexId, await test.CategoryOfAsync(binned));
         Assert.Equal(ApexId, await test.CategoryOfAsync(someoneElses));
-        Assert.Null(await test.FiledCategoryOfAsync(alreadyThere));
-    }
-
-    [PostgresFact]
-    public async Task AMovedClip_KeepsTheBookItWasFiledIn_HoweverOftenItMoves()
-    {
-        await using TestDatabase test = await TestDatabase.CreateAsync();
-        Guid clip = await test.AddClipAsync(ApexId, "Clip", "a");
-
-        await test.Clips.MoveClips(test.OwnerId, ValorantId, [clip]);
-        await test.Clips.MoveClips(test.OwnerId, FortniteId, [clip]);
-        await test.Clips.MoveClips(test.OwnerId, ApexId, [clip]);
-
-        Assert.Equal(ApexId, await test.CategoryOfAsync(clip));
-        Assert.Equal(ApexId, await test.FiledCategoryOfAsync(clip));
     }
 
     [PostgresFact]
@@ -73,7 +58,6 @@ public class ClipMoveStatementsTests
         Assert.Equal(new[] { duplicate, twin }.Order(), rows.Where(row => !row.Moved).Select(row => row.ClipId).Order());
         Assert.Equal(ApexId, await test.CategoryOfAsync(duplicate));
         Assert.Equal(FortniteId, await test.CategoryOfAsync(twin));
-        Assert.Null(await test.FiledCategoryOfAsync(duplicate));
     }
 
     [PostgresFact]
@@ -237,9 +221,6 @@ public class ClipMoveStatementsTests
 
         public Task<Guid> CategoryOfAsync(Guid clipId) => Connection.ExecuteScalarAsync<Guid>(
             "SELECT game_category_id FROM clip WHERE id = @clipId", new { clipId });
-
-        public Task<Guid?> FiledCategoryOfAsync(Guid clipId) => Connection.ExecuteScalarAsync<Guid?>(
-            "SELECT filed_category_id FROM clip WHERE id = @clipId", new { clipId });
 
         public async ValueTask DisposeAsync()
         {

@@ -23,69 +23,8 @@ public class ClipStatusRefreshService(
     /// </summary>
     private static readonly TimeSpan AbandonedUploadAge = TimeSpan.FromHours(24);
 
-    /// <summary>One pass: purge abandoned uploads, then refresh the clips whose host needs polling.</summary>
-    internal async Task RefreshClipStatusesAsync()
-    {
-        await PurgeAbandonedUploadsAsync();
-
-        logger.LogInformation("Refreshing clip statuses");
-
-        try
-        {
-            using IServiceScope scope = scopeFactory.CreateScope();
-            ClipsStatements clipsStatements = scope.ServiceProvider.GetRequiredService<ClipsStatements>();
-            ClipVideoHosts videoHosts = scope.ServiceProvider.GetRequiredService<ClipVideoHosts>();
-
-            List<ClipsStatements.ClipRow> clipsNeedingUpdate = await clipsStatements.GetClipsNeedingStatusUpdate();
-
-            if (clipsNeedingUpdate.Count == 0)
-            {
-                logger.LogInformation("No clips need status updates");
-                return;
-            }
-
-            logger.LogInformation("Found {Count} clips needing status updates", clipsNeedingUpdate.Count);
-
-            int updated = 0;
-            int failed = 0;
-
-            foreach (ClipsStatements.ClipRow clip in clipsNeedingUpdate)
-            {
-                try
-                {
-                    IClipVideoHost videoHost = videoHosts.For(clip.VideoHost);
-                    if (!videoHost.NeedsStatusPolling)
-                    {
-                        // Its status reaches the row from our own worker's reports; polling would read the row back.
-                        continue;
-                    }
-
-                    HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
-                    if (video == null)
-                    {
-                        logger.LogWarning("Video {VideoId} not found at the video host for clip {ClipId}", clip.VideoId, clip.Id);
-                        failed++;
-                        continue;
-                    }
-
-                    await clipsStatements.UpdateClipMetadata(clip.Id, clip.VideoHost, clip.VideoId, video.Title, video);
-
-                    updated++;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to update clip {ClipId} (video {VideoId})", clip.Id, clip.VideoId);
-                    failed++;
-                }
-            }
-
-            logger.LogInformation("Clip status refresh complete: {Updated} updated, {Failed} failed", updated, failed);
-        }
-        catch (Exception e)
-        {
-            logger.LogError(e, "Failed to refresh clip statuses");
-        }
-    }
+    /// <summary>One pass: purge abandoned uploads.</summary>
+    internal Task RefreshClipStatusesAsync() => PurgeAbandonedUploadsAsync();
 
     private async Task PurgeAbandonedUploadsAsync()
     {
@@ -102,9 +41,8 @@ public class ClipStatusRefreshService(
             {
                 try
                 {
-                    // Re-check with the host so a clip whose update notification was missed is refreshed rather than deleted.
-                    // A host whose clips report through the app (R2) answers from the clip row itself, so its clip is
-                    // abandoned only when the row still says nothing was uploaded.
+                    // The host answers from the clip row itself (R2), so the clip is abandoned only when the row
+                    // still says nothing was uploaded.
                     IClipVideoHost videoHost = videoHosts.For(clip.VideoHost);
                     HostedVideoInfo? video = await videoHost.GetVideoAsync(clip.VideoId);
                     if (!IsAbandoned(video))
@@ -116,8 +54,6 @@ public class ClipStatusRefreshService(
                     {
                         await videoHost.DeleteVideoAsync(clip.VideoId);
                     }
-
-                    await ClipVideoDeletion.DeleteBunnyCopyAsync(videoHosts, clip.VideoHost, clip.VideoId, clip.BunnyVideoId);
 
                     await clipsStatements.DeleteClip(clip.Id);
                     logger.LogInformation("Removed abandoned upload {ClipId} (video {VideoId}) for owner {OwnerId}",

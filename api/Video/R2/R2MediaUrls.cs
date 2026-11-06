@@ -4,7 +4,7 @@ namespace Reelshelf.Video.R2;
 
 /// <summary>
 /// Media URLs for an R2 clip, on the media domain (<c>R2:MediaBaseUrl</c>) under its current version's folder
-/// (<see cref="R2ObjectKeys"/>). Unsigned for now, like Bunny's. The thumbnails are handed out only once they exist
+/// (<see cref="R2ObjectKeys"/>). Unsigned for now. The thumbnails are handed out only once they exist
 /// (<see cref="ClipVideoRef.ThumbnailsReady"/>): the worker uploads them before it encodes, and a request made before
 /// that would get a 404 the browser never retries and Cloudflare may cache.
 /// </summary>
@@ -33,7 +33,7 @@ public class R2MediaUrls(R2Options options) : IClipVideoMediaUrls
         return ThumbnailsExist(video) ? File(video, R2ObjectKeys.Thumbnail) : null;
     }
 
-    /// <summary>The worker writes the same six frames Bunny does, under the same names.</summary>
+    /// <summary>The worker writes six frames: the main thumbnail and five more through the video.</summary>
     public List<string> DetectionFrames(ClipVideoRef video)
     {
         return ThumbnailsExist(video)

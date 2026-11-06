@@ -128,6 +128,8 @@ public class StateCheckConstraintsTests
             await connection.OpenAsync();
             await connection.ExecuteAsync($"CREATE SCHEMA {schema}");
             await TestClipSchema.CreateAsync(connection);
+            // V59 ran while clips could still be on Bunny, before V62 allowed only r2.
+            await connection.ExecuteAsync("ALTER TABLE clip DROP CONSTRAINT clip_video_host_check");
             // The parts of content_report (V51, V52) and clip_export (V47) that V59 reads.
             await connection.ExecuteAsync("""
                 CREATE TABLE content_report (

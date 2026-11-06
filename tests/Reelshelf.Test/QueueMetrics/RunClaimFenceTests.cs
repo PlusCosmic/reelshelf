@@ -208,7 +208,7 @@ public class RunClaimFenceTests
                 CREATE TABLE app_user (id uuid PRIMARY KEY);
                 CREATE TABLE game_category (id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL);
                 CREATE TABLE clip (
-                    id uuid PRIMARY KEY, video_id uuid NOT NULL, video_host text NOT NULL DEFAULT 'bunny',
+                    id uuid PRIMARY KEY, video_id uuid NOT NULL, video_host text NOT NULL DEFAULT 'r2',
                     video_version integer NOT NULL DEFAULT 1, video_codecs text, video_height integer,
                     video_state text NOT NULL DEFAULT 'ready', title text, created_at timestamptz NOT NULL DEFAULT now(),
                     game_category_id uuid NOT NULL REFERENCES game_category(id));

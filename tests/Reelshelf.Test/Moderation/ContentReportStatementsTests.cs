@@ -182,7 +182,7 @@ public class ContentReportStatementsTests
 
         Assert.True(await evidence.SaveCdnPurge(claimed.ClaimToken, CdnPurgeResults.Purged));
         Assert.True(await evidence.SaveFiles(claimed.ClaimToken, [$"{id}/record.json"]));
-        Assert.True(await evidence.Fail(claimed.ClaimToken, "Bunny is down", TimeSpan.Zero));
+        Assert.True(await evidence.Fail(claimed.ClaimToken, "Storage is down", TimeSpan.Zero));
         ClipEvidence retried = (await evidence.Claim(stale))!;
         Assert.Equal((2, $"[\"{id}/record.json\"]"), (retried.Attempts, retried.Files));
 
