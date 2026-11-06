@@ -117,6 +117,18 @@ public sealed class UploaderEngine : IDisposable
 
     public string? Root => _monitor.Root;
 
+    /// <summary>The file uploading now (its path below the root) and how far it has got, for S4.</summary>
+    public (string Path, int Percent)? CurrentUpload
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _current is var (entry, percent) ? (entry.Path, percent) : null;
+            }
+        }
+    }
+
     // ---- Setup and settings (S2, S3, S5) ----
 
     /// <summary>

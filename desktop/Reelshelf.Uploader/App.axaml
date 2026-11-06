@@ -1,0 +1,114 @@
+<!--
+  The uploader's look: Reelshelf's colours and fonts (Fraunces for headings, Instrument Sans for the rest), light or dark
+  as Windows is. Words never go here; they all live in UploaderCopy.
+-->
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Reelshelf.Uploader.App"
+             RequestedThemeVariant="Default">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="RsBackground" Color="#fbfcfb" />
+                    <SolidColorBrush x:Key="RsSurface" Color="#f8faf8" />
+                    <SolidColorBrush x:Key="RsSoft" Color="#e3eae4" />
+                    <SolidColorBrush x:Key="RsForeground" Color="#13261c" />
+                    <SolidColorBrush x:Key="RsForegroundSoft" Color="#4a5f53" />
+                    <SolidColorBrush x:Key="RsLine" Color="#d3dcd4" />
+                    <SolidColorBrush x:Key="RsAccent" Color="#1f6b45" />
+                    <SolidColorBrush x:Key="RsFill" Color="#1f6b45" />
+                    <SolidColorBrush x:Key="RsFillInk" Color="#ffffff" />
+                    <SolidColorBrush x:Key="RsWarn" Color="#8a5d0a" />
+                    <SolidColorBrush x:Key="RsBad" Color="#a3392c" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="RsBackground" Color="#17231c" />
+                    <SolidColorBrush x:Key="RsSurface" Color="#15211a" />
+                    <SolidColorBrush x:Key="RsSoft" Color="#1a2820" />
+                    <SolidColorBrush x:Key="RsForeground" Color="#e3ece5" />
+                    <SolidColorBrush x:Key="RsForegroundSoft" Color="#9db3a5" />
+                    <SolidColorBrush x:Key="RsLine" Color="#2a3c31" />
+                    <SolidColorBrush x:Key="RsAccent" Color="#74c79a" />
+                    <SolidColorBrush x:Key="RsFill" Color="#2f8a5c" />
+                    <SolidColorBrush x:Key="RsFillInk" Color="#ffffff" />
+                    <SolidColorBrush x:Key="RsWarn" Color="#e0b04f" />
+                    <SolidColorBrush x:Key="RsBad" Color="#e57d6e" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <FontFamily x:Key="RsDisplayFont">avares://Reelshelf.Uploader/Assets/Fonts/Fraunces.ttf#Fraunces</FontFamily>
+            <FontFamily x:Key="RsSansFont">avares://Reelshelf.Uploader/Assets/Fonts/InstrumentSans.ttf#Instrument Sans</FontFamily>
+            <FontFamily x:Key="RsMonoFont">Cascadia Mono, Consolas, monospace</FontFamily>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource RsBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource RsForeground}" />
+            <Setter Property="FontFamily" Value="{StaticResource RsSansFont}" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+        <Style Selector="TextBlock.heading">
+            <Setter Property="FontFamily" Value="{StaticResource RsDisplayFont}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{DynamicResource RsForegroundSoft}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{DynamicResource RsForegroundSoft}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.code">
+            <Setter Property="FontFamily" Value="{StaticResource RsMonoFont}" />
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="LetterSpacing" Value="4" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.path">
+            <Setter Property="FontFamily" Value="{StaticResource RsMonoFont}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="TextBlock.warn">
+            <Setter Property="Foreground" Value="{DynamicResource RsWarn}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.bad">
+            <Setter Property="Foreground" Value="{DynamicResource RsBad}" />
+        </Style>
+        <Style Selector="Border.panel">
+            <Setter Property="BorderBrush" Value="{DynamicResource RsLine}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Background" Value="{DynamicResource RsSurface}" />
+        </Style>
+        <Style Selector="Border.codebox">
+            <Setter Property="BorderBrush" Value="{DynamicResource RsLine}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="Background" Value="{DynamicResource RsSurface}" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource RsFill}" />
+            <Setter Property="Foreground" Value="{DynamicResource RsFillInk}" />
+        </Style>
+        <Style Selector="Button.link">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource RsAccent}" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+    </Application.Styles>
+</Application>

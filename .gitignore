@@ -79,3 +79,6 @@ docs/UI Design
 # OpenAPI Generator metadata
 frontend/src/api-client/.openapi-generator/
 frontend/src/api-client/.openapi-generator-ignore
+
+# The uploader's MSIX builds (desktop/Reelshelf.Uploader.Package/package.ps1).
+desktop/Reelshelf.Uploader.Package/out/

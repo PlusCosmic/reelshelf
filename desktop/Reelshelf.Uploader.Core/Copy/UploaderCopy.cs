@@ -83,6 +83,10 @@ public static class UploaderCopy
         public const string FolderPickerTitle = "Choose your recordings folder";
         public const string MatchedHeading = "We matched these folders to your books";
         public const string NoBook = "No book";
+
+        /// <summary>Between a folder and its book.</summary>
+        public const string MatchArrow = "→";
+
         public const string ChooseBook = "Choose…";
         public const string NoSubfolders = "Clips saved straight into this folder go to the book below.";
         public const string DefaultBookLabel = "Clips that don't match a book go to";
