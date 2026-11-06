@@ -8,6 +8,8 @@ import { createUserApi } from "./apiClients";
 export const featureFlagKeys = [
   /** Buying a paid plan; the API folds it into `billing_enabled` and the plans' prices, so nothing checks it here yet. */
   "paid-plans",
+  /** The desktop uploader: /device, Settings → Devices and the links to its Store listing (ADR-0010). */
+  "desktop-uploader",
 ] as const;
 
 export type FeatureFlagKey = (typeof featureFlagKeys)[number];

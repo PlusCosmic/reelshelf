@@ -11,7 +11,9 @@ import {
   type BillingReturn,
   PlanSettings,
 } from "@/components/Reelshelf/PlanSettings";
+import { DeviceList } from "@/components/Reelshelf/DeviceList";
 import { useCurrentUser } from "@/hooks/queries";
+import { useFeature } from "@/hooks/featureFlags.queries";
 import { settingsCopy } from "@/copy/settings";
 
 const copy = settingsCopy;
@@ -47,6 +49,7 @@ function SettingsRoute() {
   // which happens right away so a refresh doesn't repeat the message.
   const [notice] = useState(() => describeLinkResult(search));
   const [billingReturn] = useState(() => search.billing);
+  const desktopUploader = useFeature("desktop-uploader");
 
   useEffect(() => {
     if (search.linked || search.link_error || search.billing) {
@@ -84,6 +87,13 @@ function SettingsRoute() {
           <p className="rs-sidebar-copy">{sections.linkedAccounts.copy}</p>
           <LinkedAccounts notice={notice} />
         </div>
+        {desktopUploader ? (
+          <div className="rs-settings-section">
+            <h2 className="rs-eyebrow">{sections.devices.title}</h2>
+            <p className="rs-sidebar-copy">{sections.devices.copy}</p>
+            <DeviceList />
+          </div>
+        ) : null}
         <div className="rs-settings-section">
           <h2 className="rs-eyebrow">{sections.yourData.title}</h2>
           <p className="rs-sidebar-copy">

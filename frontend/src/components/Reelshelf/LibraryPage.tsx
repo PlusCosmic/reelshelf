@@ -55,6 +55,7 @@ import {
 import { MoveClipsDialog } from "./MoveClipsDialog";
 import { SelectionBar } from "./SelectionBar";
 import { isShortcutKey, startSortTally } from "./sortThrough";
+import { UploaderHint } from "./UploaderHint";
 import { GameBanner } from "./GameBanner";
 import { ShelfBar } from "./ShelfBar";
 import { LegendPicker } from "./LegendPicker";
@@ -438,7 +439,7 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
   // Arranging only appears once there is something to arrange: two books, or an empty one.
   const canArrange =
     shelf.length > 1 || shelf.some((game) => game.clipCount === 0);
-  const shelfFooter = !canArrange ? null : arranging ? (
+  const arrangeControls = !canArrange ? null : arranging ? (
     <>
       <p className="rs-bookcase-arrange-hint">
         {libraryCopy.bookcase.arrange.hint}
@@ -467,6 +468,13 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
       <IconArrowsHorizontal size={16} aria-hidden="true" />
       {libraryCopy.bookcase.arrange.start}
     </button>
+  );
+  // Under the shelf, where dropping on a book is the way in: the uploader is the way in without dropping anything.
+  const shelfFooter = (
+    <>
+      {arranging ? null : <UploaderHint />}
+      {arrangeControls}
+    </>
   );
 
   const twitchCounts = new Map(

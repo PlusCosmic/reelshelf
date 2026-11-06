@@ -204,6 +204,15 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
             """, new { unusedFor });
     }
 
+    /// <summary>
+    /// Deletes signed-out devices, so a device's name and use are kept only while it is signed in (the privacy
+    /// policy says so). A revoked token is refused whether its row is there or not.
+    /// </summary>
+    public async Task<int> DeleteRevoked()
+    {
+        return await connection.ExecuteAsync("DELETE FROM device_token WHERE revoked_at IS NOT NULL");
+    }
+
     private async Task<AuthorizationRow?> FindLive(string userCode)
     {
         return await connection.QuerySingleOrDefaultAsync<AuthorizationRow>("""

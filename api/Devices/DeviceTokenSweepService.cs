@@ -3,8 +3,8 @@ using Microsoft.Extensions.Options;
 namespace Reelshelf.Devices;
 
 /// <summary>
-/// Deletes sign-in requests past their expiry and revokes device tokens unused for
-/// <see cref="DeviceOptions.RevokeUnusedAfter"/>.
+/// Deletes sign-in requests past their expiry, revokes device tokens unused for
+/// <see cref="DeviceOptions.RevokeUnusedAfter"/>, and deletes the rows of devices signed out since the last sweep.
 /// </summary>
 public sealed class DeviceTokenSweeper(
     DeviceStatements statements,
@@ -15,11 +15,13 @@ public sealed class DeviceTokenSweeper(
     {
         int expired = await statements.DeleteExpiredAuthorizations();
         int revoked = await statements.RevokeUnused(options.CurrentValue.RevokeUnusedAfter);
-        if (expired > 0 || revoked > 0)
+        int deleted = await statements.DeleteRevoked();
+        if (expired > 0 || revoked > 0 || deleted > 0)
         {
             logger.LogInformation(
-                "Deleted {ExpiredRequests} expired device sign-ins and revoked {RevokedTokens} unused device tokens",
-                expired, revoked);
+                "Deleted {ExpiredRequests} expired device sign-ins, revoked {RevokedTokens} unused device tokens " +
+                "and deleted {DeletedTokens} signed-out devices",
+                expired, revoked, deleted);
         }
 
         return (expired, revoked);

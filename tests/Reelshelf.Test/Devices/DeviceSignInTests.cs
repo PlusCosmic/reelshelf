@@ -442,6 +442,11 @@ public class DeviceSignInTests
         Guid user = await api.AddUserAsync();
         string stale = await api.SignInDeviceAsync(user, "Old laptop");
         string fresh = await api.SignInDeviceAsync(user, "Gaming PC");
+        string removed = await api.SignInDeviceAsync(user, "Signed out");
+        using (await api.SendAsync(HttpMethod.Delete, "/api/devices/current", deviceToken: removed))
+        {
+        }
+
         await api.Connection.ExecuteAsync(
             "UPDATE device_token SET last_used_at = now() - interval '91 days' WHERE name = 'Old laptop'");
         DeviceAuthorizationJson waiting = await AuthorizeAsync(api);
@@ -460,6 +465,8 @@ public class DeviceSignInTests
         }
 
         Assert.Equal(1, await api.Connection.ExecuteScalarAsync<int>("SELECT count(*) FROM device_authorization"));
+        // Signed-out devices, the one revoked by the sweep included, are deleted.
+        Assert.Equal(["Gaming PC"], await api.Connection.QueryAsync<string>("SELECT name FROM device_token"));
         using HttpResponseMessage staleUse = await api.SendAsync(HttpMethod.Get, "/api/me/plan", deviceToken: stale);
         using HttpResponseMessage freshUse = await api.SendAsync(HttpMethod.Get, "/api/me/plan", deviceToken: fresh);
         Assert.Equal(HttpStatusCode.Unauthorized, staleUse.StatusCode);
