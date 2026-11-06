@@ -1,4 +1,3 @@
-import * as tus from "tus-js-client";
 import type { CreateClipResponse } from "@/api-client";
 import { createVideoRequest } from "@/shared/services/clips";
 import { S3MultipartUpload } from "@/utils/s3MultipartUpload";
@@ -12,12 +11,14 @@ export type CreateVideoForUpload = (request: {
   createdAt?: Date;
 }) => Promise<CreateClipResponse | null>;
 
-export type TusClipUploadOptions = {
+export type S3ClipUploadOptions = {
   file: File;
   response: CreateClipResponse;
   onProgress: (uploaded: number, total: number) => void;
   onSuccess: () => void;
   onError: (error: Error) => void;
+  /** Where its progress is kept for a reload; see `multipartResumeKey`. */
+  resumeKey: string;
 };
 
 export async function createPreparedClipUpload({
@@ -51,43 +52,6 @@ export async function createPreparedClipUpload({
   return response;
 }
 
-/**
- * Uploads the file to wherever the API prepared the clip's video. The API names the endpoint, the headers that
- * authorise the upload and the host's own metadata; only what describes the file itself is added here.
- */
-export function createTusClipUpload({
-  file,
-  onError,
-  onProgress,
-  onSuccess,
-  response,
-}: TusClipUploadOptions) {
-  const { upload } = response;
-  if (upload.protocol !== "tus") {
-    console.warn(`Unsupported upload protocol "${upload.protocol}"`);
-    throw new Error(uploadCopy.errors.notStarted);
-  }
-
-  return new tus.Upload(file, {
-    endpoint: upload.endpoint,
-    retryDelays: [0, 1000, 3000, 5000, 10000],
-    metadata: {
-      ...upload.metadata,
-      filename: file.name,
-      filetype: file.type || "video/mp4",
-    },
-    headers: { ...upload.headers },
-    onProgress,
-    onSuccess,
-    onError,
-  });
-}
-
-export type S3ClipUploadOptions = TusClipUploadOptions & {
-  /** Where its progress is kept for a reload; see `multipartResumeKey`. */
-  resumeKey: string;
-};
-
 /** Uploads the file as the presigned S3 multipart upload the API started for the clip (R2). */
 export function createS3ClipUpload({
   file,
@@ -112,8 +76,4 @@ export function createS3ClipUpload({
     onSuccess,
     onError,
   });
-}
-
-export function isS3MultipartUpload(response: CreateClipResponse) {
-  return response.upload.protocol === "s3-multipart";
 }

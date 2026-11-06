@@ -1,28 +1,5 @@
 import type { PlaybackSource } from "@/api-client";
 
-/** The MIME type of an HLS playlist, as the API hands it out. */
-export const hlsType = "application/vnd.apple.mpegurl";
-
-export function isHlsSource(source: PlaybackSource) {
-  const base = source.type.split(";")[0].trim().toLowerCase();
-  return base === hlsType || base === "application/x-mpegurl";
-}
-
-/**
- * How a `<video>` plays an HLS playlist: hls.js wherever MediaSource exists, so every browser gets the same
- * automatic quality switching, and the browser's own HLS player where there is no MediaSource but it plays HLS
- * itself (iPhone Safari and iOS webviews, Discord mobile among them). A browser with neither can't play it.
- */
-export type HlsPlayback = "hls.js" | "native" | "unsupported";
-
-export function hlsPlayback(
-  video: HTMLVideoElement,
-  hasMediaSource = "MediaSource" in window,
-): HlsPlayback {
-  if (hasMediaSource) return "hls.js";
-  return video.canPlayType(hlsType) ? "native" : "unsupported";
-}
-
 /**
  * The size a progressive source is checked at when the API gives no height: the 1080p the pipeline encodes, at
  * the 60 fps game clips are usually recorded at, so a device that says yes can play the real thing.
@@ -105,11 +82,10 @@ export type StreamCallbacks = {
 /**
  * Attaches the first of a clip's sources this device can play to a `<video>`, in the order given, and returns
  * the detach function, which stops loading and frees whatever was attached. A progressive file (MP4) is the
- * video's own `src`; HLS goes to hls.js or the browser's own player as {@link hlsPlayback} decides.
+ * video's own `src`.
  *
- * Checking a progressive source is asynchronous, so detaching before the answer arrives leaves the video
- * untouched and calls neither callback. HLS is decided at once, as before, so the native path sets `src`
- * synchronously.
+ * Checking a source is asynchronous, so detaching before the answer arrives leaves the video untouched and calls
+ * neither callback.
  */
 export function attachStream(
   video: HTMLVideoElement,
@@ -126,26 +102,13 @@ export function attachStream(
       onUnsupported();
       return;
     }
-    const tryNext = () => tryFrom(index + 1);
-
-    if (isHlsSource(source)) {
-      const playback = hlsPlayback(video);
-      if (playback === "native") {
-        detachSource = attachSrc(video, source.url, onFatal);
-      } else if (playback === "hls.js") {
-        detachSource = attachHlsJs(video, source.url, onFatal, tryNext);
-      } else {
-        tryNext();
-      }
-      return;
-    }
 
     void canPlayProgressive(video, source).then((playable) => {
       if (detached) return;
       if (playable) {
         detachSource = attachSrc(video, source.url, onFatal);
       } else {
-        tryNext();
+        tryFrom(index + 1);
       }
     });
   };
@@ -159,7 +122,7 @@ export function attachStream(
   };
 }
 
-/** Plays a URL as the video's own `src`: a progressive file, or HLS in a browser that plays it itself. */
+/** Plays a progressive file as the video's own `src`. */
 function attachSrc(
   video: HTMLVideoElement,
   url: string,
@@ -171,36 +134,5 @@ function attachSrc(
     video.removeEventListener("error", onFatal);
     video.removeAttribute("src");
     video.load();
-  };
-}
-
-/** Plays HLS through hls.js; `onUnsupported` when hls.js finds it can't play here after all. */
-function attachHlsJs(
-  video: HTMLVideoElement,
-  url: string,
-  onFatal: () => void,
-  onUnsupported: () => void,
-): () => void {
-  let cancelled = false;
-  let destroy: (() => void) | undefined;
-  // Loaded on first play, and the light build: clips need no subtitles, alternate audio or DRM.
-  void import("hls.js/light").then(({ default: Hls }) => {
-    if (cancelled) return;
-    if (!Hls.isSupported()) {
-      onUnsupported();
-      return;
-    }
-    const hls = new Hls();
-    hls.on(Hls.Events.ERROR, (_event, data) => {
-      if (data.fatal) onFatal();
-    });
-    hls.loadSource(url);
-    hls.attachMedia(video);
-    destroy = () => hls.destroy();
-  });
-
-  return () => {
-    cancelled = true;
-    destroy?.();
   };
 }

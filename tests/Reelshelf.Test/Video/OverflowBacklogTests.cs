@@ -25,7 +25,7 @@ public class OverflowBacklogTests
 
         OverflowBacklog all = await statements.ReadAsync(MaxAttempts, [], CancellationToken.None);
         Assert.Equal(4, all.Pending);
-        // The released migrate job was queued 3 hours ago but has only been claimable for 30 minutes; the trim job,
+        // The released fallback job was queued 3 hours ago but has only been claimable for 30 minutes; the trim job,
         // claimable for 45, is the oldest.
         Assert.InRange(all.OldestPendingAge.TotalMinutes, 44, 46);
 
@@ -34,10 +34,10 @@ public class OverflowBacklogTests
         Assert.Equal(2, transcodes.Pending);
         Assert.InRange(transcodes.OldestPendingAge.TotalMinutes, 9, 11);
 
-        OverflowBacklog migrations = await statements.ReadAsync(MaxAttempts,
-            [TranscodeRunTypes.Migrate, TranscodeRunTypes.Thumbnails], CancellationToken.None);
-        Assert.Equal(1, migrations.Pending);
-        Assert.InRange(migrations.OldestPendingAge.TotalMinutes, 29, 31);
+        OverflowBacklog fallbacks = await statements.ReadAsync(MaxAttempts,
+            [TranscodeRunTypes.Fallback, TranscodeRunTypes.Thumbnails], CancellationToken.None);
+        Assert.Equal(1, fallbacks.Pending);
+        Assert.InRange(fallbacks.OldestPendingAge.TotalMinutes, 29, 31);
 
         // A higher attempt limit makes the job out of attempts claimable again, as it would the claim.
         Assert.Equal(5, (await statements.ReadAsync(MaxAttempts + 1, [], CancellationToken.None)).Pending);
@@ -102,7 +102,7 @@ public class OverflowBacklogTests
         await AddRunAsync(connection, "transcode", "succeeded", 1, created: 500, available: 500);
         await AddRunAsync(connection, "transcode", "failed", MaxAttempts, created: 500, available: 500);
         await AddRunAsync(connection, "trim", "pending", 0, created: 45, available: 45); // claimable
-        await AddRunAsync(connection, "migrate", "pending", 0, created: 180, available: 30); // released by a worker
+        await AddRunAsync(connection, "fallback", "pending", 0, created: 180, available: 30); // released by a worker
     }
 
     private static async Task AddRunAsync(

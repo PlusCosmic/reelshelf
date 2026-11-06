@@ -182,7 +182,7 @@ public sealed class NoCdnPurger(string result) : ICdnPurger
 }
 
 /// <summary>
-/// Deletes a removed clip's video wherever it is: its host, its R2 versions and any Bunny copy. Only ever called once
+/// Deletes a removed clip's video at its host, every R2 version included. Only ever called once
 /// the evidence copy exists.
 /// </summary>
 public interface IEvidenceMediaDeleter
@@ -198,10 +198,7 @@ public sealed class EvidenceMediaDeleter(ClipVideoHosts videoHosts, ITranscodeSt
 {
     public async Task DeleteAsync(EvidenceClip clip)
     {
-        await ClipVideoDeletion.DeleteAsync(videoHosts, transcodeStorage, clip.Id, clip.VideoHost, clip.VideoId,
-            clip.BunnyVideoId);
-        // An R2 clip's own delete covers this; a Bunny clip may have R2 versions from a migrate job too.
-        await transcodeStorage.DeleteAllVersionsAsync(clip.Id);
+        await videoHosts.For(clip.VideoHost).DeleteVideoAsync(clip.VideoId);
     }
 
     public Task SweepAsync(Guid clipId) => transcodeStorage.DeleteAllVersionsAsync(clipId);

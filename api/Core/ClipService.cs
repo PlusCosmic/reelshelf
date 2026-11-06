@@ -15,7 +15,6 @@ namespace Reelshelf.Core;
 
 public class ClipService(
     ClipVideoHosts videoHosts,
-    NewUploadVideoHostPolicy newUploadHostPolicy,
     ClipsStatements clipsStatements,
     GameCategoryStatements gameCategoryStatements,
     ClipProjection clipProjection,
@@ -23,7 +22,6 @@ public class ClipService(
     ClipLimitWarningService clipLimitWarningService,
     TimeProvider timeProvider,
     ClipMediaUrls mediaUrls,
-    ITranscodeStorage transcodeStorage,
     ContentReportStatements contentReports,
     ILogger<ClipService> logger)
 {
@@ -77,7 +75,6 @@ public class ClipService(
         }
 
 
-        // The host files the video by category (Bunny names its collection after the slug)
         GameCategory? gameCategory = await gameCategoryStatements.GetByIdAsync(gameCategoryId);
         if (gameCategory == null)
         {
@@ -94,8 +91,7 @@ public class ClipService(
             }
         }
 
-        // Existing clips stay on the host they were created on; only new ones follow the policy.
-        string videoHostName = newUploadHostPolicy.NewUploads;
+        const string videoHostName = VideoHostNames.R2;
         IClipVideoHost videoHost = videoHosts.For(videoHostName);
 
         // Cheap unlocked check first so a plainly over-limit request fails before taking the lock.
@@ -462,8 +458,7 @@ public class ClipService(
             throw new ConflictException("This clip can't be deleted right now.");
         }
 
-        await ClipVideoDeletion.DeleteAsync(videoHosts, transcodeStorage, clipId, clip.VideoHost, clip.VideoId,
-            clip.BunnyVideoId);
+        await videoHosts.For(clip.VideoHost).DeleteVideoAsync(clip.VideoId);
         await clipsStatements.DeleteClip(clipId);
 
         // The count went down; clear the "nearly full" marker if the owner is back under the threshold.

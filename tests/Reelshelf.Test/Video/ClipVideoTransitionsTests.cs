@@ -9,7 +9,7 @@ namespace Reelshelf.Test.Video;
 /// <summary>
 /// The table of moves <c>clip.video_state</c> may make (<see cref="ClipVideoTransitions"/>), and each statement that
 /// writes the column keeping to it against a real Postgres, in a schema of the test's own: in particular the moves
-/// that used to happen (#322), a late host report taking a ready clip back, progress reviving a failed clip, a
+/// that used to happen (#322): progress reviving a failed clip, a
 /// transcode failure relabelling a failed upload, and a retried upload reviving a rejected one.
 /// </summary>
 public class ClipVideoTransitionsTests
@@ -20,34 +20,6 @@ public class ClipVideoTransitionsTests
     private const ClipVideoStatus Ready = ClipVideoStatus.Ready;
     private const ClipVideoStatus EncodeFailed = ClipVideoStatus.EncodeFailed;
     private const ClipVideoStatus UploadFailed = ClipVideoStatus.UploadFailed;
-
-    [Theory]
-    [InlineData(Ready, Processing)]
-    [InlineData(Ready, Uploaded)]
-    [InlineData(Ready, AwaitingUpload)]
-    [InlineData(Processing, Uploaded)]
-    [InlineData(Processing, AwaitingUpload)]
-    [InlineData(Uploaded, AwaitingUpload)]
-    [InlineData(EncodeFailed, Processing)]
-    [InlineData(UploadFailed, AwaitingUpload)]
-    public void AHostReport_NeverMovesAClipBack(ClipVideoStatus from, ClipVideoStatus to)
-    {
-        Assert.False(ClipVideoTransitions.CanMove(ClipVideoChange.HostReport, from, to));
-    }
-
-    [Theory]
-    [InlineData(Ready, Ready)]
-    [InlineData(Ready, EncodeFailed)]
-    [InlineData(Ready, UploadFailed)]
-    [InlineData(Processing, Processing)]
-    [InlineData(Processing, Ready)]
-    [InlineData(AwaitingUpload, Ready)]
-    [InlineData(UploadFailed, Uploaded)]
-    [InlineData(EncodeFailed, Ready)]
-    public void AHostReport_MovesForward_OrToAFailure(ClipVideoStatus from, ClipVideoStatus to)
-    {
-        Assert.True(ClipVideoTransitions.CanMove(ClipVideoChange.HostReport, from, to));
-    }
 
     [Fact]
     public void OurOwnPipelinesMoves_LeaveOnlyTheStatesTheyName()
@@ -66,25 +38,6 @@ public class ClipVideoTransitionsTests
     }
 
     [PostgresFact]
-    public async Task UpdateClipMetadata_IgnoresALateProcessingReport_OnAReadyClip()
-    {
-        await using TestDatabase test = await TestDatabase.CreateAsync();
-        Guid clipId = await test.AddClipAsync("ready", encodeProgress: 100, length: 30);
-
-        bool written = await test.Clips.UpdateClipMetadata(clipId, "bunny", clipId, "Late", Report(Processing, 40));
-
-        Assert.False(written);
-        // Nothing of the stale read is written, not only the state.
-        Assert.Equal(("ready", 100, 30, "Clip"), await test.RowAsync(clipId));
-
-        // The same state again still refreshes a ready clip's metadata (the backfill), and a reported failure leaves.
-        Assert.True(await test.Clips.UpdateClipMetadata(clipId, "bunny", clipId, "Renamed", Report(Ready, 100)));
-        Assert.Equal(("ready", 100, 12, "Renamed"), await test.RowAsync(clipId));
-        Assert.True(await test.Clips.UpdateClipMetadata(clipId, "bunny", clipId, "Renamed", Report(EncodeFailed, 0)));
-        Assert.Equal("encode_failed", await test.StateAsync(clipId));
-    }
-
-    [PostgresFact]
     public async Task AttachVideo_TakesOnlyAReservedClip()
     {
         await using TestDatabase test = await TestDatabase.CreateAsync();
@@ -92,11 +45,11 @@ public class ClipVideoTransitionsTests
         Guid ready = await test.AddClipAsync("ready", encodeProgress: 100, length: 30);
 
         ClipsStatements.ClipRow attached = await test.Clips.AttachVideo(reserved,
-            new HostedVideo(Guid.NewGuid(), Guid.NewGuid(), Report(AwaitingUpload, 0)));
+            new HostedVideo(Guid.NewGuid(), Report(AwaitingUpload, 0)));
         Assert.Equal("awaiting_upload", attached.VideoState);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => test.Clips.AttachVideo(ready,
-            new HostedVideo(Guid.NewGuid(), Guid.NewGuid(), Report(AwaitingUpload, 0))));
+            new HostedVideo(Guid.NewGuid(), Report(AwaitingUpload, 0))));
         Assert.Equal(("ready", 100, 30, "Clip"), await test.RowAsync(ready));
     }
 
@@ -182,7 +135,7 @@ public class ClipVideoTransitionsTests
     }
 
     private static HostedVideoInfo Report(ClipVideoStatus status, int encodeProgress) =>
-        new("Host title", 12, status, encodeProgress, 1000, DateTimeOffset.UtcNow, "thumbnail.jpg", null);
+        new("Host title", 12, status, encodeProgress, 1000, DateTimeOffset.UtcNow, "thumbnail.jpg");
 
     private sealed class TestDatabase : IAsyncDisposable
     {

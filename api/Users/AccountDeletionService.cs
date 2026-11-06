@@ -10,8 +10,7 @@ namespace Reelshelf.Users;
 /// <summary>
 /// Deletes an account and everything in it. A request marks the account and removes its sign-in identities at
 /// once, so it can't be used again; <see cref="AccountDeletionBackgroundService"/> then cancels its Stripe
-/// subscriptions, deletes its videos and
-/// their containers (Bunny's collections), each at its own host, and finally the account row, which cascades to the
+/// subscriptions, deletes its videos at their host, and finally the account row, which cascades to the
 /// rest of its data. Every step is idempotent, so a pass that fails part-way is simply repeated. While the account is
 /// held for review (<see cref="IAccountDeletionStore.IsHeldForReview"/>: a child-safety or terrorism report on one of
 /// its clips is open, or a removed clip's video hasn't been copied as evidence yet) a pass only cancels the
@@ -21,7 +20,6 @@ namespace Reelshelf.Users;
 public class AccountDeletionService(
     IAccountDeletionStore store,
     ClipVideoHosts videoHosts,
-    ITranscodeStorage transcodeStorage,
     IEmailSender emailSender,
     AccountDeletionSignal signal,
     IAccountSubscriptions subscriptions,
@@ -100,10 +98,7 @@ public class AccountDeletionService(
                 {
                     try
                     {
-                        // Includes a migrated clip's Bunny copy still waiting out its grace period, before the
-                        // collections it may be filed in are deleted below.
-                        await ClipVideoDeletion.DeleteAsync(videoHosts, transcodeStorage, clip.ClipId, clip.VideoHost,
-                            clip.VideoId, clip.BunnyVideoId);
+                        await videoHosts.For(clip.VideoHost).DeleteVideoAsync(clip.VideoId);
                         deletedClipIds.Add(clip.ClipId);
                     }
                     catch (Exception ex)
@@ -129,22 +124,6 @@ public class AccountDeletionService(
         if (videosFailed)
         {
             return false;
-        }
-
-        // The container ids are only kept on rows that go with the account, so containers are removed first. Only
-        // hosts that file videos in containers have any (Bunny's collections).
-        foreach (OwnedVideoContainer container in await store.GetVideoContainers(userId))
-        {
-            try
-            {
-                await videoHosts.For(container.VideoHost).DeleteContainerAsync(container.ContainerId);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to delete {VideoHost} container {ContainerId} for deleted account {UserId}",
-                    container.VideoHost, container.ContainerId, userId);
-                return false;
-            }
         }
 
         // Exports are copies of the clips, so they go with them rather than waiting for their expiry.
@@ -184,11 +163,8 @@ public class AccountDeletionService(
 
 public sealed record AccountDeletionRequest(string? Email);
 
-/// <summary>A clip's video, and its Bunny copy (<c>bunny_video_id</c>) when it moved to R2 within the grace period.</summary>
-public sealed record OwnedClipVideo(Guid ClipId, Guid VideoId, string VideoHost, Guid? BunnyVideoId = null);
-
-/// <summary>A container one of the account's videos was filed in, at the host that keeps it.</summary>
-public sealed record OwnedVideoContainer(string VideoHost, Guid ContainerId);
+/// <summary>A clip's video, at the host that holds it.</summary>
+public sealed record OwnedClipVideo(Guid ClipId, Guid VideoId, string VideoHost);
 
 public interface IAccountDeletionStore
 {
@@ -210,7 +186,6 @@ public interface IAccountDeletionStore
 
     /// <summary>Deletes the clip rows, leaving out any under an open child-safety or terrorism report.</summary>
     Task DeleteClips(Guid userId, IReadOnlyCollection<Guid> clipIds);
-    Task<List<OwnedVideoContainer>> GetVideoContainers(Guid userId);
 
     /// <summary>
     /// Deletes the marked account row only if it owns no clips and no clip of its removed as evidence still waits to

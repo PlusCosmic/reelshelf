@@ -16,8 +16,8 @@ public static class ClipEvidenceStatuses
 
     /// <summary>
     /// Needs attention: the copy still isn't made after <c>EvidenceMaxAttempts</c>. It is never given up on (retried
-    /// with a capped back-off) and nothing of the clip is deleted until it is made; an R2 clip's files stay in the
-    /// quarantine, off public access, and a Bunny clip's video stays at Bunny.
+    /// with a capped back-off) and nothing of the clip is deleted until it is made; the clip's files stay in the
+    /// quarantine, off public access.
     /// </summary>
     public const string Failed = "failed";
 }
@@ -61,13 +61,12 @@ public sealed class EvidenceClip
     public string? Title { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public string? GameName { get; set; }
-    public string VideoHost { get; set; } = VideoHostNames.Bunny;
+    public string VideoHost { get; set; } = VideoHostNames.R2;
     public Guid VideoId { get; set; }
     public int VideoVersion { get; set; } = 1;
     public string? VideoCodecs { get; set; }
     public int? VideoHeight { get; set; }
     public string VideoState { get; set; } = ClipVideoStatus.AwaitingUpload.ToDatabase();
-    public Guid? BunnyVideoId { get; set; }
     public long? StorageSize { get; set; }
 
     [JsonIgnore]

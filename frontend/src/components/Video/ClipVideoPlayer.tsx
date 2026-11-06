@@ -18,8 +18,7 @@ type Problem = { key: string; kind: "fatal" | "unsupported" };
 
 /**
  * Plays a clip in a `<video>` with the browser's own controls and fullscreen, from the first of its sources the
- * device can play (`attachStream`): a progressive MP4 as the video's own `src`, or HLS with hls.js picking the
- * quality. It fills its container, which must be positioned, and stays transparent until the first frame
+ * device can play (`attachStream`): a progressive MP4 as the video's own `src`. It fills its container, which must be positioned, and stays transparent until the first frame
  * arrives so whatever is behind it (the poster, a thumbnail) shows while it loads.
  *
  * New `sources` swap the stream on the same element, so moving to the next clip keeps the browser's permission

@@ -94,8 +94,6 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
 
     public TranscodeJobUrls UrlsFor(Guid clipId, string jobType, int videoVersion, int currentVersion, TimeSpan lifetime)
     {
-        // A migrate job reads the clip's Bunny stream, not the bucket, so it gets uploads alone; the queue adds its
-        // source.
         string? sourceKey = jobType switch
         {
             TranscodeRunTypes.Transcode => R2ObjectKeys.Upload(clipId),
@@ -103,7 +101,7 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
             TranscodeRunTypes.Trim => R2ObjectKeys.Output(clipId, currentVersion, R2ObjectKeys.Av1),
             _ => null
         };
-        if (sourceKey is null && jobType != TranscodeRunTypes.Migrate)
+        if (sourceKey is null)
         {
             return TranscodeJobUrls.None;
         }
@@ -451,13 +449,6 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
 
     public Task DeleteVersionAsync(Guid clipId, int videoVersion) =>
         DeletePrefixAsync(R2ObjectKeys.VersionFolder(clipId, videoVersion) + "/");
-
-    public Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion)
-    {
-        // The trailing slash keeps v1/ from matching v10/.
-        string kept = R2ObjectKeys.VersionFolder(clipId, keepVersion) + "/";
-        return DeletePrefixAsync(R2ObjectKeys.ClipPrefix(clipId), key => !key.StartsWith(kept, StringComparison.Ordinal));
-    }
 
     public Task DeleteAllVersionsAsync(Guid clipId) => DeletePrefixAsync(R2ObjectKeys.ClipPrefix(clipId));
 

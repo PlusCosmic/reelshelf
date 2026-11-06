@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Reelshelf.Core;
-using Reelshelf.Games;
 using Reelshelf.Video;
 using Reelshelf.Video.R2;
 using Xunit;
@@ -11,26 +10,24 @@ using Xunit;
 namespace Reelshelf.Test.Video;
 
 /// <summary>
-/// <see cref="ClipStatusRefreshService"/> with R2 clips beside Bunny ones, against a real Postgres. R2 has no video
-/// object, so the refresh must never take its clips for abandoned the way it does a Bunny video the host has lost.
+/// <see cref="ClipStatusRefreshService"/> with R2 clips, against a real Postgres. R2 has no video object, so the
+/// refresh must take a clip for abandoned only when its row says nothing was uploaded.
 /// None of these touch R2 itself: nothing here is deleted from it.
 /// </summary>
 public class R2ClipStatusRefreshTests
 {
     [PostgresFact]
-    public async Task Refresh_LeavesR2ClipsAlone_AndStillPurgesALostBunnyVideo()
+    public async Task Refresh_LeavesR2ClipsThatGotTheirBytesAlone()
     {
         await using TestDatabase test = await TestDatabase.CreateAsync();
         TimeSpan old = TimeSpan.FromDays(2);
         Guid uploaded = await test.AddClipAsync(VideoHostNames.R2, "uploaded", reservedAgo: old);
         Guid processing = await test.AddClipAsync(VideoHostNames.R2, "processing", reservedAgo: old, encodeProgress: 40);
         Guid fresh = await test.AddClipAsync(VideoHostNames.R2, "awaiting_upload", reservedAgo: TimeSpan.FromHours(1));
-        Guid lostBunny = await test.AddClipAsync(VideoHostNames.Bunny, "awaiting_upload", reservedAgo: old);
 
         await test.Service.RefreshClipStatusesAsync();
 
-        // Every R2 clip is still there as it was, with the legacy video_status still unwritten; the Bunny clip whose
-        // video the host no longer has was purged, so the purge did run.
+        // Every clip is still there as it was, with the legacy video_status still unwritten.
         List<(Guid Id, string State, int? Progress, int? VideoStatus)> expected =
         [
             (uploaded, "uploaded", 0, null),
@@ -38,8 +35,6 @@ public class R2ClipStatusRefreshTests
             (fresh, "awaiting_upload", 0, null)
         ];
         Assert.Equal(expected, await test.ClipsAsync());
-        // Only the Bunny clip was looked up at its host; R2 clips are never polled.
-        Assert.Equal([lostBunny], test.Bunny.Fetched);
     }
 
     [PostgresFact]
@@ -54,9 +49,8 @@ public class R2ClipStatusRefreshTests
         HostedVideoInfo? video = await host.GetVideoAsync(processing);
 
         Assert.NotNull(video);
-        Assert.Equal((ClipVideoStatus.Processing, 40, (int?)null), (video.Status, video.EncodeProgress, video.HostStatus));
+        Assert.Equal((ClipVideoStatus.Processing, 40), (video.Status, video.EncodeProgress));
         Assert.False(ClipStatusRefreshService.IsAbandoned(video));
-        Assert.False(host.NeedsStatusPolling);
         Assert.Null(await host.GetVideoAsync(Guid.NewGuid()));
     }
 
@@ -84,13 +78,12 @@ public class R2ClipStatusRefreshTests
         private readonly string _schema;
 
         private TestDatabase(NpgsqlDataSource dataSource, NpgsqlConnection connection, string schema,
-            ServiceProvider provider, FakeBunny bunny, FakeR2Client r2)
+            ServiceProvider provider, FakeR2Client r2)
         {
             _dataSource = dataSource;
             Connection = connection;
             _schema = schema;
             Provider = provider;
-            Bunny = bunny;
             R2 = r2;
             Service = new ClipStatusRefreshService(NullLogger<ClipStatusRefreshService>.Instance,
                 provider.GetRequiredService<IServiceScopeFactory>());
@@ -98,7 +91,6 @@ public class R2ClipStatusRefreshTests
 
         public NpgsqlConnection Connection { get; }
         public ServiceProvider Provider { get; }
-        public FakeBunny Bunny { get; }
         public FakeR2Client R2 { get; }
         public ClipStatusRefreshService Service { get; }
 
@@ -117,19 +109,17 @@ public class R2ClipStatusRefreshTests
             NpgsqlConnection connection = await dataSource.OpenConnectionAsync();
             await TestClipSchema.CreateAsync(connection);
 
-            FakeBunny bunny = new();
             FakeR2Client r2 = new();
             R2Storage storage = r2.Storage();
             ServiceCollection services = new();
             services.AddScoped(_ => dataSource.CreateConnection());
             services.AddScoped<ClipsStatements>();
             services.AddScoped<ClipVideoHosts>();
-            services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.Bunny, bunny);
             // Uploads (and so the queue and the probe) aren't used by the refresh.
             services.AddKeyedScoped<IClipVideoHost>(VideoHostNames.R2, (provider, _) => new R2VideoHost(storage,
                 provider.GetRequiredService<ClipsStatements>(), null!, null!, null!, TimeProvider.System,
                 NullLogger<R2VideoHost>.Instance));
-            return new TestDatabase(dataSource, connection, schema, services.BuildServiceProvider(), bunny, r2);
+            return new TestDatabase(dataSource, connection, schema, services.BuildServiceProvider(), r2);
         }
 
         public async Task<Guid> AddClipAsync(string videoHost, string videoState, TimeSpan reservedAgo,
@@ -169,28 +159,4 @@ public class R2ClipStatusRefreshTests
         }
     }
 
-    /// <summary>A Bunny that has lost every video.</summary>
-    private sealed class FakeBunny : IClipVideoHost
-    {
-        public List<Guid> Fetched { get; } = [];
-
-        public Task<HostedVideo> CreateVideoAsync(Guid clipId, Guid ownerId, GameCategory gameCategory, string title) =>
-            throw new NotSupportedException();
-
-        public Task<UploadTarget> CreateUploadTargetAsync(HostedVideo video, string title, long fileSize) =>
-            throw new NotSupportedException();
-
-        public Task UploadAsync(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken) =>
-            throw new NotSupportedException();
-
-        public Task<HostedVideoInfo?> GetVideoAsync(Guid videoId)
-        {
-            Fetched.Add(videoId);
-            return Task.FromResult<HostedVideoInfo?>(null);
-        }
-
-        public Task DeleteVideoAsync(Guid videoId) => Task.CompletedTask;
-
-        public Task DeleteContainerAsync(Guid containerId) => Task.CompletedTask;
-    }
 }

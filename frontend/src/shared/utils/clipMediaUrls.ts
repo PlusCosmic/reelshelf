@@ -11,15 +11,12 @@ import type { PlaybackSource } from "@/api-client";
  * under that host's origin and the stream's type (`ActivityMedia`).
  */
 
-/** Bunny Stream's pull zone, through the `/bunny-cdn` URL Mapping. */
-export const activityVideoCdnBaseUrl = "/bunny-cdn";
-
 /** Our own pipeline's media domain (R2 behind the Cloudflare CDN), through the `/media` URL Mapping. */
 export const activityMediaBaseUrl = "/media";
 
 /** Where the Activity finds a clip's video: the API's `ActivityMedia`. */
 export type ActivityMediaRef = {
-  /** The clip's video host (`bunny` or `r2`). */
+  /** The clip's video host (`r2`). */
   host: string;
   /** The video's folder under its host's media origin. */
   path: string;
@@ -30,19 +27,14 @@ export type ActivityMediaRef = {
 };
 
 /**
- * What the Activity's player plays, through the host's mapping. Bunny's HLS playlist uses relative paths, so its
- * segments come the same way. Null for a host the Activity has no mapping for, or a clip with no stream yet.
+ * What the Activity's player plays, through the host's mapping. Null for a host the Activity has no mapping for, or
+ * a clip with no stream yet.
  */
 export function activityStreamSource(
   media: Pick<ActivityMediaRef, "host" | "path" | "type">,
 ): PlaybackSource | null {
   if (media.type === null) return null;
   switch (media.host) {
-    case "bunny":
-      return {
-        url: `${activityVideoCdnBaseUrl}/${media.path}/playlist.m3u8`,
-        type: media.type,
-      };
     case "r2":
       return {
         url: `${activityMediaBaseUrl}/${media.path}/av1.mp4`,
@@ -54,14 +46,12 @@ export function activityStreamSource(
 }
 
 /**
- * The clip's main thumbnail through the host's mapping; both hosts call it `thumbnail.jpg`. Null until it exists,
+ * The clip's main thumbnail through the host's mapping. Null until it exists,
  * so a request never caches a 404 for it.
  */
 export function activityThumbnailUrl(media: ActivityMediaRef): string | null {
   if (!media.hasThumbnail) return null;
   switch (media.host) {
-    case "bunny":
-      return `${activityVideoCdnBaseUrl}/${media.path}/thumbnail.jpg`;
     case "r2":
       return `${activityMediaBaseUrl}/${media.path}/thumbnail.jpg`;
     default:

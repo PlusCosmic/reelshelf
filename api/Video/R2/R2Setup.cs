@@ -6,7 +6,7 @@ public static class R2Setup
 {
     /// <summary>
     /// Registers the <c>r2</c> video host and R2 as the transcode jobs' storage when <c>R2:*</c> is configured;
-    /// otherwise registers neither, so <c>VideoHost:NewUploads=r2</c> fails at startup
+    /// otherwise registers neither, so startup fails outside the <c>OpenApi</c> environment
     /// (<see cref="VideoHostRegistration.AddClipVideoHostRouting"/>) and transcode jobs get no URLs. Call it before
     /// the routing.
     /// </summary>

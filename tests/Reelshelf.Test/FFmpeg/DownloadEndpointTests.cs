@@ -26,7 +26,7 @@ namespace Reelshelf.Test.FFmpeg;
 
 /// <summary>
 /// <c>GET /api/ffmpeg/download/{videoId}</c>: an R2 clip is a redirect to a presigned URL for its current
-/// <c>av1.mp4</c>, a Bunny clip is still remuxed on the server, and either needs the same access as viewing the clip.
+/// <c>av1.mp4</c>, and needs the same access as viewing the clip.
 /// Presigning signs with the key alone, so nothing here touches R2.
 /// </summary>
 public class DownloadEndpointTests
@@ -77,7 +77,6 @@ public class DownloadEndpointTests
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Contains("no-store", response.Headers.CacheControl?.ToString());
         AssertDownloadUrl(response.Headers.Location!, clipId, 2, "Ace 1v3 ranked.mp4");
-        Assert.Empty(api.Remux.Downloaded);
     }
 
     [PostgresFact]
@@ -114,40 +113,6 @@ public class DownloadEndpointTests
         Assert.Equal(HttpStatusCode.Unauthorized, signedOut.StatusCode);
     }
 
-    [PostgresFact]
-    public async Task ABunnyClip_IsStillRemuxedOnTheServer()
-    {
-        await using DownloadApi api = await DownloadApi.StartAsync();
-        Guid owner = Guid.NewGuid();
-        Guid clipId = await api.AddClipAsync(owner, VideoHostNames.Bunny, "ready", "Bunny clip");
-
-        using HttpResponseMessage response = await api.GetAsync(clipId, owner);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("video/mp4", response.Content.Headers.ContentType?.MediaType);
-        Assert.Equal("Bunny clip.mp4", response.Content.Headers.ContentDisposition?.FileNameStar);
-        Assert.Equal(FakeRemux.Content, await response.Content.ReadAsStringAsync());
-        ClipVideoRef remuxed = Assert.Single(api.Remux.Downloaded);
-        Assert.Equal((VideoHostNames.Bunny, clipId), (remuxed.VideoHost, remuxed.VideoId));
-    }
-
-    [PostgresFact]
-    public async Task ABunnyClip_IsRemuxedForACollaborator_ButNotForAStranger()
-    {
-        await using DownloadApi api = await DownloadApi.StartAsync();
-        Guid collaborator = Guid.NewGuid();
-        Guid clipId = await api.AddClipAsync(Guid.NewGuid(), VideoHostNames.Bunny, "ready", "Bunny clip");
-        await api.SharePlaylistAsync(clipId, collaborator);
-
-        using HttpResponseMessage stranger = await api.GetAsync(clipId, Guid.NewGuid());
-        Assert.Equal(HttpStatusCode.NotFound, stranger.StatusCode);
-        Assert.Empty(api.Remux.Downloaded);
-
-        using HttpResponseMessage shared = await api.GetAsync(clipId, collaborator);
-        Assert.Equal(HttpStatusCode.OK, shared.StatusCode);
-        Assert.Single(api.Remux.Downloaded);
-    }
-
     private static void AssertDownloadUrl(Uri url, Guid clipId, int version, string fileName)
     {
         Assert.Equal("https", url.Scheme);
@@ -176,7 +141,7 @@ public class DownloadEndpointTests
         private readonly R2Storage _storage;
 
         private DownloadApi(WebApplication app, HttpClient client, NpgsqlDataSource dataSource,
-            NpgsqlConnection connection, string schema, R2Storage storage, FakeRemux remux)
+            NpgsqlConnection connection, string schema, R2Storage storage)
         {
             _app = app;
             _client = client;
@@ -184,10 +149,7 @@ public class DownloadEndpointTests
             _connection = connection;
             _schema = schema;
             _storage = storage;
-            Remux = remux;
         }
-
-        public FakeRemux Remux { get; }
 
         public static async Task<DownloadApi> StartAsync()
         {
@@ -223,8 +185,6 @@ public class DownloadEndpointTests
             builder.Services.AddScoped<ClipsStatements>();
             builder.Services.AddScoped<ClipVideoHosts>();
             builder.Services.AddKeyedSingleton<IClipVideoDownloads>(VideoHostNames.R2, new R2Downloads(storage));
-            builder.Services.AddSingleton<FakeRemux>();
-            builder.Services.AddScoped<FFmpegService>(provider => provider.GetRequiredService<FakeRemux>().Service(provider));
 
             WebApplication app = builder.Build();
             app.UseAuthentication();
@@ -247,15 +207,14 @@ public class DownloadEndpointTests
             {
                 BaseAddress = new Uri(app.Urls.First())
             };
-            return new DownloadApi(app, client, dataSource, connection, schema, storage,
-                app.Services.GetRequiredService<FakeRemux>());
+            return new DownloadApi(app, client, dataSource, connection, schema, storage);
         }
 
         public async Task<Guid> AddClipAsync(Guid ownerId, string videoHost, string videoState, string title,
             int version = 1)
         {
             Guid clipId = Guid.NewGuid();
-            // An R2 clip's video id is its clip id; a Bunny one's is Bunny's, here the same for simplicity.
+            // An R2 clip's video id is its clip id.
             await _connection.ExecuteAsync("""
                 INSERT INTO clip (id, owner_id, video_id, game_category_id, title, video_state, video_host, video_version)
                 VALUES (@ClipId, @OwnerId, @ClipId, @GameCategoryId, @Title, @VideoState, @VideoHost, @Version)
@@ -303,33 +262,6 @@ public class DownloadEndpointTests
                 await _connection.DisposeAsync();
                 await _dataSource.DisposeAsync();
                 _storage.Dispose();
-            }
-        }
-    }
-
-    /// <summary>Stands in for the ffmpeg remux: records what it was asked for and hands back a small file.</summary>
-    public sealed class FakeRemux
-    {
-        public const string Content = "remuxed mp4";
-
-        public List<ClipVideoRef> Downloaded { get; } = [];
-
-        public FFmpegService Service(IServiceProvider provider) => new RecordingFFmpegService(this, provider);
-
-        private sealed class RecordingFFmpegService(FakeRemux remux, IServiceProvider provider) : FFmpegService(
-            NullLogger<FFmpegService>.Instance, provider.GetRequiredService<IConfiguration>(), new ClipMediaUrls(provider))
-        {
-            public override async Task<DownloadedVideo> DownloadHlsVideoAsync(ClipVideoRef video,
-                CancellationToken cancellationToken = default)
-            {
-                lock (remux.Downloaded)
-                {
-                    remux.Downloaded.Add(video);
-                }
-
-                string path = Path.GetTempFileName();
-                await File.WriteAllTextAsync(path, Content, cancellationToken);
-                return new DownloadedVideo(path, new SemaphoreSlim(0, 1));
             }
         }
     }

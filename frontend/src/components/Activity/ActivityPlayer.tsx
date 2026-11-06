@@ -29,7 +29,7 @@ export type HostControls = {
 };
 
 /**
- * Plays the room's clip from its HLS stream, through the Activity's CDN mapping, in a plain `<video>` of its own
+ * Plays the room's clip through the Activity's media mapping, in a plain `<video>` of its own
  * rather than the site's ClipVideoPlayer, since the room drives it. The host's player is the room's source of
  * truth: its own controls drive playback and each change is sent to the room. Everyone else follows the room,
  * without controls of their own.

@@ -54,7 +54,7 @@ public sealed class ExportClipRow : IClipVideoColumns
     public DateTimeOffset CreatedAt { get; set; }
     public string? GameName { get; set; }
     public long? StorageSize { get; set; }
-    public string VideoHost { get; set; } = VideoHostNames.Bunny;
+    public string VideoHost { get; set; } = VideoHostNames.R2;
     public Guid VideoId { get; set; }
     public int VideoVersion { get; set; } = 1;
     public string? VideoCodecs { get; set; }

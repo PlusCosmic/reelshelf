@@ -16,7 +16,7 @@ export type UploadStatus =
   | "duplicate"
   | "error";
 
-/** One file on its way into a book. It lives in the browser until Bunny has the whole file. */
+/** One file on its way into a book. It lives in the browser until storage has the whole file. */
 export type UploadItem = {
   id: string;
   file: File;

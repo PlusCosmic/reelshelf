@@ -42,9 +42,8 @@ public sealed class R2VideoHost(
             EncodeProgress: 0,
             StorageSize: 0,
             timeProvider.GetUtcNow(),
-            R2ObjectKeys.Thumbnail,
-            HostStatus: null);
-        return Task.FromResult(new HostedVideo(clipId, ContainerId: Guid.Empty, info));
+            R2ObjectKeys.Thumbnail);
+        return Task.FromResult(new HostedVideo(clipId, info));
     }
 
     /// <summary>
@@ -213,12 +212,8 @@ public sealed class R2VideoHost(
             clip.EncodeProgress ?? 0,
             clip.StorageSize ?? 0,
             clip.DateUploaded ?? clip.CreatedAt,
-            R2ObjectKeys.Thumbnail,
-            HostStatus: null);
+            R2ObjectKeys.Thumbnail);
     }
-
-    /// <summary>The worker's reports reach the clip row directly; there is nothing at R2 to poll.</summary>
-    public bool NeedsStatusPolling => false;
 
     /// <summary>
     /// Aborts a browser upload still open on the clip (cancel, and the abandoned-upload purge), then removes the
@@ -230,9 +225,6 @@ public sealed class R2VideoHost(
         await storage.DeleteObjectsAsync([R2ObjectKeys.Upload(videoId)]);
         await storage.DeletePrefixAsync(R2ObjectKeys.ClipPrefix(videoId));
     }
-
-    /// <summary>R2 files clips by key, not in containers, so there are none to delete.</summary>
-    public Task DeleteContainerAsync(Guid containerId) => Task.CompletedTask;
 
     /// <summary>
     /// Marks the clip uploaded and queues its transcode in one transaction, so an uploaded clip always has a

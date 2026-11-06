@@ -3,8 +3,7 @@ namespace Reelshelf.Video;
 /// <summary>
 /// What a clip's media URLs are built from: the host that holds its video and the video's id there, plus what our own
 /// pipeline records per clip (V42): the current <paramref name="VideoVersion"/> and that version's
-/// <paramref name="Codecs"/> and <paramref name="Height"/>. Bunny needs only the video id; an R2 clip's video id is
-/// its clip id.
+/// <paramref name="Codecs"/> and <paramref name="Height"/>. An R2 clip's video id is its clip id.
 /// </summary>
 /// <param name="Codecs">The MP4's RFC 6381 codecs string (e.g. <c>av01.0.08M.08,opus</c>), when known.</param>
 /// <param name="Height">The MP4's height in pixels, when known.</param>
@@ -14,8 +13,7 @@ namespace Reelshelf.Video;
 /// </param>
 /// <param name="ThumbnailsReady">
 /// True once the thumbnail and detection frames of <paramref name="VideoVersion"/> exist: the clip is ready, or our
-/// own worker reported them (<c>transcode_run.thumbnails_ready_at</c>) before encoding. Only our own pipeline reads
-/// it; Bunny makes its thumbnails itself.
+/// own worker reported them (<c>transcode_run.thumbnails_ready_at</c>) before encoding.
 /// </param>
 public sealed record ClipVideoRef(
     string VideoHost,

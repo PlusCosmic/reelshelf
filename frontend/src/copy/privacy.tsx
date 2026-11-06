@@ -7,7 +7,7 @@ import { legalOperator } from "./legal";
  */
 export const privacyCopy = {
   title: "Privacy policy",
-  updated: "4 November 2026",
+  updated: "6 November 2026",
 } as const;
 
 export function PrivacyText() {
@@ -107,10 +107,10 @@ export function PrivacyText() {
       <h2>Who else handles your data</h2>
       <ul>
         <li>
-          <strong>Cloudflare</strong> and <strong>Bunny.net</strong> store and
-          stream your clips. <strong>Google Cloud</strong> and{" "}
-          <strong>Amazon Web Services</strong> convert some of them for
-          streaming, in the EU, and keep nothing afterwards.
+          <strong>Cloudflare</strong> stores and streams your clips.{" "}
+          <strong>Google Cloud</strong> and <strong>Amazon Web Services</strong>{" "}
+          convert some of them for streaming, in the EU, and keep nothing
+          afterwards.
         </li>
         <li>
           <strong>Discord, Twitch and Google</strong> handle sign-in. Twitch
@@ -150,13 +150,12 @@ export function PrivacyText() {
       <p>
         Reelshelf is run from the UK. Our servers and database are in Germany.
         Clips in our own pipeline are stored by Cloudflare in the US (eastern
-        North America); some older clips are stored by Bunny.net in Germany.
-        Clips that Google Cloud or Amazon Web Services encode are processed in
-        the EU. Cloudflare, Discord, Twitch, Google, Amazon, Stripe, OpenAI,
-        Anthropic, OpenRouter and Resend are based in the US, so data they
-        handle leaves the UK and EU. We rely on their standard data protection
-        terms, such as standard contractual clauses or the UK–US data bridge, to
-        protect it.
+        North America). Clips that Google Cloud or Amazon Web Services encode
+        are processed in the EU. Cloudflare, Discord, Twitch, Google, Amazon,
+        Stripe, OpenAI, Anthropic, OpenRouter and Resend are based in the US, so
+        data they handle leaves the UK and EU. We rely on their standard data
+        protection terms, such as standard contractual clauses or the UK–US data
+        bridge, to protect it.
       </p>
 
       <h2>Sharing and visibility</h2>
@@ -174,23 +173,21 @@ export function PrivacyText() {
       <p>
         We keep your data while your account exists. For most clips, the file
         you upload is deleted once it's been converted for streaming, and only
-        the converted video is kept. When we move a clip from one storage
-        provider to another, the old copy is deleted within 7 days. Deleting a
-        clip moves it to your bin, where only you can see it and can put it
-        back, for 30 days, or until you empty the bin sooner. Then its video,
-        and any older copy, is removed from storage and its tags, detections and
-        transcripts are deleted. Unlinking a sign-in method deletes its stored
-        tokens. You can delete your whole account in Settings: it stops working
-        straight away, and its clips are removed from storage and the rest of
-        its data deleted shortly after, unless one of its clips has been
-        reported for child sexual abuse or terrorism and we haven't decided yet:
-        then they wait until we have. Any paid plan is cancelled first, though
-        Stripe keeps its records of past payments for as long as the law
-        requires. Collections you made go with it, including for their
-        collaborators. If your account has more clips than its plan keeps, for
-        example after a paid plan ends, the clips over the limit are deleted 14
-        days later, and a download of them is kept for 28 days after that, then
-        deleted. Downloads you ask for are kept for 28 days too. Reports of
+        the converted video is kept. Deleting a clip moves it to your bin, where
+        only you can see it and can put it back, for 30 days, or until you empty
+        the bin sooner. Then its video is removed from storage and its tags,
+        detections and transcripts are deleted. Unlinking a sign-in method
+        deletes its stored tokens. You can delete your whole account in
+        Settings: it stops working straight away, and its clips are removed from
+        storage and the rest of its data deleted shortly after, unless one of
+        its clips has been reported for child sexual abuse or terrorism and we
+        haven't decided yet: then they wait until we have. Any paid plan is
+        cancelled first, though Stripe keeps its records of past payments for as
+        long as the law requires. Collections you made go with it, including for
+        their collaborators. If your account has more clips than its plan keeps,
+        for example after a paid plan ends, the clips over the limit are deleted
+        14 days later, and a download of them is kept for 28 days after that,
+        then deleted. Downloads you ask for are kept for 28 days too. Reports of
         shared clips, and what we decided, are kept as a record of how we dealt
         with them, even after the clip is deleted; deleting your account removes
         your name from reports about your clips. If we remove a clip for child

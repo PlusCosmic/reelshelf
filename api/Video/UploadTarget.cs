@@ -5,7 +5,7 @@ namespace Reelshelf.Video;
 /// without naming the host: the client sends the file to <paramref name="Endpoint"/> with these headers and metadata
 /// and adds only what describes the file itself (<c>filename</c>, <c>filetype</c>).
 /// </summary>
-/// <param name="Protocol">The upload protocol: <see cref="Tus"/> (Bunny) or <see cref="S3Multipart"/> (R2).</param>
+/// <param name="Protocol">The upload protocol: <see cref="S3Multipart"/> (R2).</param>
 /// <param name="Endpoint">
 /// The URL uploads are created at. For <see cref="S3Multipart"/>, the API path of the clip's upload, under which the
 /// browser asks for part URLs, lists its parts and completes it (<see cref="MultipartUploadEndpoints"/>).
@@ -22,9 +22,6 @@ public sealed record UploadTarget(
     DateTimeOffset ExpiresAt,
     MultipartUploadInfo? Multipart = null)
 {
-    /// <summary>A resumable upload (<see href="https://tus.io/protocols/resumable-upload"/>).</summary>
-    public const string Tus = "tus";
-
     /// <summary>
     /// A presigned S3 multipart upload (R2): the API has started the upload (<see cref="Multipart"/>), the browser
     /// PUTs <see cref="MultipartUploadInfo.PartSize"/> slices of the file to part URLs the API presigns in batches,

@@ -127,7 +127,7 @@ public class R2MultipartUploadTests
         Guid clipId = Guid.NewGuid();
 
         UploadTarget target = await test.Host.CreateUploadTargetAsync(
-            new HostedVideo(clipId, Guid.Empty, null!), "Clip", FileSize);
+            new HostedVideo(clipId, null!), "Clip", FileSize);
 
         Assert.Equal(UploadTarget.S3Multipart, target.Protocol);
         Assert.Equal($"/api/clips/videos/{clipId}/upload", target.Endpoint);
@@ -321,7 +321,6 @@ public class R2MultipartUploadTests
     {
         await using TestUploads test = await TestUploads.CreateAsync();
         ClipsStatements.ClipRow clip = await test.AddClipAsync();
-        ClipsStatements.ClipRow bunnyClip = await test.AddClipAsync(videoHost: VideoHostNames.Bunny);
         ClipsStatements clips = new(test.DataSource.CreateConnection());
         ClipVideoHosts hosts = test.Hosts();
 
@@ -332,8 +331,6 @@ public class R2MultipartUploadTests
         Assert.IsType<R2VideoHost>(host);
         await Assert.ThrowsAsync<NotFoundException>(() =>
             MultipartUploadEndpoints.FindAsync(clips, hosts, clip.Id, Guid.NewGuid()));
-        await Assert.ThrowsAsync<NotFoundException>(() =>
-            MultipartUploadEndpoints.FindAsync(clips, hosts, bunnyClip.Id, bunnyClip.OwnerId));
         await Assert.ThrowsAsync<NotFoundException>(() =>
             MultipartUploadEndpoints.FindAsync(clips, hosts, Guid.NewGuid(), clip.OwnerId));
     }
@@ -395,7 +392,7 @@ public class R2MultipartUploadTests
             NpgsqlConnection scoped = dataSource.CreateConnection();
             TranscodeStatements transcodeStatements = new(scoped);
             // Enqueueing touches only the statements.
-            TranscodeQueue queue = new(transcodeStatements, null!, null!, null!,
+            TranscodeQueue queue = new(transcodeStatements, null!, null!,
                 new FixedOptions<TranscodingOptions>(new TranscodingOptions()), NullLogger<TranscodeQueue>.Instance);
             Host = new R2VideoHost(_storage, new ClipsStatements(scoped), transcodeStatements, queue, Probe,
                 TimeProvider.System, NullLogger<R2VideoHost>.Instance);
@@ -423,12 +420,11 @@ public class R2MultipartUploadTests
             return new TestUploads(dataSource, connection, schema);
         }
 
-        /// <summary>The routing the endpoints use, with this R2 host and a Bunny that takes no multipart uploads.</summary>
+        /// <summary>The routing the endpoints use, with this R2 host.</summary>
         public ClipVideoHosts Hosts()
         {
             ServiceCollection services = new();
             services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.R2, Host);
-            services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.Bunny, new NoUploadsHost());
             return new ClipVideoHosts(services.BuildServiceProvider());
         }
 
@@ -481,24 +477,6 @@ public class R2MultipartUploadTests
                 await DataSource.DisposeAsync();
             }
         }
-    }
-
-    private sealed class NoUploadsHost : IClipVideoHost
-    {
-        public Task<HostedVideo> CreateVideoAsync(Guid clipId, Guid ownerId, GameCategory gameCategory, string title) =>
-            throw new NotSupportedException();
-
-        public Task<UploadTarget> CreateUploadTargetAsync(HostedVideo video, string title, long fileSize) =>
-            throw new NotSupportedException();
-
-        public Task UploadAsync(Guid videoId, Stream content, long? contentLength, CancellationToken cancellationToken) =>
-            throw new NotSupportedException();
-
-        public Task<HostedVideoInfo?> GetVideoAsync(Guid videoId) => throw new NotSupportedException();
-
-        public Task DeleteVideoAsync(Guid videoId) => throw new NotSupportedException();
-
-        public Task DeleteContainerAsync(Guid containerId) => throw new NotSupportedException();
     }
 
     private sealed class FixedOptions<T>(T value) : IOptionsMonitor<T>

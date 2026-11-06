@@ -724,26 +724,6 @@
         }
       }
     },
-    "/api/clips/backfill-metadata": {
-      "post": {
-        "tags": [
-          "ClipsEndpoints"
-        ],
-        "operationId": "BackfillClipMetadata",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BackfillResult"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/clips/bin": {
       "get": {
         "tags": [
@@ -1932,29 +1912,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/webhooks/bunny/video-progress": {
-      "post": {
-        "tags": [
-          "BunnyWebhookEndpoints"
-        ],
-        "operationId": "ReceiveVideoProgress",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VideoProgressUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
           }
         }
       }
@@ -4798,28 +4755,6 @@
               "null",
               "string"
             ]
-          }
-        }
-      },
-      "BackfillResult": {
-        "required": [
-          "total_processed",
-          "success_count",
-          "failure_count"
-        ],
-        "type": "object",
-        "properties": {
-          "total_processed": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "success_count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "failure_count": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },
@@ -8761,28 +8696,6 @@
             ]
           }
         }
-      },
-      "VideoProgressUpdate": {
-        "required": [
-          "VideoLibraryId",
-          "VideoGuid",
-          "Status"
-        ],
-        "type": "object",
-        "properties": {
-          "VideoLibraryId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "VideoGuid": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "Status": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
       }
     }
   },
@@ -8822,9 +8735,6 @@
     },
     {
       "name": "FFmpegEndpoints"
-    },
-    {
-      "name": "BunnyWebhookEndpoints"
     },
     {
       "name": "GameCategoryEndpoints"

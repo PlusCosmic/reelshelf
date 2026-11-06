@@ -449,7 +449,7 @@ public class WatchRoomTests
         room.Snapshot().Queue.Single(item => item.Title == title).ItemId;
 
     private static NowPlaying NewClip(string title) => new(Guid.NewGuid(), Guid.NewGuid(), title, "Apex Legends", "Alice", 30,
-        new ActivityMedia("bunny", "video", "application/vnd.apple.mpegurl", HasThumbnail: true));
+        new ActivityMedia("r2", "clips/video/v1", "video/mp4", HasThumbnail: true));
 
     private RoomConnection Member(string connectionId, string discordUserId)
     {

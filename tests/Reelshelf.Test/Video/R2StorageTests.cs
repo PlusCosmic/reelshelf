@@ -42,7 +42,6 @@ public class R2StorageTests
         Assert.Equal(["av1.mp4", .. Thumbnails, "preview.mp4"], R2ObjectKeys.OutputsFor(TranscodeRunTypes.Transcode));
         Assert.Equal(Thumbnails, R2ObjectKeys.OutputsFor(TranscodeRunTypes.Thumbnails));
         Assert.Equal(["av1.mp4", .. Thumbnails], R2ObjectKeys.OutputsFor(TranscodeRunTypes.Trim));
-        Assert.Equal(["av1.mp4", .. Thumbnails, "preview.mp4"], R2ObjectKeys.OutputsFor(TranscodeRunTypes.Migrate));
         Assert.Empty(R2ObjectKeys.OutputsFor(TranscodeRunTypes.Fallback));
         Assert.Equal("video/mp4", R2ObjectKeys.ContentType("preview.mp4"));
         Assert.Equal("image/jpeg", R2ObjectKeys.ContentType("thumbnail_3.jpg"));
@@ -118,23 +117,6 @@ public class R2StorageTests
     }
 
     [Fact]
-    public void AMigrateJob_WritesEveryOutputOfVersionOne_AndReadsNothingFromTheBucket()
-    {
-        using R2Storage storage = new(Options, NullLogger<R2Storage>.Instance);
-
-        TranscodeJobUrls urls = storage.UrlsFor(ClipId, TranscodeRunTypes.Migrate, 1, 1, TimeSpan.FromHours(2));
-
-        // Its source is the clip's Bunny playlist, which the queue adds.
-        Assert.Null(urls.SourceUrl);
-        Assert.Equal(Sorted(["av1.mp4", .. Thumbnails, "preview.mp4"]), Sorted(urls.UploadUrls!.Keys));
-        foreach ((string fileName, string url) in urls.UploadUrls)
-        {
-            Assert.Equal($"/reelshelf-dev/clips/{ClipId}/v1/{fileName}", new Uri(url).AbsolutePath);
-            Assert.Contains("cache-control", HttpUtility.ParseQueryString(new Uri(url).Query)["X-Amz-SignedHeaders"]);
-        }
-    }
-
-    [Fact]
     public void Options_AreOffWhenNothingIsSet()
     {
         Assert.Null(R2Options.FromConfiguration(Configuration()));
@@ -195,22 +177,17 @@ public class R2StorageTests
     }
 
     [Fact]
-    public async Task DeleteOtherVersions_KeepsTheVersion_TheUploadAndOtherClips()
+    public async Task DeleteAllVersions_KeepsTheUploadAndOtherClips()
     {
         FakeR2Client r2 = new();
         Guid other = Guid.NewGuid();
-        string[] older = [$"clips/{ClipId}/v1/av1.mp4", $"clips/{ClipId}/v1/preview.mp4", $"clips/{ClipId}/v20/av1.mp4"];
-        string[] kept = [$"clips/{ClipId}/v2/av1.mp4", $"clips/{ClipId}/v2/thumbnail_5.jpg", $"uploads/{ClipId}", $"clips/{other}/v1/av1.mp4"];
-        foreach (string key in older.Concat(kept))
+        string[] keys = [$"clips/{ClipId}/v1/av1.mp4", $"clips/{ClipId}/v2/thumbnail_5.jpg", $"uploads/{ClipId}", $"clips/{other}/v1/av1.mp4"];
+        foreach (string key in keys)
         {
             r2.Objects[key] = 1;
         }
 
         using R2Storage storage = r2.Storage();
-        await storage.DeleteOtherVersionsAsync(ClipId, 2);
-
-        Assert.Equal(Sorted(kept), Sorted(r2.Objects.Keys));
-
         await storage.DeleteAllVersionsAsync(ClipId);
         Assert.Equal(Sorted([$"uploads/{ClipId}", $"clips/{other}/v1/av1.mp4"]), Sorted(r2.Objects.Keys));
     }

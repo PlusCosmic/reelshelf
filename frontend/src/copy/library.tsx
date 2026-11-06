@@ -178,7 +178,6 @@ export const libraryCopy = {
   actions: {
     share: "Share",
     addToCollection: "Add to collection",
-    preparingDownload: "Preparing download…",
     download: "Download",
     moveToBin: "Move to bin",
     moveToBinKey: "X",

@@ -3,7 +3,7 @@ namespace Reelshelf.Video;
 /// <summary>
 /// A host whose video is a file the browser can fetch straight from storage, so a download is a redirect rather than
 /// work on the API server. Registered as a keyed service under the host's name, beside its <see cref="IClipVideoHost"/>;
-/// a host without one (Bunny) is downloaded by remuxing its stream (<c>api/FFmpeg/</c>).
+/// a host without one has no downloads.
 /// </summary>
 public interface IClipVideoDownloads
 {

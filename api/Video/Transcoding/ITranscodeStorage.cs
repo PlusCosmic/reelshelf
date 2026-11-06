@@ -8,15 +8,14 @@ namespace Reelshelf.Video.Transcoding;
 public interface ITranscodeStorage
 {
     /// <summary>
-    /// Whether this is real storage. Without it the claim hands out no <c>migrate</c> job, since its worker would
-    /// encode a Bunny clip with nowhere to put the result, and the migration backfill queues none.
+    /// Whether this is real storage. Without it the overflow pool starts no workers, since they would have nowhere
+    /// to put their results.
     /// </summary>
     bool IsConfigured => true;
 
     /// <summary>
     /// The presigned URLs a worker needs for a job, valid for <paramref name="lifetime"/>: a GET for its input and a
-    /// PUT for each file it writes under <c>clips/{clipId}/v{videoVersion}/</c>. A <c>migrate</c> job reads from Bunny,
-    /// so it gets no GET here.
+    /// PUT for each file it writes under <c>clips/{clipId}/v{videoVersion}/</c>.
     /// </summary>
     /// <param name="videoVersion">The version the job writes (or, for a thumbnails job, reads and rewrites).</param>
     /// <param name="currentVersion">The clip's current version, which a trim reads from.</param>
@@ -27,12 +26,6 @@ public interface ITranscodeStorage
 
     /// <summary>Deletes one version's outputs. Idempotent.</summary>
     Task DeleteVersionAsync(Guid clipId, int videoVersion);
-
-    /// <summary>
-    /// Deletes every version's outputs under <c>clips/{clipId}/</c> except <paramref name="keepVersion"/>'s, as a
-    /// finished <c>migrate</c> leaves the versions of an earlier move. Never touches the uploaded source. Idempotent.
-    /// </summary>
-    Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion);
 
     /// <summary>Deletes every version's outputs under <c>clips/{clipId}/</c>, but not the uploaded source. Idempotent.</summary>
     Task DeleteAllVersionsAsync(Guid clipId);
@@ -46,8 +39,7 @@ public sealed record TranscodeJobUrls(string? SourceUrl, IReadOnlyDictionary<str
 
 /// <summary>
 /// Stands in while R2 is not configured: nothing can be uploaded to R2 then, so no job should exist, and any that
-/// does is handed out without URLs (the worker fails it) and leaves nothing to clean up. A <c>migrate</c> job is never
-/// handed out at all (<see cref="IsConfigured"/>): it would otherwise fail and be left for a person to look at.
+/// does is handed out without URLs (the worker fails it) and leaves nothing to clean up.
 /// </summary>
 public sealed class UnconfiguredTranscodeStorage(ILogger<UnconfiguredTranscodeStorage> logger) : ITranscodeStorage
 {
@@ -62,8 +54,6 @@ public sealed class UnconfiguredTranscodeStorage(ILogger<UnconfiguredTranscodeSt
     public Task DeleteSourceAsync(Guid clipId) => Task.CompletedTask;
 
     public Task DeleteVersionAsync(Guid clipId, int videoVersion) => Task.CompletedTask;
-
-    public Task DeleteOtherVersionsAsync(Guid clipId, int keepVersion) => Task.CompletedTask;
 
     public Task DeleteAllVersionsAsync(Guid clipId) => Task.CompletedTask;
 }

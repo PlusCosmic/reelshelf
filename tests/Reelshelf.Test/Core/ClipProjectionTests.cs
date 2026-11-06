@@ -20,14 +20,14 @@ public class ClipProjectionTests
 
     private static ClipProjection Create()
     {
-        return new ClipProjection(ClipMediaUrlsTests.Create("https://cdn.example/"));
+        return new ClipProjection(ClipMediaUrlsTests.Create());
     }
 
     private static ClipsStatements.ClipWithTagsRow Row() => new()
     {
         Id = Guid.NewGuid(),
         OwnerId = Guid.NewGuid(),
-        VideoHost = VideoHostNames.Bunny,
+        VideoHost = VideoHostNames.R2,
         VideoId = VideoId,
         GameCategoryId = Category.Id,
         CreatedAt = CreatedAt,
@@ -55,7 +55,7 @@ public class ClipProjectionTests
         Assert.True(clip.IsViewed);
         Assert.False(clip.Share.Shared);
         Assert.Equal(
-            [new PlaybackSource($"https://cdn.example/{VideoId}/playlist.m3u8", "application/vnd.apple.mpegurl")],
+            [new PlaybackSource($"https://media.example/clips/{VideoId}/v1/av1.mp4", "video/mp4")],
             clip.Video.Sources);
         // Records compare lists by reference, so the sources are checked above and shared here.
         List<PlaybackSource> sources = clip.Video.Sources;
@@ -68,7 +68,7 @@ public class ClipProjectionTests
                 35,
                 1_234_567,
                 CreatedAt.AddMinutes(1),
-                $"https://cdn.example/{VideoId}/thumbnail.jpg",
+                $"https://media.example/clips/{VideoId}/v1/thumbnail.jpg",
                 sources),
             clip.Video);
     }
@@ -81,27 +81,20 @@ public class ClipProjectionTests
     [InlineData(ClipVideoStatus.UploadFailed)]
     public void ProjectClip_HandsOutNoSourcesUntilTheVideoIsReady(ClipVideoStatus status)
     {
-        ClipsStatements.ClipWithTagsRow bunny = Row();
-        bunny.VideoState = status.ToDatabase();
-        ClipsStatements.ClipWithTagsRow r2 = Row();
-        r2.VideoHost = VideoHostNames.R2;
-        r2.VideoState = status.ToDatabase();
+        ClipsStatements.ClipWithTagsRow row = Row();
+        row.VideoState = status.ToDatabase();
 
-        ClipVideo bunnyVideo = Create().ProjectClip(bunny, Category, isViewed: false, isShared: false).Video;
-        ClipVideo r2Video = Create().ProjectClip(r2, Category, isViewed: false, isShared: false).Video;
+        ClipVideo video = Create().ProjectClip(row, Category, isViewed: false, isShared: false).Video;
 
-        Assert.Empty(bunnyVideo.Sources);
-        Assert.Empty(r2Video.Sources);
-        // Bunny's thumbnail is handed out as before; an R2 clip's waits for its worker.
-        Assert.Equal($"https://cdn.example/{VideoId}/thumbnail.jpg", bunnyVideo.ThumbnailUrl);
-        Assert.Null(r2Video.ThumbnailUrl);
+        Assert.Empty(video.Sources);
+        // The thumbnail waits for the worker too.
+        Assert.Null(video.ThumbnailUrl);
     }
 
     [Fact]
     public void ProjectClip_HandsOutAnR2ThumbnailOnceTheWorkerReportsIt()
     {
         ClipsStatements.ClipWithTagsRow row = Row();
-        row.VideoHost = VideoHostNames.R2;
         row.ThumbnailsReady = true;
 
         ClipVideo video = Create().ProjectClip(row, Category, isViewed: false, isShared: false).Video;

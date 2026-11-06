@@ -28,7 +28,7 @@ internal static class TestClipSchema
                 storage_size bigint,
                 video_status integer,
                 video_state text NOT NULL DEFAULT 'awaiting_upload',
-                video_host text NOT NULL DEFAULT 'bunny',
+                video_host text NOT NULL DEFAULT 'r2',
                 encode_progress integer,
                 file_size bigint,
                 kept_at timestamptz
@@ -39,6 +39,7 @@ internal static class TestClipSchema
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V44__bunny_migration.sql")));
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V55__clip_bin.sql")));
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V60__clip_filed_category.sql")));
+        await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V62__bunny_removed.sql")));
     }
 
     public static string MigrationPath(string fileName)

@@ -92,11 +92,11 @@ function clip(clipId: string, isViewed = false): Clip {
       encodeProgress: 100,
       durationSeconds: 30,
       storageBytes: 1_000,
-      thumbnailUrl: `https://cdn.example/${clipId}/thumbnail.jpg`,
+      thumbnailUrl: `https://media.example/clips/${clipId}/v1/thumbnail.jpg`,
       sources: [
         {
-          url: `https://cdn.example/${clipId}/playlist.m3u8`,
-          type: "application/vnd.apple.mpegurl",
+          url: `https://media.example/clips/${clipId}/v1/av1.mp4`,
+          type: "video/mp4",
         },
       ],
     },
@@ -166,10 +166,10 @@ afterEach(() => {
 });
 
 describe("ClipPlayerPage", () => {
-  it("plays the clip's HLS stream over its thumbnail, as soon as it loads", () => {
+  it("plays the clip's video over its thumbnail, as soon as it loads", () => {
     const { video } = renderPage("a");
     expect(video.getAttribute("poster")).toBe(
-      "https://cdn.example/a/thumbnail.jpg",
+      "https://media.example/clips/a/v1/thumbnail.jpg",
     );
     expect(video.controls).toBe(true);
     expect(video.autoplay).toBe(true);
@@ -276,7 +276,7 @@ describe("ClipPlayerPage", () => {
       view.container
         .querySelector(".rs-video-processing-thumb")
         ?.getAttribute("src"),
-    ).toBe("https://cdn.example/p/thumbnail.jpg");
+    ).toBe("https://media.example/clips/p/v1/thumbnail.jpg");
 
     mocks.clips.set("p", clip("p"));
     view.rerender(page());

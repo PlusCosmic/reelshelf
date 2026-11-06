@@ -1,5 +1,4 @@
 using Dapper;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Reelshelf.Core;
@@ -15,14 +14,11 @@ public class ClipVideoHostsTests
     [Fact]
     public void For_RoutesByTheClipsVideoHost()
     {
-        FakeHost bunny = new();
         FakeHost r2 = new();
         ServiceCollection services = new();
-        services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.Bunny, bunny);
         services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.R2, r2);
         ClipVideoHosts hosts = new(services.BuildServiceProvider());
 
-        Assert.Same(bunny, hosts.For(VideoHostNames.Bunny));
         Assert.Same(r2, hosts.For(VideoHostNames.R2));
     }
 
@@ -30,11 +26,11 @@ public class ClipVideoHostsTests
     public void For_AnUnregisteredHost_Throws()
     {
         ServiceCollection services = new();
-        services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.Bunny, new FakeHost());
+        services.AddKeyedSingleton<IClipVideoHost>(VideoHostNames.R2, new FakeHost());
         ClipVideoHosts hosts = new(services.BuildServiceProvider());
 
-        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => hosts.For(VideoHostNames.R2));
-        Assert.Contains("'r2'", error.Message);
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => hosts.For("bunny"));
+        Assert.Contains("'bunny'", error.Message);
     }
 
     [Fact]
@@ -43,7 +39,7 @@ public class ClipVideoHostsTests
         ServiceCollection services = new();
         services.AddClipVideoHost<FakeHost, FakeMediaUrls>(VideoHostNames.R2);
         services.AddSingleton<ClipMediaUrls>();
-        services.AddClipVideoHostRouting(Configuration(("VideoHost:NewUploads", "r2")));
+        services.AddClipVideoHostRouting(requireR2: true);
         using ServiceProvider provider = services.BuildServiceProvider();
         using IServiceScope scope = provider.CreateScope();
 
@@ -57,84 +53,67 @@ public class ClipVideoHostsTests
         ServiceCollection services = new();
 
         Assert.Throws<ArgumentException>(() => services.AddClipVideoHost<FakeHost, FakeMediaUrls>("s3"));
+        Assert.Throws<ArgumentException>(() => services.AddClipVideoHost<FakeHost, FakeMediaUrls>("bunny"));
     }
 
     [Fact]
-    public void Policy_ByDefault_SendsNewUploadsToBunny()
-    {
-        NewUploadVideoHostPolicy policy = NewUploadVideoHostPolicy.FromConfiguration(Configuration());
-
-        Assert.Equal(VideoHostNames.Bunny, policy.NewUploads);
-    }
-
-    [Fact]
-    public void Policy_SendsEveryNewUploadToTheConfiguredHost()
-    {
-        NewUploadVideoHostPolicy policy = NewUploadVideoHostPolicy.FromConfiguration(Configuration(
-            ("VideoHost:NewUploads", " R2 ")));
-
-        Assert.Equal(VideoHostNames.R2, policy.NewUploads);
-    }
-
-    [Fact]
-    public void Policy_RefusesAnUnknownHost()
-    {
-        Assert.Throws<InvalidOperationException>(() =>
-            NewUploadVideoHostPolicy.FromConfiguration(Configuration(("VideoHost:NewUploads", "s3"))));
-    }
-
-    [Fact]
-    public void Routing_FailsAtStartupWhenNewUploadsNamesAnUnregisteredHost()
+    public void Routing_FailsAtStartupWithoutR2()
     {
         ServiceCollection services = new();
-        services.AddClipVideoHost<FakeHost, FakeMediaUrls>(VideoHostNames.Bunny);
 
         InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
-            services.AddClipVideoHostRouting(Configuration(("VideoHost:NewUploads", "r2"))));
-        Assert.Contains("'r2'", error.Message);
+            services.AddClipVideoHostRouting(requireR2: true));
+        Assert.Contains("R2:", error.Message);
     }
 
     [Fact]
-    public void Routing_WithTheDefaultConfiguration_NeedsOnlyBunny()
+    public void Routing_WithoutR2_IsAllowedWhenNotRequired()
     {
         ServiceCollection services = new();
-        services.AddClipVideoHost<FakeHost, FakeMediaUrls>(VideoHostNames.Bunny);
 
-        services.AddClipVideoHostRouting(Configuration());
+        services.AddClipVideoHostRouting(requireR2: false);
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        Assert.Equal(VideoHostNames.Bunny, provider.GetRequiredService<NewUploadVideoHostPolicy>().NewUploads);
+        using IServiceScope scope = provider.CreateScope();
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ClipVideoHosts>());
     }
 
     /// <summary>
-    /// Runs V39 against a temporary <c>clip</c> table: existing rows become Bunny clips, and the check constraint
-    /// takes exactly the host names the API knows.
+    /// Runs V39 and then V62 against temporary <c>clip</c> and <c>transcode_run</c> tables: V62 refuses while a clip is
+    /// still on Bunny, and afterwards the check constraint takes exactly the host names the API knows and the
+    /// <c>migrate</c> jobs are gone.
     /// </summary>
     [PostgresFact]
-    public async Task Migration_PutsExistingClipsOnBunny_AndAllowsOnlyKnownHosts()
+    public async Task Migration_RefusesWhileAClipIsOnBunny_ThenAllowsOnlyKnownHosts()
     {
         await using NpgsqlDataSource dataSource = ReelshelfDataSource.Create(PostgresFactAttribute.ConnectionString!);
         await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync();
-        await connection.ExecuteAsync("CREATE TEMP TABLE clip (id serial PRIMARY KEY)");
-        await connection.ExecuteAsync("INSERT INTO clip DEFAULT VALUES");
-
+        await connection.ExecuteAsync("""
+            CREATE TEMP TABLE clip (id serial PRIMARY KEY);
+            CREATE TEMP TABLE transcode_run (id serial PRIMARY KEY, type text NOT NULL);
+            INSERT INTO clip DEFAULT VALUES;
+            INSERT INTO transcode_run (type) VALUES ('transcode'), ('migrate');
+            """);
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V39__clip_video_host.sql")));
+        string removeBunny = await File.ReadAllTextAsync(MigrationPath("V62__bunny_removed.sql"));
 
-        Assert.Equal(["bunny"], await connection.QueryAsync<string>("SELECT video_host FROM clip"));
+        PostgresException refused = await Assert.ThrowsAsync<PostgresException>(() => connection.ExecuteAsync(removeBunny));
+        Assert.Contains("still on Bunny", refused.MessageText);
+
+        await connection.ExecuteAsync("DELETE FROM clip");
+        await connection.ExecuteAsync(removeBunny);
+
+        Assert.Equal(["transcode"], await connection.QueryAsync<string>("SELECT type FROM transcode_run"));
         foreach (string host in VideoHostNames.All)
         {
             await connection.ExecuteAsync("INSERT INTO clip (video_host) VALUES (@host)", new { host });
         }
 
+        Assert.Equal("r2", await connection.QuerySingleAsync<string>("INSERT INTO clip DEFAULT VALUES RETURNING video_host"));
         await Assert.ThrowsAsync<PostgresException>(() =>
-            connection.ExecuteAsync("INSERT INTO clip (video_host) VALUES ('s3')"));
-    }
-
-    private static IConfiguration Configuration(params (string Key, string Value)[] values)
-    {
-        return new ConfigurationBuilder()
-            .AddInMemoryCollection(values.Select(value => new KeyValuePair<string, string?>(value.Key, value.Value)))
-            .Build();
+            connection.ExecuteAsync("INSERT INTO clip (video_host) VALUES ('bunny')"));
+        await Assert.ThrowsAsync<PostgresException>(() =>
+            connection.ExecuteAsync("INSERT INTO transcode_run (type) VALUES ('migrate')"));
     }
 
     private static string MigrationPath(string fileName)
@@ -176,7 +155,5 @@ public class ClipVideoHostsTests
         public Task<HostedVideoInfo?> GetVideoAsync(Guid videoId) => throw new NotSupportedException();
 
         public Task DeleteVideoAsync(Guid videoId) => throw new NotSupportedException();
-
-        public Task DeleteContainerAsync(Guid containerId) => Task.CompletedTask;
     }
 }

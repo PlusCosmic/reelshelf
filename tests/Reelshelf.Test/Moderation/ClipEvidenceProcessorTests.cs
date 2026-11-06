@@ -79,28 +79,6 @@ public class ClipEvidenceProcessorTests
     }
 
     [Fact]
-    public async Task ABunnyClip_IsRetriedWithoutLimit_AndStaysAtBunnyUntilPreserved()
-    {
-        Harness harness = new(maxAttempts: 1) { FailBunnyReads = 3 };
-        ClipEvidence record = harness.Store.Add(Record(host: "bunny"));
-
-        for (int attempt = 1; attempt <= 3; attempt++)
-        {
-            await harness.Processor.ProcessNextAsync(CancellationToken.None);
-        }
-
-        Assert.Equal(ClipEvidenceStatuses.Failed, record.Status);
-        Assert.Equal("Bunny is down", record.LastError);
-        Assert.DoesNotContain(harness.Log, line => line.StartsWith("delete", StringComparison.Ordinal));
-
-        await harness.Processor.ProcessNextAsync(CancellationToken.None);
-
-        Assert.Equal(ClipEvidenceStatuses.Preserved, record.Status);
-        Assert.Equal("bunny video", harness.Uploaded[$"{record.Id}/video.mp4"]);
-        Assert.Equal([$"delete {ClipId} bunny", $"delete quarantine {record.Id}"], harness.Log[^2..]);
-    }
-
-    [Fact]
     public async Task AnR2ClipThatNeverFinishedEncoding_KeepsItsUploadedSource()
     {
         Harness harness = new();
@@ -220,11 +198,11 @@ public class ClipEvidenceProcessorTests
     };
 
     private sealed class Harness
-        : IEvidenceStorage, IEvidenceQuarantine, IExportVideoSource, IEvidenceMediaDeleter, ICdnPurger
+        : IEvidenceStorage, IEvidenceQuarantine, IEvidenceMediaDeleter, ICdnPurger
     {
         public Harness(int maxAttempts = 5)
         {
-            Processor = new ClipEvidenceProcessor(Store, this, this, this, this, this,
+            Processor = new ClipEvidenceProcessor(Store, this, this, this, this,
                 new StaticOptions(new ModerationOptions { EvidenceMaxAttempts = maxAttempts }),
                 NullLogger<ClipEvidenceProcessor>.Instance);
         }
@@ -235,7 +213,6 @@ public class ClipEvidenceProcessorTests
         public Dictionary<string, string> Uploaded { get; } = [];
         public bool HasVideo { get; init; } = true;
         public int FailUploads { get; set; }
-        public int FailBunnyReads { get; set; }
         public Action? OnDelete { get; set; }
         public string PurgeResult { get; init; } = CdnPurgeResults.Purged;
 
@@ -279,18 +256,6 @@ public class ClipEvidenceProcessorTests
         {
             Log.Add($"delete quarantine {evidenceId}");
             return Task.CompletedTask;
-        }
-
-        public Task<ExportVideo?> OpenAsync(ExportClipRow clip, CancellationToken cancellationToken)
-        {
-            if (FailBunnyReads-- > 0)
-            {
-                throw new HttpRequestException("Bunny is down");
-            }
-
-            return Task.FromResult(HasVideo
-                ? new ExportVideo(new MemoryStream(Encoding.UTF8.GetBytes("bunny video")))
-                : null);
         }
 
         public Task DeleteAsync(EvidenceClip clip)

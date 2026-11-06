@@ -12,9 +12,9 @@ const playback = (overrides: Partial<RoomPlayback> = {}): RoomPlayback => ({
     ownerName: "Alice",
     durationSeconds: 30,
     media: {
-      host: "bunny",
-      path: "v",
-      type: "application/vnd.apple.mpegurl",
+      host: "r2",
+      path: "clips/c/v1",
+      type: "video/mp4",
       hasThumbnail: true,
     },
   },
