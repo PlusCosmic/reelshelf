@@ -62,6 +62,16 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # Tests marked [RedisFact] (the watch rooms' store) run against this.
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -95,6 +105,7 @@ jobs:
       - name: Test
         env:
           REELSHELF_TEST_DATABASE: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
+          REELSHELF_TEST_REDIS: localhost:6379
         run: dotnet test Reelshelf.sln --no-build --configuration Release --disable-build-servers --logger "trx;LogFileName=results.trx"
 
       - name: Upload test results

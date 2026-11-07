@@ -74,8 +74,8 @@ export const reactionEmoji = ["😂", "🔥", "😮", "👏", "💀", "❤️"] 
 export const watchRoomHubPath = "/api/activity/hub";
 
 /**
- * A hub connection that keeps retrying: a deploy restarts the API and drops every room, and the room
- * should come back by itself rather than after four attempts.
+ * A hub connection that keeps retrying: a deploy closes every connection, and the Activity should
+ * rejoin its room (kept in Redis for a short grace) by itself rather than give up after four attempts.
  */
 export function createWatchRoomConnection(
   getToken: () => string,

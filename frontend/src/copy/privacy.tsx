@@ -170,11 +170,13 @@ export function PrivacyText() {
       <p>
         Your clips are visible only to you, to collaborators you add, to anyone
         with a share link to the clip or a shared collection, and to the people
-        in a Discord watch room when you play a clip there. Watch rooms aren't
-        saved; they end when everyone leaves. Treat clips as unlisted rather
-        than private: anyone given the address of a clip's video can watch it. A
-        share link keeps working until you delete the clip (it stops while the
-        clip is in your bin), or until we take the clip down after a report.
+        in a Discord watch room when you play a clip there. A watch room is kept
+        only while someone is in it, and for 30 seconds after the last person
+        leaves so a dropped connection can rejoin; then it's deleted. Treat
+        clips as unlisted rather than private: anyone given the address of a
+        clip's video can watch it. A share link keeps working until you delete
+        the clip (it stops while the clip is in your bin), or until we take the
+        clip down after a report.
       </p>
 
       <h2>How long we keep it</h2>

@@ -195,14 +195,24 @@ internal static class ReelshelfApiConfiguration
         });
     }
 
+    /// <summary>
+    /// Redis, from <c>RedisConnectionString</c> (StackExchange.Redis's format, <c>localhost:6379</c> when unset).
+    /// It never refuses to start without Redis: the multiplexer keeps trying to connect in the background.
+    /// </summary>
+    internal static ConfigurationOptions RedisOptions(IConfiguration configuration)
+    {
+        string connectionString = configuration.GetConnectionString("RedisConnectionString")
+                                  ?? configuration["RedisConnectionString"]
+                                  ?? "localhost:6379";
+        ConfigurationOptions options = ConfigurationOptions.Parse(connectionString);
+        options.AbortOnConnectFail = false;
+        return options;
+    }
+
     private static void AddPersistence(this WebApplicationBuilder builder)
     {
         string? connectionString = builder.Configuration.GetConnectionString("DatabaseConnectionString")
                                    ?? builder.Configuration["DatabaseConnectionString"];
-
-        string? redisConnectionString = builder.Configuration.GetConnectionString("RedisConnectionString")
-                                        ?? builder.Configuration["RedisConnectionString"]
-                                        ?? "localhost:6379";
 
         NpgsqlDataSource dataSource = ReelshelfDataSource.Create(connectionString ??
             "Host=localhost;Database=reelshelf_db;Username=reelshelf_user;Password=dummy");
@@ -211,7 +221,7 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddScoped(_ => dataSource.CreateConnection());
 
         builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-            ConnectionMultiplexer.Connect($"{redisConnectionString},abortConnect=false"));
+            ConnectionMultiplexer.Connect(RedisOptions(builder.Configuration)));
 
         IHealthChecksBuilder healthChecksBuilder = builder.Services.AddHealthChecks();
 

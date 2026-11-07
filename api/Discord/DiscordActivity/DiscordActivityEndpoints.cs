@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.SignalR;
 using Reelshelf.Core;
+using StackExchange.Redis;
 
 namespace Reelshelf.Discord.DiscordActivity;
 
@@ -183,13 +185,25 @@ public static class DiscordActivitySetup
         builder.Services.AddSingleton<RoomTokens>();
         builder.Services.AddScoped<ActivitySignInService>();
         builder.Services.AddScoped<ActivityClipService>();
+        // Rooms live in Redis and the hub's broadcasts go through it (ADR-0006), so a room outlives a deploy and
+        // reaches its people whichever container each is connected to while the old and new ones overlap.
+        string redisPrefix = RedisWatchRoomStore.KeyPrefixFor(builder.Environment.EnvironmentName);
+        builder.Services.AddSingleton<WatchRoomServer>();
+        builder.Services.AddSingleton<ReactionLimiter>();
+        builder.Services.AddSingleton<IWatchRoomStore>(services =>
+            new RedisWatchRoomStore(services.GetRequiredService<IConnectionMultiplexer>(), redisPrefix));
         builder.Services.AddSingleton<WatchRoomRegistry>();
+
+        ISignalRServerBuilder signalR = builder.Services.AddSignalR();
         if (!builder.Environment.IsEnvironment("OpenApi"))
         {
             builder.Services.AddHostedService<WatchRoomClock>();
+            signalR.AddStackExchangeRedis(options =>
+            {
+                options.Configuration = ReelshelfApiConfiguration.RedisOptions(builder.Configuration);
+                options.Configuration.ChannelPrefix = RedisChannel.Literal($"{redisPrefix}signalr");
+            });
         }
-
-        builder.Services.AddSignalR();
 
         builder.Services.AddAuthentication()
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, RoomTokenAuthentication>(

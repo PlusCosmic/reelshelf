@@ -1,10 +1,16 @@
-using System.Collections.Concurrent;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Reelshelf.Core;
 using Reelshelf.Video;
 
 namespace Reelshelf.Discord.DiscordActivity;
 
-/// <summary>One hub connection in a room. A person with the Activity open twice (desktop and phone) has two.</summary>
+/// <summary>
+/// One hub connection in a room. A person with the Activity open twice (desktop and phone) has two.
+/// <see cref="ServerId"/> is the API instance holding it (<see cref="WatchRoomServer"/>), and
+/// <see cref="DisconnectedAt"/> is set once it dropped: the room keeps it for <see cref="WatchRoom.ReconnectGrace"/>
+/// so a reconnect (a deploy, a network blip) finds the person still in it.
+/// </summary>
 public sealed record RoomConnection(
     string ConnectionId,
     string DiscordUserId,
@@ -14,7 +20,12 @@ public sealed record RoomConnection(
     string? AccountName,
     DateTimeOffset ConnectedAt)
 {
+    [JsonIgnore]
     public bool IsMember => AccountId is not null;
+
+    public string ServerId { get; init; } = "";
+
+    public DateTimeOffset? DisconnectedAt { get; init; }
 }
 
 /// <summary>
@@ -108,17 +119,32 @@ public enum EnqueueResult
     Full
 }
 
+
+/// <summary>What a room keeps between changes: the JSON stored for it in Redis (<see cref="IWatchRoomStore"/>).</summary>
+internal sealed class WatchRoomState
+{
+    public List<RoomConnection> Connections { get; set; } = [];
+    public List<QueuedClip> Queue { get; set; } = [];
+    public string? HostDiscordUserId { get; set; }
+    public RoomPlayback? Playback { get; set; }
+    public bool QueueLocked { get; set; }
+    public long Version { get; set; }
+}
+
 /// <summary>
-/// A watch room: everyone connected to one Activity instance, its host, what is playing and what is queued.
-/// Held in memory only (ADR-0006). Every method takes the room's lock, so the hub can call it from any
-/// connection.
+/// A watch room: everyone connected to one Activity instance, its host, what is playing and what is queued. It is
+/// the room's rules over its stored state: <see cref="WatchRoomRegistry"/> loads one from Redis for each change,
+/// applies the change and saves it only if no other change came first, so any API instance can serve any room and a
+/// deploy loses nothing.
 /// </summary>
 /// <remarks>
 /// A queued clip is shown to the room only while its owner is in it: clips of an owner who has left are hidden
 /// from the queue and dropped when their turn comes, and come back if the owner reconnects first. A clip that
 /// is already playing plays on. When no member is left, the room has nothing to play and its queue empties.
+/// Someone whose connection drops is still in the room for <see cref="ReconnectGrace"/>, keeping the host role and
+/// their queued clips, so everyone reconnecting after a deploy finds the room as they left it.
 /// </remarks>
-public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
+public sealed class WatchRoom
 {
     public const int MaxQueueLength = 50;
 
@@ -136,99 +162,129 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
     /// </summary>
     public static readonly TimeSpan EndGrace = TimeSpan.FromSeconds(5);
 
-    private readonly object _gate = new();
-    private readonly Dictionary<string, RoomConnection> _connections = new(StringComparer.Ordinal);
-    private readonly List<QueuedClip> _queue = [];
-    private readonly Dictionary<string, Queue<DateTimeOffset>> _recentReactions = new(StringComparer.Ordinal);
-    private string? _hostDiscordUserId;
-    private RoomPlayback? _playback;
-    private bool _queueLocked;
-    private long _version;
+    /// <summary>
+    /// How long a dropped connection still counts as in the room. A deploy closes every connection on the old
+    /// container and the Activity reconnects within a few seconds (its retries wait 1, 2, 4 and 8 s), so this covers
+    /// that with room to spare; a person who really left goes once it is up.
+    /// </summary>
+    public static readonly TimeSpan ReconnectGrace = TimeSpan.FromSeconds(30);
 
-    public string InstanceId { get; } = instanceId;
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    /// <summary>Set once the last connection leaves; a closed room is never joined again.</summary>
-    internal bool Closed { get; private set; }
+    private readonly TimeProvider _timeProvider;
+    private readonly WatchRoomState _state;
 
-    internal bool TryJoin(RoomConnection connection)
+    public WatchRoom(string instanceId, TimeProvider timeProvider) : this(instanceId, timeProvider, new WatchRoomState())
     {
-        lock (_gate)
+    }
+
+    private WatchRoom(string instanceId, TimeProvider timeProvider, WatchRoomState state)
+    {
+        InstanceId = instanceId;
+        _timeProvider = timeProvider;
+        _state = state;
+    }
+
+    public string InstanceId { get; }
+
+    /// <summary>True once nobody is left, not even within their <see cref="ReconnectGrace"/>; the room is then deleted.</summary>
+    internal bool IsEmpty => _state.Connections.Count == 0;
+
+    internal long Version => _state.Version;
+
+    /// <summary>The API instances holding connections that haven't dropped, so the registry can check they are still running.</summary>
+    internal IEnumerable<string> LiveServerIds => _state.Connections
+        .Where(connection => connection.DisconnectedAt is null)
+        .Select(connection => connection.ServerId)
+        .Distinct(StringComparer.Ordinal);
+
+    internal string ToJson() => JsonSerializer.Serialize(_state, JsonOptions);
+
+    internal static WatchRoom FromJson(string instanceId, string json, TimeProvider timeProvider) =>
+        new(instanceId, timeProvider,
+            JsonSerializer.Deserialize<WatchRoomState>(json, JsonOptions) ?? new WatchRoomState());
+
+    /// <summary>
+    /// Adds a connection. Someone coming back keeps their place: their earliest arrival still decides who hosts next,
+    /// and the connections they dropped are gone.
+    /// </summary>
+    internal void Join(RoomConnection connection)
+    {
+        DateTimeOffset connectedAt = _state.Connections
+            .Where(existing => existing.DiscordUserId == connection.DiscordUserId)
+            .Select(existing => existing.ConnectedAt)
+            .Append(connection.ConnectedAt)
+            .Min();
+
+        _state.Connections.RemoveAll(existing =>
+            existing.ConnectionId == connection.ConnectionId ||
+            (existing.DiscordUserId == connection.DiscordUserId && existing.DisconnectedAt is not null));
+        _state.Connections.Add(connection with { ConnectedAt = connectedAt, DisconnectedAt = null });
+        _state.Version++;
+        if (_state.HostDiscordUserId is null && connection.IsMember)
         {
-            if (Closed)
-            {
-                return false;
-            }
-
-            _connections[connection.ConnectionId] = connection;
-            _version++;
-            if (_hostDiscordUserId is null && connection.IsMember)
-            {
-                _hostDiscordUserId = connection.DiscordUserId;
-            }
-
-            return true;
+            _state.HostDiscordUserId = connection.DiscordUserId;
         }
     }
 
-    /// <summary>Removes a connection and returns true when the room is now empty (and closed).</summary>
-    internal bool Leave(string connectionId)
+    /// <summary>
+    /// Marks a connection dropped. Nothing the room shows changes yet: the person stays for
+    /// <see cref="ReconnectGrace"/>, and <see cref="Prune"/> takes them out once it is up.
+    /// </summary>
+    internal void Leave(string connectionId)
     {
-        lock (_gate)
+        int index = _state.Connections.FindIndex(connection => connection.ConnectionId == connectionId);
+        if (index >= 0 && _state.Connections[index].DisconnectedAt is null)
         {
-            if (!_connections.Remove(connectionId, out RoomConnection? left))
-            {
-                return false;
-            }
-
-            _version++;
-            if (_connections.Count == 0)
-            {
-                Closed = true;
-                return true;
-            }
-
-            // The host keeps the role while any of their connections remain; otherwise it passes to the
-            // member who has been here longest. With only guests left there is no host, and no clips.
-            if (!IsPresent(left.DiscordUserId))
-            {
-                _recentReactions.Remove(left.DiscordUserId);
-            }
-
-            if (left.DiscordUserId == _hostDiscordUserId && !IsPresent(left.DiscordUserId))
-            {
-                _hostDiscordUserId = _connections.Values
-                    .Where(remaining => remaining.IsMember)
-                    .OrderBy(remaining => remaining.ConnectedAt)
-                    .Select(remaining => remaining.DiscordUserId)
-                    .FirstOrDefault();
-            }
-
-            if (_hostDiscordUserId is null)
-            {
-                _playback = null;
-                _queue.Clear();
-                _queueLocked = false;
-            }
-
-            return false;
+            _state.Connections[index] = _state.Connections[index] with { DisconnectedAt = _timeProvider.GetUtcNow() };
         }
     }
 
-    public RoomConnection? GetConnection(string connectionId)
+    /// <summary>
+    /// Starts the grace of connections whose API instance stopped without saying so (<paramref name="serverAlive"/>
+    /// false), and removes connections that dropped <see cref="ReconnectGrace"/> ago or more. When a person goes the
+    /// host role passes to the member who has been here longest; with only guests left there is no host, and no clips.
+    /// </summary>
+    internal void Prune(Func<string, bool> serverAlive)
     {
-        lock (_gate)
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        for (int index = 0; index < _state.Connections.Count; index++)
         {
-            return _connections.GetValueOrDefault(connectionId);
+            RoomConnection connection = _state.Connections[index];
+            if (connection.DisconnectedAt is null && !serverAlive(connection.ServerId))
+            {
+                _state.Connections[index] = connection with { DisconnectedAt = now };
+            }
+        }
+
+        if (_state.Connections.RemoveAll(connection => now - connection.DisconnectedAt >= ReconnectGrace) == 0)
+        {
+            return;
+        }
+
+        _state.Version++;
+        if (_state.HostDiscordUserId is { } host && !IsPresent(host))
+        {
+            _state.HostDiscordUserId = _state.Connections
+                .Where(remaining => remaining.IsMember)
+                .OrderBy(remaining => remaining.ConnectedAt)
+                .Select(remaining => remaining.DiscordUserId)
+                .FirstOrDefault();
+        }
+
+        if (_state.HostDiscordUserId is null)
+        {
+            _state.Playback = null;
+            _state.Queue.Clear();
+            _state.QueueLocked = false;
         }
     }
 
-    public bool IsHost(string connectionId)
-    {
-        lock (_gate)
-        {
-            return IsHostLocked(connectionId);
-        }
-    }
+    public RoomConnection? GetConnection(string connectionId) =>
+        _state.Connections.FirstOrDefault(connection => connection.ConnectionId == connectionId);
+
+    public bool IsHost(string connectionId) =>
+        GetConnection(connectionId) is { } connection && connection.DiscordUserId == _state.HostDiscordUserId;
 
     /// <summary>
     /// A member queues one of their own clips. It goes in round-robin by who queued it: a member's first clip
@@ -237,97 +293,85 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
     /// </summary>
     public EnqueueResult Enqueue(string connectionId, NowPlaying clip)
     {
-        lock (_gate)
+        if (GetConnection(connectionId) is not { IsMember: true } caller)
         {
-            if (!_connections.TryGetValue(connectionId, out RoomConnection? caller) || !caller.IsMember)
-            {
-                return EnqueueResult.NotAMember;
-            }
-
-            if (_queueLocked && caller.DiscordUserId != _hostDiscordUserId)
-            {
-                return EnqueueResult.Locked;
-            }
-
-            if (_queue.Any(item => item.Clip.ClipId == clip.ClipId))
-            {
-                return EnqueueResult.AlreadyQueued;
-            }
-
-            if (_queue.Count >= MaxQueueLength)
-            {
-                return EnqueueResult.Full;
-            }
-
-            QueuedClip queued = new(Guid.NewGuid(), clip, caller.DiscordUserId);
-            _queue.Insert(RoundRobinIndex(caller.DiscordUserId), queued);
-            if (_playback is null)
-            {
-                PlayNextLocked();
-            }
-
-            _version++;
-            return EnqueueResult.Queued;
+            return EnqueueResult.NotAMember;
         }
+
+        if (_state.QueueLocked && caller.DiscordUserId != _state.HostDiscordUserId)
+        {
+            return EnqueueResult.Locked;
+        }
+
+        if (_state.Queue.Any(item => item.Clip.ClipId == clip.ClipId))
+        {
+            return EnqueueResult.AlreadyQueued;
+        }
+
+        if (_state.Queue.Count >= MaxQueueLength)
+        {
+            return EnqueueResult.Full;
+        }
+
+        QueuedClip queued = new(Guid.NewGuid(), clip, caller.DiscordUserId);
+        _state.Queue.Insert(RoundRobinIndex(caller.DiscordUserId), queued);
+        if (_state.Playback is null)
+        {
+            PlayNext();
+        }
+
+        _state.Version++;
+        return EnqueueResult.Queued;
     }
 
     /// <summary>The host can remove any queued clip; a member can remove their own.</summary>
     public bool Remove(string connectionId, Guid itemId)
     {
-        lock (_gate)
+        int index = _state.Queue.FindIndex(item => item.ItemId == itemId);
+        if (index < 0 || GetConnection(connectionId) is not { } caller ||
+            (caller.DiscordUserId != _state.HostDiscordUserId &&
+             caller.DiscordUserId != _state.Queue[index].OwnerDiscordUserId))
         {
-            int index = _queue.FindIndex(item => item.ItemId == itemId);
-            if (index < 0 || !_connections.TryGetValue(connectionId, out RoomConnection? caller) ||
-                (caller.DiscordUserId != _hostDiscordUserId &&
-                 caller.DiscordUserId != _queue[index].OwnerDiscordUserId))
-            {
-                return false;
-            }
-
-            _queue.RemoveAt(index);
-            _version++;
-            return true;
+            return false;
         }
+
+        _state.Queue.RemoveAt(index);
+        _state.Version++;
+        return true;
     }
 
     /// <summary>The host moves a queued clip to <paramref name="toIndex"/> among the clips the room can see.</summary>
     public bool Move(string connectionId, Guid itemId, int toIndex)
     {
-        lock (_gate)
+        List<QueuedClip> visible = VisibleQueue();
+        QueuedClip? moving = visible.FirstOrDefault(item => item.ItemId == itemId);
+        if (!IsHost(connectionId) || moving is null)
         {
-            List<QueuedClip> visible = VisibleQueue();
-            QueuedClip? moving = visible.FirstOrDefault(item => item.ItemId == itemId);
-            if (!IsHostLocked(connectionId) || moving is null)
-            {
-                return false;
-            }
-
-            // Place it before the visible clip now at that position, or after the last one; hidden clips of
-            // absent owners keep their places.
-            visible.Remove(moving);
-            _queue.Remove(moving);
-            int target = Math.Clamp(toIndex, 0, visible.Count);
-            int at = target < visible.Count ? _queue.IndexOf(visible[target]) : _queue.Count;
-            _queue.Insert(at, moving);
-            _version++;
-            return true;
+            return false;
         }
+
+        // Place it before the visible clip now at that position, or after the last one; hidden clips of
+        // absent owners keep their places.
+        visible.Remove(moving);
+        _state.Queue.Remove(moving);
+        int target = Math.Clamp(toIndex, 0, visible.Count);
+        int at = target < visible.Count ? _state.Queue.IndexOf(visible[target]) : _state.Queue.Count;
+        _state.Queue.Insert(at, moving);
+        _state.Version++;
+        return true;
     }
 
     /// <summary>The host locks the queue so only they can add, for a showcase.</summary>
     public bool SetQueueLocked(string connectionId, bool locked)
     {
-        lock (_gate)
+        if (!IsHost(connectionId))
         {
-            if (!IsHostLocked(connectionId))
-            {
-                return false;
-            }
-
-            _queueLocked = locked;
-            _version++;
-            return true;
+            return false;
         }
+
+        _state.QueueLocked = locked;
+        _state.Version++;
+        return true;
     }
 
     /// <summary>
@@ -337,35 +381,29 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
     /// </summary>
     public bool Next(string connectionId, Guid currentItemId)
     {
-        lock (_gate)
+        if (!IsHost(connectionId) || _state.Playback?.ItemId != currentItemId)
         {
-            if (!IsHostLocked(connectionId) || _playback?.ItemId != currentItemId)
-            {
-                return false;
-            }
-
-            PlayNextLocked();
-            _version++;
-            return true;
+            return false;
         }
+
+        PlayNext();
+        _state.Version++;
+        return true;
     }
 
     /// <summary>The host plays a queued clip now, taking it out of the queue.</summary>
     public bool PlayNow(string connectionId, Guid itemId)
     {
-        lock (_gate)
+        QueuedClip? item = VisibleQueue().FirstOrDefault(queued => queued.ItemId == itemId);
+        if (!IsHost(connectionId) || item is null)
         {
-            QueuedClip? item = VisibleQueue().FirstOrDefault(queued => queued.ItemId == itemId);
-            if (!IsHostLocked(connectionId) || item is null)
-            {
-                return false;
-            }
-
-            _queue.Remove(item);
-            Start(item);
-            _version++;
-            return true;
+            return false;
         }
+
+        _state.Queue.Remove(item);
+        Start(item);
+        _state.Version++;
+        return true;
     }
 
     /// <summary>
@@ -374,28 +412,25 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
     /// </summary>
     public bool SetPlayback(string connectionId, bool? playing, double positionSeconds)
     {
-        lock (_gate)
+        if (!IsHost(connectionId) || _state.Playback is not { } playback || !double.IsFinite(positionSeconds))
         {
-            if (!IsHostLocked(connectionId) || _playback is null || !double.IsFinite(positionSeconds))
-            {
-                return false;
-            }
-
-            double position = Math.Max(0, positionSeconds);
-            if (_playback.Clip.DurationSeconds > 0)
-            {
-                position = Math.Min(position, _playback.Clip.DurationSeconds);
-            }
-
-            _playback = _playback with
-            {
-                Playing = playing ?? _playback.Playing,
-                PositionSeconds = position,
-                UpdatedAt = timeProvider.GetUtcNow()
-            };
-            _version++;
-            return true;
+            return false;
         }
+
+        double position = Math.Max(0, positionSeconds);
+        if (playback.Clip.DurationSeconds > 0)
+        {
+            position = Math.Min(position, playback.Clip.DurationSeconds);
+        }
+
+        _state.Playback = playback with
+        {
+            Playing = playing ?? playback.Playing,
+            PositionSeconds = position,
+            UpdatedAt = _timeProvider.GetUtcNow()
+        };
+        _state.Version++;
+        return true;
     }
 
     /// <summary>
@@ -406,114 +441,72 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
     /// </summary>
     public bool AdvanceIfOverdue()
     {
-        lock (_gate)
+        if (_state.Playback is not { Playing: true } playback || playback.Clip.DurationSeconds <= 0)
         {
-            if (_playback is not { Playing: true } playback || playback.Clip.DurationSeconds <= 0)
-            {
-                return false;
-            }
-
-            double left = Math.Max(0, playback.Clip.DurationSeconds - playback.PositionSeconds);
-            if (timeProvider.GetUtcNow() < playback.UpdatedAt + TimeSpan.FromSeconds(left) + EndGrace)
-            {
-                return false;
-            }
-
-            PlayNextLocked();
-            _version++;
-            return true;
+            return false;
         }
-    }
 
-    /// <summary>
-    /// Runs <paramref name="change"/> and takes the room's state under the same lock, so the state broadcast for a
-    /// change is the one it made, with no other change in between.
-    /// </summary>
-    public (bool Applied, RoomStateView State) Apply(Func<WatchRoom, bool> change)
-    {
-        lock (_gate)
+        double left = Math.Max(0, playback.Clip.DurationSeconds - playback.PositionSeconds);
+        if (_timeProvider.GetUtcNow() < playback.UpdatedAt + TimeSpan.FromSeconds(left) + EndGrace)
         {
-            bool applied = change(this);
-            return (applied, Snapshot());
+            return false;
         }
+
+        PlayNext();
+        _state.Version++;
+        return true;
     }
 
     /// <summary>
     /// Anyone in the room, guests included, reacts to the clip that is playing. Null when nothing is playing,
-    /// the emoji isn't one on offer, or the person has sent too many in the last few seconds.
+    /// the emoji isn't one on offer, or the caller isn't in the room. How often a person may react is
+    /// <see cref="ReactionLimiter"/>'s to say, since reactions are never stored.
     /// </summary>
     public RoomReaction? React(string connectionId, string emoji)
     {
-        lock (_gate)
+        if (_state.Playback is not { } playback || !ReactionEmoji.Contains(emoji) ||
+            GetConnection(connectionId) is not { } caller)
         {
-            if (_playback is null || !ReactionEmoji.Contains(emoji) ||
-                !_connections.TryGetValue(connectionId, out RoomConnection? caller))
-            {
-                return null;
-            }
-
-            DateTimeOffset now = timeProvider.GetUtcNow();
-            if (!_recentReactions.TryGetValue(caller.DiscordUserId, out Queue<DateTimeOffset>? recent))
-            {
-                recent = new Queue<DateTimeOffset>();
-                _recentReactions[caller.DiscordUserId] = recent;
-            }
-
-            while (recent.Count > 0 && now - recent.Peek() >= ReactionWindow)
-            {
-                recent.Dequeue();
-            }
-
-            if (recent.Count >= ReactionsPerWindow)
-            {
-                return null;
-            }
-
-            recent.Enqueue(now);
-            return new RoomReaction(_playback.ItemId, caller.DiscordUserId, caller.Name, emoji);
+            return null;
         }
+
+        return new RoomReaction(playback.ItemId, caller.DiscordUserId, caller.Name, emoji);
     }
 
     public RoomStateView Snapshot()
     {
-        lock (_gate)
-        {
-            // One row per person, however many connections they have, in the order they arrived.
-            Dictionary<string, RoomConnection> people = _connections.Values
-                .GroupBy(connection => connection.DiscordUserId)
-                .Select(group => group.OrderBy(connection => connection.ConnectedAt).First())
-                .ToDictionary(connection => connection.DiscordUserId);
+        // One row per person, however many connections they have, in the order they arrived.
+        List<RoomParticipantView> participants = _state.Connections
+            .GroupBy(connection => connection.DiscordUserId)
+            .Select(group => group.OrderBy(connection => connection.ConnectedAt).First())
+            .OrderBy(connection => connection.ConnectedAt)
+            .Select(connection => new RoomParticipantView(
+                connection.DiscordUserId,
+                connection.Name,
+                connection.AvatarUrl,
+                connection.IsMember,
+                connection.DiscordUserId == _state.HostDiscordUserId))
+            .ToList();
 
-            List<RoomParticipantView> participants = people.Values
-                .OrderBy(connection => connection.ConnectedAt)
-                .Select(connection => new RoomParticipantView(
-                    connection.DiscordUserId,
-                    connection.Name,
-                    connection.AvatarUrl,
-                    connection.IsMember,
-                    connection.DiscordUserId == _hostDiscordUserId))
-                .ToList();
+        List<QueueItemView> queue = VisibleQueue()
+            .Select(item => new QueueItemView(
+                item.ItemId,
+                item.Clip.ClipId,
+                item.Clip.Title,
+                item.Clip.Game,
+                item.Clip.OwnerName,
+                item.OwnerDiscordUserId,
+                item.Clip.DurationSeconds))
+            .ToList();
 
-            List<QueueItemView> queue = VisibleQueue()
-                .Select(item => new QueueItemView(
-                    item.ItemId,
-                    item.Clip.ClipId,
-                    item.Clip.Title,
-                    item.Clip.Game,
-                    item.Clip.OwnerName,
-                    item.OwnerDiscordUserId,
-                    item.Clip.DurationSeconds))
-                .ToList();
-
-            return new RoomStateView(
-                _version,
-                _hostDiscordUserId,
-                participants,
-                _playback,
-                queue,
-                _queueLocked,
-                timeProvider.GetUtcNow());
-        }
+        return new RoomStateView(
+            _state.Version,
+            _state.HostDiscordUserId,
+            participants,
+            _state.Playback,
+            queue,
+            _state.QueueLocked,
+            _timeProvider.GetUtcNow());
     }
 
     /// <summary>
@@ -523,13 +516,14 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
     /// </summary>
     private int RoundRobinIndex(string owner)
     {
-        int round = _queue.Count(item => item.OwnerDiscordUserId == owner);
-        int start = _queue.FindLastIndex(item => item.OwnerDiscordUserId == owner) + 1;
+        List<QueuedClip> queue = _state.Queue;
+        int round = queue.Count(item => item.OwnerDiscordUserId == owner);
+        int start = queue.FindLastIndex(item => item.OwnerDiscordUserId == owner) + 1;
 
         Dictionary<string, int> seen = new(StringComparer.Ordinal);
-        for (int index = 0; index < _queue.Count; index++)
+        for (int index = 0; index < queue.Count; index++)
         {
-            string itemOwner = _queue[index].OwnerDiscordUserId;
+            string itemOwner = queue[index].OwnerDiscordUserId;
             int itemRound = seen.GetValueOrDefault(itemOwner);
             seen[itemOwner] = itemRound + 1;
             if (index >= start && itemRound > round)
@@ -538,16 +532,16 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
             }
         }
 
-        return _queue.Count;
+        return queue.Count;
     }
 
     /// <summary>Plays the first queued clip whose owner is still here, dropping any before it whose owner left.</summary>
-    private void PlayNextLocked()
+    private void PlayNext()
     {
-        while (_queue.Count > 0)
+        while (_state.Queue.Count > 0)
         {
-            QueuedClip next = _queue[0];
-            _queue.RemoveAt(0);
+            QueuedClip next = _state.Queue[0];
+            _state.Queue.RemoveAt(0);
             if (IsPresent(next.OwnerDiscordUserId))
             {
                 Start(next);
@@ -555,77 +549,16 @@ public sealed class WatchRoom(string instanceId, TimeProvider timeProvider)
             }
         }
 
-        _playback = null;
+        _state.Playback = null;
     }
 
     private void Start(QueuedClip item) =>
-        _playback = new RoomPlayback(item.ItemId, item.Clip, item.OwnerDiscordUserId, true, 0, timeProvider.GetUtcNow());
+        _state.Playback = new RoomPlayback(item.ItemId, item.Clip, item.OwnerDiscordUserId, true, 0,
+            _timeProvider.GetUtcNow());
 
-    private List<QueuedClip> VisibleQueue() => _queue.Where(item => IsPresent(item.OwnerDiscordUserId)).ToList();
+    private List<QueuedClip> VisibleQueue() => _state.Queue.Where(item => IsPresent(item.OwnerDiscordUserId)).ToList();
 
+    /// <summary>Whether the person has a connection in the room, counting one that dropped within its grace.</summary>
     private bool IsPresent(string discordUserId) =>
-        _connections.Values.Any(connection => connection.DiscordUserId == discordUserId);
-
-    private bool IsHostLocked(string connectionId) =>
-        _connections.TryGetValue(connectionId, out RoomConnection? connection) &&
-        connection.DiscordUserId == _hostDiscordUserId;
-}
-
-/// <summary>Every open watch room on this API instance, keyed by Discord's Activity instance id.</summary>
-public sealed class WatchRoomRegistry(TimeProvider timeProvider)
-{
-    private readonly ConcurrentDictionary<string, WatchRoom> _rooms = new(StringComparer.Ordinal);
-
-    public WatchRoom Join(string instanceId, RoomConnection connection)
-    {
-        while (true)
-        {
-            WatchRoom room = _rooms.GetOrAdd(instanceId, id => new WatchRoom(id, timeProvider));
-            if (room.TryJoin(connection))
-            {
-                return room;
-            }
-
-            // The last person left between the lookup and the join; that room is closed, so make a new one.
-            _rooms.TryRemove(new KeyValuePair<string, WatchRoom>(instanceId, room));
-        }
-    }
-
-    /// <summary>The room after the connection left, or null when it was the last one and the room is gone.</summary>
-    public WatchRoom? Leave(string instanceId, string connectionId)
-    {
-        if (!_rooms.TryGetValue(instanceId, out WatchRoom? room))
-        {
-            return null;
-        }
-
-        if (!room.Leave(connectionId))
-        {
-            return room;
-        }
-
-        _rooms.TryRemove(new KeyValuePair<string, WatchRoom>(instanceId, room));
-        return null;
-    }
-
-    public WatchRoom? Find(string instanceId) => _rooms.GetValueOrDefault(instanceId);
-
-    /// <summary>
-    /// Moves every room whose playing clip is overdue on to its next clip (<see cref="WatchRoom.AdvanceIfOverdue"/>)
-    /// and returns those rooms with their new state, for <see cref="WatchRoomClock"/> to broadcast.
-    /// </summary>
-    public List<(WatchRoom Room, RoomStateView State)> AdvanceOverdue()
-    {
-        List<(WatchRoom, RoomStateView)> advanced = [];
-        foreach (WatchRoom room in _rooms.Values)
-        {
-            (bool applied, RoomStateView state) = room.Apply(r => r.AdvanceIfOverdue());
-            if (applied)
-            {
-                advanced.Add((room, state));
-            }
-        }
-
-        return advanced;
-    }
+        _state.Connections.Any(connection => connection.DiscordUserId == discordUserId);
 }
