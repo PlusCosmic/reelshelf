@@ -68,6 +68,7 @@ public static class OverflowSetup
         builder.Services.AddSingleton<IOverflowBacklogReader, OverflowBacklogStatements>();
         builder.Services.AddSingleton<OverflowMetrics>();
         builder.Services.AddSingleton<OverflowScaler>();
+        builder.Services.AddSingleton<IOverflowTickLock, PostgresOverflowTickLock>();
         builder.Services.AddHostedService<OverflowBackgroundService>();
     }
 }
