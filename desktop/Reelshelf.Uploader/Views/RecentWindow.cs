@@ -115,12 +115,9 @@ internal sealed class RecentWindow : Window
                 _controller.Open(AppLinks.Clip(upload.BookSlug!, upload.Entry.ClipId!.Value));
         }
 
-        return new Border
-        {
-            Child = row,
-            BorderBrush = (Avalonia.Media.IBrush?)Application.Current!.FindResource("RsLine"),
-            BorderThickness = new Thickness(0, 0, 0, 1)
-        };
+        // The line's colour comes from App.axaml's Border.row style: RsLine lives in the theme dictionaries, which a
+        // lookup from code without the theme variant doesn't reach.
+        return new Border { Child = row }.WithClass("row");
     }
 
     private void OpenFolder()
