@@ -25,7 +25,14 @@ if (string.IsNullOrWhiteSpace(connectionString))
     return 2;
 }
 
-await using NpgsqlConnection connection = new(connectionString);
+// Npgsql 9+ tries GSSAPI (Kerberos) encryption first by default, which loads libgssapi_krb5.so.2. The runtime image
+// doesn't ship it, so every run printed a load error before falling back. Reelshelf's Postgres doesn't use Kerberos.
+NpgsqlConnectionStringBuilder connectionStringBuilder = new(connectionString)
+{
+    GssEncryptionMode = GssEncryptionMode.Disable
+};
+
+await using NpgsqlConnection connection = new(connectionStringBuilder.ConnectionString);
 await connection.OpenAsync();
 
 bool hasMetadataTable = await HasMetadataTable(connection);
