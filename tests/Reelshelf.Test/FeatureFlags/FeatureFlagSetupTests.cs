@@ -11,39 +11,60 @@ namespace Reelshelf.Test.FeatureFlags;
 
 public class FeatureFlagSetupTests
 {
+    private static readonly Dictionary<string, string?> Configured = new()
+    {
+        ["PostHog:ProjectToken"] = "phc_x",
+        ["PostHog:SecretKey"] = "phx_y",
+        ["PostHog:ProjectId"] = "12345"
+    };
+
     [Fact]
     public void WithoutAProjectTokenPostHogIsntUsed()
     {
-        Assert.False(FeatureFlagSetup.UsesPostHog(Section([])));
+        Assert.Null(PostHogSettings.FromConfiguration(Section([])));
     }
 
     [Fact]
-    public void AProjectTokenWithASecretKeyUsesPostHog()
+    public void ATokenSecretKeyAndProjectIdUsePostHogOnEuCloud()
     {
-        Assert.True(FeatureFlagSetup.UsesPostHog(Section(new()
-        {
-            ["PostHog:ProjectToken"] = "phc_x",
-            ["PostHog:SecretKey"] = "phx_y"
-        })));
+        PostHogSettings? settings = PostHogSettings.FromConfiguration(Section(Configured));
+
+        Assert.NotNull(settings);
+        Assert.Equal(PostHogSettings.DefaultHostUrl, settings.HostUrl);
+        Assert.Equal(PostHogSettings.DefaultApiHostUrl, settings.ApiHostUrl);
+        Assert.Equal("12345", settings.ProjectId);
     }
 
     [Fact]
-    public void AProjectTokenWithoutASecretKeyFailsStartup()
+    public void AProjectTokenWithoutTheSecretKeyFailsStartup()
     {
         // Without a secret key the SDK would ask PostHog on every check instead of evaluating locally.
-        Assert.Throws<InvalidOperationException>(() =>
-            FeatureFlagSetup.UsesPostHog(Section(new() { ["PostHog:ProjectToken"] = "phc_x" })));
+        Dictionary<string, string?> values = new(Configured) { ["PostHog:SecretKey"] = null };
+
+        Assert.Throws<InvalidOperationException>(() => PostHogSettings.FromConfiguration(Section(values)));
+    }
+
+    [Fact]
+    public void WithoutTheProjectIdFlagsWorkButNoPeopleAreSent()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>(Configured)
+        {
+            ["PostHog:ProjectId"] = null
+        });
+        builder.AddFeatureFlags();
+
+        using ServiceProvider services = builder.Services.BuildServiceProvider();
+
+        Assert.IsType<PostHogFeatureFlagEvaluator>(services.GetRequiredService<IFeatureFlagEvaluator>());
+        Assert.IsType<NoPostHogPeople>(services.GetRequiredService<IPostHogPeople>());
     }
 
     [Fact]
     public void PostHogDefaultsToEuCloudAndAFiveMinutePoll()
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["PostHog:ProjectToken"] = "phc_x",
-            ["PostHog:SecretKey"] = "phx_y"
-        });
+        builder.Configuration.AddInMemoryCollection(Configured);
         builder.AddFeatureFlags();
 
         using ServiceProvider services = builder.Services.BuildServiceProvider();
@@ -51,7 +72,8 @@ public class FeatureFlagSetupTests
             .GetRequiredService<Microsoft.Extensions.Options.IOptions<PostHog.PostHogOptions>>().Value;
 
         Assert.IsType<PostHogFeatureFlagEvaluator>(services.GetRequiredService<IFeatureFlagEvaluator>());
-        Assert.Equal(FeatureFlagSetup.DefaultHostUrl, options.HostUrl);
+        Assert.IsType<PostHogPeopleClient>(services.GetRequiredService<IPostHogPeople>());
+        Assert.Equal(PostHogSettings.DefaultHostUrl, options.HostUrl);
         Assert.Equal(FeatureFlagSetup.DefaultPollInterval, options.FeatureFlagPollInterval);
     }
 
@@ -64,6 +86,7 @@ public class FeatureFlagSetupTests
         using ServiceProvider services = builder.Services.BuildServiceProvider();
 
         Assert.IsType<NoFeatureFlagEvaluator>(services.GetRequiredService<IFeatureFlagEvaluator>());
+        Assert.IsType<NoPostHogPeople>(services.GetRequiredService<IPostHogPeople>());
     }
 
     [Fact]

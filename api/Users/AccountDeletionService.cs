@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Reelshelf.Billing;
 using Reelshelf.Email;
+using Reelshelf.FeatureFlags;
 using Reelshelf.Plans;
 using Reelshelf.Video;
 using Reelshelf.Video.Transcoding;
@@ -24,6 +25,7 @@ public class AccountDeletionService(
     AccountDeletionSignal signal,
     IAccountSubscriptions subscriptions,
     IExportStorage exports,
+    IPostHogPeople posthog,
     ILogger<AccountDeletionService> logger)
 {
     /// <summary>What the user types to confirm; checked here as well as in the UI so a stray request can't delete an account.</summary>
@@ -134,6 +136,17 @@ public class AccountDeletionService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to delete the exports of deleted account {UserId}", userId);
+            return false;
+        }
+
+        // The account's person at PostHog (ADR-0009), before the row that records it goes with the account.
+        try
+        {
+            await posthog.DeleteAsync(userId, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to delete the PostHog person of deleted account {UserId}", userId);
             return false;
         }
 

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Reelshelf.Billing;
 using Reelshelf.Email;
+using Reelshelf.FeatureFlags;
 using Reelshelf.Plans;
 using Reelshelf.Test.Plans;
 using Reelshelf.Games;
@@ -16,7 +17,8 @@ public class AccountDeletionServiceTests
     private static readonly Guid UserId = Guid.NewGuid();
 
     private static (AccountDeletionService Service, FakeStore Store, FakeVideoHost Host, FakeSender Sender, AccountDeletionSignal Signal) Build(
-        string? email = "harry@example.com", IAccountSubscriptions? subscriptions = null, IExportStorage? exports = null)
+        string? email = "harry@example.com", IAccountSubscriptions? subscriptions = null, IExportStorage? exports = null,
+        IPostHogPeople? posthog = null)
     {
         FakeStore store = new() { Email = email };
         FakeVideoHost host = new();
@@ -26,7 +28,8 @@ public class AccountDeletionServiceTests
         FakeSender sender = new();
         AccountDeletionSignal signal = new();
         AccountDeletionService service = new(store, hosts, sender, signal, subscriptions ?? new NoAccountSubscriptions(),
-            exports ?? new UnconfiguredExportStorage(), NullLogger<AccountDeletionService>.Instance);
+            exports ?? new UnconfiguredExportStorage(), posthog ?? new NoPostHogPeople(),
+            NullLogger<AccountDeletionService>.Instance);
         return (service, store, host, sender, signal);
     }
 
@@ -121,6 +124,50 @@ public class AccountDeletionServiceTests
         Assert.DoesNotContain(exports.Objects.Keys, key => key.StartsWith(ExportParts.AccountPrefix(UserId)));
         Assert.Single(exports.Objects);
         Assert.True(store.AccountDeleted);
+    }
+
+    [Fact]
+    public async Task Process_DeletesThePostHogPersonBeforeTheAccount()
+    {
+        FakePostHogPeople posthog = new();
+        var (service, store, _, _, _) = Build(posthog: posthog);
+        await service.Request(UserId);
+
+        Assert.True(await service.Process(UserId, CancellationToken.None));
+
+        Assert.Equal([UserId], posthog.Deleted);
+        Assert.True(store.AccountDeleted);
+    }
+
+    [Fact]
+    public async Task Process_WhenDeletingThePostHogPersonFails_KeepsTheAccountForTheNextPass()
+    {
+        var (service, store, _, _, _) = Build(posthog: new FakePostHogPeople { Fail = true });
+        await service.Request(UserId);
+
+        Assert.False(await service.Process(UserId, CancellationToken.None));
+
+        Assert.False(store.AccountDeleted);
+    }
+
+    private sealed class FakePostHogPeople : IPostHogPeople
+    {
+        public bool Fail { get; init; }
+        public List<Guid> Deleted { get; } = [];
+
+        public Task IdentifyAsync(IReadOnlyList<FeatureFlagSubject> subjects, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task DeleteAsync(Guid accountId, CancellationToken cancellationToken)
+        {
+            if (Fail)
+            {
+                throw new HttpRequestException("PostHog is down");
+            }
+
+            Deleted.Add(accountId);
+            return Task.CompletedTask;
+        }
     }
 
     [Fact]
