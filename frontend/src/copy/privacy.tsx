@@ -22,203 +22,102 @@ export function PrivacyText() {
       <h2>What we collect</h2>
       <ul>
         <li>
-          <strong>From Discord, Twitch or Google when you sign in:</strong> your
-          account ID, username, display name, avatar, and email address if
-          verified. Google has no usernames, so if you sign up with Google you
-          choose one.
+          <strong>Your account:</strong> what your sign-in provider (Discord,
+          Twitch or Google) shares with us, such as your username, display name,
+          avatar and email address, plus the email address you choose for
+          account mail.
         </li>
         <li>
-          <strong>Your email address:</strong> every account needs one for
-          account mail. We suggest the one your sign-in gave us, and you can
-          change it in Settings.
+          <strong>What you add:</strong> your clips and the details you give
+          them, your collections, collaborators and share links, and any Twitch
+          clips you ask us to import.
         </li>
         <li>
-          <strong>Twitch access tokens</strong>, stored encrypted, so we can
-          list and import your own Twitch clips when you ask us to.
+          <strong>Your plan and access:</strong> your plan and, if you pay, your
+          subscription's status. Payment details go to Stripe and never reach
+          us.
         </li>
         <li>
-          <strong>What you add:</strong> clips and their titles, tags, games,
-          collections, collaborators and share links.
+          <strong>How you use Reelshelf:</strong> what we need to run it, such
+          as which clips you've watched, the devices you sign in with our apps,
+          and the limits on your plan.
         </li>
         <li>
-          <strong>If you subscribe to a paid plan:</strong> your plan, whether
-          it's active, when it renews or ends, and the IDs Stripe gives your
-          customer record and subscription. Your card or other payment details
-          go to Stripe and never reach us.
+          <strong>Reports:</strong> what you tell us if you report a clip.
         </li>
         <li>
-          <strong>Your access:</strong> your role, any plan we give you without
-          charge, whether your account is suspended, and a record of each change
-          to any of them: when, which of us made it and why.
-        </li>
-        <li>
-          <strong>If you report a shared clip:</strong> the reason you picked,
-          anything you wrote, and your email address if you gave it, so we can
-          tell you the outcome or ask for more. We don't link the report to your
-          account. The clip's owner is never told who reported it.
-        </li>
-        <li>
-          <strong>If you use the Reelshelf app for Windows:</strong> the name
-          you give each computer you sign in with it, when it was added, when it
-          was last used, and which version of the app it runs. The app reads
-          only the folder you point it at, and sends us only the clips it
-          uploads. Your folder names, which folder goes on which book, and its
-          list of the files it has seen stay on your computer.
-        </li>
-        <li>
-          <strong>Usage within Reelshelf:</strong> which clips you've watched,
-          so we can mark them as seen, and when you added each clip in the last
-          30 days, for your plan's limit on new clips (kept even if you delete
-          the clip, and forgotten after 30 days).
-        </li>
-        <li>
-          <strong>Server logs:</strong> our hosting keeps standard request logs
-          (such as IP address and browser) for security and debugging.
+          <strong>Logs:</strong> standard request logs, such as IP address and
+          browser, for security and debugging.
         </li>
       </ul>
+
+      <h2>How we use it</h2>
+      <p>
+        We use your data to provide Reelshelf: to store, convert and show your
+        clips, run your account and plan, send account mail, release new
+        features to some accounts before others, and keep the service secure.
+        Some clips are analysed by AI services, for example to recognise the
+        character you play or to make speech searchable. Email us if you'd like
+        your clips left out of transcription.
+      </p>
 
       <h2>Cookies and local storage</h2>
       <p>
         We use one cookie to keep you signed in. Your browser's local storage
-        remembers your light or dark theme, your player volume and theatre mode,
-        Twitch suggestions you've dismissed, uploads in progress so they can
-        carry on after a reload, and whether you've signed in on that browser
-        before, so the front page can load without waiting to check. It stays on
-        your device, and nothing is used for advertising or tracking.
-      </p>
-
-      <h2>Automated analysis of clips</h2>
-      <p>For some clips, Reelshelf uses AI services to:</p>
-      <ul>
-        <li>
-          recognise which legend you're playing in Apex Legends clips, from
-          still frames, so clips can be sorted by legend;
-        </li>
-        <li>
-          transcribe speech in clips on the Pro and Unlimited plans, to make
-          them searchable;
-        </li>
-        <li>
-          write a short, searchable description of a clip from its transcript,
-          title, game and date (and, for Apex clips, the legend detected).
-        </li>
-      </ul>
-      <p>
-        We may send the same data to more than one provider to compare how well
-        they do. Transcripts and descriptions are used for search, may be
-        reviewed by us to check their quality, and are deleted with the clip.
-        Email us if you'd like your clips left out of transcription. These
-        providers receive the data only to return a result to us, and handle it
-        under their own API terms. They're listed below.
+        keeps settings and progress on your device, such as your theme, player
+        volume and uploads in progress. Nothing is used for advertising or
+        tracking.
       </p>
 
       <h2>Who else handles your data</h2>
-      <ul>
-        <li>
-          <strong>Cloudflare</strong> stores and streams your clips.{" "}
-          <strong>Google Cloud</strong> and <strong>Amazon Web Services</strong>{" "}
-          convert some of them for streaming, in the EU, and keep nothing
-          afterwards.
-        </li>
-        <li>
-          <strong>Discord, Twitch and Google</strong> handle sign-in. Twitch
-          also handles clip import, and Discord the Discord Activity.
-        </li>
-        <li>
-          <strong>Stripe</strong>, through its Link service, sells paid plans as
-          the merchant of record: it takes payment and handles tax, receipts and
-          billing support, under its own privacy policy. When you check out we
-          send it your Reelshelf account ID and, the first time, your email
-          address.
-        </li>
-        <li>
-          <strong>Resend</strong> delivers account emails, such as a new sign-in
-          being linked or your library being nearly full.
-        </li>
-        <li>
-          <strong>OpenAI, Anthropic and OpenRouter</strong> (and the providers
-          behind it, such as Google and Deepgram) for the analysis above.
-        </li>
-        <li>
-          <strong>PostHog</strong>, in the EU, decides which accounts see
-          features we're still rolling out. If we include you in an early
-          release, PostHog holds your account's ID; it isn't sent your name,
-          email or anything you do in Reelshelf.
-        </li>
-        <li>
-          <strong>Our hosting provider</strong> runs the servers and database.
-        </li>
-      </ul>
       <p>
-        We share data only to run Reelshelf, or when the law requires us to,
-        such as reporting child sexual abuse material to the authorities.
+        We use service providers to run Reelshelf: hosting, storage and video
+        processing; sign-in (Discord, Twitch and Google); payments (Stripe, as
+        the merchant of record, under its own privacy policy); email delivery;
+        AI analysis of clips; and releasing new features gradually. They handle
+        your data only to provide their service to us. We share data otherwise
+        only when the law requires it, such as reporting child sexual abuse
+        material to the authorities.
       </p>
-
-      <h2>Where your data is stored</h2>
       <p>
-        Reelshelf is run from the UK. Our servers and database are in Germany.
-        Clips in our own pipeline are stored by Cloudflare in the US (eastern
-        North America). Clips that Google Cloud or Amazon Web Services encode
-        are processed in the EU. Cloudflare, Discord, Twitch, Google, Amazon,
-        Stripe, OpenAI, Anthropic, OpenRouter and Resend are based in the US, so
-        data they handle leaves the UK and EU. We rely on their standard data
-        protection terms, such as standard contractual clauses or the UK–US data
-        bridge, to protect it.
+        Some of these providers are in the US, so your data may leave the UK and
+        EU. Where it does, we rely on safeguards such as standard contractual
+        clauses or the UK–US data bridge.
       </p>
 
       <h2>Sharing and visibility</h2>
       <p>
-        Your clips are visible only to you, to collaborators you add, to anyone
-        with a share link to the clip or a shared collection, and to the people
-        in a Discord watch room when you play a clip there. A watch room is kept
-        only while someone is in it, and for 30 seconds after the last person
-        leaves so a dropped connection can rejoin; then it's deleted. Treat
-        clips as unlisted rather than private: anyone given the address of a
-        clip's video can watch it. A share link keeps working until you delete
-        the clip (it stops while the clip is in your bin), or until we take the
-        clip down after a report.
+        Your clips are visible to you, collaborators you add, anyone with a
+        share link, and people in a Discord watch room when you play a clip
+        there. Treat clips as unlisted rather than private: anyone given a
+        clip's address can watch it.
       </p>
 
       <h2>How long we keep it</h2>
       <p>
-        We keep your data while your account exists. For most clips, the file
-        you upload is deleted once it's been converted for streaming, and only
-        the converted video is kept. Deleting a clip moves it to your bin, where
-        only you can see it and can put it back, for 30 days, or until you empty
-        the bin sooner. Then its video is removed from storage and its tags,
-        detections and transcripts are deleted. Unlinking a sign-in method
-        deletes its stored tokens. A computer running the Reelshelf app for
-        Windows is kept until you remove it in Settings or sign out in the app,
-        it goes 90 days without being used, or you delete your account; its name
-        and use are deleted within a day after that. You can delete your whole
-        account in Settings: it stops working straight away, and its clips are
-        removed from storage and the rest of its data deleted shortly after,
-        unless one of its clips has been reported for child sexual abuse or
-        terrorism and we haven't decided yet: then they wait until we have. Any
-        paid plan is cancelled first, though Stripe keeps its records of past
-        payments for as long as the law requires. Collections you made go with
-        it, including for their collaborators. If your account has more clips
-        than its plan keeps, for example after a paid plan ends, the clips over
-        the limit are deleted 14 days later, and a download of them is kept for
-        28 days after that, then deleted. Downloads you ask for are kept for 28
-        days too. Reports of shared clips, and what we decided, are kept as a
-        record of how we dealt with them, even after the clip is deleted;
-        deleting your account removes your name from reports about your clips.
-        If we remove a clip for child sexual abuse or terrorism, we keep a
-        private copy of it, its details and the uploading account's details
-        (usernames, sign-in IDs and email) for a year, even if the account is
-        deleted, so we can give them to the authorities, and then delete them.
-        Nobody can see that copy except us and the authorities we give it to.
-        Backups and logs age out on their own schedule.
+        We keep your data while your account exists. A deleted clip stays in
+        your bin for 30 days, then it and its details are deleted. A Discord
+        watch room is deleted 30 seconds after the last person leaves. If you
+        delete your account, it stops working straight away and its data is
+        deleted shortly after, unless a report about one of its clips is still
+        open. If your account holds more clips than its plan keeps, we'll tell
+        you before removing the extra ones.
+      </p>
+      <p>
+        Some records are kept longer where we need them: Stripe keeps payment
+        records as the law requires; we keep reports and what we decided; and if
+        we remove a clip for child sexual abuse or terrorism, we keep it and the
+        uploader's details for up to a year for the authorities. Backups and
+        logs age out on their own schedule.
       </p>
 
       <h2>Your rights</h2>
       <p>
-        Under UK and EU data protection law (UK GDPR and GDPR), you can ask for
-        a copy of your data, a correction, deletion, or for us to stop or limit
-        processing. We process your data to provide the service you signed up
-        for and, for security logs and automated clip analysis, for our
-        legitimate interests in running and improving Reelshelf. You can
+        Under UK and EU data protection law, you can ask for a copy of your
+        data, a correction or deletion, or for us to stop or limit processing.
+        We process your data to provide the service you signed up for and, for
+        security, automated clip analysis and releasing features gradually, for
+        our legitimate interests in running and improving Reelshelf. You can
         complain to the UK Information Commissioner's Office (ico.org.uk) or
         your local data protection authority.
       </p>
@@ -233,7 +132,7 @@ export function PrivacyText() {
       <p>
         We'll change the date at the top when this policy changes, and tell you
         in the app or by email about significant changes. For questions or
-        requests, email <LegalContact />.
+        requests, including which providers we use, email <LegalContact />.
       </p>
     </>
   );

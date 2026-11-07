@@ -1,5 +1,6 @@
 using Reelshelf.Billing;
 using Reelshelf.Exceptions;
+using Reelshelf.FeatureFlags;
 
 namespace Reelshelf.Auth;
 
@@ -73,7 +74,11 @@ public static class GrantedTiers
 /// who made it and why. An admin can't change their own role, and the last Admin can't be demoted, so the admin pages
 /// can't lock everyone out.
 /// </summary>
-public sealed class AccountAccessService(IAccountAccessStore store)
+/// <summary>
+/// A role or granted tier that changes wakes <see cref="PostHogPersonSync"/>, so PostHog's copy of the account's flag
+/// properties follows promptly; flags themselves read the database and don't wait for it.
+/// </summary>
+public sealed class AccountAccessService(IAccountAccessStore store, PostHogPersonSyncSignal? personSync = null)
 {
     public const int MaxReasonLength = 500;
 
@@ -85,7 +90,7 @@ public sealed class AccountAccessService(IAccountAccessStore store)
             throw new BadRequestException("You can't change your own role.");
         }
 
-        Check(await store.SetRole(userId, role, admin.Id, why));
+        Changed(await store.SetRole(userId, role, admin.Id, why));
     }
 
     /// <summary>Grants <paramref name="tier"/>, or takes the grant away when it is null.</summary>
@@ -97,7 +102,7 @@ public sealed class AccountAccessService(IAccountAccessStore store)
             throw new BadRequestException("Only Plus, Pro or Unlimited can be granted.");
         }
 
-        Check(await store.SetGrantedTier(userId, tier, admin.Id, why));
+        Changed(await store.SetGrantedTier(userId, tier, admin.Id, why));
     }
 
     /// <summary>
@@ -113,6 +118,16 @@ public sealed class AccountAccessService(IAccountAccessStore store)
         }
 
         Check(await store.SetSuspended(userId, suspended, admin.Id, why));
+    }
+
+    /// <summary>Checks a change to a flag property and, when it changed, wakes the person sync.</summary>
+    private void Changed(AccessChangeOutcome outcome)
+    {
+        Check(outcome);
+        if (outcome == AccessChangeOutcome.Changed)
+        {
+            personSync?.Wake();
+        }
     }
 
     private static void Check(AccessChangeOutcome outcome)

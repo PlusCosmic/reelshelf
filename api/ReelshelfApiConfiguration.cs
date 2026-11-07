@@ -69,6 +69,22 @@ internal static class ReelshelfApiConfiguration
                     }
                 }
             });
+
+            // A file under /assets/ that static files didn't serve is from another build. During a rolling deploy
+            // the old and new containers serve side by side, so a page from one can ask the other for its chunks;
+            // that 404 must not be cached (Cloudflare keeps a header-less 404 for minutes), or the chunk stays
+            // missing after the deploy. The frontend reloads on it (staleChunkReload.ts).
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Path.StartsWithSegments("/assets"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    context.Response.Headers.CacheControl = "no-store";
+                    return;
+                }
+
+                await next(context);
+            });
         }
 
         app.UseExceptionHandler();
@@ -224,6 +240,7 @@ internal static class ReelshelfApiConfiguration
             ConnectionMultiplexer.Connect(RedisOptions(builder.Configuration)));
 
         IHealthChecksBuilder healthChecksBuilder = builder.Services.AddHealthChecks();
+        builder.AddShutdownDrain(healthChecksBuilder);
 
         if (!string.IsNullOrEmpty(connectionString))
         {
