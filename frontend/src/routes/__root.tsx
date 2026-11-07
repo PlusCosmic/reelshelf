@@ -105,6 +105,9 @@ function AuthenticatedShell({
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const searchStr = useRouterState({
+    select: (state) => state.location.searchStr,
+  });
   const { data: user, isLoading, isError, refetch } = useCurrentUser();
   // Only the API saying there is no session counts as signed out (fetchMe answers null on a 401); a failed check
   // keeps the hint, the address and a session already loaded.
@@ -131,6 +134,16 @@ function AuthenticatedShell({
   }
 
   if (!signedIn) {
+    // Approving a device sign-in starts from a link the uploader opened, so sign in and come back to it.
+    if (pathname === "/device") {
+      return (
+        <Navigate
+          to="/sign-in"
+          search={{ next: `${pathname}${searchStr}` }}
+          replace
+        />
+      );
+    }
     // Signed out, every address is the front page; send deeper links there so the address bar
     // matches what is shown.
     if (pathname !== "/") return <Navigate to="/" replace />;

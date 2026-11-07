@@ -1,0 +1,77 @@
+name: Publish uploader
+
+# Releases the desktop uploader to the Microsoft Store (reelshelf-docs/desktop-uploader/README.md, Part 5): a tag
+# uploader-v<major>.<minor>.<patch> sets the app's and the package's version, builds the MSIX unsigned (the Store signs
+# it), submits it through the Store submission API, and attaches it to the run. Certification is followed in Partner
+# Center. Raise the API's Uploader:MinimumVersion only after a version has been live in the Store for a week.
+#
+# Needs the Partner Center app's secrets PARTNER_CENTER_TENANT_ID, PARTNER_CENTER_CLIENT_ID and
+# PARTNER_CENTER_CLIENT_SECRET, and the repository variables PARTNER_CENTER_SELLER_ID and UPLOADER_STORE_PRODUCT_ID
+# (Partner Center's seller id and the app's Store id, which aren't secret).
+
+on:
+  push:
+    tags:
+      - "uploader-v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-uploader
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and submit the MSIX
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read the version from the tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^uploader-v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "The tag must be uploader-v<major>.<minor>.<patch>; got ${{ github.ref_name }}" }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        run: dotnet test tests/Reelshelf.Uploader.Test/Reelshelf.Uploader.Test.csproj --configuration Release
+
+      # Sets the assembly version (dotnet publish -p:Version) and the manifest's (Identity Version) from the tag.
+      - name: Build the MSIX
+        shell: pwsh
+        run: ./desktop/Reelshelf.Uploader.Package/package.ps1 -Version ${{ steps.version.outputs.version }} -Mode Store
+
+      - name: Attach the MSIX to the run
+        uses: actions/upload-artifact@v4
+        with:
+          name: Reelshelf.Uploader_${{ steps.version.outputs.version }}_x64
+          path: desktop/Reelshelf.Uploader.Package/out/*.msix
+          if-no-files-found: error
+
+      - name: Set up the Store CLI
+        uses: microsoft/setup-msstore-cli@v1
+
+      - name: Submit to the Store
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+          SELLER_ID: ${{ vars.PARTNER_CENTER_SELLER_ID }}
+          PRODUCT_ID: ${{ vars.UPLOADER_STORE_PRODUCT_ID }}
+        run: |
+          if (-not $env:TENANT_ID -or -not $env:CLIENT_ID -or -not $env:CLIENT_SECRET -or -not $env:SELLER_ID -or -not $env:PRODUCT_ID) {
+            throw "Partner Center isn't configured for this repository yet (see the comment at the top of this workflow)."
+          }
+          msstore reconfigure --tenantId $env:TENANT_ID --sellerId $env:SELLER_ID --clientId $env:CLIENT_ID --clientSecret $env:CLIENT_SECRET
+          msstore publish "desktop/Reelshelf.Uploader.Package/out/Reelshelf.Uploader_${{ steps.version.outputs.version }}_x64.msix" -id $env:PRODUCT_ID

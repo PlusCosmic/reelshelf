@@ -8,6 +8,7 @@ export * from "./ClipSummaryEndpointsApi";
 export * from "./ClipTranscriptionEndpointsApi";
 export * from "./ClipsEndpointsApi";
 export * from "./ContentReportEndpointsApi";
+export * from "./DeviceEndpointsApi";
 export * from "./DiscordActivityEndpointsApi";
 export * from "./FFmpegEndpointsApi";
 export * from "./GameCategoryEndpointsApi";

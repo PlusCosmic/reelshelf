@@ -7,7 +7,7 @@ import { legalOperator } from "./legal";
  */
 export const privacyCopy = {
   title: "Privacy policy",
-  updated: "6 November 2026",
+  updated: "7 November 2026",
 } as const;
 
 export function PrivacyText() {
@@ -56,6 +56,14 @@ export function PrivacyText() {
           anything you wrote, and your email address if you gave it, so we can
           tell you the outcome or ask for more. We don't link the report to your
           account. The clip's owner is never told who reported it.
+        </li>
+        <li>
+          <strong>If you use the Reelshelf app for Windows:</strong> the name
+          you give each computer you sign in with it, when it was added, when it
+          was last used, and which version of the app it runs. The app reads
+          only the folder you point it at, and sends us only the clips it
+          uploads. Your folder names, which folder goes on which book, and its
+          list of the files it has seen stay on your computer.
         </li>
         <li>
           <strong>Usage within Reelshelf:</strong> which clips you've watched,
@@ -177,26 +185,29 @@ export function PrivacyText() {
         only you can see it and can put it back, for 30 days, or until you empty
         the bin sooner. Then its video is removed from storage and its tags,
         detections and transcripts are deleted. Unlinking a sign-in method
-        deletes its stored tokens. You can delete your whole account in
-        Settings: it stops working straight away, and its clips are removed from
-        storage and the rest of its data deleted shortly after, unless one of
-        its clips has been reported for child sexual abuse or terrorism and we
-        haven't decided yet: then they wait until we have. Any paid plan is
-        cancelled first, though Stripe keeps its records of past payments for as
-        long as the law requires. Collections you made go with it, including for
-        their collaborators. If your account has more clips than its plan keeps,
-        for example after a paid plan ends, the clips over the limit are deleted
-        14 days later, and a download of them is kept for 28 days after that,
-        then deleted. Downloads you ask for are kept for 28 days too. Reports of
-        shared clips, and what we decided, are kept as a record of how we dealt
-        with them, even after the clip is deleted; deleting your account removes
-        your name from reports about your clips. If we remove a clip for child
-        sexual abuse or terrorism, we keep a private copy of it, its details and
-        the uploading account's details (usernames, sign-in IDs and email) for a
-        year, even if the account is deleted, so we can give them to the
-        authorities, and then delete them. Nobody can see that copy except us
-        and the authorities we give it to. Backups and logs age out on their own
-        schedule.
+        deletes its stored tokens. A computer running the Reelshelf app for
+        Windows is kept until you remove it in Settings or sign out in the app,
+        it goes 90 days without being used, or you delete your account; its name
+        and use are deleted within a day after that. You can delete your whole
+        account in Settings: it stops working straight away, and its clips are
+        removed from storage and the rest of its data deleted shortly after,
+        unless one of its clips has been reported for child sexual abuse or
+        terrorism and we haven't decided yet: then they wait until we have. Any
+        paid plan is cancelled first, though Stripe keeps its records of past
+        payments for as long as the law requires. Collections you made go with
+        it, including for their collaborators. If your account has more clips
+        than its plan keeps, for example after a paid plan ends, the clips over
+        the limit are deleted 14 days later, and a download of them is kept for
+        28 days after that, then deleted. Downloads you ask for are kept for 28
+        days too. Reports of shared clips, and what we decided, are kept as a
+        record of how we dealt with them, even after the clip is deleted;
+        deleting your account removes your name from reports about your clips.
+        If we remove a clip for child sexual abuse or terrorism, we keep a
+        private copy of it, its details and the uploading account's details
+        (usernames, sign-in IDs and email) for a year, even if the account is
+        deleted, so we can give them to the authorities, and then delete them.
+        Nobody can see that copy except us and the authorities we give it to.
+        Backups and logs age out on their own schedule.
       </p>
 
       <h2>Your rights</h2>

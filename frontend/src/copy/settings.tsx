@@ -24,6 +24,11 @@ export const settingsCopy = {
       title: "Linked accounts",
       copy: "Sign in with any linked account. Your name and avatar follow the primary one.",
     },
+    /** Shown with the desktop-uploader flag; the rest of the section's words are in copy/device.ts. */
+    devices: {
+      title: "Devices",
+      copy: "Computers running the Reelshelf app for Windows. They can add clips to your books and nothing else.",
+    },
     yourData: {
       title: "Your data",
       copy: (privacy: ReactNode, terms: ReactNode) => (
