@@ -9,6 +9,8 @@
   install that package, trust the certificate first, from an elevated PowerShell:
     Import-PfxCertificate -FilePath out\sideload.pfx -CertStoreLocation Cert:\LocalMachine\TrustedPeople -Password (ConvertTo-SecureString -String (Get-Content out\sideload-password.txt) -AsPlainText -Force)
   then double-click the .msix, or run Add-AppxPackage out\Reelshelf.Uploader_<version>_x64.msix.
+  -CertificatePath (with -CertificatePassword) signs with that certificate instead, as desktop/install.ps1 does with
+  one it keeps, so it is trusted once rather than on every build.
 
 .EXAMPLE
   ./package.ps1 -Version 1.0.3 -Mode Store
@@ -16,7 +18,9 @@
 param(
     [string] $Version = "0.1.0",
     [ValidateSet("Sideload", "Store")] [string] $Mode = "Sideload",
-    [string] $Configuration = "Release"
+    [string] $Configuration = "Release",
+    [string] $CertificatePath,
+    [string] $CertificatePassword
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,7 +66,12 @@ Write-Host "Packing $msix"
 & $makeappx pack /d $layout /p $msix /o
 if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed" }
 
-if ($Mode -eq "Sideload") {
+if ($Mode -eq "Sideload" -and $CertificatePath) {
+    $signtool = Find-SdkTool "signtool.exe"
+    & $signtool sign /fd SHA256 /f $CertificatePath /p $CertificatePassword $msix
+    if ($LASTEXITCODE -ne 0) { throw "signtool sign failed" }
+}
+elseif ($Mode -eq "Sideload") {
     # A throwaway certificate whose subject matches the manifest's publisher, for local testing only. Store uploads
     # go unsigned and the Store signs them.
     $publisher = $manifest.Package.Identity.Publisher
