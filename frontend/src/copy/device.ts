@@ -1,11 +1,8 @@
 import { plural } from "./plural";
 
-/**
- * The desktop uploader's Microsoft Store listing. A placeholder until the listing exists; the owner puts its URL here
- * once Partner Center gives it (reelshelf-docs/desktop-uploader/README.md, Part 5).
- */
+/** The desktop uploader's Microsoft Store listing, by its Store ID. */
 export const uploaderStoreUrl =
-  "https://apps.microsoft.com/detail/reelshelf-uploader";
+  "https://apps.microsoft.com/detail/9PC7WVJ4H5MD";
 
 const dayFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",

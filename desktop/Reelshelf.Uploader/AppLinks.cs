@@ -9,10 +9,9 @@ internal static class AppLinks
     public const string ProductionSite = "https://reelshelf.app";
 
     /// <summary>
-    /// The Store listing, opened by T8 and N4. A placeholder until Partner Center gives the app its product id
-    /// (reelshelf-docs/desktop-uploader/README.md, Part 5).
+    /// The Store listing, opened by T8 and N4: the app's Store ID from Partner Center.
     /// </summary>
-    public const string StoreProductId = "PLACEHOLDER";
+    public const string StoreProductId = "9PC7WVJ4H5MD";
 
     public static Uri Site { get; } = ReadSite();
 

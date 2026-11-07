@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The Reelshelf Uploader as a full-trust MSIX for the Microsoft Store (ADR-0010). The identity name and publisher are
-  placeholders until Partner Center reserves the app (reelshelf-docs/desktop-uploader/README.md, Part 5); copy them
-  from Partner Center's Product identity page. package.ps1 sets the version from the build.
+  The Reelshelf Uploader as a full-trust MSIX for the Microsoft Store (ADR-0010). The identity, publisher
+  and display name are Partner Center's product identity for the reserved app (Store ID 9PC7WVJ4H5MD) and must match
+  it. package.ps1 sets the version from the build.
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -12,13 +12,13 @@
   IgnorableNamespaces="uap desktop rescap">
 
   <Identity
-    Name="Reelshelf.ReelshelfUploader"
-    Publisher="CN=00000000-0000-0000-0000-000000000000"
+    Name="Reelshelf.Reelshelf"
+    Publisher="CN=5E5F2606-86C6-457A-8EFD-45F9EB7A22CE"
     Version="0.1.0.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>Reelshelf Uploader</DisplayName>
+    <DisplayName>Reelshelf</DisplayName>
     <PublisherDisplayName>Reelshelf</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -35,7 +35,7 @@
   <Applications>
     <Application Id="ReelshelfUploader" Executable="Reelshelf.Uploader.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="Reelshelf Uploader"
+        DisplayName="Reelshelf"
         Description="Watches a folder you choose for new game recordings and uploads them to your Reelshelf library in the background."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
