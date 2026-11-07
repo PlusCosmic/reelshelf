@@ -36,8 +36,9 @@
                     <SolidColorBrush x:Key="RsBad" Color="#e57d6e" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
-            <FontFamily x:Key="RsDisplayFont">avares://Reelshelf.Uploader/Assets/Fonts/Fraunces.ttf#Fraunces</FontFamily>
-            <FontFamily x:Key="RsSansFont">avares://Reelshelf.Uploader/Assets/Fonts/InstrumentSans.ttf#Instrument Sans</FontFamily>
+            <!-- Static instances cut from the site's variable fonts: Avalonia draws variable fonts at the wrong weight and spacing. -->
+            <FontFamily x:Key="RsDisplayFont">avares://Reelshelf.Uploader/Assets/Fonts#Fraunces</FontFamily>
+            <FontFamily x:Key="RsSansFont">avares://Reelshelf.Uploader/Assets/Fonts#Instrument Sans</FontFamily>
             <FontFamily x:Key="RsMonoFont">Cascadia Mono, Consolas, monospace</FontFamily>
         </ResourceDictionary>
     </Application.Resources>
@@ -52,8 +53,9 @@
         </Style>
         <Style Selector="TextBlock.heading">
             <Setter Property="FontFamily" Value="{StaticResource RsDisplayFont}" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="FontSize" Value="21" />
+            <Setter Property="LineHeight" Value="26" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style Selector="TextBlock.muted">
@@ -97,18 +99,56 @@
             <Setter Property="Padding" Value="12" />
             <Setter Property="Background" Value="{DynamicResource RsSurface}" />
         </Style>
+        <!--
+          Buttons as on the site and the screens: a plain one on the surface with a line, a primary one filled, a link
+          one bare. Fluent's template paints its own colours on hover and press, so each state is set here too.
+        -->
         <Style Selector="Button">
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource RsLine}" />
+            <Setter Property="Background" Value="{DynamicResource RsSurface}" />
+            <Setter Property="Foreground" Value="{DynamicResource RsForeground}" />
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource RsSoft}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource RsLine}" />
+            <Setter Property="Foreground" Value="{DynamicResource RsForeground}" />
+        </Style>
+        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource RsLine}" />
         </Style>
         <Style Selector="Button.primary">
             <Setter Property="Background" Value="{DynamicResource RsFill}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource RsFill}" />
             <Setter Property="Foreground" Value="{DynamicResource RsFillInk}" />
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource RsFill}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource RsFill}" />
+            <Setter Property="Foreground" Value="{DynamicResource RsFillInk}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+        <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Opacity" Value="0.8" />
         </Style>
         <Style Selector="Button.link">
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Foreground" Value="{DynamicResource RsAccent}" />
-            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="4,7" />
+        </Style>
+        <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource RsAccent}" />
+            <Setter Property="TextBlock.TextDecorations" Value="Underline" />
+        </Style>
+        <Style Selector="Button.link:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
         </Style>
     </Application.Styles>
 </Application>

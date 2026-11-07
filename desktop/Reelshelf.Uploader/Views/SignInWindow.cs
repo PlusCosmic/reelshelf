@@ -23,7 +23,7 @@ internal sealed class SignInWindow : Window
     {
         _controller = controller;
         _signIn = new DeviceSignIn(controller.Api, new WindowsCredentialStore(), SystemClock.Instance);
-        Ui.Setup(this, UploaderCopy.AppName, 440);
+        Ui.Setup(this, UploaderCopy.AppName, 460);
         Content = Ui.Column(14, Ui.Heading(UploaderCopy.SignIn.Title), Ui.Muted(UploaderCopy.SignIn.Intro), _body);
         Opened += (_, _) => _ = StartAsync();
         Closed += (_, _) => _waiting.Cancel();
@@ -46,7 +46,7 @@ internal sealed class SignInWindow : Window
         _controller.Open(pending.VerificationUriComplete);
         Show(
             new Border { Child = Ui.Text(pending.UserCode, "code") }.WithClass("codebox"),
-            Ui.Text(UploaderCopy.SignIn.Waiting(AppLinks.DevicePageName)),
+            Ui.Muted(UploaderCopy.SignIn.Waiting(AppLinks.DevicePageName)),
             Ui.Muted(UploaderCopy.SignIn.BrowserOpened),
             Ui.Buttons(
                 Ui.Button(UploaderCopy.SignIn.CopyCode, () => _ = Clipboard?.SetTextAsync(pending.UserCode)),
