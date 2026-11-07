@@ -52,7 +52,7 @@ public class StateTests
     {
         StateInputs inputs = Everything;
 
-        AssertState(inputs, "Update the uploader", "This version doesn't work with Reelshelf any more",
+        AssertState(inputs, "Update Reelshelf", "This version doesn't work with Reelshelf any more",
             "Open the Store", TrayBadge.Red);
         inputs = inputs with { UpdateRequired = false };
         AssertState(inputs, "Your library is full", "Your plan keeps 100 clips · 1 clip waiting", "See plans",

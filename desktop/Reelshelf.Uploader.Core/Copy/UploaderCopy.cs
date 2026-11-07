@@ -10,7 +10,7 @@ namespace Reelshelf.Uploader.Core.Copy;
 /// </summary>
 public static class UploaderCopy
 {
-    public const string AppName = "Reelshelf Uploader";
+    public const string AppName = "Reelshelf";
 
     /// <summary>"1 clip", "3 clips": the count followed by the word that fits it.</summary>
     public static string Plural(int count, string one, string many) =>
@@ -57,7 +57,7 @@ public static class UploaderCopy
     {
         public const string Title = "Put your clips on the shelf while you play";
         public const string Intro =
-            "Sign in once and the uploader puts new clips from your recordings folder on their books in the background.";
+            "Sign in once and Reelshelf puts new clips from your recordings folder on their books in the background.";
 
         public static string Waiting(string site) => $"Waiting for you to approve this code at {site}…";
 
@@ -67,10 +67,10 @@ public static class UploaderCopy
         public const string Starting = "Getting a code…";
         public const string Expired = "That code expired before it was approved. Get a new code to try again.";
         public const string GetNewCode = "Get a new code";
-        public const string Denied = "Sign-in was cancelled on reelshelf.app, so the uploader isn't signed in.";
+        public const string Denied = "Sign-in was cancelled on reelshelf.app, so this computer isn't signed in.";
         public const string TryAgain = "Try again";
         public const string Unreachable =
-            "Couldn't reach Reelshelf, so the uploader isn't signed in. Check your connection and try again.";
+            "Couldn't reach Reelshelf, so this computer isn't signed in. Check your connection and try again.";
     }
 
     /// <summary>S2: choosing the recordings folder.</summary>
@@ -183,7 +183,7 @@ public static class UploaderCopy
 
         public static class UpdateRequired
         {
-            public const string Title = "Update the uploader";
+            public const string Title = "Update Reelshelf";
             public const string Detail = "This version doesn't work with Reelshelf any more";
             public const string Action = "Open the Store";
         }
@@ -258,7 +258,7 @@ public static class UploaderCopy
     /// <summary>S5: settings.</summary>
     public static class Settings
     {
-        public const string WindowTitle = "Uploader settings";
+        public const string WindowTitle = "Reelshelf settings";
         public const string FolderLabel = "Recordings folder";
 
         public static string FolderDetail(string path, int matched) =>
@@ -329,11 +329,11 @@ public static class UploaderCopy
             : "You've added a lot of clips this month, so new clips are waiting. They'll upload once there's room.";
 
         public const string SeePlans = "See plans";
-        public const string UpdateTitle = "Update the uploader to keep going";
+        public const string UpdateTitle = "Update Reelshelf to keep going";
         public const string UpdateDetail =
             "This version doesn't work with Reelshelf any more, so clips aren't uploading. Get the latest from the Store.";
         public const string OpenStore = "Open the Store";
-        public const string SignedOutTitle = "The uploader was signed out, so clips aren't uploading.";
+        public const string SignedOutTitle = "This computer was signed out, so clips aren't uploading.";
         public const string SignedOutDetail = "Sign in again to carry on.";
         public const string SignIn = "Sign in";
     }

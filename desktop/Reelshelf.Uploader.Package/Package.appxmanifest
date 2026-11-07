@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The Reelshelf Uploader as a full-trust MSIX for the Microsoft Store (ADR-0010). The identity, publisher
+  The Reelshelf app for Windows (the desktop uploader) as a full-trust MSIX for the Microsoft Store (ADR-0010). The identity, publisher
   and display name are Partner Center's product identity for the reserved app (Store ID 9PC7WVJ4H5MD) and must match
   it. package.ps1 sets the version from the build.
 -->
@@ -46,7 +46,7 @@
       <Extensions>
         <!-- Start with Windows: off until the person turns it on (S2 or S5). -->
         <desktop:Extension Category="windows.startupTask">
-          <desktop:StartupTask TaskId="ReelshelfUploaderStartup" Enabled="false" DisplayName="Reelshelf Uploader" />
+          <desktop:StartupTask TaskId="ReelshelfUploaderStartup" Enabled="false" DisplayName="Reelshelf" />
         </desktop:Extension>
       </Extensions>
     </Application>

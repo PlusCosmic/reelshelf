@@ -10,7 +10,7 @@ public class WindowsPlatformTests
     public void TheToken_RoundTripsThroughCredentialManager()
     {
         // A credential of its own, so a real sign-in on the machine is never touched.
-        WindowsCredentialStore store = new($"Reelshelf Uploader test {Guid.NewGuid():N}");
+        WindowsCredentialStore store = new($"Reelshelf test {Guid.NewGuid():N}");
         try
         {
             Assert.Null(store.ReadToken());

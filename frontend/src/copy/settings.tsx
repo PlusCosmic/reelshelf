@@ -27,7 +27,7 @@ export const settingsCopy = {
     /** Shown with the desktop-uploader flag; the rest of the section's words are in copy/device.ts. */
     devices: {
       title: "Devices",
-      copy: "Computers running the Reelshelf Uploader. They can add clips to your books and nothing else.",
+      copy: "Computers running the Reelshelf app for Windows. They can add clips to your books and nothing else.",
     },
     yourData: {
       title: "Your data",

@@ -29,16 +29,16 @@ export const deviceCopy = {
   approve: {
     eyebrow: "Sign in a device",
     title: (device: string) => `Let "${device}" add clips to your library?`,
-    body: "Check this matches the code in the uploader. The device can see your books and add clips to them. It can't change or delete anything else. Remove it any time in Settings → Devices.",
+    body: "Check this matches the code in the Reelshelf app. The device can see your books and add clips to them. It can't change or delete anything else. Remove it any time in Settings → Devices.",
     allow: "Allow",
     deny: "Don't allow",
     working: "Saving…",
     loading: "Looking up the code…",
-    codeLabel: "Enter the code shown in the uploader",
+    codeLabel: "Enter the code shown in the Reelshelf app",
     codePlaceholder: "ABCD-EFGH",
     continue: "Continue",
     unknown:
-      "That code didn't match a sign-in, so nothing changed. Check the code in the uploader, or get a new one there.",
+      "That code didn't match a sign-in, so nothing changed. Check the code in the Reelshelf app, or get a new one there.",
     allowed: (device: string) =>
       `${device} is signed in. You can close this tab.`,
     denied: (device: string) => `${device} wasn't signed in. Nothing changed.`,
@@ -60,7 +60,7 @@ export const deviceCopy = {
     removing: "Removing…",
     removeFailed: (device: string) => `${device} wasn't removed. Try again.`,
     store: "Upload clips automatically while you play.",
-    storeLink: "Get the uploader from the Microsoft Store",
+    storeLink: "Get the Windows app from the Microsoft Store",
   },
 
   /** Beside the library's drop-on-a-book prompt, on Windows desktop browsers. */

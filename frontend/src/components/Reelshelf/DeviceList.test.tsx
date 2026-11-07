@@ -56,7 +56,7 @@ describe("DeviceList", () => {
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
     expect(
       screen.getByRole("link", {
-        name: "Get the uploader from the Microsoft Store",
+        name: "Get the Windows app from the Microsoft Store",
       }),
     ).toBeTruthy();
   });
@@ -70,7 +70,7 @@ describe("DeviceList", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("link", {
-        name: "Get the uploader from the Microsoft Store",
+        name: "Get the Windows app from the Microsoft Store",
       }),
     ).toBeTruthy();
   });

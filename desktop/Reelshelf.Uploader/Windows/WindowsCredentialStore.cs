@@ -6,12 +6,12 @@ using Reelshelf.Uploader.Core.Platform;
 namespace Reelshelf.Uploader.Windows;
 
 /// <summary>
-/// The device token in Windows Credential Manager, as the generic credential "Reelshelf Uploader" for this user
+/// The device token in Windows Credential Manager, as the generic credential "Reelshelf" for this user
 /// (<c>CredWrite</c>, <c>CredRead</c>, <c>CredDelete</c>). It is never written anywhere else, logs included.
 /// </summary>
 public sealed partial class WindowsCredentialStore(string targetName = WindowsCredentialStore.TargetName) : ICredentialStore
 {
-    public const string TargetName = "Reelshelf Uploader";
+    public const string TargetName = "Reelshelf";
 
     private const int CredTypeGeneric = 1;
     private const int CredPersistLocalMachine = 2;

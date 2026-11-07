@@ -58,9 +58,9 @@ export function PrivacyText() {
           account. The clip's owner is never told who reported it.
         </li>
         <li>
-          <strong>If you use the Reelshelf Uploader:</strong> the name you give
-          each computer you sign in with it, when it was added, when it was last
-          used, and which version of the uploader it runs. The uploader reads
+          <strong>If you use the Reelshelf app for Windows:</strong> the name
+          you give each computer you sign in with it, when it was added, when it
+          was last used, and which version of the app it runs. The app reads
           only the folder you point it at, and sends us only the clips it
           uploads. Your folder names, which folder goes on which book, and its
           list of the files it has seen stay on your computer.
@@ -185,9 +185,9 @@ export function PrivacyText() {
         only you can see it and can put it back, for 30 days, or until you empty
         the bin sooner. Then its video is removed from storage and its tags,
         detections and transcripts are deleted. Unlinking a sign-in method
-        deletes its stored tokens. A computer running the Reelshelf Uploader is
-        kept until you remove it in Settings or sign out in the uploader, it
-        goes 90 days without being used, or you delete your account; its name
+        deletes its stored tokens. A computer running the Reelshelf app for
+        Windows is kept until you remove it in Settings or sign out in the app,
+        it goes 90 days without being used, or you delete your account; its name
         and use are deleted within a day after that. You can delete your whole
         account in Settings: it stops working straight away, and its clips are
         removed from storage and the rest of its data deleted shortly after,

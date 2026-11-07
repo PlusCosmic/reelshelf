@@ -63,7 +63,7 @@ describe("DeviceApproval", () => {
 
     expect(
       screen.getByText(
-        "That code didn't match a sign-in, so nothing changed. Check the code in the uploader, or get a new one there.",
+        "That code didn't match a sign-in, so nothing changed. Check the code in the Reelshelf app, or get a new one there.",
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Allow" })).toBeNull();
@@ -118,7 +118,7 @@ describe("DeviceApproval", () => {
     render(<DeviceApproval code={undefined} onCode={onCode} />);
 
     fireEvent.change(
-      screen.getByLabelText("Enter the code shown in the uploader"),
+      screen.getByLabelText("Enter the code shown in the Reelshelf app"),
       { target: { value: "kdrwtplm" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));

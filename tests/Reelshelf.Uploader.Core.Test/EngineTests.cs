@@ -217,7 +217,7 @@ public class EngineTests
         test.Server.PrepareAnswers.Enqueue(((HttpStatusCode)426, null, null));
         Assert.Equal(UploadOutcome.UpdateRequired, await engine.UploadNextAsync(CancellationToken.None));
         Assert.Equal("T8", engine.State.Id);
-        Assert.Equal("Update the uploader", engine.State.Title);
+        Assert.Equal("Update Reelshelf", engine.State.Title);
         Assert.Equal(["N4"], test.Notifier.Sent.Where(sent => sent == "N4"));
     }
 
