@@ -15,7 +15,8 @@ public class FeatureFlagSetupTests
     {
         ["PostHog:ProjectToken"] = "phc_x",
         ["PostHog:SecretKey"] = "phx_y",
-        ["PostHog:ProjectId"] = "12345"
+        ["PostHog:ProjectId"] = "12345",
+        ["PostHog:PersonalApiKey"] = "phx_personal"
     };
 
     [Fact]
@@ -44,13 +45,15 @@ public class FeatureFlagSetupTests
         Assert.Throws<InvalidOperationException>(() => PostHogSettings.FromConfiguration(Section(values)));
     }
 
-    [Fact]
-    public void WithoutTheProjectIdFlagsWorkButNoPeopleAreSent()
+    [Theory]
+    [InlineData("PostHog:ProjectId")]
+    [InlineData("PostHog:PersonalApiKey")]
+    public void WithoutWhatDeletingPeopleNeedsFlagsWorkButNoPeopleAreSent(string missing)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>(Configured)
         {
-            ["PostHog:ProjectId"] = null
+            [missing] = null
         });
         builder.AddFeatureFlags();
 
@@ -75,6 +78,8 @@ public class FeatureFlagSetupTests
         Assert.IsType<PostHogPeopleClient>(services.GetRequiredService<IPostHogPeople>());
         Assert.Equal(PostHogSettings.DefaultHostUrl, options.HostUrl);
         Assert.Equal(FeatureFlagSetup.DefaultPollInterval, options.FeatureFlagPollInterval);
+        // PostHog:PersonalApiKey is only for deleting people; flags keep the Project Secret API Key.
+        Assert.Equal("phx_y", options.SecretKey);
     }
 
     [Fact]

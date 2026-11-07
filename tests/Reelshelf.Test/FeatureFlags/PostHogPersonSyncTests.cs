@@ -89,7 +89,7 @@ public class PostHogPersonSyncTests
     }
 
     [Fact]
-    public async Task TheClientDeletesAPersonByDistinctIdWithTheSecretKey()
+    public async Task TheClientDeletesAPersonByDistinctIdWithThePersonalApiKey()
     {
         RecordingHandler handler = new(HttpStatusCode.Accepted);
         PostHogPeopleClient client = new(new HttpClient(handler), Settings());
@@ -98,7 +98,7 @@ public class PostHogPersonSyncTests
 
         HttpRequestMessage request = Assert.Single(handler.Requests);
         Assert.Equal("https://eu.posthog.com/api/projects/12345/persons/bulk_delete/", request.RequestUri!.ToString());
-        Assert.Equal("Bearer phx_y", request.Headers.Authorization!.ToString());
+        Assert.Equal("Bearer phx_personal", request.Headers.Authorization!.ToString());
         using JsonDocument body = JsonDocument.Parse(handler.Bodies[0]);
         Assert.Equal(Ada.ToString(), Assert.Single(body.RootElement.GetProperty("distinct_ids").EnumerateArray()).GetString());
     }
@@ -114,7 +114,7 @@ public class PostHogPersonSyncTests
     private static PostHogPersonSync Sync(IPostHogPersonStore store, IBillingStore billing, IPostHogPeople people) =>
         new(store, billing, people, NullLogger<PostHogPersonSync>.Instance);
 
-    private static PostHogSettings Settings() => new("phc_x", "phx_y", "12345", PostHogSettings.DefaultHostUrl,
+    private static PostHogSettings Settings() => new("phc_x", "phx_y", "12345", "phx_personal", PostHogSettings.DefaultHostUrl,
         PostHogSettings.DefaultApiHostUrl, PostHogSettings.DefaultPersonSyncInterval);
 
     private static BillingSubscription Subscription(Guid userId, AccountTier tier) =>

@@ -5,14 +5,16 @@ namespace Reelshelf.FeatureFlags;
 
 /// <summary>
 /// PostHog's settings (<c>PostHog:*</c>), set on prod only: the free plan has one project. Null without a project
-/// token. A token without the secret key fails startup, since the SDK would otherwise ask PostHog on every check.
-/// Without the project id flags still work, but no people are sent (<see cref="SyncsPeople"/>), since they couldn't be
-/// deleted with their accounts.
+/// token. A token without the secret key (a Project Secret API Key, for local flag evaluation) fails startup, since the
+/// SDK would otherwise ask PostHog on every check. People are sent only with the project id and a Personal API Key
+/// with <c>person:write</c> (<see cref="SyncsPeople"/>), which deleting them with their accounts needs; without them
+/// flags still work.
 /// </summary>
 public sealed record PostHogSettings(
     string ProjectToken,
     string SecretKey,
     string? ProjectId,
+    string? PersonalApiKey,
     Uri HostUrl,
     Uri ApiHostUrl,
     TimeSpan PersonSyncInterval)
@@ -34,21 +36,26 @@ public sealed record PostHogSettings(
             return null;
         }
 
-        string secretKey = Require(section, "SecretKey",
-            "which local flag evaluation and deleting people need (a Personal API Key with feature_flag:read and person:write)");
-        string? projectId = string.IsNullOrWhiteSpace(section["ProjectId"]) ? null : section["ProjectId"]!.Trim();
+        string secretKey = Require(section, "SecretKey", "which local flag evaluation needs");
 
         return new PostHogSettings(
             token.Trim(),
             secretKey,
-            projectId,
+            Optional(section, "ProjectId"),
+            Optional(section, "PersonalApiKey"),
             Url(section, "HostUrl") ?? DefaultHostUrl,
             Url(section, "ApiHostUrl") ?? DefaultApiHostUrl,
             section.GetValue<TimeSpan?>("PersonSyncInterval") ?? DefaultPersonSyncInterval);
     }
 
     /// <summary>Whether accounts are identified to PostHog: only when their people can be deleted too.</summary>
-    public bool SyncsPeople => ProjectId is not null;
+    public bool SyncsPeople => ProjectId is not null && PersonalApiKey is not null;
+
+    private static string? Optional(IConfigurationSection section, string key)
+    {
+        string? value = section[key];
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
 
     private static string Require(IConfigurationSection section, string key, string why)
     {
@@ -105,6 +112,8 @@ public static class FeatureFlagSetup
             .PostConfigure(sdk =>
             {
                 sdk.HostUrl = settings.HostUrl;
+                // The SDK reads PostHog:PersonalApiKey as an old name for its secret key; flags use the project's.
+                sdk.SecretKey = settings.SecretKey;
                 if (string.IsNullOrWhiteSpace(posthog["FeatureFlagPollInterval"]))
                 {
                     sdk.FeatureFlagPollInterval = DefaultPollInterval;
@@ -133,8 +142,8 @@ public sealed class PostHogPersonSyncOffWarning(ILogger<PostHogPersonSyncOffWarn
     public Task StartAsync(CancellationToken cancellationToken)
     {
         logger.LogWarning(
-            "PostHog:ProjectId isn't set, so accounts aren't identified to PostHog and its UI won't list the role, tier " +
-            "and granted_tier properties; flags still work");
+            "PostHog:ProjectId or PostHog:PersonalApiKey isn't set, so accounts aren't identified to PostHog and its UI " +
+            "won't list the role, tier and granted_tier properties; flags still work");
         return Task.CompletedTask;
     }
 

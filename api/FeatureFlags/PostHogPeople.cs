@@ -66,7 +66,9 @@ public sealed class PostHogPeopleClient(HttpClient http, PostHogSettings setting
         {
             Content = JsonContent.Create(new { distinct_ids = new[] { accountId.ToString() } })
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.SecretKey);
+        // The Personal API Key: a Project Secret API Key, used for flags, can't touch people.
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.PersonalApiKey
+            ?? throw new InvalidOperationException("PostHog:PersonalApiKey isn't set."));
 
         using HttpResponseMessage response = await http.SendAsync(request, cancellationToken);
         await EnsureSuccess(response, "delete the person", cancellationToken);
