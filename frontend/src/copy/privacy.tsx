@@ -96,12 +96,11 @@ export function PrivacyText() {
       <h2>How long we keep it</h2>
       <p>
         We keep your data while your account exists. A deleted clip stays in
-        your bin for 30 days, then it and its details are deleted. A Discord
-        watch room is deleted 30 seconds after the last person leaves. If you
-        delete your account, it stops working straight away and its data is
-        deleted shortly after, unless a report about one of its clips is still
-        open. If your account holds more clips than its plan keeps, we'll tell
-        you before removing the extra ones.
+        your bin for 30 days, then it and its details are deleted. If you delete
+        your account, it stops working straight away and its data is deleted
+        shortly after, unless a report about one of its clips is still open. If
+        your account holds more clips than its plan keeps, we'll tell you before
+        removing the extra ones.
       </p>
       <p>
         Some records are kept longer where we need them: Stripe keeps payment
