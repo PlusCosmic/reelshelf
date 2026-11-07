@@ -56,8 +56,7 @@ internal sealed class DeviceApi : IAsyncDisposable
         await using (NpgsqlConnection admin = new(PostgresFactAttribute.ConnectionString))
         {
             await admin.OpenAsync();
-            await admin.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS vector");
-            await admin.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+            await PostgresFactAttribute.CreateExtensionsAsync(admin, "vector", "pgcrypto");
             await admin.ExecuteAsync($"CREATE SCHEMA {schema}");
         }
 

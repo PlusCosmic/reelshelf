@@ -195,7 +195,7 @@ public class RunClaimFenceTests
             await using (NpgsqlConnection admin = new(PostgresFactAttribute.ConnectionString))
             {
                 await admin.OpenAsync();
-                await admin.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS vector");
+                await PostgresFactAttribute.CreateExtensionsAsync(admin, "vector");
                 await admin.ExecuteAsync($"CREATE SCHEMA {schema}");
             }
 

@@ -14,7 +14,7 @@ public class EmbeddingStorageTests
     {
         await using NpgsqlDataSource dataSource = ReelshelfDataSource.Create(PostgresFactAttribute.ConnectionString!);
         await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync();
-        await connection.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS vector");
+        await PostgresFactAttribute.CreateExtensionsAsync(connection, "vector");
         // UseVector() loads the type when the data source first connects, which may be before the extension existed.
         await connection.ReloadTypesAsync();
         await connection.ExecuteAsync(
