@@ -92,6 +92,10 @@
             <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Background" Value="{DynamicResource RsSurface}" />
         </Style>
+        <Style Selector="Border.row">
+            <Setter Property="BorderBrush" Value="{DynamicResource RsLine}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+        </Style>
         <Style Selector="Border.codebox">
             <Setter Property="BorderBrush" Value="{DynamicResource RsLine}" />
             <Setter Property="BorderThickness" Value="1" />
