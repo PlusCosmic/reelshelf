@@ -1,3 +1,5 @@
+using Dapper;
+using Npgsql;
 using Xunit;
 
 namespace Reelshelf.Test;
@@ -19,4 +21,22 @@ public sealed class PostgresFactAttribute : FactAttribute
     }
 
     public static string? ConnectionString => Environment.GetEnvironmentVariable(ConnectionStringVariable);
+
+    /// <summary>
+    /// Creates the extensions if they are missing, one test at a time: test classes run in parallel, and two
+    /// <c>CREATE EXTENSION IF NOT EXISTS</c> at once can both find it missing and the second fails on
+    /// <c>pg_extension_name_index</c>.
+    /// </summary>
+    public static async Task CreateExtensionsAsync(NpgsqlConnection connection, params string[] extensions)
+    {
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync("SELECT pg_advisory_xact_lock(hashtext('reelshelf-test-extensions'))",
+            transaction: transaction);
+        foreach (string extension in extensions)
+        {
+            await connection.ExecuteAsync($"CREATE EXTENSION IF NOT EXISTS {extension}", transaction: transaction);
+        }
+
+        await transaction.CommitAsync();
+    }
 }

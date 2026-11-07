@@ -31,7 +31,7 @@ public sealed class WatchRoomHub(
         ActivityParticipantResponse described =
             await signIn.DescribeAsync(participant.DiscordUserId, participant.Name, participant.AvatarUrl);
 
-        WatchRoom room = rooms.Join(participant.InstanceId, new RoomConnection(
+        RoomStateView state = await rooms.JoinAsync(participant.InstanceId, new RoomConnection(
             Context.ConnectionId,
             participant.DiscordUserId,
             described.Name,
@@ -40,24 +40,24 @@ public sealed class WatchRoomHub(
             described.AccountName,
             timeProvider.GetUtcNow()));
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, GroupName(room.InstanceId));
-        await Broadcast(room);
+        await Groups.AddToGroupAsync(Context.ConnectionId, GroupName(participant.InstanceId));
+        await Clients.Group(GroupName(participant.InstanceId)).SendAsync(RoomStateMethod, state);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        // The person stays in the room for its reconnect grace, so usually nothing the room shows changes yet.
         string instanceId = Participant().InstanceId;
-        WatchRoom? room = rooms.Leave(instanceId, Context.ConnectionId);
-        if (room is not null)
+        if (await rooms.LeaveAsync(instanceId, Context.ConnectionId) is { Changed: true, State: { } state })
         {
-            await Broadcast(room);
+            await Clients.Group(GroupName(instanceId)).SendAsync(RoomStateMethod, state);
         }
     }
 
     /// <summary>A member queues one of their own clips; it starts at once when nothing is playing.</summary>
     public async Task AddToQueue(Guid clipId)
     {
-        WatchRoom room = Room();
+        WatchRoom room = await Room();
         RoomConnection caller = room.GetConnection(Context.ConnectionId) ?? throw NotInRoom();
         if (caller.AccountId is not { } accountId)
         {
@@ -80,10 +80,13 @@ public sealed class WatchRoomHub(
             clip.Length ?? 0,
             ActivityMedia.For(mediaUrls, clip.ToVideoRef()));
 
-        switch (room.Enqueue(Context.ConnectionId, nowPlaying))
+        EnqueueResult result = EnqueueResult.NotAMember;
+        WatchRoomUpdate update = await ApplyAsync(r =>
+            (result = r.Enqueue(Context.ConnectionId, nowPlaying)) == EnqueueResult.Queued);
+        switch (result)
         {
             case EnqueueResult.Queued:
-                await Broadcast(room);
+                await Clients.Group(GroupName(room.InstanceId)).SendAsync(RoomStateMethod, update.State);
                 return;
             case EnqueueResult.Locked:
                 throw new HubException("The host has locked the queue");
@@ -99,20 +102,17 @@ public sealed class WatchRoomHub(
     /// <summary>The host removes any queued clip; a member removes their own.</summary>
     public async Task RemoveFromQueue(Guid itemId)
     {
-        WatchRoom room = Room();
-        await ApplyChange(room, r => r.Remove(Context.ConnectionId, itemId));
+        await ApplyChange(r => r.Remove(Context.ConnectionId, itemId));
     }
 
     public async Task MoveInQueue(Guid itemId, int toIndex)
     {
-        WatchRoom room = Room();
-        await ApplyChange(room, r => r.Move(Context.ConnectionId, itemId, toIndex));
+        await ApplyChange(r => r.Move(Context.ConnectionId, itemId, toIndex));
     }
 
     public async Task LockQueue(bool locked)
     {
-        WatchRoom room = Room();
-        await ApplyChange(room, r => r.SetQueueLocked(Context.ConnectionId, locked));
+        await ApplyChange(r => r.SetQueueLocked(Context.ConnectionId, locked));
     }
 
     /// <summary>
@@ -121,14 +121,12 @@ public sealed class WatchRoomHub(
     /// </summary>
     public async Task Next(Guid? currentItemId)
     {
-        WatchRoom room = Room();
-        await ApplyChange(room, r => currentItemId is { } itemId && r.Next(Context.ConnectionId, itemId));
+        await ApplyChange(r => currentItemId is { } itemId && r.Next(Context.ConnectionId, itemId));
     }
 
     public async Task PlayNow(Guid itemId)
     {
-        WatchRoom room = Room();
-        await ApplyChange(room, r => r.PlayNow(Context.ConnectionId, itemId));
+        await ApplyChange(r => r.PlayNow(Context.ConnectionId, itemId));
     }
 
     /// <summary>
@@ -137,10 +135,10 @@ public sealed class WatchRoomHub(
     /// </summary>
     public async Task React(string emoji)
     {
-        WatchRoom room = Room();
-        if (room.React(Context.ConnectionId, emoji) is { } reaction)
+        string instanceId = Participant().InstanceId;
+        if (await rooms.ReactAsync(instanceId, Context.ConnectionId, emoji) is { } reaction)
         {
-            await Clients.Group(GroupName(room.InstanceId)).SendAsync(ReactionMethod, reaction);
+            await Clients.Group(GroupName(instanceId)).SendAsync(ReactionMethod, reaction);
         }
     }
 
@@ -152,27 +150,29 @@ public sealed class WatchRoomHub(
 
     private async Task SetPlayback(bool? playing, double positionSeconds)
     {
-        WatchRoom room = Room();
-        await ApplyChange(room, r => r.SetPlayback(Context.ConnectionId, playing, positionSeconds));
+        await ApplyChange(r => r.SetPlayback(Context.ConnectionId, playing, positionSeconds));
     }
 
-    private async Task ApplyChange(WatchRoom room, Func<WatchRoom, bool> change)
+    private async Task ApplyChange(Func<WatchRoom, bool> change)
     {
-        (bool applied, RoomStateView state) = room.Apply(change);
-        if (!applied)
+        WatchRoomUpdate update = await ApplyAsync(change);
+        if (!update.Changed)
         {
             // Not allowed (not the host any more, or not their clip) or out of date: resend the room so the caller's screen catches up.
-            await Clients.Caller.SendAsync(RoomStateMethod, state);
+            await Clients.Caller.SendAsync(RoomStateMethod, update.State);
             return;
         }
 
-        await Clients.Group(GroupName(room.InstanceId)).SendAsync(RoomStateMethod, state);
+        await Clients.Group(GroupName(Participant().InstanceId)).SendAsync(RoomStateMethod, update.State);
     }
 
-    private Task Broadcast(WatchRoom room) =>
-        Clients.Group(GroupName(room.InstanceId)).SendAsync(RoomStateMethod, room.Snapshot());
+    /// <summary>Applies a change to the caller's room; the room is never empty while the caller is in it.</summary>
+    private async Task<WatchRoomUpdate> ApplyAsync(Func<WatchRoom, bool> change) =>
+        await rooms.ApplyAsync(Participant().InstanceId, change) is { State: not null } update
+            ? update
+            : throw NotInRoom();
 
-    private WatchRoom Room() => rooms.Find(Participant().InstanceId) ?? throw NotInRoom();
+    private async Task<WatchRoom> Room() => await rooms.FindAsync(Participant().InstanceId) ?? throw NotInRoom();
 
     private RoomParticipant Participant() =>
         RoomTokenAuthentication.ReadParticipant(Context.User!) ?? throw new HubException("Not signed in to a room");

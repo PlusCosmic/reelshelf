@@ -105,8 +105,8 @@ export function useWatchRoom(session: ActivitySessionResponse): WatchRoom {
     driverRef.current = driver;
 
     connection.on("RoomState", (next: RoomStateView) => {
-      // States can overtake each other; keep the newest. A rejoined room after a restart counts from zero
-      // again, which is why a reconnect resets the version.
+      // States can overtake each other; keep the newest. A room that closed while this client was away
+      // starts counting from zero again, which is why a reconnect resets the version.
       if (next.version <= versionRef.current) return;
       versionRef.current = next.version;
       offsetRef.current = Date.parse(next.serverTime) - Date.now();
