@@ -11,6 +11,7 @@
     "lint": "bun run --cwd frontend lint",
     "typecheck": "bun run --cwd frontend typecheck",
     "test": "bun run --cwd frontend test",
+    "desktop:install": "powershell -NoProfile -ExecutionPolicy Bypass -File desktop/install.ps1",
     "build:api": "dotnet build Reelshelf.sln --disable-build-servers -maxcpucount:1",
     "migrate": "dotnet run --project migrations --",
     "migrate:adopt-existing": "dotnet run --project migrations -- --adopt-existing",
