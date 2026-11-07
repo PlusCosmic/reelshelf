@@ -19,7 +19,7 @@ internal sealed class SetupWindow : Window
     private readonly AppController _controller;
     private readonly Dictionary<string, Guid> _choices = new(StringComparer.OrdinalIgnoreCase);
     private readonly StackPanel _body = Ui.Stack(14);
-    private readonly CheckBox _startWithWindows = new() { Content = UploaderCopy.Setup.AlsoStartWithWindows, IsChecked = true };
+    private bool _startWithWindows = true;
     private string? _folder;
     private Guid? _defaultBook;
 
@@ -91,7 +91,10 @@ internal sealed class SetupWindow : Window
         _body.Children.Add(Ui.Muted(UploaderCopy.Setup.Baseline));
         Button start = Ui.Button(UploaderCopy.Setup.StartWatching, () => _ = StartAsync(), primary: true);
         start.IsEnabled = books.Count > 0 && _folder is not null && Directory.Exists(_folder);
-        _body.Children.Add(Ui.Buttons(_startWithWindows, start));
+        // A new checkbox on each render: Avalonia refuses a control that still sits in the cleared render's row.
+        CheckBox startWithWindows = new() { Content = UploaderCopy.Setup.AlsoStartWithWindows, IsChecked = _startWithWindows };
+        startWithWindows.IsCheckedChanged += (_, _) => _startWithWindows = startWithWindows.IsChecked == true;
+        _body.Children.Add(Ui.Buttons(startWithWindows, start));
     }
 
     /// <summary>"Apex Legends\ → Apex Legends", or "No book" with "Choose…".</summary>
@@ -150,7 +153,7 @@ internal sealed class SetupWindow : Window
 
         _controller.Engine.SetDefaultBook(_defaultBook);
         _controller.Engine.SetRecordingsFolder(_folder);
-        if (_startWithWindows.IsChecked == true)
+        if (_startWithWindows)
         {
             await StartupTaskService.SetAsync(true);
         }

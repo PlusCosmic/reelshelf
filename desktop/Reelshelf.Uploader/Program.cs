@@ -1,5 +1,7 @@
 using System.IO.Pipes;
 using Avalonia;
+using Reelshelf.Uploader.Core.Logging;
+using Reelshelf.Uploader.Core.Settings;
 
 namespace Reelshelf.Uploader;
 
@@ -23,6 +25,7 @@ internal static class Program
             return 0;
         }
 
+        LogCrashes();
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnExplicitShutdown);
         return 0;
     }
@@ -30,6 +33,27 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
         .UsePlatformDetect()
         .LogToTrace();
+
+    /// <summary>Writes an exception that ends the app, or a task's that nobody observed, to the app's own log.</summary>
+    private static void LogCrashes()
+    {
+        DailyFileLog log = new(UploaderPaths.Default().Logs);
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            Write(log, e.IsTerminating ? "The app crashed" : "Unhandled exception", e.ExceptionObject);
+        TaskScheduler.UnobservedTaskException += (_, e) => Write(log, "A background task failed", e.Exception);
+    }
+
+    private static void Write(DailyFileLog log, string what, object error)
+    {
+        try
+        {
+            log.Write($"{what}: {error}");
+        }
+        catch (Exception)
+        {
+            // Nothing more can be done while crashing; Windows' event log still has it.
+        }
+    }
 
     private static void SignalRunningInstance()
     {
