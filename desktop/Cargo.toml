@@ -1,11 +1,11 @@
 # The Windows uploader in Rust (ADR-0010; build spec in reelshelf-docs/desktop-uploader/README.md). Separate from
 # Reelshelf.sln and the Bun workspace, with its own CI job (`Desktop` in .github/workflows/ci.yml).
 #
-# Members: `core` (reelshelf-core) and `api` (reelshelf-api); `app` (reelshelf-app, #367) joins this list when it
-# lands. Cargo refuses a member whose directory doesn't exist yet, so each is added by the change that creates it.
+# Members: `core` (reelshelf-core), `api` (reelshelf-api) and `app` (reelshelf-app, the Rune app and its `reelshelf`
+# binary).
 [workspace]
 resolver = "2"
-members = ["core", "api"]
+members = ["core", "api", "app"]
 
 [workspace.package]
 version = "0.1.0"
@@ -33,6 +33,7 @@ tracing-subscriber = { version = "0.3.23", default-features = false, features = 
 uuid = { version = "1.29.1", features = ["serde", "v4"] }
 wiremock = "0.6.5"
 
-# Rune, the app's toolkit (#367), pinned to a `dev` revision and moved forward one bump per PR. No crate uses it yet,
-# and a workspace dependency no member names is never fetched or built.
-rune = { git = "https://github.com/anomalyco/rune", rev = "cd36f5a9917ec4a65786caf69213c9cc32919984" }
+# Rune, the app's toolkit, and rune-kit, its components and their token schema, pinned to one `dev` revision and moved
+# forward one bump per PR with the headless renders attached. Both name the same revision.
+rune = { git = "https://github.com/anomalyco/rune", rev = "cd36f5a9917ec4a65786caf69213c9cc32919984", features = ["native-file-dialog"] }
+rune-kit = { git = "https://github.com/anomalyco/rune", rev = "cd36f5a9917ec4a65786caf69213c9cc32919984" }
