@@ -4,7 +4,7 @@ use reelshelf_core::copy::tray as words;
 use reelshelf_core::state::TrayBadge;
 use rune::tray::{TrayIcon, TrayItem};
 
-use crate::model::{Commands, Show};
+use crate::model::{Commands, FlyoutPage, Show};
 
 /// The icon's side in pixels.
 pub const ICON_SIZE: u32 = 32;
@@ -31,9 +31,9 @@ pub fn menu() -> Vec<TrayItem> {
 /// Does what a menu item says.
 pub fn on_menu(id: &str, commands: &dyn Commands) {
     match id {
-        ids::RECENT => commands.show(Show::Recent),
+        ids::RECENT => commands.show(Show::Flyout(FlyoutPage::Recent)),
         ids::LIBRARY => commands.open_link(crate::links::Link::Library),
-        ids::SETTINGS => commands.show(Show::Settings),
+        ids::SETTINGS => commands.show(Show::Flyout(FlyoutPage::Settings)),
         ids::QUIT => commands.quit(false),
         other => tracing::warn!("Unknown tray menu item {other:?}"),
     }

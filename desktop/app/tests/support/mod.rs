@@ -28,7 +28,13 @@ pub fn settle(rt: &mut Runtime<Ui>) {
 /// A scene's runtime. The flyout takes its content's height, as its window does.
 pub fn scene_runtime(scene: &Scene, dark: bool) -> Runtime<Ui> {
     let (ui, _) = scene.ui();
-    let mut rt = runtime(ui, scene.size, dark);
+    let start = if scene.kind == WindowKind::Flyout {
+        // Tall enough for any page, so its card is measured whole.
+        (scene.size.0, 1200.0)
+    } else {
+        scene.size
+    };
+    let mut rt = runtime(ui, start, dark);
     if scene.kind == WindowKind::Flyout {
         let height = flyout_height(&rt);
         rt.set_viewport((scene.size.0, height), 1.0);
@@ -37,10 +43,14 @@ pub fn scene_runtime(scene: &Scene, dark: bool) -> Runtime<Ui> {
     rt
 }
 
-/// The flyout's content height: the bottom of its menu, inside the card's 1-point border.
+/// The flyout's content height: the bottom of the page it shows, inside the card's 1-point border.
 pub fn flyout_height(rt: &Runtime<Ui>) -> f32 {
-    let menu = rt.presented("menu").expect("the flyout has its menu").0;
-    (menu[1] + menu[3] + 1.0).ceil()
+    let page = ["home", "recent-page", "settings-page", "book-page"]
+        .into_iter()
+        .find_map(|key| rt.presented(key))
+        .expect("the flyout shows a page")
+        .0;
+    (page[1] + page[3] + 1.0).ceil()
 }
 
 /// The scene's window as the app builds it, reading Rune's flags from `args` (`--snap`, `--tree`, `--theme`).

@@ -1,19 +1,12 @@
 //! The windows' native parts Rune leaves to the app: where the flyout opens, from the tray icon's own rectangle and
-//! its display's work area, and S3's and S5's caption buttons (Close only).
+//! its display's work area.
 
-use std::ffi::c_void;
-
-use rune::raw_window_handle::RawWindowHandle;
-use windows::Win32::Foundation::{HWND, POINT, RECT};
+use windows::Win32::Foundation::{POINT, RECT};
 use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint};
 use windows::Win32::System::Threading::GetCurrentProcessId;
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use windows::Win32::UI::Shell::{NOTIFYICONIDENTIFIER, Shell_NotifyIconGetRect};
-use windows::Win32::UI::WindowsAndMessaging::{
-    FindWindowExW, GWL_STYLE, GetCursorPos, GetWindowLongPtrW, GetWindowThreadProcessId, HWND_MESSAGE,
-    SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetWindowLongPtrW, SetWindowPos,
-    WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
-};
+use windows::Win32::UI::WindowsAndMessaging::{FindWindowExW, GetCursorPos, GetWindowThreadProcessId, HWND_MESSAGE};
 use windows::core::{PCWSTR, w};
 
 use crate::tray::{Placement, Rect};
@@ -92,36 +85,5 @@ pub fn flyout_placement() -> Option<Placement> {
             work: rect(info.rcWork),
             scale: f64::from(dpi_x.max(1)) / 96.0,
         })
-    }
-}
-
-/// Takes the minimize and maximize boxes off a window, so its title bar has only Close (Rune draws the caption
-/// buttons the window's style has).
-pub fn close_button_only(window: &rune::WindowHandle) {
-    let result = window.with_raw_handle(|handle| {
-        let RawWindowHandle::Win32(win32) = handle.as_raw() else {
-            return;
-        };
-        let hwnd = HWND(win32.hwnd.get() as *mut c_void);
-        // SAFETY: a live window this thread owns, borrowed for the call.
-        unsafe {
-            let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-            let boxes = (WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0) as isize;
-            if style & boxes != 0 {
-                SetWindowLongPtrW(hwnd, GWL_STYLE, style & !boxes);
-                let _ = SetWindowPos(
-                    hwnd,
-                    None,
-                    0,
-                    0,
-                    0,
-                    0,
-                    SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
-                );
-            }
-        }
-    });
-    if let Err(error) = result {
-        tracing::debug!("Couldn't set a window's caption buttons: {error}");
     }
 }

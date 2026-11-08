@@ -268,6 +268,8 @@ pub mod tray {
     pub const PAUSE_TOMORROW: &str = "Until tomorrow";
     pub const PAUSE_UNTIL_RESUMED: &str = "Until I resume";
     pub const SETTINGS: &str = "Settings";
+    pub const RECENT_UPLOADS: &str = "Recent uploads";
+    pub const BACK: &str = "Back";
     pub const QUIT: &str = "Quit";
 
     pub fn quit_while_uploading(uploads: i64) -> String {
@@ -283,7 +285,7 @@ pub mod tray {
 
 /// S3: a folder with no book.
 pub mod book_picker {
-    pub const WINDOW_TITLE: &str = "Choose a book";
+    pub const TITLE: &str = "Choose a book";
 
     pub fn heading(folder: &str) -> String {
         format!("Clips from {folder} go on")
@@ -298,7 +300,6 @@ pub mod book_picker {
 pub mod recent {
     use chrono::{DateTime, TimeZone};
 
-    pub const WINDOW_TITLE: &str = "Recent uploads";
     pub const WAITING: &str = "Waiting";
 
     pub fn uploading(percent: u8) -> String {
@@ -341,7 +342,6 @@ pub mod recent {
 pub mod settings {
     use super::plural;
 
-    pub const WINDOW_TITLE: &str = "Reelshelf settings";
     pub const FOLDER_LABEL: &str = "Recordings folder";
 
     pub fn folder_detail(path: &str, matched: i64) -> String {

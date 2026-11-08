@@ -1,64 +1,15 @@
-//! S4: recent uploads, newest first, each with its book, where it is, and Try again for a file that didn't upload.
+//! S4, a page of the flyout: recent uploads, newest first, each with its book, where it is, and Try again for a file that didn't upload.
 
 use reelshelf_core::copy::recent as words;
 use reelshelf_core::ledger::LedgerState;
 use reelshelf_core::recent::RecentUpload;
-use rune::{Color, Cursor, El, ScrollSpec, Span, col, icon, rich, row, text};
+use rune::{Color, Cursor, El, Span, col, icon, rich, row, text};
 
 use crate::links::Link;
 use crate::model::Ui;
 use crate::theme::{Look, ty};
 use crate::ui::icons;
-use crate::ui::parts::{self, Tone};
-
-pub fn view(s: &Ui, l: &Look) -> El {
-    let rows = &s.model.recent;
-    let list = if rows.is_empty() {
-        text(words::EMPTY).key("empty").font(ty::BODY).color(l.c.fg_soft).wrap()
-    } else {
-        let mut card = parts::card(l, "uploads").role("list").label(words::WINDOW_TITLE);
-        for (index, upload) in rows.iter().enumerate() {
-            card = card.child(upload_row(
-                l,
-                index,
-                upload,
-                s.model.current_upload.as_ref(),
-                index + 1 == rows.len(),
-            ));
-        }
-        col()
-            .key("upload-scroll")
-            .w_full()
-            .shrink()
-            .min_h(0.0)
-            .scroll(ScrollSpec { stick_bottom: false })
-            .child(card)
-    };
-    let body = col()
-        .key("content")
-        .gap(14.0)
-        .px(26.0)
-        .pt(24.0)
-        .pb(18.0)
-        .child(parts::heading(l, words::WINDOW_TITLE, ty::TITLE))
-        .child(list);
-    let folder = s.model.settings.recordings_folder.clone();
-    let footer = parts::footer(l, 26.0)
-        .gap(8.0)
-        .child(
-            parts::button(l, "open-folder", words::OPEN_FOLDER, Tone::Link, 9.0, 4.0).on_press(move |s: &mut Ui| {
-                if let Some(folder) = &folder {
-                    s.commands.open_folder(folder);
-                }
-            }),
-        )
-        .child(rune::spacer())
-        .child(
-            parts::button(l, "open-library", words::OPEN_LIBRARY, Tone::Primary, 9.0, 15.0)
-                .on_press(|s: &mut Ui| s.commands.open_link(Link::Library)),
-        );
-    parts::window(l, words::WINDOW_TITLE, body, Some(footer))
-}
+use crate::ui::parts;
 
 /// What each row's status says, in which colour, and what goes with it.
 fn status(l: &Look, index: usize, upload: &RecentUpload, current: Option<&(String, u8)>) -> El {
@@ -121,7 +72,13 @@ fn uploading_percent(upload: &RecentUpload, current: Option<&(String, u8)>) -> O
         .map(|&(_, percent)| percent)
 }
 
-fn upload_row(l: &Look, index: usize, upload: &RecentUpload, current: Option<&(String, u8)>, last: bool) -> El {
+pub(crate) fn upload_row(
+    l: &Look,
+    index: usize,
+    upload: &RecentUpload,
+    current: Option<&(String, u8)>,
+    last: bool,
+) -> El {
     let cloth = upload.cloth_color.as_deref().map(|color| parts::cloth(l, Some(color)));
     let has_book = upload.entry.category_id.is_some();
     let spine = parts::spine(

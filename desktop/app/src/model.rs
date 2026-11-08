@@ -22,25 +22,16 @@ pub enum WindowKind {
     SignIn,
     /// S2.
     Setup,
-    /// S3.
-    BookPicker,
-    /// S4.
-    Recent,
-    /// S5.
-    Settings,
     /// Quitting while clips upload.
     Quit,
-    /// T1–T8 above the tray.
+    /// The flyout above the tray: T1–T8 and its pages, S3–S5.
     Flyout,
 }
 
 impl WindowKind {
-    pub const ALL: [WindowKind; 7] = [
+    pub const ALL: [WindowKind; 4] = [
         WindowKind::SignIn,
         WindowKind::Setup,
-        WindowKind::BookPicker,
-        WindowKind::Recent,
-        WindowKind::Settings,
         WindowKind::Quit,
         WindowKind::Flyout,
     ];
@@ -50,9 +41,6 @@ impl WindowKind {
         match self {
             WindowKind::SignIn => "sign-in",
             WindowKind::Setup => "setup",
-            WindowKind::BookPicker => "book-picker",
-            WindowKind::Recent => "recent",
-            WindowKind::Settings => "settings",
             WindowKind::Quit => "quit",
             WindowKind::Flyout => "flyout",
         }
@@ -64,11 +52,10 @@ impl WindowKind {
 pub enum Show {
     SignIn,
     Setup,
-    /// S3 for a folder below the recordings folder ("" for the recordings folder itself).
-    BookPicker(String),
-    Recent,
-    Settings,
-    Flyout,
+    /// The flyout on one of its pages.
+    Flyout(FlyoutPage),
+    /// The flyout's S3 for a folder below the recordings folder ("" for the recordings folder itself).
+    ChooseBook(String),
 }
 
 /// The engine as the windows read it, taken whenever it changes.
@@ -121,10 +108,24 @@ pub struct PickerDraft {
     pub selected: Option<Uuid>,
 }
 
-/// The flyout's own state: whether "Pause for…" is open.
+/// The flyout's pages: the state and its menu (T1–T8), or one of the pages it leads to: S4, S5 and S3.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FlyoutPage {
+    #[default]
+    Home,
+    Recent,
+    Settings,
+    /// Choosing a book for the folder in [`Ui::picker`].
+    Book,
+}
+
+/// The flyout's own state: the page it shows, whether "Pause for…" is open, and whether it is waiting on a folder
+/// picker or menu it opened (which takes the focus without the flyout closing).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct FlyoutDraft {
+    pub page: FlyoutPage,
     pub pause_open: bool,
+    pub held_open: bool,
 }
 
 /// What the windows' buttons do. Mutating commands save through the engine; the window then reads a fresh
@@ -154,7 +155,7 @@ pub trait Commands: Send + Sync {
     fn set_start_with_windows(&self, enabled: bool);
     fn set_notify_shelved(&self, enabled: bool);
     fn sign_out(&self);
-    /// S4's Try again.
+    /// The flyout's Recent uploads' Try again.
     fn try_again(&self, entry: &LedgerEntry);
 }
 

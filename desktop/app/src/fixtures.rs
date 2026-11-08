@@ -14,7 +14,7 @@ use reelshelf_core::state::{LibraryFullInfo, PauseInfo, PauseLength, StateInputs
 use uuid::Uuid;
 
 use crate::links::Link;
-use crate::model::{Commands, Model, PickerDraft, SetupDraft, Show, SignInPhase, Ui, WindowKind};
+use crate::model::{Commands, FlyoutPage, Model, PickerDraft, SetupDraft, Show, SignInPhase, Ui, WindowKind};
 
 pub const ROOT: &str = "D:\\Recordings";
 pub const CODE: &str = "MFND-VRWZ";
@@ -391,33 +391,20 @@ pub fn scenes() -> Vec<Scene> {
                 start_with_windows: true,
             };
         }),
-        scene("s3", WindowKind::BookPicker, base(), |ui| {
-            ui.picker = PickerDraft {
-                folder: "Marvel Rivals".to_owned(),
-                selected: Some(book("Marvel Rivals").id),
-            };
-        }),
-        scene("s3-recordings-folder", WindowKind::BookPicker, base(), |ui| {
-            ui.picker = PickerDraft::default();
-        }),
     ];
-    let (recent, current) = recent_rows();
-    let mut with_rows = base();
-    with_rows.recent = recent;
-    with_rows.current_upload = current;
-    scenes.push(scene("s4", WindowKind::Recent, with_rows, |_| {}));
-    let mut more = base();
-    more.recent = more_recent_rows();
-    scenes.push(scene("s4-more-states", WindowKind::Recent, more, |_| {}));
-    scenes.push(scene("s4-empty", WindowKind::Recent, base(), |_| {}));
-    scenes.push(scene("s5", WindowKind::Settings, base(), |_| {}));
     let mut blocked = base();
     blocked.startup = StartupState::DisabledByUser;
     blocked.settings.full_screen = FullScreenMode::UploadSlowly;
     blocked.settings.speed_limit_mbps = Some(10);
     blocked.settings.default_book_id = Some(book("Apex Legends").id);
     blocked.settings.notify_shelved = false;
-    scenes.push(scene("s5-changed", WindowKind::Settings, blocked, |_| {}));
+    scenes.push(scene("s5-changed", WindowKind::Flyout, blocked, |ui| {
+        ui.flyout.page = FlyoutPage::Settings
+    }));
+    scenes.push(scene("s3-recordings-folder", WindowKind::Flyout, base(), |ui| {
+        ui.flyout.page = FlyoutPage::Book;
+        ui.picker = PickerDraft::default();
+    }));
     for id in ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"] {
         scenes.push(scene(
             &id.to_lowercase(),
@@ -428,6 +415,31 @@ pub fn scenes() -> Vec<Scene> {
     }
     scenes.push(scene("t1-pause-open", WindowKind::Flyout, base(), |ui| {
         ui.flyout.pause_open = true
+    }));
+    let (recent, current) = recent_rows();
+    let mut flyout_rows = model(tray_inputs("T2"));
+    flyout_rows.recent = recent;
+    flyout_rows.current_upload = current;
+    scenes.push(scene("s4", WindowKind::Flyout, flyout_rows, |ui| {
+        ui.flyout.page = FlyoutPage::Recent
+    }));
+    let mut flyout_more = base();
+    flyout_more.recent = more_recent_rows();
+    scenes.push(scene("s4-more-states", WindowKind::Flyout, flyout_more, |ui| {
+        ui.flyout.page = FlyoutPage::Recent
+    }));
+    scenes.push(scene("s4-empty", WindowKind::Flyout, base(), |ui| {
+        ui.flyout.page = FlyoutPage::Recent
+    }));
+    scenes.push(scene("s5", WindowKind::Flyout, base(), |ui| {
+        ui.flyout.page = FlyoutPage::Settings
+    }));
+    scenes.push(scene("s3", WindowKind::Flyout, model(tray_inputs("T5")), |ui| {
+        ui.flyout.page = FlyoutPage::Book;
+        ui.picker = PickerDraft {
+            folder: "Marvel Rivals".to_owned(),
+            selected: Some(book("Marvel Rivals").id),
+        };
     }));
     let mut quitting = model(tray_inputs("T2"));
     quitting.uploads_in_progress = 2;

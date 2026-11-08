@@ -1,4 +1,4 @@
-//! S5: settings. The recordings folder, the default book, what happens during a full-screen game, the speed limit,
+//! S5, a page of the flyout: settings. The recordings folder, the default book, what happens during a full-screen game, the speed limit,
 //! starting with Windows and N1, then the device's sign-in, and the version with the log folder.
 
 use reelshelf_core::copy::{settings as words, setup as setup_words};
@@ -14,7 +14,8 @@ use crate::ui::setup::{book_menu, book_name, picked_book};
 /// The menu's id for "No limit".
 const NO_LIMIT: &str = "none";
 
-pub fn view(s: &Ui, l: &Look) -> El {
+/// S5's pieces: the options, the device's sign-in, and the version.
+pub fn sections(s: &Ui, l: &Look) -> (El, El, El) {
     let model = &s.model;
     let settings = &model.settings;
     let folder = settings.recordings_folder.clone().unwrap_or_default();
@@ -44,7 +45,9 @@ pub fn view(s: &Ui, l: &Look) -> El {
             parts::select_field(l, "default-book", words::DEFAULT_BOOK_LABEL, &default_book, true).on_press_tx(
                 |s: &mut Ui, tx: &mut Tx| {
                     let menu = book_menu(&s.model.books, s.model.settings.default_book_id, words::ASK_EACH_TIME);
+                    s.flyout.held_open = true;
                     tx.popup_menu(menu, "default-book", |s: &mut Ui, picked, _tx: &mut Tx| {
+                        s.flyout.held_open = false;
                         if let Some(picked) = picked {
                             s.commands.set_default_book(picked_book(picked));
                             s.refresh();
@@ -117,18 +120,7 @@ pub fn view(s: &Ui, l: &Look) -> El {
                 .on_press(|s: &mut Ui| s.commands.open_log_folder()),
         );
 
-    let body = col()
-        .key("content")
-        .gap(18.0)
-        .px(26.0)
-        .pt(24.0)
-        .pb(20.0)
-        .child(parts::heading(l, words::WINDOW_TITLE, ty::TITLE))
-        .child(card)
-        .child(signed_in)
-        .child(rune::spacer())
-        .child(foot);
-    parts::window(l, words::WINDOW_TITLE, body, None)
+    (card, signed_in, foot)
 }
 
 /// One setting's row: its name, an optional line under it, and the control the caller adds.
@@ -187,7 +179,9 @@ fn change_folder(s: &mut Ui, tx: &mut Tx) {
         directory: s.model.settings.recordings_folder.clone().map(Into::into),
         ..FileDialogOptions::default()
     };
+    s.flyout.held_open = true;
     tx.open_folder(options, |s: &mut Ui, picked, _tx: &mut Tx| {
+        s.flyout.held_open = false;
         if let Ok(Some(path)) = picked {
             let folder = path.to_string_lossy().into_owned();
             let starts = s.model.startup == StartupState::Enabled;
@@ -206,10 +200,12 @@ fn speed_menu(s: &mut Ui, tx: &mut Tx) {
         .map_or(NO_LIMIT.to_owned(), |mbps| mbps.to_string());
     let options = std::iter::once((NO_LIMIT.to_owned(), words::NO_LIMIT.to_owned()))
         .chain(SPEED_LIMITS.iter().map(|mbps| (mbps.to_string(), words::mbps(*mbps))));
+    s.flyout.held_open = true;
     tx.popup_menu(
         PopupMenu::picker(options, &current),
         "speed-limit",
         |s: &mut Ui, picked, _tx: &mut Tx| {
+            s.flyout.held_open = false;
             if let Some(picked) = picked {
                 s.commands.set_speed_limit(picked.parse().ok());
                 s.refresh();
