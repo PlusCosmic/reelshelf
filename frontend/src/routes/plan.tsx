@@ -1,3 +1,4 @@
+import { Notice } from "@pluscosmic/ui";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -53,9 +54,9 @@ function PlanRoute() {
       </section>
       <section className="rs-section rs-settings">
         {overLimit.isError ? (
-          <p className="rs-linked-notice" data-tone="error">
+          <Notice compact tone="error">
             {copy.loadFailed}
-          </p>
+          </Notice>
         ) : null}
 
         {data && over.length > 0 ? (
@@ -129,9 +130,9 @@ function StartExportButton({ exports }: { exports: ClipExport[] }) {
         </button>
       </div>
       {error ? (
-        <p className="rs-linked-notice" data-tone="error">
+        <Notice compact tone="error">
           {error}
-        </p>
+        </Notice>
       ) : null}
     </>
   );
@@ -191,9 +192,9 @@ function ClipList({ clips, keep }: { clips: OverLimitClip[]; keep: boolean }) {
   return (
     <>
       {error ? (
-        <p className="rs-linked-notice" data-tone="error">
+        <Notice compact tone="error">
           {error}
-        </p>
+        </Notice>
       ) : null}
       <ul className="rs-plan-list">
         {shown.map((clip) => (

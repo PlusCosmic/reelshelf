@@ -149,7 +149,7 @@ afterEach(() => {
 });
 
 function alerts() {
-  return document.querySelectorAll(".rs-plan-alert");
+  return document.querySelectorAll(".ui-notice");
 }
 
 describe("PlanSettings", () => {

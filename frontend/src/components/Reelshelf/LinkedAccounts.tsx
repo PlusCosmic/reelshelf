@@ -1,3 +1,4 @@
+import { Notice } from "@pluscosmic/ui";
 import { useState } from "react";
 import { ProviderIcon } from "@/components/Reelshelf/ProviderIcon";
 import { useLinkedIdentities, useUnlinkIdentity } from "@/hooks/queries";
@@ -61,9 +62,9 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
   return (
     <div className="rs-linked-accounts">
       {notice ? (
-        <p className="rs-linked-notice" data-tone={notice.tone} role="status">
+        <Notice compact tone={notice.tone}>
           {notice.text}
-        </p>
+        </Notice>
       ) : null}
 
       {identities.isLoading ? (
@@ -71,9 +72,9 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
       ) : null}
 
       {identities.isError ? (
-        <p className="rs-linked-notice" data-tone="error">
+        <Notice compact tone="error">
           {copy.loadFailed}
-        </p>
+        </Notice>
       ) : null}
 
       <ul className="rs-linked-list">
@@ -119,9 +120,9 @@ export function LinkedAccounts({ notice }: { notice: LinkNotice | null }) {
       </ul>
 
       {unlinkError ? (
-        <p className="rs-linked-notice" data-tone="error">
+        <Notice compact tone="error">
           {unlinkError}
-        </p>
+        </Notice>
       ) : null}
 
       {unlinked.length > 0 ? (

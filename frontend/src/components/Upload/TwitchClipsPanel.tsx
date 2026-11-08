@@ -20,6 +20,7 @@ import {
   LoadMore,
   Select,
   type SelectOption,
+  Notice,
 } from "@pluscosmic/ui";
 import type { TwitchImportRow } from "@/hooks/twitchClipsImport";
 import { startLink } from "@/shared/services/auth";
@@ -44,9 +45,9 @@ export function TwitchClipsPanel({ notice }: { notice: LinkNotice | null }) {
       aria-label={twitchImportCopy.panel.label}
     >
       {notice ? (
-        <p className="rs-linked-notice" data-tone={notice.tone} role="status">
+        <Notice compact tone={notice.tone}>
           {notice.text}
-        </p>
+        </Notice>
       ) : null}
 
       {controller.clipsQuery.isPending ? (

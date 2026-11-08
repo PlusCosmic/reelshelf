@@ -1,3 +1,4 @@
+import { Notice } from "@pluscosmic/ui";
 import { useState } from "react";
 import { deviceCopy, uploaderStoreUrl } from "@/copy/device";
 import { useDevices, useRemoveDevice } from "@/hooks/devices.queries";
@@ -18,9 +19,9 @@ export function DeviceList({ now }: { now?: Date }) {
         <p className="rs-sidebar-copy">{copy.loading}</p>
       ) : null}
       {devices.isError ? (
-        <p className="rs-linked-notice" data-tone="error">
+        <Notice compact tone="error">
           {copy.loadFailed}
-        </p>
+        </Notice>
       ) : null}
       {devices.data && devices.data.length === 0 ? (
         <p className="rs-sidebar-copy">{copy.empty}</p>
@@ -70,7 +71,7 @@ function DeviceRow({ device, now }: { device: DeviceSummary; now?: Date }) {
           </span>
         ) : null}
         {failed ? (
-          <span className="rs-linked-notice" data-tone="error" role="alert">
+          <span className="ui-notice-compact" data-tone="error" role="alert">
             {copy.removeFailed(device.name)}
           </span>
         ) : null}

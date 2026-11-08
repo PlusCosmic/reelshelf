@@ -611,33 +611,6 @@ a {
   gap: 8px;
 }
 
-.rs-linked-notice {
-  margin: 0;
-  padding: 8px 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--bg-soft);
-  font-size: 13px;
-}
-
-.rs-linked-notice[data-tone="error"] {
-  color: var(--danger);
-}
-
-.rs-linked-notice[data-tone="success"] {
-  color: var(--accent-ink);
-}
-
-.rs-linked-notice[data-tone="warning"] {
-  border-color: color-mix(in oklab, var(--warning) 55%, var(--line));
-}
-
-/* Links in a notice take its colour, so underline them to show they're links. */
-.rs-linked-notice a {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 .rs-landing-footer {
   position: relative;
   z-index: 2;
@@ -8867,47 +8840,12 @@ html:has(.rs-library-route) {
   font-size: 14px;
 }
 
-/* One banner style for every plan message, in four tones: an icon and a tinted edge carry the tone as well as colour. */
-.rs-plan-alert {
-  --tone: var(--fg-soft);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px;
-  align-items: start;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in oklab, var(--tone) 40%, var(--line));
-  border-left: 4px solid var(--tone);
-  border-radius: var(--radius-lg);
-  background: color-mix(in oklab, var(--tone) 8%, var(--bg));
-  color: var(--fg);
-  font-size: 14px;
-}
-
-.rs-plan-alert[data-tone="success"] {
-  --tone: var(--accent);
-}
-
-.rs-plan-alert[data-tone="warning"] {
-  --tone: var(--warning);
-}
-
-.rs-plan-alert[data-tone="error"] {
-  --tone: var(--danger);
-}
-
-.rs-plan-alert-icon {
-  margin-top: 1px;
-  color: var(--tone);
-}
-
-.rs-plan-alert[data-tone="warning"] .rs-plan-alert-icon {
-  color: color-mix(in oklab, var(--warning) 70%, var(--fg));
-}
-
+/* The plan banners are @pluscosmic/ui's Notice; Reelshelf adds the spinner a banner shows while it waits, and the gap
+   above its row of actions. */
 .rs-plan-alert-spinner {
   width: 16px;
   height: 16px;
-  margin: 2px 1px 0;
+  margin: 1px 1px 0;
   border: 2px solid color-mix(in oklab, var(--fg-soft) 30%, transparent);
   border-top-color: var(--fg-soft);
   border-radius: 50%;
@@ -8926,23 +8864,11 @@ html:has(.rs-library-route) {
   }
 }
 
-.rs-plan-alert-body {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
+.ui-notice .rs-plan-actions {
+  margin-top: 4px;
 }
 
-.rs-plan-alert-body p {
-  margin: 0;
-  color: var(--fg-soft);
-}
-
-.rs-plan-alert-body .rs-plan-alert-title {
-  color: var(--fg);
-  font-weight: 650;
-}
-
-.rs-plan-alert .rs-plan-actions {
+.rs-plan-actions {
   margin-top: 4px;
 }
 
