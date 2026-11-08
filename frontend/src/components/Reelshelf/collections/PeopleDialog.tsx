@@ -9,7 +9,7 @@ import {
   useRemovePersonFromCollection,
   useUserSuggestions,
 } from "@/hooks/playlists.queries";
-import { Dialog } from "../Dialog";
+import { Dialog } from "@pluscosmic/ui";
 import { Avatar } from "../ReelshelfPrimitives";
 
 /**

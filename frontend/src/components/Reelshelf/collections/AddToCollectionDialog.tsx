@@ -11,7 +11,7 @@ import {
   useRemoveClipFromCollection,
 } from "@/hooks/playlists.queries";
 import { fetchPlaylistById } from "@/shared/services/playlists";
-import { Dialog } from "../Dialog";
+import { Dialog } from "@pluscosmic/ui";
 import { usePlaylistsData } from "../useLibraryData";
 
 /**

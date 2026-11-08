@@ -1,7 +1,7 @@
 import { IconPlus } from "@tabler/icons-react";
 import { binCopy } from "@/copy/bin";
 import { commonCopy } from "@/copy/common";
-import { Dialog } from "./Dialog";
+import { Dialog } from "@pluscosmic/ui";
 import { bookBinding, type GameShelfItem } from "./reelshelf-model";
 
 const copy = binCopy.move;

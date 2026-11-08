@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { collectionsCopy } from "@/copy/collections";
 import { commonCopy } from "@/copy/common";
-import { Dialog } from "../Dialog";
+import { Dialog } from "@pluscosmic/ui";
 
 /** The name and description of a collection, for making a new one or editing one. */
 export function CollectionFormDialog({

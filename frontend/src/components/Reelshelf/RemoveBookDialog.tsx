@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { commonCopy } from "@/copy/common";
 import { libraryCopy } from "@/copy/library";
 import { ApiError } from "@/shared/services/apiError";
-import { Dialog } from "./Dialog";
+import { Dialog } from "@pluscosmic/ui";
 import type { GameShelfItem } from "./reelshelf-model";
 
 const copy = libraryCopy.removeBook;
