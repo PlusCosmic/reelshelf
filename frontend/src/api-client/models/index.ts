@@ -130,6 +130,7 @@ export * from "./RoomTokenResponse";
 export * from "./SetAccountRoleRequest";
 export * from "./SetAccountSuspensionRequest";
 export * from "./SetClipKeptRequest";
+export * from "./SetColorSchemeRequest";
 export * from "./SetEmailRequest";
 export * from "./SetGrantedTierRequest";
 export * from "./SetLegendDetectionLabelRequest";

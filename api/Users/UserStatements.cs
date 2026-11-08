@@ -370,6 +370,20 @@ public class UserStatements(NpgsqlConnection connection, ProviderTokenProtector 
         return updated == 1;
     }
 
+    /// <summary>The account's colour scheme as stored: a name from <see cref="ColorSchemes"/>, or null for the default.</summary>
+    public async Task<string?> GetColorScheme(Guid userId)
+    {
+        const string sql = "SELECT color_scheme FROM app_user WHERE id = @userId";
+        return await connection.ExecuteScalarAsync<string?>(sql, new { userId });
+    }
+
+    /// <summary>Records the colour scheme the owner picked; <paramref name="scheme"/> is one of <see cref="ColorSchemes.All"/>.</summary>
+    public async Task SetColorScheme(Guid userId, string scheme)
+    {
+        const string sql = "UPDATE app_user SET color_scheme = @scheme WHERE id = @userId";
+        await connection.ExecuteAsync(sql, new { userId, scheme });
+    }
+
     /// <summary>
     /// Records the address the user chose for account mail. <c>onboarding_completed_at</c> is still written but no
     /// longer read: onboarding is done once <c>email</c> is set (and the username, where one is needed).

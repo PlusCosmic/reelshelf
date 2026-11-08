@@ -41,7 +41,27 @@ describe("fetchMe", () => {
       needsUsername: false,
       canSetUsername: false,
       isAdmin: false,
+      colorScheme: "walnut",
     });
-    await expect(fetchMe()).resolves.toMatchObject({ id: "u1" });
+    await expect(fetchMe()).resolves.toMatchObject({
+      id: "u1",
+      colorScheme: "walnut",
+    });
+  });
+
+  it("reads a colour scheme this build doesn't know as the default", async () => {
+    mocks.getMe.mockResolvedValueOnce({
+      id: "u1",
+      username: "ash",
+      globalName: null,
+      avatar: null,
+      email: "ash@example.com",
+      needsOnboarding: false,
+      needsUsername: false,
+      canSetUsername: false,
+      isAdmin: false,
+      colorScheme: "retired",
+    });
+    await expect(fetchMe()).resolves.toMatchObject({ colorScheme: "stacks" });
   });
 });

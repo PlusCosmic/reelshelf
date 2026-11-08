@@ -5,27 +5,19 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { IconMoon, IconSun } from "@tabler/icons-react";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { commonCopy } from "@/copy/common";
 import { shellCopy } from "@/copy/shell";
 import { LandingPage } from "@/components/Reelshelf/LandingPage";
 import { useCurrentUser } from "@/hooks/auth.queries";
-
-type ReelshelfTheme = "light" | "dark";
-
-// Only an explicit pick from a theme toggle is stored; until then the OS setting is followed.
-// index.html reads the same key to apply the theme before first paint.
-const themeStorageKey = "reelshelf-theme-preference";
-const darkSchemeQuery = "(prefers-color-scheme: dark)";
-
-function getStoredTheme(): ReelshelfTheme | null {
-  const stored = window.localStorage.getItem(themeStorageKey);
-  return stored === "light" || stored === "dark" ? stored : null;
-}
-
-function getSystemTheme(): ReelshelfTheme {
-  return window.matchMedia(darkSchemeQuery).matches ? "dark" : "light";
-}
+import {
+  AppearanceProvider,
+  useAppearance,
+} from "@/shared/theme/AppearanceProvider";
+import {
+  type ReelshelfTheme,
+  defaultColorScheme,
+} from "@/shared/theme/appearance";
 
 // Set once this browser has seen a signed-in session, so a first visit can show the front page
 // without waiting for the session check.
@@ -57,31 +49,18 @@ const AppShell = lazy(() =>
 if (wasSignedIn()) void loadAppShell();
 
 function RootComponent() {
-  const [theme, setTheme] = useState<ReelshelfTheme>(
-    () => getStoredTheme() ?? getSystemTheme(),
+  return (
+    <AppearanceProvider>
+      <RootShell />
+    </AppearanceProvider>
   );
+}
+
+function RootShell() {
+  const { theme, toggleTheme } = useAppearance();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
-
-  useEffect(() => {
-    const query = window.matchMedia(darkSchemeQuery);
-    const followSystem = () => {
-      if (!getStoredTheme()) setTheme(getSystemTheme());
-    };
-    query.addEventListener("change", followSystem);
-    return () => query.removeEventListener("change", followSystem);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    window.localStorage.setItem(themeStorageKey, next);
-    setTheme(next);
-  };
 
   if (
     pathname.startsWith("/share/") ||
@@ -118,6 +97,15 @@ function AuthenticatedShell({
     if (signedIn) rememberSignedIn(true);
     else if (signedOut) rememberSignedIn(false);
   }, [signedIn, signedOut]);
+
+  // The colour scheme is the account's: take it up when the session loads (and when it changes from another
+  // browser), and go back to the default once signed out, so the front page is always Stacks.
+  const { setColorScheme } = useAppearance();
+  const accountColorScheme = user?.colorScheme;
+  useEffect(() => {
+    if (accountColorScheme) setColorScheme(accountColorScheme);
+    else if (signedOut) setColorScheme(defaultColorScheme);
+  }, [accountColorScheme, signedOut, setColorScheme]);
 
   if (isLoading) {
     // Someone who has never signed in on this browser gets the front page straight away, rather

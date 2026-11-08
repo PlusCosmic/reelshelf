@@ -1,4 +1,5 @@
 import type { CurrentUserResponse, LinkedIdentity } from "@/api-client";
+import { type ColorScheme, toColorScheme } from "@/shared/theme/appearance";
 import { createUserApi } from "./apiClients";
 import { ApiError } from "./apiError";
 
@@ -16,6 +17,8 @@ export interface CurrentUser {
   /** The owner sets the username here; otherwise it follows the primary sign-in. */
   canSetUsername: boolean;
   isAdmin: boolean;
+  /** The colour scheme the owner picked in Settings → Appearance; Stacks until they pick one. */
+  colorScheme: ColorScheme;
 }
 
 /**
@@ -52,6 +55,13 @@ export async function setUsername(username: string): Promise<void> {
   await createUserApi().setMyUsername({ setUsernameRequest: { username } });
 }
 
+/** Saves the colour scheme to the account, so it follows the owner to other browsers. */
+export async function setColorScheme(colorScheme: ColorScheme): Promise<void> {
+  await createUserApi().setMyColorScheme({
+    setColorSchemeRequest: { colorScheme },
+  });
+}
+
 /** The phrase the user types to confirm; the API checks it too. */
 export const deleteAccountPhrase = "delete my account";
 
@@ -74,5 +84,6 @@ function fromCurrentUserResponse(user: CurrentUserResponse): CurrentUser {
     needsUsername: user.needsUsername,
     canSetUsername: user.canSetUsername,
     isAdmin: user.isAdmin,
+    colorScheme: toColorScheme(user.colorScheme),
   };
 }

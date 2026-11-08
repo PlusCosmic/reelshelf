@@ -19,6 +19,7 @@ import type {
   DeleteAccountRequest,
   FeatureFlagsResponse,
   LinkedIdentity,
+  SetColorSchemeRequest,
   SetEmailRequest,
   SetUsernameRequest,
   UserProfile,
@@ -34,6 +35,8 @@ import {
   FeatureFlagsResponseToJSON,
   LinkedIdentityFromJSON,
   LinkedIdentityToJSON,
+  SetColorSchemeRequestFromJSON,
+  SetColorSchemeRequestToJSON,
   SetEmailRequestFromJSON,
   SetEmailRequestToJSON,
   SetUsernameRequestFromJSON,
@@ -48,6 +51,10 @@ export interface ApiUserUserIdGetRequest {
 
 export interface DeleteMyAccountRequest {
   deleteAccountRequest: DeleteAccountRequest;
+}
+
+export interface SetMyColorSchemeRequest {
+  setColorSchemeRequest: SetColorSchemeRequest;
 }
 
 export interface SetMyEmailRequest {
@@ -336,6 +343,52 @@ export class UserEndpointsApi extends runtime.BaseAPI {
   ): Promise<Array<UserProfile>> {
     const response = await this.getUserSuggestionsRaw(initOverrides);
     return await response.value();
+  }
+
+  /**
+   */
+  async setMyColorSchemeRaw(
+    requestParameters: SetMyColorSchemeRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    if (requestParameters["setColorSchemeRequest"] == null) {
+      throw new runtime.RequiredError(
+        "setColorSchemeRequest",
+        'Required parameter "setColorSchemeRequest" was null or undefined when calling setMyColorScheme().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/me/color-scheme`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "PUT",
+        headers: headerParameters,
+        query: queryParameters,
+        body: SetColorSchemeRequestToJSON(
+          requestParameters["setColorSchemeRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   */
+  async setMyColorScheme(
+    requestParameters: SetMyColorSchemeRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.setMyColorSchemeRaw(requestParameters, initOverrides);
   }
 
   /**
