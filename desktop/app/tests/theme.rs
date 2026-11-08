@@ -1,5 +1,6 @@
-//! The theme stays the site's: every colour `theme/reelshelf.json` names a CSS token for must match that token in
-//! `frontend/src/styles/reelshelf.css`, light (`:root`) and dark (`[data-theme="dark"]`).
+//! The theme stays the site's: every colour `theme/reelshelf.json` names a CSS token for must match that token as the
+//! site resolves it, light (`:root`) and dark (`[data-theme="dark"]`): `@pluscosmic/ui`'s `tokens.css` (the shared
+//! tokens, from the frontend's installed dependencies) with `frontend/src/styles/reelshelf.css`'s own on top.
 
 use std::collections::HashMap;
 
@@ -8,12 +9,26 @@ use serde_json::Value;
 
 const CSS: &str = include_str!("../../../frontend/src/styles/reelshelf.css");
 
-/// The custom properties set in the first block that `selector` opens.
+/// `@pluscosmic/ui`'s tokens, read when the test runs: the package is a frontend dependency, so it is on disk only
+/// after `bun install` (the Desktop CI job runs one first).
+fn foundation_css() -> String {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../frontend/node_modules/@pluscosmic/ui/src/styles/tokens.css");
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("{} ({error}); run `bun install` at the repo root first", path.display()))
+}
+
+/// The custom properties `selector` sets, as the site resolves them: the foundation's, then reelshelf.css's.
 fn tokens(selector: &str) -> HashMap<String, String> {
-    let start = CSS
-        .find(&format!("{selector} {{"))
-        .unwrap_or_else(|| panic!("reelshelf.css has a {selector} block"));
-    let body = &CSS[start..];
+    let mut tokens = block(&foundation_css(), selector).unwrap_or_default();
+    tokens.extend(block(CSS, selector).unwrap_or_default());
+    tokens
+}
+
+/// The custom properties set in the first block that `selector` opens in `css`, if it has one.
+fn block(css: &str, selector: &str) -> Option<HashMap<String, String>> {
+    let start = css.find(&format!("{selector} {{"))?;
+    let body = &css[start..];
     let body = &body[body.find('{').unwrap() + 1..body.find('}').unwrap()];
     let body = without_comments(body);
     let mut tokens = HashMap::new();
@@ -28,7 +43,7 @@ fn tokens(selector: &str) -> HashMap<String, String> {
             tokens.insert(name.trim().to_owned(), value.trim().to_owned());
         }
     }
-    tokens
+    Some(tokens)
 }
 
 fn without_comments(css: &str) -> String {
@@ -76,7 +91,7 @@ fn rgb(value: &str) -> Option<[u8; 3]> {
 }
 
 #[test]
-fn every_theme_colour_named_for_a_token_matches_reelshelf_css() {
+fn every_theme_colour_named_for_a_token_matches_the_sites_css() {
     let data: Value = serde_json::from_str(theme::THEME).unwrap();
     let mapping = data["css"].as_object().expect("the theme names its CSS tokens");
     assert!(mapping.len() >= 15);
@@ -89,12 +104,12 @@ fn every_theme_colour_named_for_a_token_matches_reelshelf_css() {
                 .unwrap_or_else(|| panic!("the theme's {mode} colours have {name}"));
             let theirs = css
                 .get(property)
-                .unwrap_or_else(|| panic!("reelshelf.css's {selector} sets {property}"));
+                .unwrap_or_else(|| panic!("the site's {selector} sets {property}"));
             let (ours, theirs) = (rgb(ours).unwrap(), rgb(theirs).unwrap());
             let close = ours.iter().zip(theirs).all(|(a, b)| a.abs_diff(b) <= 1);
             assert!(
                 close,
-                "{mode} {name} is {ours:?} in the theme but {property} is {theirs:?} in reelshelf.css"
+                "{mode} {name} is {ours:?} in the theme but {property} is {theirs:?} on the site"
             );
         }
     }

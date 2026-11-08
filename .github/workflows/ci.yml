@@ -169,6 +169,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libxkbcommon-dev libwayland-dev libxkbcommon-x11-0 mesa-vulkan-drivers
 
+      # app/tests/theme.rs checks the app's colours against the site's, whose shared tokens come from the frontend's
+      # @pluscosmic/ui dependency.
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install the frontend's dependencies
+        working-directory: .
+        run: bun install --frozen-lockfile
+
       # rustup reads the channel and components from desktop/rust-toolchain.toml.
       - name: Install the Rust toolchain
         run: rustup toolchain install
