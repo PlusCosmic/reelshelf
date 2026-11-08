@@ -14,10 +14,7 @@ import {
   AppearanceProvider,
   useAppearance,
 } from "@/shared/theme/AppearanceProvider";
-import {
-  type ReelshelfTheme,
-  defaultColorScheme,
-} from "@/shared/theme/appearance";
+import { type Theme, defaultColorScheme } from "@/shared/theme/appearance";
 
 // Set once this browser has seen a signed-in session, so a first visit can show the front page
 // without waiting for the session check.
@@ -78,7 +75,7 @@ function AuthenticatedShell({
   theme,
   onToggleTheme,
 }: {
-  theme: ReelshelfTheme;
+  theme: Theme;
   onToggleTheme: () => void;
 }) {
   const pathname = useRouterState({
@@ -166,7 +163,7 @@ function PublicShell({
   theme,
   onToggleTheme,
 }: {
-  theme: ReelshelfTheme;
+  theme: Theme;
   onToggleTheme: () => void;
 }) {
   const nextTheme = theme === "dark" ? "light" : "dark";
