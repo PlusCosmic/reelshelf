@@ -4,3 +4,4 @@
 
 pub mod api_adapter;
 pub mod platform;
+pub mod theme;
