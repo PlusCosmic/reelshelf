@@ -147,6 +147,36 @@ jobs:
       - name: Check committed API client matches the API
         run: bun run check:api-client-drift
 
+  # The desktop uploader in Rust (desktop/Cargo.toml): formatting, lints and tests for the workspace, on Linux.
+  desktop:
+    name: Desktop
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # rustup reads the channel and components from desktop/rust-toolchain.toml.
+      - name: Install the Rust toolchain
+        run: rustup toolchain install
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2.9.2
+        with:
+          workspaces: desktop
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
   # The desktop uploader's Windows app (desktop/Reelshelf.Uploader.sln): builds it, runs its Windows-only tests and
   # builds the MSIX to prove packaging works. Not a required check until the app has shipped once; Core and its tests
   # are in Reelshelf.sln and run in the API job.
