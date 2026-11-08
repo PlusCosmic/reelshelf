@@ -12,6 +12,10 @@ export const settingsCopy = {
   yourAccount: "your account",
   sections: {
     plan: "Plan",
+    appearance: {
+      title: "Appearance",
+      copy: "Your colour scheme follows you to every browser you sign in on. Your games keep their own cover colours.",
+    },
     username: {
       title: "Username",
       copy: "How people find you to add you to a collection, and what they see beside your clips.",
@@ -42,6 +46,42 @@ export const settingsCopy = {
     deleteAccount: {
       title: "Delete account",
       copy: "Permanently delete your account, every clip in it and the collections you made. This can't be undone.",
+    },
+  },
+
+  /** Settings → Appearance: light or dark on this browser, and the account's colour scheme. */
+  appearance: {
+    theme: {
+      label: "Theme",
+      light: "Light",
+      dark: "Dark",
+      system: "Match system",
+    },
+    colorScheme: {
+      label: "Colour scheme",
+      schemes: {
+        stacks: {
+          name: "Stacks",
+          description: "The green library Reelshelf started with.",
+        },
+        oxblood: {
+          name: "Oxblood",
+          description: "Red-brown leather and wine, like an old reading room.",
+        },
+        ink: {
+          name: "Ink",
+          description: "Blue-black ink and cool slate.",
+        },
+        walnut: {
+          name: "Walnut",
+          description: "Dark wood shelves with brass.",
+        },
+        graphite: {
+          name: "Graphite",
+          description: "No tint at all, so your game covers carry the colour.",
+        },
+      },
+      saveFailed: "Couldn't save your colour scheme. Try again.",
     },
   },
 

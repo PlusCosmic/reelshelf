@@ -79,6 +79,12 @@ export interface CurrentUserResponse {
    * @memberof CurrentUserResponse
    */
   isAdmin: boolean;
+  /**
+   *
+   * @type {string}
+   * @memberof CurrentUserResponse
+   */
+  colorScheme: string;
 }
 
 /**
@@ -102,6 +108,8 @@ export function instanceOfCurrentUserResponse(
   if (!("canSetUsername" in value) || value["canSetUsername"] === undefined)
     return false;
   if (!("isAdmin" in value) || value["isAdmin"] === undefined) return false;
+  if (!("colorScheme" in value) || value["colorScheme"] === undefined)
+    return false;
   return true;
 }
 
@@ -127,6 +135,7 @@ export function CurrentUserResponseFromJSONTyped(
     needsUsername: json["needs_username"],
     canSetUsername: json["can_set_username"],
     isAdmin: json["is_admin"],
+    colorScheme: json["color_scheme"],
   };
 }
 
@@ -153,5 +162,6 @@ export function CurrentUserResponseToJSONTyped(
     needs_username: value["needsUsername"],
     can_set_username: value["canSetUsername"],
     is_admin: value["isAdmin"],
+    color_scheme: value["colorScheme"],
   };
 }

@@ -12,6 +12,7 @@ import {
   PlanSettings,
 } from "@/components/Reelshelf/PlanSettings";
 import { DeviceList } from "@/components/Reelshelf/DeviceList";
+import { AppearanceSettings } from "@/components/Reelshelf/AppearanceSettings";
 import { useCurrentUser } from "@/hooks/queries";
 import { useFeature } from "@/hooks/featureFlags.queries";
 import { settingsCopy } from "@/copy/settings";
@@ -86,6 +87,11 @@ function SettingsRoute() {
           <h2 className="rs-eyebrow">{sections.linkedAccounts.title}</h2>
           <p className="rs-sidebar-copy">{sections.linkedAccounts.copy}</p>
           <LinkedAccounts notice={notice} />
+        </div>
+        <div className="rs-settings-section">
+          <h2 className="rs-eyebrow">{sections.appearance.title}</h2>
+          <p className="rs-sidebar-copy">{sections.appearance.copy}</p>
+          <AppearanceSettings />
         </div>
         {desktopUploader ? (
           <div className="rs-settings-section">

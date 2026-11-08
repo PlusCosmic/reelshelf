@@ -31,6 +31,13 @@
   --processing: #3f6a96;
   /* Twitch's bookmark ribbon: a muted Twitch purple, never used as an accent. */
   --twitch: #7d68b8;
+  /* The logo tile's colours, and the stitched dot on a dark or a light spine or banner. */
+  --logo-tile: #12281e;
+  --logo-book-dark: #317f54;
+  --logo-book-light: #97cca8;
+  --logo-band: #d6ecd8;
+  --spine-dot-on-dark: #8fc9a4;
+  --spine-dot-on-light: #1f6b45;
   --radius: 3px;
   --radius-lg: 4px;
   --font-sans:
@@ -71,6 +78,325 @@
   --tip-ink: #13241c;
   --processing: #9fb7d6;
   --twitch: #a593dc;
+  --logo-tile: #234634;
+}
+
+/*
+ * Colour schemes (Settings → Appearance; api/Users/ColorSchemes.cs). Stacks is the two blocks above; each other
+ * scheme redefines the colour tokens for light and dark under `data-color-scheme` on <html>. Danger, warning and
+ * Twitch's purple are the same in every scheme. Keep the names in sync with `colorSchemes` in utils/appearance.ts.
+ */
+
+/* Stacks again, the same values as the two blocks above, so an element can show Stacks inside another scheme
+   (Settings → Appearance's previews). */
+[data-color-scheme="stacks"]:not([data-theme="dark"]) {
+  --bg: #eef2ee;
+  --bg-soft: #e3eae4;
+  --surface: #f8faf8;
+  --fg: #13261c;
+  --fg-soft: #4a5f53;
+  --line: #d3dcd4;
+  --track-bg: #c3cfc5;
+  --accent: #1f6b45;
+  --accent-ink: #185a39;
+  --fill: #1f6b45;
+  --fill-ink: #ffffff;
+  --danger: oklch(0.52 0.17 25);
+  --warning: oklch(0.7 0.15 70);
+  --shadow: #14301f;
+  --scrim: #06100b;
+  --case-back: #dfe7e0;
+  --case-upright: #bfccc1;
+  --plank-top: #c9d6cb;
+  --plank-front: #9fb2a3;
+  --empty-cloth: #e9efea;
+  --tip-bg: #13261c;
+  --tip-ink: #eef2ee;
+  --processing: #3f6a96;
+  --twitch: #7d68b8;
+  --logo-tile: #12281e;
+  --logo-book-dark: #317f54;
+  --logo-book-light: #97cca8;
+  --logo-band: #d6ecd8;
+  --spine-dot-on-dark: #8fc9a4;
+  --spine-dot-on-light: #1f6b45;
+}
+
+[data-color-scheme="stacks"][data-theme="dark"] {
+  --bg: #13241c;
+  --bg-soft: #182c22;
+  --surface: #1a3326;
+  --fg: #e4ebe6;
+  --fg-soft: #a3b5aa;
+  --line: #26392f;
+  --track-bg: #2e493a;
+  --accent: #8fc9a4;
+  --accent-ink: #b5ddc3;
+  --fill: #2f7d52;
+  --fill-ink: #ffffff;
+  --danger: oklch(0.72 0.15 25);
+  --warning: oklch(0.8 0.14 75);
+  --shadow: #000000;
+  --scrim: #06100b;
+  --case-back: #0c1813;
+  --case-upright: #213a2d;
+  --plank-top: #3d5e4b;
+  --plank-front: #27412f;
+  --empty-cloth: #10201a;
+  --tip-bg: #e4ebe6;
+  --tip-ink: #13241c;
+  --processing: #9fb7d6;
+  --twitch: #a593dc;
+  --logo-tile: #234634;
+  --logo-book-dark: #317f54;
+  --logo-book-light: #97cca8;
+  --logo-band: #d6ecd8;
+  --spine-dot-on-dark: #8fc9a4;
+  --spine-dot-on-light: #1f6b45;
+}
+
+/* Oxblood: red-brown leather and wine, like an old reading room. */
+[data-color-scheme="oxblood"]:not([data-theme="dark"]) {
+  --bg: #f3eeed;
+  --bg-soft: #ebe2e0;
+  --surface: #faf7f6;
+  --fg: #2a1517;
+  --fg-soft: #64494b;
+  --line: #e0d3d1;
+  --track-bg: #d2c0be;
+  --accent: #8c2f39;
+  --accent-ink: #74242d;
+  --fill: #8c2f39;
+  --fill-ink: #ffffff;
+  --shadow: #301418;
+  --scrim: #100607;
+  --case-back: #e8dcda;
+  --case-upright: #cdb7b4;
+  --plank-top: #d6c3c0;
+  --plank-front: #b0928e;
+  --empty-cloth: #efe6e4;
+  --tip-bg: #2a1517;
+  --tip-ink: #f3eeed;
+  --processing: #3f6a96;
+  --logo-tile: #2a1517;
+  --logo-book-dark: #9b3a44;
+  --logo-book-light: #e3a3a8;
+  --logo-band: #f6dcdc;
+  --spine-dot-on-dark: #e59aa0;
+  --spine-dot-on-light: #8c2f39;
+}
+
+[data-color-scheme="oxblood"][data-theme="dark"] {
+  --bg: #241517;
+  --bg-soft: #2b191c;
+  --surface: #331e21;
+  --fg: #efe3e2;
+  --fg-soft: #bba3a3;
+  --line: #3e2729;
+  --track-bg: #4d3033;
+  --accent: #e59aa0;
+  --accent-ink: #f2bfc2;
+  --fill: #9b3a44;
+  --fill-ink: #ffffff;
+  --shadow: #000000;
+  --scrim: #100607;
+  --case-back: #170c0e;
+  --case-upright: #432a2d;
+  --plank-top: #6a4246;
+  --plank-front: #45292c;
+  --empty-cloth: #1c1012;
+  --tip-bg: #efe3e2;
+  --tip-ink: #241517;
+  --processing: #9fb7d6;
+  --logo-tile: #4a2328;
+  --logo-book-dark: #9b3a44;
+  --logo-book-light: #e3a3a8;
+  --logo-band: #f6dcdc;
+  --spine-dot-on-dark: #e59aa0;
+  --spine-dot-on-light: #8c2f39;
+}
+
+/* Ink: blue-black ink and cool slate. Processing turns teal, since blue is the accent. */
+[data-color-scheme="ink"]:not([data-theme="dark"]) {
+  --bg: #edf0f5;
+  --bg-soft: #e1e6ee;
+  --surface: #f8f9fb;
+  --fg: #131c2e;
+  --fg-soft: #4b566b;
+  --line: #d2d9e4;
+  --track-bg: #c0c9d7;
+  --accent: #2a4f8f;
+  --accent-ink: #213f74;
+  --fill: #2a4f8f;
+  --fill-ink: #ffffff;
+  --shadow: #142038;
+  --scrim: #060a12;
+  --case-back: #dde3ec;
+  --case-upright: #bcc6d6;
+  --plank-top: #c8d1de;
+  --plank-front: #9aa8be;
+  --empty-cloth: #e8ecf2;
+  --tip-bg: #131c2e;
+  --tip-ink: #edf0f5;
+  --processing: #2f7a74;
+  --logo-tile: #131c2e;
+  --logo-book-dark: #3561a8;
+  --logo-book-light: #a5bfea;
+  --logo-band: #dce6f6;
+  --spine-dot-on-dark: #9cb7e8;
+  --spine-dot-on-light: #2a4f8f;
+}
+
+[data-color-scheme="ink"][data-theme="dark"] {
+  --bg: #121a2a;
+  --bg-soft: #172033;
+  --surface: #1b263c;
+  --fg: #e3e8f0;
+  --fg-soft: #a2adc0;
+  --line: #26324a;
+  --track-bg: #2f3d59;
+  --accent: #9cb7e8;
+  --accent-ink: #c3d4f3;
+  --fill: #3561a8;
+  --fill-ink: #ffffff;
+  --shadow: #000000;
+  --scrim: #060a12;
+  --case-back: #0b111d;
+  --case-upright: #24304a;
+  --plank-top: #3d4d6e;
+  --plank-front: #27334c;
+  --empty-cloth: #0f1625;
+  --tip-bg: #e3e8f0;
+  --tip-ink: #121a2a;
+  --processing: #8fd0c6;
+  --logo-tile: #25365a;
+  --logo-book-dark: #3561a8;
+  --logo-book-light: #a5bfea;
+  --logo-band: #dce6f6;
+  --spine-dot-on-dark: #9cb7e8;
+  --spine-dot-on-light: #2a4f8f;
+}
+
+/* Walnut: dark wood shelves and brass. The accent is brass; buttons are the wood. */
+[data-color-scheme="walnut"]:not([data-theme="dark"]) {
+  --bg: #eeece8;
+  --bg-soft: #e4e0d9;
+  --surface: #f8f7f4;
+  --fg: #241c13;
+  --fg-soft: #5e5346;
+  --line: #d8d2c8;
+  --track-bg: #c9c0b2;
+  --accent: #7f5810;
+  --accent-ink: #6a4a0d;
+  --fill: #5c3f26;
+  --fill-ink: #ffffff;
+  --shadow: #2c2012;
+  --scrim: #0d0905;
+  --case-back: #e2dcd2;
+  --case-upright: #a5835f;
+  --plank-top: #b08a62;
+  --plank-front: #7a5a3c;
+  --empty-cloth: #ebe7e0;
+  --tip-bg: #241c13;
+  --tip-ink: #eeece8;
+  --processing: #3f6a96;
+  --logo-tile: #241c13;
+  --logo-book-dark: #8a6230;
+  --logo-book-light: #e0bd78;
+  --logo-band: #f3e6c8;
+  --spine-dot-on-dark: #d9b064;
+  --spine-dot-on-light: #7f5810;
+}
+
+[data-color-scheme="walnut"][data-theme="dark"] {
+  --bg: #1c1712;
+  --bg-soft: #221c16;
+  --surface: #2a221a;
+  --fg: #ece5da;
+  --fg-soft: #b4a794;
+  --line: #362c22;
+  --track-bg: #45382b;
+  --accent: #d9b064;
+  --accent-ink: #ecd29a;
+  --fill: #8a6230;
+  --fill-ink: #ffffff;
+  --shadow: #000000;
+  --scrim: #0d0905;
+  --case-back: #120e0a;
+  --case-upright: #4a3828;
+  --plank-top: #7a5a3c;
+  --plank-front: #4f3a27;
+  --empty-cloth: #17120e;
+  --tip-bg: #ece5da;
+  --tip-ink: #1c1712;
+  --processing: #9fb7d6;
+  --logo-tile: #3e3022;
+  --logo-book-dark: #8a6230;
+  --logo-book-light: #e0bd78;
+  --logo-band: #f3e6c8;
+  --spine-dot-on-dark: #d9b064;
+  --spine-dot-on-light: #7f5810;
+}
+
+/* Graphite: no tint, so the game covers carry the colour. Its dark buttons are light, since a grey fill reads as disabled. */
+[data-color-scheme="graphite"]:not([data-theme="dark"]) {
+  --bg: #eff0f1;
+  --bg-soft: #e4e6e8;
+  --surface: #f9fafa;
+  --fg: #16191c;
+  --fg-soft: #50575e;
+  --line: #d6d9dc;
+  --track-bg: #c4c8cc;
+  --accent: #2e363d;
+  --accent-ink: #1f262c;
+  --fill: #262d33;
+  --fill-ink: #ffffff;
+  --shadow: #181c20;
+  --scrim: #08090a;
+  --case-back: #e1e3e5;
+  --case-upright: #c3c7cb;
+  --plank-top: #cdd0d3;
+  --plank-front: #9da3a9;
+  --empty-cloth: #eaecee;
+  --tip-bg: #16191c;
+  --tip-ink: #eff0f1;
+  --processing: #3f6a96;
+  --logo-tile: #16191c;
+  --logo-book-dark: #5d6870;
+  --logo-book-light: #c7cdd2;
+  --logo-band: #e9ecee;
+  --spine-dot-on-dark: #e6e8ea;
+  --spine-dot-on-light: #2e363d;
+}
+
+[data-color-scheme="graphite"][data-theme="dark"] {
+  --bg: #141618;
+  --bg-soft: #191c1f;
+  --surface: #1f2326;
+  --fg: #e6e8ea;
+  --fg-soft: #a3a9ae;
+  --line: #2a2f33;
+  --track-bg: #353b40;
+  --accent: #d3d8dc;
+  --accent-ink: #eef1f3;
+  --fill: #e6e8ea;
+  --fill-ink: #141618;
+  --shadow: #000000;
+  --scrim: #08090a;
+  --case-back: #0c0d0f;
+  --case-upright: #2c3135;
+  --plank-top: #4a5157;
+  --plank-front: #30353a;
+  --empty-cloth: #111315;
+  --tip-bg: #e6e8ea;
+  --tip-ink: #141618;
+  --processing: #9fb7d6;
+  --logo-tile: #2c3135;
+  --logo-book-dark: #5d6870;
+  --logo-book-light: #c7cdd2;
+  --logo-band: #e9ecee;
+  --spine-dot-on-dark: #e6e8ea;
+  --spine-dot-on-light: #2e363d;
 }
 
 * {
@@ -210,10 +536,7 @@ a {
   right: -600px;
   bottom: -14px;
   height: 14px;
-  background: linear-gradient(
-    var(--plank-top) 0 4px,
-    var(--plank-front) 4px
-  );
+  background: linear-gradient(var(--plank-top) 0 4px, var(--plank-front) 4px);
 }
 
 .rs-side-book {
@@ -1026,7 +1349,7 @@ a {
   color: var(--fg);
 }
 
-/* Brand colours are fixed rather than theme tokens; keep them in sync with public/favicon.svg. */
+/* The logo follows the colour scheme; Stacks' colours are the favicon's (public/favicon.svg), which stays green. */
 .rs-brand-logo-mark {
   display: block;
   width: 30px;
@@ -1034,27 +1357,23 @@ a {
 }
 
 .rs-brand-logo-mark .tile {
-  fill: #12281e;
+  fill: var(--logo-tile);
 }
 
 .rs-brand-logo-mark .book-dark {
-  fill: #317f54;
+  fill: var(--logo-book-dark);
 }
 
 .rs-brand-logo-mark .book-light {
-  fill: #97cca8;
+  fill: var(--logo-book-light);
 }
 
 .rs-brand-logo-mark .band {
-  fill: #d6ecd8;
+  fill: var(--logo-band);
 }
 
 .rs-brand-logo-mark .shelf {
   fill: #f6f5ef;
-}
-
-[data-theme="dark"] .rs-brand-logo-mark .tile {
-  fill: #234634;
 }
 
 .rs-brand-logo-word {
@@ -2126,11 +2445,11 @@ html:has(.rs-library-route) {
 }
 
 .rs-book-spine .rs-stitched-dot {
-  color: #8fc9a4;
+  color: var(--spine-dot-on-dark);
 }
 
 .rs-book-spine.light .rs-stitched-dot {
-  color: #1f6b45;
+  color: var(--spine-dot-on-light);
 }
 
 .rs-book-spine.empty {
@@ -2466,11 +2785,11 @@ html:has(.rs-library-route) {
 }
 
 .rs-game-banner-new .rs-stitched-dot {
-  color: #8fc9a4;
+  color: var(--spine-dot-on-dark);
 }
 
 .rs-game-banner.cloth.light .rs-game-banner-new .rs-stitched-dot {
-  color: #1f6b45;
+  color: var(--spine-dot-on-light);
 }
 
 .rs-game-banner-actions {
@@ -4229,7 +4548,11 @@ html:has(.rs-library-route) {
     inset: 0;
     z-index: -1;
     background:
-      radial-gradient(ellipse at 50% 55%, rgb(5 12 8 / 0.55), transparent 70%),
+      radial-gradient(
+        ellipse at 50% 55%,
+        color-mix(in oklab, var(--scrim) 55%, transparent),
+        transparent 70%
+      ),
       linear-gradient(
         180deg,
         color-mix(in oklab, var(--cloth) 55%, transparent),
@@ -4273,7 +4596,7 @@ html:has(.rs-library-route) {
     box-sizing: border-box;
     border: 1px solid rgb(255 255 255 / 0.14);
     border-radius: var(--radius);
-    background: rgb(10 20 14 / 0.55);
+    background: color-mix(in oklab, var(--scrim) 55%, transparent);
     color: #f4f7f4;
     font-size: 14px;
     font-weight: 600;
@@ -6656,6 +6979,136 @@ html:has(.rs-library-route) {
 
 .rs-email-form {
   gap: 10px;
+}
+
+/* Settings → Appearance: the theme's segments, then a card per colour scheme, each previewing its own tokens. */
+.rs-appearance {
+  display: grid;
+  gap: 18px;
+}
+
+.rs-appearance-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rs-appearance-label {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rs-scheme-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .rs-scheme-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.rs-scheme-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.rs-scheme-option[data-chosen] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.rs-scheme-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rs-scheme-option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rs-scheme-preview {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 5px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--fg) 10%, transparent);
+}
+
+.rs-scheme-preview-case {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 46px;
+  margin: 6px 6px 0;
+  padding: 0 5px;
+  background: var(--case-back);
+  box-shadow:
+    inset 3px 0 0 var(--case-upright),
+    inset -3px 0 0 var(--case-upright),
+    inset 0 3px 0 var(--case-upright);
+}
+
+.rs-scheme-preview-book {
+  width: 9px;
+  border-radius: 1px 1px 0 0;
+  box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.13);
+}
+
+.rs-scheme-preview-plank {
+  height: 6px;
+  margin: 0 3px;
+  background: linear-gradient(var(--plank-top) 0 2px, var(--plank-front) 2px);
+}
+
+.rs-scheme-preview-ui {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 7px 8px;
+}
+
+.rs-scheme-preview-accent {
+  width: 40%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.rs-scheme-preview-fill {
+  width: 24px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--fill);
+}
+
+.rs-scheme-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rs-scheme-description {
+  color: var(--fg-soft);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .rs-primary-danger {

@@ -24,9 +24,12 @@ import {
   fetchLinkedIdentities,
   fetchMe,
   setEmail,
+  setColorScheme,
   setUsername,
   unlinkIdentity,
 } from "@/shared/services/user";
+import type { CurrentUser } from "@/shared/services/user";
+import type { ColorScheme } from "@/shared/theme/appearance";
 
 export const currentUserQueryKey = ["user", "me"] as const;
 export const planQueryKey = ["user", "me", "plan"] as const;
@@ -208,6 +211,36 @@ export function useSetEmail() {
     mutationFn: setEmail,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: currentUserQueryKey });
+    },
+  });
+}
+
+/**
+ * Saves the account's colour scheme. The cached account changes at once, so the shell (which follows it) repaints
+ * before the request answers, and goes back if the API refuses it.
+ */
+export function useSetColorScheme() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: setColorScheme,
+    onMutate: async (colorScheme: ColorScheme) => {
+      await queryClient.cancelQueries({ queryKey: currentUserQueryKey });
+      const previous = queryClient.getQueryData<CurrentUser | null>(
+        currentUserQueryKey,
+      );
+      if (previous) {
+        queryClient.setQueryData<CurrentUser>(currentUserQueryKey, {
+          ...previous,
+          colorScheme,
+        });
+      }
+      return { previous };
+    },
+    onError: (_error, _colorScheme, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(currentUserQueryKey, context.previous);
+      }
     },
   });
 }

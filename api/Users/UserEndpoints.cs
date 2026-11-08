@@ -20,6 +20,7 @@ public static class UserEndpoints
         meGroup.MapGet("/", GetMe).WithName("GetMe");
         meGroup.MapPut("/email", SetEmail).WithName("SetMyEmail");
         meGroup.MapPut("/username", SetUsername).WithName("SetMyUsername");
+        meGroup.MapPut("/color-scheme", SetColorScheme).WithName("SetMyColorScheme");
         meGroup.MapGet("/plan", GetPlan).WithName("GetMyPlan")
             .RequireAuthorization(AuthorizationPolicies.CookieOrDevice);
         meGroup.MapGet("/features", GetFeatures).WithName("GetMyFeatures");
@@ -35,6 +36,8 @@ public static class UserEndpoints
     private static async Task<Ok<CurrentUserResponse>> GetMe(AuthenticatedUser user, UserStatements userStatements)
     {
         // Until the user has given an address, offer the one their providers reported (primary identity first).
+        string colorScheme = ColorSchemes.FromStored(await userStatements.GetColorScheme(user.Id));
+
         string? suggestedEmail = null;
         if (user.Email is null)
         {
@@ -54,7 +57,8 @@ public static class UserEndpoints
             NeedsOnboarding: user.Email is null || user.NeedsUsername,
             NeedsUsername: user.NeedsUsername,
             CanSetUsername: user.CanSetUsername,
-            IsAdmin: user.HasPermission(Permissions.AdminUsers)));
+            IsAdmin: user.HasPermission(Permissions.AdminUsers),
+            ColorScheme: colorScheme));
     }
 
     private static async Task<Results<NoContent, BadRequest<string>>> SetEmail(
@@ -68,6 +72,21 @@ public static class UserEndpoints
         }
 
         await userStatements.SetUserEmail(user.Id, email);
+        return TypedResults.NoContent();
+    }
+
+    /// <summary>Records the colour scheme the owner picked in Settings → Appearance, so it follows them between browsers.</summary>
+    private static async Task<Results<NoContent, BadRequest<string>>> SetColorScheme(
+        AuthenticatedUser user,
+        SetColorSchemeRequest request,
+        UserStatements userStatements)
+    {
+        if (!ColorSchemes.TryNormalize(request.ColorScheme, out string scheme))
+        {
+            return TypedResults.BadRequest("Choose one of the colour schemes in Settings.");
+        }
+
+        await userStatements.SetColorScheme(user.Id, scheme);
         return TypedResults.NoContent();
     }
 
@@ -225,12 +244,16 @@ public sealed record CurrentUserResponse(
     bool NeedsOnboarding,
     bool NeedsUsername,
     bool CanSetUsername,
-    bool IsAdmin);
+    bool IsAdmin,
+    string ColorScheme);
 
 /// <summary>Every account needs an address, so an empty one is refused.</summary>
 public sealed record SetEmailRequest(string? Email);
 
 public sealed record SetUsernameRequest(string? Username);
+
+/// <summary>One of <see cref="ColorSchemes.All"/>.</summary>
+public sealed record SetColorSchemeRequest(string? ColorScheme);
 
 /// <summary><see cref="Confirmation"/> must be the phrase the user was asked to type.</summary>
 public sealed record DeleteAccountRequest(string? Confirmation);
