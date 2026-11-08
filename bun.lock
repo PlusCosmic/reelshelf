@@ -20,7 +20,7 @@
         "@fontsource-variable/fraunces": "^5.3.0",
         "@fontsource-variable/instrument-sans": "^5.3.0",
         "@microsoft/signalr": "^10.0.11",
-        "@pluscosmic/ui": "https://github.com/PlusCosmic/ui-foundation/releases/download/ui-v0.1.2/pluscosmic-ui-0.1.2.tgz",
+        "@pluscosmic/ui": "https://github.com/PlusCosmic/ui-foundation/releases/download/ui-v0.1.3/pluscosmic-ui-0.1.3.tgz",
         "@tabler/icons-react": "^3.47.0",
         "@tanstack/react-query": "^5.103.1",
         "@tanstack/react-router": "^1.170.38",
@@ -234,7 +234,7 @@
 
     "@playwright/test": ["@playwright/test@1.63.0", "", { "dependencies": { "playwright": "1.63.0" }, "bin": { "playwright": "cli.js" } }, "sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ=="],
 
-    "@pluscosmic/ui": ["@pluscosmic/ui@https://github.com/PlusCosmic/ui-foundation/releases/download/ui-v0.1.2/pluscosmic-ui-0.1.2.tgz", { "dependencies": { "@fontsource-variable/fraunces": "^5.3.0", "@fontsource-variable/instrument-sans": "^5.3.0", "@tabler/icons-react": "^3.47.0" }, "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0", "vite": ">=6" }, "optionalPeers": ["vite"] }, "sha512-ltTVVKU4uEvWzBghqqA1tPwFsgAjcmO6zy3uvD39AKBQ4P4zxESTxtIEO0t8ywBCuRCPrTYqXAb7F1KBSJqeeg=="],
+    "@pluscosmic/ui": ["@pluscosmic/ui@https://github.com/PlusCosmic/ui-foundation/releases/download/ui-v0.1.3/pluscosmic-ui-0.1.3.tgz", { "dependencies": { "@fontsource-variable/fraunces": "^5.3.0", "@fontsource-variable/instrument-sans": "^5.3.0", "@tabler/icons-react": "^3.47.0" }, "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0", "vite": ">=6" }, "optionalPeers": ["vite"] }, "sha512-ndUw47FGYMmN0AYZToGQxbw8ZguiHk+KccXq2T/0PcXFozU4vgcQFHKzhp5gce+9oT7ClCUjJevSEXgcWMJIDg=="],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.9", "", { "os": "android", "cpu": "arm" }, "sha512-tNISae1QEf/vkb3xkRcjV5SEdzPE97We5IVaa2Z8jSszQPZ8U60B/YCYpw4QI7VidYsBtKavczXf+DyDs9WGxw=="],
 
