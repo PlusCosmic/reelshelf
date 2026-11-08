@@ -2,6 +2,8 @@ import { URL, fileURLToPath } from "node:url";
 import { defineConfig, type Plugin, type ProxyOptions } from "vite";
 import viteReact from "@vitejs/plugin-react";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import { appearance } from "@pluscosmic/ui/vite";
+import { appearanceStorageKey } from "./src/shared/theme/storageKey.ts";
 
 const apiProxy: ProxyOptions = {
   target: "http://localhost:5260",
@@ -109,6 +111,8 @@ export default defineConfig({
       autoCodeSplitting: true,
     }),
     viteReact(),
+    // Applies the stored theme and colour scheme before first paint, under the provider's storage keys.
+    appearance({ storageKey: appearanceStorageKey }),
     preloadLibraryRoute(),
     preloadFonts(),
   ],

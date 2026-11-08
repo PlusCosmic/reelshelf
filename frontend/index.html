@@ -7,21 +7,6 @@
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
         <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
         <title>Reelshelf</title>
-        <script>
-            // Apply the theme and colour scheme before first paint so nobody gets a flash of the
-            // wrong colours. Keep the storage keys and schemes in sync with shared/theme/appearance.ts.
-            try {
-                var theme = localStorage.getItem("reelshelf-theme-preference");
-                if (theme !== "light" && theme !== "dark") {
-                    theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-                }
-                document.documentElement.dataset.theme = theme;
-                var scheme = localStorage.getItem("reelshelf-color-scheme");
-                if (["oxblood", "ink", "walnut", "graphite"].indexOf(scheme) !== -1) {
-                    document.documentElement.dataset.colorScheme = scheme;
-                }
-            } catch (error) {}
-        </script>
     </head>
     <body>
         <div id="app"></div>
