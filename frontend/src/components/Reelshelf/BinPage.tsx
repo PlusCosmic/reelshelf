@@ -8,7 +8,7 @@ import {
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import type { Clip } from "@/api-client";
-import { LoadMore } from "@pluscosmic/ui";
+import { LoadMore, Notice } from "@pluscosmic/ui";
 import { binCopy } from "@/copy/bin";
 import { commonCopy } from "@/copy/common";
 import { libraryCopy } from "@/copy/library";
@@ -109,9 +109,9 @@ export function BinPage() {
 
       <section className="rs-section rs-bin-list">
         {notice ? (
-          <p className="rs-linked-notice" data-tone="error" role="alert">
+          <Notice compact tone="error">
             {notice}
-          </p>
+          </Notice>
         ) : null}
         {query.isLoading ? (
           <div className="rs-empty">{copy.loading}</div>

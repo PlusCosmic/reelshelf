@@ -1,3 +1,4 @@
+import { Notice } from "@pluscosmic/ui";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { deviceCopy } from "@/copy/device";
@@ -86,9 +87,9 @@ function DeviceRequest({ code }: { code: string }) {
 
   if (request.isError) {
     return (
-      <p className="rs-linked-notice" data-tone="error" role="alert">
+      <Notice compact tone="error">
         {copy.loadFailed}
-      </p>
+      </Notice>
     );
   }
 
@@ -98,23 +99,22 @@ function DeviceRequest({ code }: { code: string }) {
     (outcome && "error" in outcome && outcome.error === copy.unknown)
   ) {
     return (
-      <p className="rs-linked-notice" data-tone="error" role="alert">
+      <Notice compact tone="error">
         {copy.unknown}
-      </p>
+      </Notice>
     );
   }
 
   if (outcome && "decision" in outcome) {
     return (
-      <p
-        className="rs-linked-notice"
-        data-tone={outcome.decision === "allow" ? "success" : "warning"}
-        role="status"
+      <Notice
+        compact
+        tone={outcome.decision === "allow" ? "success" : "warning"}
       >
         {outcome.decision === "allow"
           ? copy.allowed(device.deviceName)
           : copy.denied(device.deviceName)}
-      </p>
+      </Notice>
     );
   }
 
@@ -143,9 +143,9 @@ function DeviceRequest({ code }: { code: string }) {
       <p className="rs-device-code">{formatDeviceCode(code)}</p>
       <p className="rs-sidebar-copy">{copy.body}</p>
       {outcome && "error" in outcome ? (
-        <p className="rs-linked-notice" data-tone="error" role="alert">
+        <Notice compact tone="error">
           {outcome.error}
-        </p>
+        </Notice>
       ) : null}
       <div className="rs-device-actions">
         <button

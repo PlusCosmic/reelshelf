@@ -1,3 +1,4 @@
+import { Notice } from "@pluscosmic/ui";
 import { Link } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
 import {
@@ -99,9 +100,9 @@ export function PlanSettings({
 
   if (!plan.data) {
     return plan.isError ? (
-      <p className="rs-linked-notice" data-tone="error">
+      <Notice compact tone="error">
         {copy.loadFailed}
-      </p>
+      </Notice>
     ) : null;
   }
 
@@ -222,14 +223,14 @@ export function PlanSettings({
         </div>
       ) : null}
       {portal.isError ? (
-        <p className="rs-linked-notice" data-tone="error">
+        <Notice compact tone="error">
           {copy.portalFailed}
-        </p>
+        </Notice>
       ) : null}
       {keep.isError ? (
-        <p className="rs-linked-notice" data-tone="error">
+        <Notice compact tone="error">
           {copy.keepFailed}
-        </p>
+        </Notice>
       ) : null}
 
       {(canUpgrade || changeable) && offers.data && !awaitingCheckout ? (
@@ -528,6 +529,7 @@ function ReturnBanner({
   );
 }
 
+/** A plan banner: @pluscosmic/ui's Notice with Reelshelf's own icons, its grey "info" as the neutral tone. */
 function PlanAlert({
   tone,
   title,
@@ -540,33 +542,25 @@ function PlanAlert({
   children?: ReactNode;
 }) {
   return (
-    <div
-      className="rs-plan-alert"
-      data-tone={tone}
-      role={tone === "error" ? "alert" : "status"}
+    <Notice
+      tone={tone === "info" ? "neutral" : tone}
+      title={title}
+      icon={
+        busy ? (
+          <span className="rs-plan-alert-spinner" aria-hidden="true" />
+        ) : (
+          <AlertIcon tone={tone} />
+        )
+      }
     >
-      {busy ? (
-        <span className="rs-plan-alert-spinner" aria-hidden="true" />
-      ) : (
-        <AlertIcon tone={tone} />
-      )}
-      <div className="rs-plan-alert-body">
-        <p className="rs-plan-alert-title">{title}</p>
-        {children}
-      </div>
-    </div>
+      {children}
+    </Notice>
   );
 }
 
 function AlertIcon({ tone }: { tone: Tone }) {
   return (
-    <svg
-      className="rs-plan-alert-icon"
-      viewBox="0 0 20 20"
-      width="18"
-      height="18"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
       <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" />
       {tone === "success" ? (
         <path
@@ -859,9 +853,9 @@ function PlanOffers({
         {offerCopy.pricesFootnote(currency.toUpperCase(), !change)}
       </p>
       {error ? (
-        <p className="rs-linked-notice" data-tone="error">
+        <Notice compact tone="error">
           {error}
-        </p>
+        </Notice>
       ) : null}
     </div>
   );

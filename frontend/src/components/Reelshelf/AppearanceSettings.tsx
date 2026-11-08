@@ -1,3 +1,4 @@
+import { Notice } from "@pluscosmic/ui";
 import { useState } from "react";
 import { settingsCopy } from "@/copy/settings";
 import { useSetColorScheme } from "@/hooks/auth.queries";
@@ -115,9 +116,9 @@ export function AppearanceSettings() {
         </div>
       </fieldset>
       {error ? (
-        <p className="rs-linked-notice" data-tone="error" role="alert">
+        <Notice compact tone="error">
           {error}
-        </p>
+        </Notice>
       ) : null}
     </div>
   );

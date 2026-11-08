@@ -1,3 +1,4 @@
+import { Notice } from "@pluscosmic/ui";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useSetEmail } from "@/hooks/queries";
@@ -63,14 +64,14 @@ export function EmailField({
         />
       </div>
       {error ? (
-        <p className="rs-linked-notice" data-tone="error" role="alert">
+        <Notice compact tone="error">
           {error}
-        </p>
+        </Notice>
       ) : null}
       {saved && !error ? (
-        <p className="rs-linked-notice" data-tone="success" role="status">
+        <Notice compact tone="success">
           {copy.saved}
-        </p>
+        </Notice>
       ) : null}
       <div className="rs-email-actions">
         <button
