@@ -237,13 +237,10 @@ fn document() -> Value {
     let path = std::env::var_os("REELSHELF_OPENAPI")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../../frontend/src/api-client/Reelshelf.json")
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../frontend/src/api-client/Reelshelf.json")
         });
-    let text = std::fs::read_to_string(&path)
-        .unwrap_or_else(|error| panic!("reading {}: {error}", path.display()));
-    serde_json::from_str(&text)
-        .unwrap_or_else(|error| panic!("parsing {}: {error}", path.display()))
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|error| panic!("reading {}: {error}", path.display()));
+    serde_json::from_str(&text).unwrap_or_else(|error| panic!("parsing {}: {error}", path.display()))
 }
 
 fn schema<'a>(document: &'a Value, name: &str) -> Option<&'a Value> {
@@ -251,10 +248,7 @@ fn schema<'a>(document: &'a Value, name: &str) -> Option<&'a Value> {
 }
 
 fn ref_name(schema: &Value) -> Option<&str> {
-    schema
-        .get("$ref")?
-        .as_str()?
-        .strip_prefix("#/components/schemas/")
+    schema.get("$ref")?.as_str()?.strip_prefix("#/components/schemas/")
 }
 
 /// The schemas a property may hold besides null: itself, or each branch of a `oneOf`/`anyOf`.
@@ -424,23 +418,13 @@ fn mismatches(document: &Value) -> Vec<String> {
             }
         };
         for name in ours.difference(&document_query) {
-            problems.push(format!(
-                "{label}: query parameter {name} isn't in the document"
-            ));
+            problems.push(format!("{label}: query parameter {name} isn't in the document"));
         }
         for name in required_query.difference(&ours) {
-            problems.push(format!(
-                "{label}: required query parameter {name} isn't sent"
-            ));
+            problems.push(format!("{label}: required query parameter {name} isn't sent"));
         }
-        for parameter in parameters
-            .iter()
-            .filter(|p| p.get("in") == Some(&json!("path")))
-        {
-            let name = parameter
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or_default();
+        for parameter in parameters.iter().filter(|p| p.get("in") == Some(&json!("path"))) {
+            let name = parameter.get("name").and_then(Value::as_str).unwrap_or_default();
             if !endpoint.path.contains(&format!("{{{name}}}")) {
                 problems.push(format!("{label}: path parameter {name} isn't in the path"));
             }
@@ -464,10 +448,9 @@ fn mismatches(document: &Value) -> Vec<String> {
             let schema = response.pointer("/content/application~1json/schema");
             let found = match schema {
                 None => None,
-                Some(schema) if has_type(schema, "array") => schema
-                    .get("items")
-                    .and_then(ref_name)
-                    .map(|name| format!("[{name}]")),
+                Some(schema) if has_type(schema, "array") => {
+                    schema.get("items").and_then(ref_name).map(|name| format!("[{name}]"))
+                }
                 Some(schema) => Some(ref_name(schema).unwrap_or("an unnamed schema").to_owned()),
             };
             let expected = body.as_ref().map(|body| match body {
@@ -496,26 +479,17 @@ fn mismatches(document: &Value) -> Vec<String> {
                     .unwrap_or_default();
                 let fields: BTreeSet<&str> = fields.iter().copied().collect();
                 for field in fields.difference(&names) {
-                    problems.push(format!(
-                        "{label}: field {field} isn't a property of the schema"
-                    ));
+                    problems.push(format!("{label}: field {field} isn't a property of the schema"));
                 }
                 for property in required(schema).difference(&fields) {
-                    problems.push(format!(
-                        "{label}: required property {property} isn't a field"
-                    ));
+                    problems.push(format!("{label}: required property {property} isn't a field"));
                 }
                 let mut refs = BTreeSet::new();
-                for property in properties
-                    .into_iter()
-                    .flat_map(|properties| properties.values())
-                {
+                for property in properties.into_iter().flat_map(|properties| properties.values()) {
                     referenced(property, &mut refs);
                 }
                 for name in refs.iter().filter(|name| !mapped.contains(name.as_str())) {
-                    problems.push(format!(
-                        "{label}: refers to schema {name}, which no Rust type mirrors"
-                    ));
+                    problems.push(format!("{label}: refers to schema {name}, which no Rust type mirrors"));
                 }
             }
             Shape::Enum(variants) => {
@@ -531,17 +505,13 @@ fn mismatches(document: &Value) -> Vec<String> {
                     .filter(|variant| *variant != "unknown")
                     .collect();
                 for variant in variants.difference(&values) {
-                    problems.push(format!(
-                        "{label}: variant {variant} isn't a value of the schema"
-                    ));
+                    problems.push(format!("{label}: variant {variant} isn't a value of the schema"));
                 }
                 for value in values.difference(&variants) {
                     problems.push(format!("{label}: value {value} has no variant"));
                 }
             }
-            Shape::Other(what) => {
-                problems.push(format!("{label}: not a struct or an enum: {what}"))
-            }
+            Shape::Other(what) => problems.push(format!("{label}: not a struct or an enum: {what}")),
         }
         if let Some(decode) = map.decode {
             for full in [true, false] {
@@ -575,14 +545,8 @@ fn client_matches_the_openapi_document() {
 
 #[test]
 fn every_endpoint_is_checked() {
-    let checked: BTreeSet<&str> = calls()
-        .iter()
-        .map(|call| call.endpoint.operation_id)
-        .collect();
-    let used: BTreeSet<&str> = endpoints::ALL
-        .iter()
-        .map(|endpoint| endpoint.operation_id)
-        .collect();
+    let checked: BTreeSet<&str> = calls().iter().map(|call| call.endpoint.operation_id).collect();
+    let used: BTreeSet<&str> = endpoints::ALL.iter().map(|endpoint| endpoint.operation_id).collect();
     assert_eq!(checked, used);
 }
 
@@ -610,8 +574,7 @@ fn a_renamed_property_is_caught() {
     assert!(
         problems
             .iter()
-            .any(|problem| problem
-                .contains("required property max_clip_length_seconds isn't a field")),
+            .any(|problem| problem.contains("required property max_clip_length_seconds isn't a field")),
         "{problems:?}"
     );
 }

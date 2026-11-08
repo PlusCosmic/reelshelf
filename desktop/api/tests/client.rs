@@ -163,9 +163,7 @@ async fn create_video_sends_the_document_query() {
 async fn create_video_leaves_out_what_it_hasnt() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
-        .respond_with(
-            ResponseTemplate::new(409).set_body_json("A video with this MD5 hash already exists"),
-        )
+        .respond_with(ResponseTemplate::new(409).set_body_json("A video with this MD5 hash already exists"))
         .mount(&server)
         .await;
 
@@ -184,10 +182,7 @@ async fn create_video_leaves_out_what_it_hasnt() {
     let ApiError::Conflict(problem) = error else {
         panic!("{error:?}")
     };
-    assert_eq!(
-        problem.message(),
-        Some("A video with this MD5 hash already exists")
-    );
+    assert_eq!(problem.message(), Some("A video with this MD5 hash already exists"));
 
     let request = &server.received_requests().await.unwrap()[0];
     assert_eq!(request.url.query(), Some("videoTitle=Clip&fileSize=1"));
@@ -221,9 +216,7 @@ async fn multipart_calls_send_their_bodies() {
             "upload_id": "up-1",
             "parts": [{ "part_number": 1, "etag": "\"e1\"" }, { "part_number": 2, "etag": "\"e2\"" }]
         })))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(json!({ "clip_id": clip, "status": "uploaded" })),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "clip_id": clip, "status": "uploaded" })))
         .mount(&server)
         .await;
     let client = signed_in(&server);
@@ -270,10 +263,7 @@ async fn an_unknown_status_reads_as_unknown() {
     let server = MockServer::start().await;
     let clip = Uuid::new_v4();
     Mock::given(method("POST"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_json(json!({ "clip_id": clip, "status": "queued" })),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "clip_id": clip, "status": "queued" })))
         .mount(&server)
         .await;
 
@@ -321,10 +311,7 @@ async fn a_device_deleting_a_clip_it_may_not_is_forbidden() {
         .mount(&server)
         .await;
 
-    let error = signed_in(&server)
-        .delete_clip(Uuid::new_v4())
-        .await
-        .unwrap_err();
+    let error = signed_in(&server).delete_clip(Uuid::new_v4()).await.unwrap_err();
     assert!(
         matches!(
             error,
@@ -366,11 +353,7 @@ async fn unauthorized_without_a_token_is_just_a_status() {
 
 #[tokio::test]
 async fn upgrade_required_names_the_minimum_version() {
-    let error = plan_answering(
-        426,
-        json!({ "error": "client_too_old", "minimum_version": "1.3" }),
-    )
-    .await;
+    let error = plan_answering(426, json!({ "error": "client_too_old", "minimum_version": "1.3" })).await;
     let ApiError::UpdateRequired { minimum_version } = error else {
         panic!("{error:?}")
     };
@@ -388,23 +371,14 @@ async fn upgrade_required_without_a_body_still_maps() {
     // Even a request without a token is refused for its version.
     let error = client(&server).plan().await.unwrap_err();
     assert!(
-        matches!(
-            error,
-            ApiError::UpdateRequired {
-                minimum_version: None
-            }
-        ),
+        matches!(error, ApiError::UpdateRequired { minimum_version: None }),
         "{error:?}"
     );
 }
 
 #[tokio::test]
 async fn a_full_plan_is_forbidden_with_its_title() {
-    let error = plan_answering(
-        403,
-        problem("Plan Limit Reached", "Your plan keeps 100 clips."),
-    )
-    .await;
+    let error = plan_answering(403, problem("Plan Limit Reached", "Your plan keeps 100 clips.")).await;
     let ApiError::Forbidden(problem) = error else {
         panic!("{error:?}")
     };
@@ -431,19 +405,13 @@ async fn not_found_maps() {
 async fn unprocessable_keeps_its_message() {
     let error = plan_answering(
         422,
-        problem(
-            "Unprocessable Content",
-            "The clip is longer than 60 seconds",
-        ),
+        problem("Unprocessable Content", "The clip is longer than 60 seconds"),
     )
     .await;
     let ApiError::Unprocessable(problem) = error else {
         panic!("{error:?}")
     };
-    assert_eq!(
-        problem.message(),
-        Some("The clip is longer than 60 seconds")
-    );
+    assert_eq!(problem.message(), Some("The clip is longer than 60 seconds"));
 }
 
 #[tokio::test]
@@ -487,11 +455,7 @@ async fn no_server_is_a_network_error() {
     let uri = format!("http://{}", listener.local_addr().unwrap());
     drop(listener);
 
-    let error = ApiClient::new(&uri, VERSION)
-        .unwrap()
-        .plan()
-        .await
-        .unwrap_err();
+    let error = ApiClient::new(&uri, VERSION).unwrap().plan().await.unwrap_err();
     assert!(matches!(error, ApiError::Network(_)), "{error:?}");
     assert!(error.is_transient());
 }
@@ -509,36 +473,24 @@ async fn poll_answering(status: u16, body: serde_json::Value) -> Result<DeviceTo
 
 #[tokio::test]
 async fn the_poll_answers_the_token_once_allowed() {
-    let poll = poll_answering(
-        200,
-        json!({ "access_token": TOKEN, "token_type": "Bearer" }),
-    )
-    .await
-    .unwrap();
+    let poll = poll_answering(200, json!({ "access_token": TOKEN, "token_type": "Bearer" }))
+        .await
+        .unwrap();
     let DeviceTokenPoll::Granted(token) = poll else {
         panic!("{poll:?}")
     };
     assert_eq!(token.access_token, TOKEN);
-    assert!(
-        !format!("{token:?}").contains(TOKEN),
-        "the token stays out of Debug"
-    );
+    assert!(!format!("{token:?}").contains(TOKEN), "the token stays out of Debug");
 }
 
 #[tokio::test]
 async fn the_poll_reads_each_rfc_8628_code() {
     for (code, expected) in [
-        (
-            "authorization_pending",
-            DeviceTokenErrorCode::AuthorizationPending,
-        ),
+        ("authorization_pending", DeviceTokenErrorCode::AuthorizationPending),
         ("slow_down", DeviceTokenErrorCode::SlowDown),
         ("expired_token", DeviceTokenErrorCode::ExpiredToken),
         ("access_denied", DeviceTokenErrorCode::AccessDenied),
-        (
-            "invalid_grant",
-            DeviceTokenErrorCode::Other("invalid_grant".into()),
-        ),
+        ("invalid_grant", DeviceTokenErrorCode::Other("invalid_grant".into())),
     ] {
         let poll = poll_answering(400, json!({ "error": code })).await.unwrap();
         assert_eq!(poll, DeviceTokenPoll::Refused(expected), "{code}");
@@ -547,20 +499,12 @@ async fn the_poll_reads_each_rfc_8628_code() {
 
 #[tokio::test]
 async fn the_poll_maps_other_failures() {
-    let error = poll_answering(
-        426,
-        json!({ "error": "client_too_old", "minimum_version": "2.0" }),
-    )
-    .await
-    .unwrap_err();
-    assert!(
-        matches!(error, ApiError::UpdateRequired { .. }),
-        "{error:?}"
-    );
-
-    let error = poll_answering(400, json!("not an error object"))
+    let error = poll_answering(426, json!({ "error": "client_too_old", "minimum_version": "2.0" }))
         .await
         .unwrap_err();
+    assert!(matches!(error, ApiError::UpdateRequired { .. }), "{error:?}");
+
+    let error = poll_answering(400, json!("not an error object")).await.unwrap_err();
     assert!(
         matches!(
             error,
@@ -589,10 +533,7 @@ async fn a_part_goes_to_its_url_without_the_token_and_answers_its_etag() {
         .await;
     let client = signed_in(&server);
 
-    let url = format!(
-        "{}/bucket/uploads/clip?partNumber=1&X-Amz-Signature=sig",
-        server.uri()
-    );
+    let url = format!("{}/bucket/uploads/clip?partNumber=1&X-Amz-Signature=sig", server.uri());
     let etag = client.put_part(&url, b"hello".to_vec(), 5).await.unwrap();
     assert_eq!(etag, "\"abc\"");
 
