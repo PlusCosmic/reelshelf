@@ -1,0 +1,35 @@
+# The Windows uploader in Rust (ADR-0010; build spec in reelshelf-docs/desktop-uploader/README.md). Separate from
+# Reelshelf.sln and the Bun workspace, with its own CI job (`Desktop` in .github/workflows/ci.yml).
+#
+# Members: `core` (reelshelf-core) now; `api` (reelshelf-api, #366) and `app` (reelshelf-app, #367) join this list as
+# they land. Cargo refuses a member whose directory doesn't exist yet, so each is added by the change that creates it.
+[workspace]
+resolver = "2"
+members = ["core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99.1"
+publish = false
+
+[workspace.dependencies]
+bytes = "1.12"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+futures-core = "0.3.34"
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
+md-5 = "0.11"
+notify = "8"
+regex = "1.13"
+rusqlite = { version = "0.41", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.154"
+tempfile = "3.27"
+tokio = { version = "1.54", features = ["macros", "rt", "sync", "time"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }
+uuid = { version = "1.29", features = ["serde", "v4"] }
+
+# Rune, the app's toolkit (#367), pinned to a `dev` revision and moved forward one bump per PR. No crate uses it yet,
+# and a workspace dependency no member names is never fetched or built.
+rune = { git = "https://github.com/anomalyco/rune", rev = "cd36f5a9917ec4a65786caf69213c9cc32919984" }

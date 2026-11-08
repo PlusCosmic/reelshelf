@@ -1,0 +1,2 @@
+# Lines as long as the rest of the repo's code (the API and the .NET uploader wrap at 120).
+max_width = 120
