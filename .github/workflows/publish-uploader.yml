@@ -38,24 +38,22 @@ jobs:
           if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "The tag must be uploader-v<major>.<minor>.<patch>; got ${{ github.ref_name }}" }
           "version=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
+      # rustup reads the channel and components from desktop/rust-toolchain.toml.
+      - name: Install the Rust toolchain
+        working-directory: desktop
+        run: rustup toolchain install
 
-      - name: Test
-        run: dotnet test tests/Reelshelf.Uploader.Test/Reelshelf.Uploader.Test.csproj --configuration Release
-
-      # Sets the assembly version (dotnet publish -p:Version) and the manifest's (Identity Version) from the tag.
+      # Sets the app's version (REELSHELF_APP_VERSION, compiled in by cargo) and the manifest's (Identity Version)
+      # from the tag.
       - name: Build the MSIX
         shell: pwsh
-        run: ./desktop/Reelshelf.Uploader.Package/package.ps1 -Version ${{ steps.version.outputs.version }} -Mode Store
+        run: ./desktop/package/package.ps1 -Version ${{ steps.version.outputs.version }} -Mode Store
 
       - name: Attach the MSIX to the run
         uses: actions/upload-artifact@v4
         with:
-          name: Reelshelf.Uploader_${{ steps.version.outputs.version }}_x64
-          path: desktop/Reelshelf.Uploader.Package/out/*.msix
+          name: Reelshelf_${{ steps.version.outputs.version }}_x64
+          path: desktop/package/out/*.msix
           if-no-files-found: error
 
       - name: Set up the Store CLI
@@ -74,4 +72,4 @@ jobs:
             throw "Partner Center isn't configured for this repository yet (see the comment at the top of this workflow)."
           }
           msstore reconfigure --tenantId $env:TENANT_ID --sellerId $env:SELLER_ID --clientId $env:CLIENT_ID --clientSecret $env:CLIENT_SECRET
-          msstore publish "desktop/Reelshelf.Uploader.Package/out/Reelshelf.Uploader_${{ steps.version.outputs.version }}_x64.msix" -id $env:PRODUCT_ID
+          msstore publish "desktop/package/out/Reelshelf_${{ steps.version.outputs.version }}_x64.msix" -id $env:PRODUCT_ID

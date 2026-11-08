@@ -10,5 +10,8 @@ pub mod model;
 pub mod platform;
 pub mod shell;
 pub mod theme;
+pub mod toast;
 pub mod tray;
 pub mod ui;
+#[cfg(windows)]
+pub mod win;

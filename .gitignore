@@ -80,8 +80,8 @@ docs/UI Design
 frontend/src/api-client/.openapi-generator/
 frontend/src/api-client/.openapi-generator-ignore
 
-# The uploader's MSIX builds (desktop/Reelshelf.Uploader.Package/package.ps1).
-desktop/Reelshelf.Uploader.Package/out/
+# The desktop app's MSIX builds (desktop/package/package.ps1).
+desktop/package/out/
 
 # The desktop uploader's Rust build (desktop/Cargo.toml).
 desktop/target/

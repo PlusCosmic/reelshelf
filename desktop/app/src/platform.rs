@@ -1,10 +1,10 @@
 //! The platform parts the engine and the windows need, behind the core's traits ([`CredentialStore`], [`GameActivity`],
 //! [`Notifier`], [`Startup`]) and the app's own [`Shell`].
 //!
-//! These are the stand-ins: the token in memory, never a game, notifications written to the log, no starting with
-//! the system, and links and folders opened with the desktop's opener. They let the app run, and be tested, on Linux.
-//! The Windows build swaps in Credential Manager, `SHQueryUserNotificationState`, toasts and MSIX's startup task in
-//! [`Platform::native`], behind `cfg(windows)`, and nothing else in the app changes.
+//! On Windows, [`Platform::native`] is Credential Manager, `SHQueryUserNotificationState`, toasts and MSIX's startup
+//! task (`crate::win`). Everywhere else it is the stand-ins here: the token in memory, never a game, notifications
+//! written to the log and no starting with the system. They let the app run, and be tested, on Linux. Both open links
+//! and folders with the desktop's opener.
 
 use std::process::Command;
 use std::sync::{Arc, Mutex};
@@ -28,9 +28,16 @@ pub struct Platform {
 }
 
 impl Platform {
-    /// The platform the app runs on. Every platform gets the stand-ins until the Windows integrations land.
+    /// The platform the app runs on: Windows' own parts on Windows, the stand-ins elsewhere.
     pub fn native() -> Platform {
-        Platform::stand_ins()
+        #[cfg(windows)]
+        {
+            crate::win::platform()
+        }
+        #[cfg(not(windows))]
+        {
+            Platform::stand_ins()
+        }
     }
 
     pub fn stand_ins() -> Platform {
@@ -118,6 +125,27 @@ impl Shell for SystemShell {
     }
 }
 
+/// The generic credential Credential Manager keeps the token under, the same one the .NET build used, so its sign-in
+/// carries over.
+pub const CREDENTIAL_TARGET: &str = "Reelshelf";
+
+/// The token as the credential's blob: UTF-16LE with no terminator, as the .NET build wrote it
+/// (`Encoding.Unicode.GetBytes`).
+pub fn credential_blob(token: &str) -> Vec<u8> {
+    token.encode_utf16().flat_map(u16::to_le_bytes).collect()
+}
+
+/// The token in a credential's blob; None when it is empty.
+pub fn token_from_blob(blob: &[u8]) -> Option<String> {
+    let units: Vec<u16> = blob
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|pair| u16::from_le_bytes(*pair))
+        .collect();
+    Some(String::from_utf16_lossy(&units)).filter(|token| !token.is_empty())
+}
+
 /// The computer's name, which S1 signs in as and S5 shows.
 pub fn device_name() -> String {
     std::env::var("COMPUTERNAME")
@@ -145,5 +173,14 @@ mod tests {
         assert_eq!(platform.startup.set_enabled(true), StartupState::Disabled);
         platform.notifier.post(Notification::SignedOut);
         assert!(!device_name().is_empty());
+    }
+
+    #[test]
+    fn the_credential_blob_is_the_tokens_utf16() {
+        // What .NET's Encoding.Unicode.GetBytes("rsd_é") gives.
+        let blob = credential_blob("rsd_é");
+        assert_eq!(blob, [0x72, 0, 0x73, 0, 0x64, 0, 0x5f, 0, 0xe9, 0]);
+        assert_eq!(token_from_blob(&blob).as_deref(), Some("rsd_é"));
+        assert_eq!(token_from_blob(&[]), None);
     }
 }

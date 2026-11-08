@@ -23,6 +23,27 @@ tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
 
+# The Windows integrations (src/win/): Credential Manager, the full-screen check, toasts, the startup task, the
+# flyout's place and the windows' caption buttons. Rune's own `windows` version, so the crate is built once.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+    "ApplicationModel",
+    "Data_Xml_Dom",
+    "Foundation",
+    "UI_Notifications",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Security_Credentials",
+    "Win32_System_Threading",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+# The executable's icon, version and application manifest (build.rs), when building on Windows.
+[target.'cfg(windows)'.build-dependencies]
+winresource = { version = "0.1", default-features = false }
+
 [dev-dependencies]
 bytes.workspace = true
 futures-util.workspace = true

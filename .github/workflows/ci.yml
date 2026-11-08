@@ -201,38 +201,40 @@ jobs:
           path: ${{ runner.temp }}/desktop-renders/*.png
           if-no-files-found: error
 
-  # The desktop uploader's Windows app (desktop/Reelshelf.Uploader.sln): builds it, runs its Windows-only tests and
-  # builds the MSIX to prove packaging works. Not a required check until the app has shipped once; Core and its tests
-  # are in Reelshelf.sln and run in the API job.
+  # The desktop app's Windows build (desktop/app): lints the Windows-only code the Desktop job can't compile, then
+  # builds the release binary and the MSIX with desktop/package/package.ps1, to prove the Windows integrations build
+  # and packaging works. Not a required check until the app has shipped once.
   windows-uploader:
     name: Windows uploader
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: desktop
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+      # rustup reads the channel and components from desktop/rust-toolchain.toml; the runner's host target is
+      # x86_64-pc-windows-msvc, the one package.ps1 builds.
+      - name: Install the Rust toolchain
+        run: rustup toolchain install
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2.9.2
         with:
-          dotnet-version: 10.0.x
+          workspaces: desktop
 
-      - name: Restore
-        run: dotnet restore desktop/Reelshelf.Uploader.sln
-
-      - name: Build
-        run: dotnet build desktop/Reelshelf.Uploader.sln --no-restore --configuration Release
-
-      - name: Test
-        run: dotnet test tests/Reelshelf.Uploader.Test/Reelshelf.Uploader.Test.csproj --no-build --configuration Release
+      - name: Lint
+        run: cargo clippy -p reelshelf-app --all-targets --target x86_64-pc-windows-msvc -- -D warnings
 
       - name: Build the MSIX
         shell: pwsh
-        run: ./desktop/Reelshelf.Uploader.Package/package.ps1 -Mode Store
+        run: ./package/package.ps1 -Mode Store
 
       - name: Upload the MSIX
         uses: actions/upload-artifact@v4
         with:
-          name: reelshelf-uploader-msix
-          path: desktop/Reelshelf.Uploader.Package/out/*.msix
+          name: reelshelf-msix
+          path: desktop/package/out/*.msix
           if-no-files-found: error
