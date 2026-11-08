@@ -340,6 +340,13 @@ fn scene(name: &str, kind: WindowKind, model: Model, prepare: fn(&mut Ui)) -> Sc
     }
 }
 
+/// An account with no books yet.
+fn empty_shelf() -> Model {
+    let mut model = model(tray_inputs("T1"));
+    model.books.clear();
+    model
+}
+
 /// Every window and flyout state.
 pub fn scenes() -> Vec<Scene> {
     let base = || model(tray_inputs("T1"));
@@ -374,6 +381,14 @@ pub fn scenes() -> Vec<Scene> {
             ui.setup = SetupDraft {
                 start_with_windows: true,
                 ..SetupDraft::default()
+            };
+        }),
+        scene("s2-empty-shelf", WindowKind::Setup, empty_shelf(), |ui| {
+            ui.setup = SetupDraft {
+                folder: Some(ROOT.to_owned()),
+                matches: vec![("Apex Legends".to_owned(), None)],
+                default_book: None,
+                start_with_windows: true,
             };
         }),
         scene("s3", WindowKind::BookPicker, base(), |ui| {
