@@ -58,6 +58,7 @@ export const libraryCopy = {
   filters: {
     tags: "Tags",
     allTags: "All tags",
+    search: "Search clips, games, tags…",
   },
   bookcase: {
     label: "Your shelf",

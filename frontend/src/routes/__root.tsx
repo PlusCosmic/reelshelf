@@ -137,7 +137,7 @@ function AuthenticatedShell({
 
   return (
     <Suspense fallback={<ShellPending />}>
-      <AppShell user={user} theme={theme} onToggleTheme={onToggleTheme} />
+      <AppShell user={user} />
     </Suspense>
   );
 }

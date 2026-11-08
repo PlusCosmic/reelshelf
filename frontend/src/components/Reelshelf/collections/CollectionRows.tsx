@@ -9,7 +9,8 @@ import type {
   PlaylistWithDetails,
 } from "@/api-client";
 import { collectionsCopy } from "@/copy/collections";
-import { Avatar, ClipThumb } from "../ReelshelfPrimitives";
+import { Avatar } from "@pluscosmic/ui";
+import { ClipThumb } from "../ReelshelfPrimitives";
 import { categoryForClip, formatDuration } from "../reelshelf-model";
 import { StitchedDot } from "../StitchedDot";
 

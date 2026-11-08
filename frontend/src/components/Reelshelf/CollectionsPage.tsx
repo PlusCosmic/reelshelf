@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { Avatar, SearchBox } from "@pluscosmic/ui";
 import { useMemo, useState } from "react";
 import { IconLock, IconPlus } from "@tabler/icons-react";
 import type { PlaylistSummary } from "@/api-client";
@@ -12,7 +13,6 @@ import {
   sharingSummary,
 } from "./collections-model";
 import { CollectionFormDialog } from "./collections/CollectionFormDialog";
-import { Avatar, SearchBox } from "./ReelshelfPrimitives";
 import {
   formatDate,
   makeGameShelf,

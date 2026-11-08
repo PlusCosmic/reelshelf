@@ -162,7 +162,7 @@ export function ActivityClipPicker({
     <section className="rs-activity-picker">
       <div className="rs-activity-picker-head">
         <h2 className="rs-activity-kicker">{activityCopy.picker.title}</h2>
-        <label className="rs-search">
+        <label className="ui-search">
           <input
             type="search"
             placeholder={activityCopy.picker.search}

@@ -1,4 +1,4 @@
-import { Notice } from "@pluscosmic/ui";
+import { Notice, SegmentedControl } from "@pluscosmic/ui";
 import { useState } from "react";
 import { settingsCopy } from "@/copy/settings";
 import { useSetColorScheme } from "@/hooks/auth.queries";
@@ -44,23 +44,15 @@ export function AppearanceSettings() {
         <span className="rs-appearance-label" id="appearance-theme">
           {copy.theme.label}
         </span>
-        <div
-          className="rs-plan-interval"
-          role="group"
+        <SegmentedControl
           aria-labelledby="appearance-theme"
-        >
-          {themePreferences.map((preference) => (
-            <button
-              key={preference}
-              type="button"
-              className="rs-plan-segment"
-              aria-pressed={themePreference === preference}
-              onClick={() => setThemePreference(preference)}
-            >
-              {copy.theme[preference]}
-            </button>
-          ))}
-        </div>
+          options={themePreferences.map((preference) => ({
+            value: preference,
+            label: copy.theme[preference],
+          }))}
+          value={themePreference}
+          onChange={setThemePreference}
+        />
       </div>
       <fieldset className="rs-appearance-field rs-appearance-schemes">
         <legend className="rs-appearance-label">

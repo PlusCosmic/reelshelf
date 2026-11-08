@@ -833,7 +833,7 @@ export function ClipPlayerPage({
           {clip.tags.length > 0 ? (
             <div className="rs-chip-row">
               {clip.tags.map((tag) => (
-                <span className="rs-chip" key={tag}>
+                <span className="ui-chip" key={tag}>
                   #{tag}
                 </span>
               ))}

@@ -2,19 +2,24 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   IconFlag,
   IconLogout,
-  IconMoon,
   IconScan,
   IconMicrophone,
   IconSettings,
-  IconSun,
   IconUserShield,
 } from "@tabler/icons-react";
 import { useState } from "react";
+import {
+  AppShell as UiAppShell,
+  MenuItem,
+  Nav,
+  ProfileMenu,
+  ThemeMenuItem,
+  menuItemClass,
+} from "@pluscosmic/ui";
 import { UploadsProvider } from "@/components/AddClips/UploadsProvider";
 import { UploadTray } from "@/components/AddClips/UploadTray";
 import { BinProvider } from "@/components/Reelshelf/BinToast";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
-import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { EmailOnboarding } from "@/components/Reelshelf/EmailOnboarding";
 import { UsernameOnboarding } from "@/components/Reelshelf/UsernameOnboarding";
 import { PlanMeter } from "@/components/Reelshelf/PlanMeter";
@@ -22,32 +27,12 @@ import { shellCopy } from "@/copy/shell";
 import { useLogout, usePlan } from "@/hooks/queries";
 import type { CurrentUser } from "@/shared/services/user";
 
-// Sticky bars further down the page sit beneath the topbar, whose height changes with the layout.
-function trackTopbarHeight(topbar: HTMLElement | null) {
-  if (!topbar) return;
-  const observer = new ResizeObserver(() => {
-    document.documentElement.style.setProperty(
-      "--rs-topbar-height",
-      `${topbar.offsetHeight}px`,
-    );
-  });
-  observer.observe(topbar);
-  return () => observer.disconnect();
-}
-
 /**
  * The signed-in app's chrome. It is loaded lazily from the root route so the landing page, which is
  * all a signed-out visitor sees, doesn't wait on the upload machinery and the rest of the library.
  */
-export function AppShell({
-  user,
-  theme,
-  onToggleTheme,
-}: {
-  user: CurrentUser;
-  theme: "light" | "dark";
-  onToggleTheme: () => void;
-}) {
+export function AppShell({ user }: { user: CurrentUser }) {
+  // The plan is fetched only once the menu that shows it opens.
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -58,14 +43,38 @@ export function AppShell({
   const active = (path: string) =>
     path === "/" ? pathname === "/" : pathname.startsWith(path);
 
+  const adminLinks = [
+    {
+      to: "/legend-detection",
+      icon: <IconScan size={16} />,
+      label: shellCopy.profileMenu.legendDetection,
+    },
+    {
+      to: "/clip-transcription",
+      icon: <IconMicrophone size={16} />,
+      label: shellCopy.profileMenu.transcription,
+    },
+    {
+      to: "/admin/accounts",
+      icon: <IconUserShield size={16} />,
+      label: shellCopy.profileMenu.accounts,
+    },
+    {
+      to: "/admin/reports",
+      icon: <IconFlag size={16} />,
+      label: shellCopy.profileMenu.reports,
+    },
+  ] as const;
+
   return (
-    <div className="rs-app">
-      <header className="rs-topbar" ref={trackTopbarHeight}>
+    <UiAppShell
+      brand={
         <Link to="/" className="rs-brand" aria-label={shellCopy.brandLink}>
           <BrandLogo />
         </Link>
-
-        <nav className="rs-nav" aria-label={shellCopy.nav.label}>
+      }
+      nav={
+        <Nav>
           <Link to="/" className={active("/") ? "active" : undefined}>
             {shellCopy.nav.library}
           </Link>
@@ -75,137 +84,52 @@ export function AppShell({
           >
             {shellCopy.nav.collections}
           </Link>
-        </nav>
-
-        <div className="rs-user">
-          <div
-            className="rs-profile-menu"
-            onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget)) {
-                setProfileMenuOpen(false);
-              }
-            }}
-          >
-            <button
-              className="rs-profile-trigger"
-              type="button"
-              onClick={() => setProfileMenuOpen((open) => !open)}
-              aria-label={shellCopy.profileMenu.open}
-              aria-haspopup="menu"
-              aria-expanded={profileMenuOpen}
-            >
-              <Avatar
-                name={user.globalName ?? user.username}
-                src={user.avatar}
-              />
-            </button>
-            {profileMenuOpen ? (
-              <div className="rs-profile-popover" role="menu">
-                {plan.data ? (
-                  <div className="rs-menu-storage">
-                    <PlanMeter plan={plan.data} compact />
-                  </div>
-                ) : null}
+        </Nav>
+      }
+      actions={
+        <ProfileMenu
+          name={user.globalName ?? user.username}
+          src={user.avatar}
+          onOpenChange={setProfileMenuOpen}
+          header={plan.data ? <PlanMeter plan={plan.data} compact /> : null}
+        >
+          <Link to="/settings" className={menuItemClass} role="menuitem">
+            <IconSettings size={16} />
+            {shellCopy.profileMenu.settings}
+          </Link>
+          {user.isAdmin
+            ? adminLinks.map((link) => (
                 <Link
-                  to="/settings"
-                  className="rs-menu-item"
+                  key={link.to}
+                  to={link.to}
+                  className={menuItemClass}
                   role="menuitem"
-                  onClick={() => setProfileMenuOpen(false)}
                 >
-                  <IconSettings size={16} />
-                  {shellCopy.profileMenu.settings}
+                  {link.icon}
+                  {link.label}
                 </Link>
-                {user.isAdmin ? (
-                  <Link
-                    to="/legend-detection"
-                    className="rs-menu-item"
-                    role="menuitem"
-                    onClick={() => setProfileMenuOpen(false)}
-                  >
-                    <IconScan size={16} />
-                    {shellCopy.profileMenu.legendDetection}
-                  </Link>
-                ) : null}
-                {user.isAdmin ? (
-                  <Link
-                    to="/clip-transcription"
-                    className="rs-menu-item"
-                    role="menuitem"
-                    onClick={() => setProfileMenuOpen(false)}
-                  >
-                    <IconMicrophone size={16} />
-                    {shellCopy.profileMenu.transcription}
-                  </Link>
-                ) : null}
-                {user.isAdmin ? (
-                  <Link
-                    to="/admin/accounts"
-                    className="rs-menu-item"
-                    role="menuitem"
-                    onClick={() => setProfileMenuOpen(false)}
-                  >
-                    <IconUserShield size={16} />
-                    {shellCopy.profileMenu.accounts}
-                  </Link>
-                ) : null}
-                {user.isAdmin ? (
-                  <Link
-                    to="/admin/reports"
-                    className="rs-menu-item"
-                    role="menuitem"
-                    onClick={() => setProfileMenuOpen(false)}
-                  >
-                    <IconFlag size={16} />
-                    {shellCopy.profileMenu.reports}
-                  </Link>
-                ) : null}
-                <button
-                  className="rs-menu-item"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onToggleTheme();
-                    setProfileMenuOpen(false);
-                  }}
-                >
-                  {theme === "dark" ? (
-                    <IconSun size={16} />
-                  ) : (
-                    <IconMoon size={16} />
-                  )}
-                  {shellCopy.profileMenu.theme(theme)}
-                </button>
-                <button
-                  className="rs-menu-item"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    logout.mutate();
-                  }}
-                >
-                  <IconLogout size={16} />
-                  {shellCopy.profileMenu.signOut}
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </header>
+              ))
+            : null}
+          <ThemeMenuItem />
+          <MenuItem onClick={() => logout.mutate()}>
+            <IconLogout size={16} />
+            {shellCopy.profileMenu.signOut}
+          </MenuItem>
+        </ProfileMenu>
+      }
+    >
       <UploadsProvider>
         <BinProvider>
-          <main>
-            {user.needsUsername ? (
-              <UsernameOnboarding user={user} />
-            ) : user.needsOnboarding ? (
-              <EmailOnboarding user={user} />
-            ) : (
-              <Outlet />
-            )}
-          </main>
+          {user.needsUsername ? (
+            <UsernameOnboarding user={user} />
+          ) : user.needsOnboarding ? (
+            <EmailOnboarding user={user} />
+          ) : (
+            <Outlet />
+          )}
         </BinProvider>
         <UploadTray />
       </UploadsProvider>
-    </div>
+    </UiAppShell>
   );
 }

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { Avatar } from "@pluscosmic/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
@@ -26,7 +27,7 @@ import {
 import { CollectionFormDialog } from "./collections/CollectionFormDialog";
 import { CollectionRows } from "./collections/CollectionRows";
 import { PeopleDialog } from "./collections/PeopleDialog";
-import { Avatar, BackToLibrary } from "./ReelshelfPrimitives";
+import { BackToLibrary } from "./ReelshelfPrimitives";
 import { formatDate, makeGameShelf } from "./reelshelf-model";
 import { useLibraryData } from "./useLibraryData";
 

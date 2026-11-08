@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import prettier from "eslint-config-prettier";
 import { globalIgnores } from "eslint/config";
 import tseslint from "typescript-eslint";
-import noJsxCopy from "./eslint-rules/no-jsx-copy.js";
+import uiPlugin from "@pluscosmic/ui/eslint";
 
 export default [
   globalIgnores([
@@ -26,7 +26,7 @@ export default [
     // Copy lives in src/copy/ so it can be reviewed in one place (src/copy/README.md).
     files: ["src/**/*.tsx"],
     ignores: ["src/copy/**", "src/**/*.test.tsx"],
-    plugins: { reelshelf: { rules: { "no-jsx-copy": noJsxCopy } } },
+    plugins: { reelshelf: uiPlugin },
     rules: {
       "reelshelf/no-jsx-copy": "error",
     },

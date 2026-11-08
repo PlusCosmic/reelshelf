@@ -1,4 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Chip, SearchBox } from "@pluscosmic/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import type { DragEvent } from "react";
 import {
@@ -60,12 +61,7 @@ import { GameBanner } from "./GameBanner";
 import { ShelfBar } from "./ShelfBar";
 import { LegendPicker } from "./LegendPicker";
 import { RemoveBookDialog } from "./RemoveBookDialog";
-import {
-  Chip,
-  PagedClipGrid,
-  SearchBox,
-  StatLine,
-} from "./ReelshelfPrimitives";
+import { PagedClipGrid, StatLine } from "./ReelshelfPrimitives";
 import {
   bookBinding,
   categoryTotalsFor,
@@ -89,7 +85,7 @@ function topbarHeight() {
   return (
     parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue(
-        "--rs-topbar-height",
+        "--ui-topbar-height",
       ),
     ) || 0
   );
@@ -709,7 +705,11 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
                 cloth={selectedCloth}
               />
             ) : null}
-            <SearchBox value={query} onChange={setQuery} />
+            <SearchBox
+              value={query}
+              onChange={setQuery}
+              placeholder={libraryCopy.filters.search}
+            />
             <div className="rs-list-tools">
               {matching > 0 ? (
                 <>
