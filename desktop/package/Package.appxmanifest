@@ -7,9 +7,10 @@
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap desktop rescap">
+  IgnorableNamespaces="uap uap3 desktop rescap">
 
   <Identity
     Name="Reelshelf.Reelshelf"
@@ -33,7 +34,7 @@
   </Resources>
 
   <Applications>
-    <Application Id="ReelshelfUploader" Executable="Reelshelf.Uploader.exe" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="ReelshelfUploader" Executable="Reelshelf.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Reelshelf"
         Description="Watches a folder you choose for new game recordings and uploads them to your Reelshelf library in the background."
@@ -48,6 +49,13 @@
         <desktop:Extension Category="windows.startupTask">
           <desktop:StartupTask TaskId="ReelshelfUploaderStartup" Enabled="false" DisplayName="Reelshelf" />
         </desktop:Extension>
+        <!--
+          Notification buttons open reelshelf-app:// links (desktop/app/src/toast.rs). Windows starts Reelshelf.exe with
+          the link as its argument, and a running copy takes it over (rune::single_instance, App::on_open_url).
+        -->
+        <uap3:Extension Category="windows.protocol">
+          <uap3:Protocol Name="reelshelf-app" Parameters="&quot;%1&quot;" />
+        </uap3:Extension>
       </Extensions>
     </Application>
   </Applications>

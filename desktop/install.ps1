@@ -12,8 +12,9 @@
        needs administrator rights, so the first run (and only that one) shows a UAC prompt.
     2. Numbers the build one above the installed version (0.1.3 over 0.1.2), since Windows won't install the same
        version over itself; with nothing installed it uses the manifest's major and minor, so 0.1.0.
-    3. Builds the MSIX with Reelshelf.Uploader.Package\package.ps1, installs it (closing the running app first), and
-       starts it. Settings, the sign-in and the record of uploaded files are kept across upgrades.
+    3. Builds the MSIX with package\package.ps1 (cargo, so Rust and Visual Studio's C++ build tools are needed),
+       installs it (closing the running app first), and starts it. Settings, the sign-in and the record of uploaded
+       files are kept across upgrades.
 
   A Store install of the app is signed by the Store and can't be upgraded by a local build; remove it first.
 
@@ -25,14 +26,14 @@ param([switch] $NoLaunch)
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$package = Join-Path $PSScriptRoot "Reelshelf.Uploader.Package"
+$package = Join-Path $PSScriptRoot "package"
 [xml] $manifest = Get-Content (Join-Path $package "Package.appxmanifest") -Raw
 $name = $manifest.Package.Identity.Name
 $publisher = $manifest.Package.Identity.Publisher
 $appId = $manifest.Package.Applications.Application.Id
 
-if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    throw "The .NET SDK isn't installed. Install it with: winget install Microsoft.DotNet.SDK.10"
+if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+    throw "Rust isn't installed. Install it with: winget install Rustlang.Rustup"
 }
 
 # 1. The development certificate, kept outside the repository and reused so Windows trusts it once.
@@ -92,7 +93,7 @@ else {
 $password = Get-Content $passwordFile -Raw
 & (Join-Path $package "package.ps1") -Version $version -Mode Sideload -CertificatePath $pfx -CertificatePassword $password
 
-$msix = Join-Path $package "out\Reelshelf.Uploader_$($version)_x64.msix"
+$msix = Join-Path $package "out\Reelshelf_$($version)_x64.msix"
 Write-Host "Installing $version"
 Add-AppxPackage -Path $msix -ForceApplicationShutdown
 
