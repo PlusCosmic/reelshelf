@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import { Avatar } from "@pluscosmic/ui";
 import { IconMaximize, IconMinimize } from "@tabler/icons-react";
 import { activityCopy } from "@/copy/activity";
 import { commonCopy } from "@/copy/common";
 import { BrandLogo } from "@/components/Reelshelf/BrandLogo";
-import { Avatar } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { defaultCloth } from "@/components/Reelshelf/reelshelf-model";
 import { toApiError } from "@/shared/services/apiError";
 import { ActivityClipPicker } from "./ActivityClipPicker";

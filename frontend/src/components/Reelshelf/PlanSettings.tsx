@@ -1,4 +1,4 @@
-import { Notice } from "@pluscosmic/ui";
+import { Notice, SegmentedControl } from "@pluscosmic/ui";
 import { Link } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
 import {
@@ -752,23 +752,15 @@ function PlanOffers({
 
   return (
     <div className="rs-plan-offers">
-      <div
-        className="rs-plan-interval"
-        role="group"
+      <SegmentedControl
         aria-label={offerCopy.billingPeriod}
-      >
-        {(["year", "month"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            className="rs-plan-segment"
-            aria-pressed={interval === value}
-            onClick={() => setBillingInterval(value)}
-          >
-            {offerCopy.interval[value]}
-          </button>
-        ))}
-      </div>
+        options={(["year", "month"] as const).map((value) => ({
+          value,
+          label: offerCopy.interval[value],
+        }))}
+        value={interval}
+        onChange={setBillingInterval}
+      />
       <div className="rs-plan-cards">
         {offers.map((offer) => {
           const name = tierNames[offer.tier] ?? offer.tier;

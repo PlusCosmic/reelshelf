@@ -9,8 +9,7 @@ import {
   useRemovePersonFromCollection,
   useUserSuggestions,
 } from "@/hooks/playlists.queries";
-import { Dialog } from "@pluscosmic/ui";
-import { Avatar } from "../ReelshelfPrimitives";
+import { Avatar, Dialog } from "@pluscosmic/ui";
 
 /**
  * Everyone on a collection. Its owner invites people, from those they already share collections with

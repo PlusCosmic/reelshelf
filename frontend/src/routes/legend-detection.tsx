@@ -1,9 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
-import { Chip } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
-import { Badge, Button, buttonClass } from "@pluscosmic/ui";
+import { Badge, Button, buttonClass, Chip } from "@pluscosmic/ui";
 import { LegendReviewDetail } from "@/components/LegendDetection/LegendReviewDetail";
 import { LegendUsageTable } from "@/components/LegendDetection/LegendUsageTable";
 import { ReasoningEffortSelect } from "@/components/LegendDetection/ReasoningEffortSelect";

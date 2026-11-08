@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
-import { Chip } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
-import { Badge, Button } from "@pluscosmic/ui";
+import { Badge, Button, Chip } from "@pluscosmic/ui";
 import { TranscriptionReviewDetail } from "@/components/ClipTranscription/TranscriptionReviewDetail";
 import { SummaryUsageTable } from "@/components/ClipTranscription/SummaryUsageTable";
 import { TranscriptionUsageTable } from "@/components/ClipTranscription/TranscriptionUsageTable";

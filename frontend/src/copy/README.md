@@ -2,7 +2,7 @@
 
 Every word the site shows people lives here, so it can be read, reviewed and changed in one place
 without hunting through components. The `reelshelf/no-jsx-copy` lint rule
-(`frontend/eslint-rules/no-jsx-copy.js`) fails on words written straight into JSX anywhere outside
+(`@pluscosmic/ui/eslint`'s `no-jsx-copy`) fails on words written straight into JSX anywhere outside
 this folder: text, strings or templates in `{...}`, and strings given to attributes people read
 (`aria-label`, `title`, `placeholder`, `alt`, `label`, `description`, ...). Tests are exempt.
 
@@ -65,7 +65,7 @@ One module per area of the site, named after it, exporting one object named `<ar
 | `planLimits.ts`                                                       | The plan limits copy quotes (mirrors `TierLimits`; not copy, but read by it)         |
 | `landing.tsx`, `signIn.tsx`                                           | The signed-out front page and sign-in                                                |
 | `legal.tsx`, `terms.tsx`, `privacy.tsx`                               | The legal pages' frame and their full text                                           |
-| `shell.ts`, `ui.ts`                                                   | The signed-in app's chrome (nav, profile menu) and the generic UI components         |
+| `shell.ts`                                                            | The signed-in app's chrome (nav, profile menu)                                       |
 | `library.tsx`, `clip.ts`, `video.ts`                                  | The shelf and library, the clip page, and the player's states                        |
 | `collections.ts`, `share.tsx`, `reportReasons.ts`                     | Collections, the share page and its report form                                      |
 | `upload.ts`, `twitchImport.tsx`, `addGame.ts`                         | Uploading, Twitch import and adding a game                                           |

@@ -3,8 +3,8 @@ import {
   IconArrowBackUp,
   IconArrowsExchange,
   IconTrash,
-  IconX,
 } from "@tabler/icons-react";
+import { ToastButton, ToastCard, ToastLayer } from "@pluscosmic/ui";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -250,68 +250,49 @@ export function BinProvider({ children }: { children: ReactNode }) {
   return (
     <BinContext.Provider value={actions}>
       {children}
-      <div
-        className="rs-bin-toast-layer"
-        role="status"
-        aria-live="polite"
-        onPointerEnter={() => setHeld(true)}
-        onPointerLeave={() => setHeld(false)}
-        onFocus={() => setHeld(true)}
-        onBlur={() => setHeld(false)}
-      >
+      <ToastLayer onHeldChange={setHeld}>
         {notice ? (
-          <div
+          <ToastCard
             key={shownId}
-            className={`rs-bin-toast${notice.kind === "error" ? " error" : ""}`}
+            tone={notice.kind === "error" ? "error" : "neutral"}
+            icon={
+              notice.kind === "binned" ? (
+                <IconTrash size={16} aria-hidden="true" />
+              ) : notice.kind === "moved" ? (
+                <IconArrowsExchange size={16} aria-hidden="true" />
+              ) : null
+            }
+            message={noticeMessage(notice)}
+            onClose={close}
           >
-            {notice.kind === "binned" ? (
-              <IconTrash size={16} aria-hidden="true" />
-            ) : notice.kind === "moved" ? (
-              <IconArrowsExchange size={16} aria-hidden="true" />
-            ) : null}
-            <span className="rs-bin-toast-message">
-              {noticeMessage(notice)}
-            </span>
             {notice.kind === "moved" && notice.moved.length > 0 ? (
-              <button
-                type="button"
-                className="rs-bin-toast-action"
+              <ToastButton
                 onClick={() => void undo()}
                 disabled={moveClips.isPending}
+                icon={<IconArrowBackUp size={15} aria-hidden="true" />}
+                hint={copy.undoHint}
               >
-                <IconArrowBackUp size={15} aria-hidden="true" />
                 {moveClips.isPending ? moveCopy.undoing : copy.undo}
-                <kbd>{copy.undoHint}</kbd>
-              </button>
+              </ToastButton>
             ) : null}
             {notice.kind === "binned" ? (
               <>
-                <button
-                  type="button"
-                  className="rs-bin-toast-action"
+                <ToastButton
                   onClick={() => void undo()}
                   disabled={restoreClips.isPending}
+                  icon={<IconArrowBackUp size={15} aria-hidden="true" />}
+                  hint={copy.undoHint}
                 >
-                  <IconArrowBackUp size={15} aria-hidden="true" />
                   {restoreClips.isPending ? copy.undoing : copy.undo}
-                  <kbd>{copy.undoHint}</kbd>
-                </button>
-                <Link to="/bin" className="rs-bin-toast-link" onClick={close}>
+                </ToastButton>
+                <Link to="/bin" onClick={close}>
                   {copy.openBin}
                 </Link>
               </>
             ) : null}
-            <button
-              type="button"
-              className="rs-icon-button rs-bin-toast-close"
-              aria-label={copy.dismiss}
-              onClick={close}
-            >
-              <IconX size={14} />
-            </button>
-          </div>
+          </ToastCard>
         ) : null}
-      </div>
+      </ToastLayer>
     </BinContext.Provider>
   );
 }

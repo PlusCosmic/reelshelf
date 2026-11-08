@@ -18,7 +18,6 @@ export const binCopy = {
     undoing: "Putting back…",
     undoHint: "Ctrl+Z",
     openBin: "Open the bin",
-    dismiss: "Dismiss",
     binFailed: "Nothing was moved to the bin. Try again.",
     undoFailed: "Those clips weren't put back. Put them back from the bin.",
   },
