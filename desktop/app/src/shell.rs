@@ -32,9 +32,10 @@ pub struct RuneHost {
     /// The primary display (x, y, width, height in physical pixels) and its scale, for placing the flyout when the
     /// tray's own place isn't known.
     display: Mutex<Option<DisplayBounds>>,
-    /// What the open flyout is placed from, and its window, so it stays beside the tray as its height follows its
-    /// content.
-    flyout: Mutex<(Option<Placement>, Option<WindowHandle>)>,
+    /// What the open flyout is placed from, so it stays beside the tray as its height follows its content.
+    flyout: Mutex<Option<Placement>>,
+    /// Each open window's native window, from `App::on_window`.
+    native: Mutex<HashMap<WindowKind, WindowHandle>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -55,18 +56,24 @@ impl RuneHost {
         lock(&self.display).map(|(display, scale)| Placement::bottom_right(display, scale))
     }
 
-    /// After each of the flyout's frames: moves it back beside the tray when its height changed.
-    fn keep_flyout_placed(&self) {
-        let (placement, window) = lock(&self.flyout).clone();
-        let (Some(placement), Some(window)) = (placement, window) else {
+    /// After each frame of a window: the flyout moves back beside the tray when its height changed, and S3 and S5
+    /// keep only Close (winit puts the minimize box back whenever it restyles a window, such as when it is shown).
+    fn after_frame(&self, kind: WindowKind) {
+        let Some(window) = lock(&self.native).get(&kind).cloned() else {
             return;
         };
-        let Some(now) = window.placement() else {
-            return;
-        };
-        let wanted = tray::flyout_position(&placement, now.content_size);
-        if now.position != wanted {
-            window.set_position(wanted);
+        if kind == WindowKind::Flyout
+            && let Some(placement) = *lock(&self.flyout)
+            && let Some(now) = window.placement()
+        {
+            let wanted = tray::flyout_position(&placement, now.content_size);
+            if now.position != wanted {
+                window.set_position(wanted);
+            }
+        }
+        #[cfg(windows)]
+        if matches!(kind, WindowKind::BookPicker | WindowKind::Settings) {
+            crate::win::close_button_only(&window);
         }
     }
 
@@ -92,7 +99,7 @@ impl WindowHost for RuneHost {
         handle.update(move |ui: &mut Ui, tx: &mut Tx| prepare(ui, tx));
         if kind == WindowKind::Flyout {
             let placement = self.flyout_placement();
-            lock(&self.flyout).0 = placement;
+            *lock(&self.flyout) = placement;
             if let Some(placement) = placement {
                 handle.set_position(tray::flyout_position(&placement, placement.pixels(ui::size(kind))));
             }
@@ -171,16 +178,6 @@ fn window_app(kind: WindowKind, commands: &Arc<dyn Commands>) -> App<Ui> {
                 if !focused {
                     tx.close_window();
                 }
-            })
-            .on_window(|window: &WindowHandle| {
-                if let Some(host) = HOST.get() {
-                    lock(&host.flyout).1 = Some(window.clone());
-                }
-            })
-            .on_frame_drawn(|_| {
-                if let Some(host) = HOST.get() {
-                    host.keep_flyout_placed();
-                }
             }),
         _ => app.titlebar(Titlebar::new(36.0)).window_options(WindowOptions {
             resizable: false,
@@ -188,11 +185,18 @@ fn window_app(kind: WindowKind, commands: &Arc<dyn Commands>) -> App<Ui> {
             ..WindowOptions::default()
         }),
     };
-    // S3 and S5 have only Close, as on the canvas.
-    #[cfg(windows)]
-    if matches!(kind, WindowKind::BookPicker | WindowKind::Settings) {
-        app = app.on_window(crate::win::close_button_only);
-    }
+    app = app
+        .on_window(move |window: &WindowHandle| {
+            if let Some(host) = HOST.get() {
+                lock(&host.native).insert(kind, window.clone());
+                host.after_frame(kind);
+            }
+        })
+        .on_frame_drawn(move |_| {
+            if let Some(host) = HOST.get() {
+                host.after_frame(kind);
+            }
+        });
     if kind == WindowKind::Settings {
         // A second launch reopens the app (Windows hands it over through `single_instance`): it shows S5. Links from
         // notifications arrive here too.
@@ -255,7 +259,8 @@ pub fn run() {
         commands: commands.clone(),
         tray: Mutex::new(None),
         display: Mutex::new(None),
-        flyout: Mutex::new((None, None)),
+        flyout: Mutex::new(None),
+        native: Mutex::new(HashMap::new()),
     });
     let _ = HOST.set(host.clone());
     core.set_host(host.clone());
