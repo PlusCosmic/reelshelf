@@ -11,13 +11,14 @@ use reelshelf_core::notifications::NotificationAction;
 use reelshelf_core::settings::UploaderPaths;
 use reelshelf_core::state::{TrayBadge, UploaderState};
 use rune::tray::{Tray, TrayEvent, TraySpec};
-use rune::{App, AppHandle, RunOptions, Titlebar, Tx, WindowOptions, WindowSpec};
+use rune::{App, AppHandle, RunOptions, Titlebar, Tx, WindowHandle, WindowOptions, WindowSpec};
 
 use crate::api_adapter::ReelshelfApi;
 use crate::app_core::{AppCore, CoreParts};
 use crate::links;
 use crate::model::{Change, Commands, Show, Ui, WindowHost, WindowKind};
 use crate::platform::Platform;
+use crate::tray::Placement;
 use crate::{tray, ui};
 
 /// A display's (x, y, width, height) in physical pixels and its pixels per point.
@@ -28,13 +29,45 @@ pub struct RuneHost {
     handles: HashMap<WindowKind, AppHandle<Ui>>,
     commands: Arc<dyn Commands>,
     tray: Mutex<Option<(TrayBadge, Tray)>>,
-    /// The primary display (x, y, width, height in physical pixels) and its scale, for placing the flyout.
+    /// The primary display (x, y, width, height in physical pixels) and its scale, for placing the flyout when the
+    /// tray's own place isn't known.
     display: Mutex<Option<DisplayBounds>>,
+    /// What the open flyout is placed from, and its window, so it stays beside the tray as its height follows its
+    /// content.
+    flyout: Mutex<(Option<Placement>, Option<WindowHandle>)>,
+}
+
+fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 impl RuneHost {
     fn handle(&self, kind: WindowKind) -> &AppHandle<Ui> {
         &self.handles[&kind]
+    }
+
+    /// Where the flyout opens from: the tray icon on Windows, else the primary display's bottom right.
+    fn flyout_placement(&self) -> Option<Placement> {
+        #[cfg(windows)]
+        if let Some(placement) = crate::win::flyout_placement() {
+            return Some(placement);
+        }
+        lock(&self.display).map(|(display, scale)| Placement::bottom_right(display, scale))
+    }
+
+    /// After each of the flyout's frames: moves it back beside the tray when its height changed.
+    fn keep_flyout_placed(&self) {
+        let (placement, window) = lock(&self.flyout).clone();
+        let (Some(placement), Some(window)) = (placement, window) else {
+            return;
+        };
+        let Some(now) = window.placement() else {
+            return;
+        };
+        let wanted = tray::flyout_position(&placement, now.content_size);
+        if now.position != wanted {
+            window.set_position(wanted);
+        }
     }
 
     /// The tray's events: a primary click opens or closes the flyout, the menu does what it says.
@@ -57,10 +90,12 @@ impl WindowHost for RuneHost {
     fn open(&self, kind: WindowKind, prepare: Change) {
         let handle = self.handle(kind);
         handle.update(move |ui: &mut Ui, tx: &mut Tx| prepare(ui, tx));
-        if kind == WindowKind::Flyout
-            && let Some((display, scale)) = *self.display.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
-        {
-            handle.set_position(tray::flyout_position(display, scale, ui::size(kind)));
+        if kind == WindowKind::Flyout {
+            let placement = self.flyout_placement();
+            lock(&self.flyout).0 = placement;
+            if let Some(placement) = placement {
+                handle.set_position(tray::flyout_position(&placement, placement.pixels(ui::size(kind))));
+            }
         }
         handle.open();
     }
@@ -136,6 +171,16 @@ fn window_app(kind: WindowKind, commands: &Arc<dyn Commands>) -> App<Ui> {
                 if !focused {
                     tx.close_window();
                 }
+            })
+            .on_window(|window: &WindowHandle| {
+                if let Some(host) = HOST.get() {
+                    lock(&host.flyout).1 = Some(window.clone());
+                }
+            })
+            .on_frame_drawn(|_| {
+                if let Some(host) = HOST.get() {
+                    host.keep_flyout_placed();
+                }
             }),
         _ => app.titlebar(Titlebar::new(36.0)).window_options(WindowOptions {
             resizable: false,
@@ -143,6 +188,11 @@ fn window_app(kind: WindowKind, commands: &Arc<dyn Commands>) -> App<Ui> {
             ..WindowOptions::default()
         }),
     };
+    // S3 and S5 have only Close, as on the canvas.
+    #[cfg(windows)]
+    if matches!(kind, WindowKind::BookPicker | WindowKind::Settings) {
+        app = app.on_window(crate::win::close_button_only);
+    }
     if kind == WindowKind::Settings {
         // A second launch reopens the app (Windows hands it over through `single_instance`): it shows S5. Links from
         // notifications arrive here too.
@@ -205,6 +255,7 @@ pub fn run() {
         commands: commands.clone(),
         tray: Mutex::new(None),
         display: Mutex::new(None),
+        flyout: Mutex::new((None, None)),
     });
     let _ = HOST.set(host.clone());
     core.set_host(host.clone());
