@@ -6,7 +6,7 @@ import {
   formatDuration,
 } from "@/components/Reelshelf/reelshelf-model";
 import { ClipVideoStage } from "@/components/Video/ClipVideoStage";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button } from "@pluscosmic/ui";
 import { useLegendRuns, useQueueLegendRun } from "@/hooks/queries";
 import { commonCopy } from "@/copy/common";
 import { legendDetectionCopy } from "@/copy/legendDetection";

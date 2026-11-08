@@ -1,4 +1,4 @@
-import { Select } from "@/components/ui";
+import { Select } from "@pluscosmic/ui";
 import { runsCopy } from "@/copy/runs";
 import { useLegendReasoningEfforts } from "@/hooks/queries";
 

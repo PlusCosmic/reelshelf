@@ -3,7 +3,7 @@ import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { Chip } from "@/components/Reelshelf/ReelshelfPrimitives";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, buttonClass } from "@pluscosmic/ui";
 import { LegendReviewDetail } from "@/components/LegendDetection/LegendReviewDetail";
 import { LegendUsageTable } from "@/components/LegendDetection/LegendUsageTable";
 import { ReasoningEffortSelect } from "@/components/LegendDetection/ReasoningEffortSelect";
@@ -154,13 +154,13 @@ function LegendReview() {
         <div className="rs-legend-backfill">
           <Link
             to="/legend-detection/baseline"
-            className="rs-ui-button rs-ui-button-secondary rs-ui-button-md"
+            className={buttonClass("secondary", "md")}
           >
             {copy.baseline}
           </Link>
           <Link
             to="/legend-detection/evals"
-            className="rs-ui-button rs-ui-button-secondary rs-ui-button-md"
+            className={buttonClass("secondary", "md")}
           >
             {copy.evals}
           </Link>

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { IconTrash } from "@tabler/icons-react";
-import { Button, Input, Select } from "@/components/ui";
+import { Button, Input, Select } from "@pluscosmic/ui";
 import { commonCopy } from "@/copy/common";
 import { legendDetectionCopy } from "@/copy/legendDetection";
 import { runsCopy } from "@/copy/runs";

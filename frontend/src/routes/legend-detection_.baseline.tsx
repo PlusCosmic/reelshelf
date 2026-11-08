@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Checkbox } from "@/components/ui";
+import { Button, Checkbox } from "@pluscosmic/ui";
 import {
   answerLabel,
   BaselinePanel,

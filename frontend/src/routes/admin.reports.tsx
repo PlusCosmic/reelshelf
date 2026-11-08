@@ -3,7 +3,7 @@ import { useState } from "react";
 import { adminCopy } from "@/copy/admin";
 import { commonCopy } from "@/copy/common";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
-import { Badge, Button, Field, Input } from "@/components/ui";
+import { Badge, Button, Field, Input } from "@pluscosmic/ui";
 import {
   useContentReports,
   useCurrentUser,

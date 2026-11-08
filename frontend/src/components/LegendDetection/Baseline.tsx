@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "@tanstack/react-router";
 import { IconExternalLink } from "@tabler/icons-react";
-import { Button, Input } from "@/components/ui";
+import { Button, Input } from "@pluscosmic/ui";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
 import { legendDetectionCopy } from "@/copy/legendDetection";
 import { legendReferenceSheetUrl } from "@/shared/services/legendDetection";

@@ -20,7 +20,7 @@ import {
   LoadMore,
   Select,
   type SelectOption,
-} from "@/components/ui";
+} from "@pluscosmic/ui";
 import type { TwitchImportRow } from "@/hooks/twitchClipsImport";
 import { startLink } from "@/shared/services/auth";
 import type { TwitchClipsWindow } from "@/shared/services/twitch";

@@ -1,4 +1,7 @@
-/** Generic controls shared across the app: avatars, search, selects and paged lists. */
+/**
+ * Reelshelf's own generic controls: avatars and search. The controls from @pluscosmic/ui (buttons, fields, selects,
+ * paged lists) carry their own words, which match Reelshelf's.
+ */
 export const uiCopy = {
   avatar: {
     defaultName: "You",
@@ -6,11 +9,4 @@ export const uiCopy = {
     alt: "Profile picture",
   },
   searchPlaceholder: "Search clips, games, tags…",
-  selectPlaceholder: "Choose…",
-  loadMore: {
-    /** `noun` is the plural noun for the items, as in "Load more clips". */
-    failed: (noun: string) => `More ${noun} didn't load.`,
-    button: (noun: string) => `Load more ${noun}`,
-    loading: (noun: string) => `Loading more ${noun}…`,
-  },
 } as const;

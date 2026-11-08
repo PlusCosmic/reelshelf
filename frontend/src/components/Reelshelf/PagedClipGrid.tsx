@@ -1,5 +1,5 @@
 import type { GameCategoryResponse } from "@/api-client";
-import { LoadMore } from "@/components/ui";
+import { LoadMore } from "@pluscosmic/ui";
 import { libraryCopy } from "@/copy/library";
 import { useClipsInfinite, type ClipsFilters } from "@/hooks/clips.queries";
 import {

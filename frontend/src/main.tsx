@@ -8,8 +8,9 @@ import "@fontsource-variable/instrument-sans";
 // The full build carries Fraunces' optical size, SOFT and WONK axes, which the display type uses.
 import "@fontsource-variable/fraunces/full.css";
 import "@fontsource-variable/fraunces/full-italic.css";
-// The shared colour tokens first; reelshelf.css adds its own under the same selectors.
-import "@pluscosmic/ui/tokens.css";
+// @pluscosmic/ui's tokens, base styles and controls first; reelshelf.css adds its own tokens under the same
+// selectors and adjusts the controls where it places them.
+import "@pluscosmic/ui/styles.css";
 import "./styles/reelshelf.css";
 
 // After a deploy, a chunk this tab hasn't loaded yet is gone; reload into the new build instead of failing.
