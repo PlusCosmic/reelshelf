@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Input, Select } from "@/components/ui";
+import { Input, Select } from "@pluscosmic/ui";
 import { runsCopy } from "@/copy/runs";
 import { useLegendProviders } from "@/hooks/queries";
 import {

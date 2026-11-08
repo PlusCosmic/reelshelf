@@ -6,7 +6,7 @@ import {
   formatDuration,
 } from "@/components/Reelshelf/reelshelf-model";
 import { ClipVideoStage } from "@/components/Video/ClipVideoStage";
-import { Badge, Button, Input } from "@/components/ui";
+import { Badge, Button, Input } from "@pluscosmic/ui";
 import { clipTranscriptionCopy } from "@/copy/clipTranscription";
 import { runsCopy } from "@/copy/runs";
 import {

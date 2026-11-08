@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBlocker } from "@tanstack/react-router";
-import type { SelectOption } from "@/components/ui";
+import type { SelectOption } from "@pluscosmic/ui";
 import {
   useAddGameFromIgdb,
   useCategories,

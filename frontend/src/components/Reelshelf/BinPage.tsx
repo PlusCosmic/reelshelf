@@ -8,7 +8,7 @@ import {
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import type { Clip } from "@/api-client";
-import { LoadMore } from "@/components/ui";
+import { LoadMore } from "@pluscosmic/ui";
 import { binCopy } from "@/copy/bin";
 import { commonCopy } from "@/copy/common";
 import { libraryCopy } from "@/copy/library";

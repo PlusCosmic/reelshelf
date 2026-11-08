@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { formatDate } from "@/components/Reelshelf/reelshelf-model";
 import { ReasoningEffortSelect } from "@/components/LegendDetection/ReasoningEffortSelect";
 import { formatReasoningEffort } from "@/components/LegendDetection/legendReview";
-import { Badge, Button, Input } from "@/components/ui";
+import { Badge, Button, Input } from "@pluscosmic/ui";
 import { clipTranscriptionCopy } from "@/copy/clipTranscription";
 import { commonCopy } from "@/copy/common";
 import { runsCopy } from "@/copy/runs";

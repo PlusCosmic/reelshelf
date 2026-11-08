@@ -810,7 +810,6 @@ a {
   line-height: 1.55;
 }
 
-/* Too narrow for the title and its line side by side: the line goes under the title. */
 @media (max-width: 1180px) {
   .rs-landing-feature {
     grid-template-columns: 30px minmax(0, 1fr);
@@ -1394,198 +1393,15 @@ a {
   opacity: 0.65;
 }
 
-.rs-ui-button,
-.rs-ui-select-trigger {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 36px;
-  color: var(--fg);
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.rs-ui-button {
-  padding: 8px 12px;
-}
-
-.rs-ui-button-sm {
-  min-height: 30px;
-  padding: 5px 9px;
-  font-size: 12px;
-}
-
-.rs-ui-button-primary {
-  border-color: var(--fill);
-  background: var(--fill);
-  color: var(--fill-ink);
-}
-
-.rs-ui-button-secondary,
-.rs-ui-select-trigger {
-  background: var(--bg-soft);
-}
-
-.rs-ui-button-ghost {
-  border-color: transparent;
-  background: transparent;
-}
-
-.rs-ui-button:hover:not(:disabled),
-.rs-ui-select-trigger:hover:not(:disabled) {
-  border-color: color-mix(in oklab, var(--accent) 55%, var(--line));
-}
-
-.rs-ui-button:focus-visible,
-.rs-ui-input:focus,
-.rs-ui-checkbox:focus-visible,
-.rs-ui-select-trigger:focus-visible {
-  border-color: var(--accent);
-  outline: 0;
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 16%, transparent);
-}
-
-.rs-ui-button:disabled,
-.rs-ui-select-trigger:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
-}
-
-.rs-ui-input {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--bg-soft);
-  color: var(--fg);
-  padding: 8px 10px;
-  outline: 0;
-}
-
-.rs-ui-input-compact {
-  min-height: 34px;
-  padding: 7px 9px;
-  font-size: 13px;
-}
-
-.rs-ui-input::placeholder {
-  color: color-mix(in oklab, var(--fg-soft) 70%, transparent);
-}
-
-.rs-ui-checkbox {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 auto;
-  accent-color: var(--accent);
-}
-
-.rs-ui-field {
-  display: grid;
-  gap: 7px;
-  color: var(--fg-soft);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.rs-ui-field-label {
-  color: var(--fg-soft);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.rs-ui-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 26px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--bg);
-  padding: 4px 9px;
-  font-size: 12px;
-}
-
-.rs-ui-badge-accent {
-  border-color: transparent;
-  background: color-mix(in oklab, var(--accent) 11%, var(--bg-soft));
-  color: var(--accent-ink);
-}
-
-.rs-ui-badge-danger {
-  border-color: transparent;
-  background: color-mix(in oklab, var(--danger) 12%, var(--bg-soft));
-  color: color-mix(in oklab, var(--danger) 72%, var(--fg));
-}
-
-.rs-ui-select-trigger {
-  width: 100%;
-  min-width: 150px;
-  justify-content: space-between;
-  padding: 7px 9px;
-  text-align: left;
-}
-
-.rs-ui-select-trigger > span {
+.ui-select-trigger > span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.rs-ui-select-trigger svg {
+.ui-select-trigger svg {
   flex: 0 0 auto;
   color: var(--fg-soft);
-}
-
-.rs-ui-select-placeholder {
-  color: var(--fg-soft);
-}
-
-.rs-ui-select-list {
-  position: fixed;
-  z-index: 1000;
-  max-height: min(320px, calc(100vh - 24px));
-  overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--bg);
-  padding: 5px;
-  box-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.18),
-    0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.rs-ui-select-option {
-  display: flex;
-  width: 100%;
-  min-height: 32px;
-  align-items: center;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--fg);
-  cursor: pointer;
-  padding: 7px 9px;
-  text-align: left;
-}
-
-.rs-ui-select-option.active,
-.rs-ui-select-option:hover {
-  background: var(--bg-soft);
-}
-
-.rs-ui-select-option.selected {
-  color: var(--accent-ink);
-  font-weight: 800;
-}
-
-.rs-ui-select-option:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .rs-section {
@@ -1812,7 +1628,6 @@ a {
   display: none;
 }
 
-/* On a phone the grid rises from the bottom as a sheet over a dimmed page, as the game list does. */
 @media (max-width: 720px) {
   .rs-legend-backdrop {
     display: block;
@@ -4291,8 +4106,6 @@ html:has(.rs-library-route) {
   font-weight: 600;
 }
 
-/* Theatre mode: the player on a stage in the game's cloth, everything else underneath. Phones
-   already give the player the full width, so it only applies on wider screens. */
 @media (min-width: 901px) {
   .rs-watch.theatre .rs-watch-layout {
     grid-template-columns: minmax(0, 1fr) 380px;
@@ -5552,8 +5365,8 @@ html:has(.rs-library-route) {
   font-weight: 700;
 }
 
-.rs-bulk-inline-field .rs-ui-input,
-.rs-bulk-inline-field .rs-ui-select-trigger {
+.rs-bulk-inline-field .ui-input,
+.rs-bulk-inline-field .ui-select-trigger {
   width: 150px;
   background: var(--bg);
 }
@@ -5675,7 +5488,7 @@ html:has(.rs-library-route) {
   width: 78px;
 }
 
-.rs-bulk-row-clip .rs-ui-input {
+.rs-bulk-row-clip .ui-input {
   width: 100%;
   border: 1px solid transparent;
   border-radius: var(--radius);
@@ -5686,7 +5499,7 @@ html:has(.rs-library-route) {
   font-weight: 800;
 }
 
-.rs-bulk-row-clip .rs-ui-input:focus {
+.rs-bulk-row-clip .ui-input:focus {
   border-color: var(--accent);
   background: var(--bg-soft);
   outline: 0;
@@ -5697,12 +5510,12 @@ html:has(.rs-library-route) {
   gap: 5px;
 }
 
-.rs-bulk-row-field .rs-ui-field-label,
+.rs-bulk-row-field .ui-field-label,
 .rs-bulk-card-meta {
   display: none;
 }
 
-.rs-bulk-row-field .rs-ui-select-trigger {
+.rs-bulk-row-field .ui-select-trigger {
   background: var(--bg-soft);
 }
 
@@ -5753,7 +5566,7 @@ html:has(.rs-library-route) {
   gap: 6px;
 }
 
-.rs-bulk-row-actions .rs-ui-button {
+.rs-bulk-row-actions .ui-button {
   min-height: 28px;
   padding: 4px 7px;
   font-size: 11px;
@@ -6010,27 +5823,6 @@ html:has(.rs-library-route) {
   padding: 34px;
   color: var(--fg-soft);
   text-align: center;
-}
-
-/* Sentinel at the end of a paged list: it loads the next page as it nears the viewport, so this is
-   usually just a spinner. The button only appears after a failed page or without IntersectionObserver. */
-.rs-load-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 24px;
-  padding: 24px 0 4px;
-}
-
-.rs-load-more button:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.rs-load-more-error {
-  color: var(--fg-soft);
-  font-size: 13px;
 }
 
 .rs-split {
@@ -6488,7 +6280,7 @@ html:has(.rs-library-route) {
   overflow-wrap: anywhere;
 }
 
-.rs-twitch-card-field .rs-ui-field-label {
+.rs-twitch-card-field .ui-field-label {
   font-size: 11px;
 }
 
@@ -6514,6 +6306,7 @@ html:has(.rs-library-route) {
   .rs-twitch-grid {
     grid-template-columns: 1fr;
   }
+
   /* Two rows: brand and avatar share the top line, the nav becomes a scrollable tab strip beneath. */
   .rs-topbar {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -6913,13 +6706,10 @@ html:has(.rs-library-route) {
   }
 }
 
-/* iOS Safari zooms the page when a field under 16px takes focus, so touch screens get 16px fields. */
 @media (pointer: coarse) {
   .rs-search input,
-  .rs-ui-input,
-  .rs-ui-input-compact,
   .rs-input-shell input,
-  .rs-bulk-row-clip .rs-ui-input,
+  .rs-bulk-row-clip .ui-input,
   .rs-field input,
   .rs-field select,
   .rs-field textarea {
@@ -7257,7 +7047,7 @@ html:has(.rs-library-route) {
   flex-wrap: wrap;
 }
 
-.rs-legend-rerun .rs-ui-input {
+.rs-legend-rerun .ui-input {
   width: min(280px, 100%);
 }
 
@@ -7682,7 +7472,7 @@ html:has(.rs-library-route) {
   flex-wrap: wrap;
 }
 
-.rs-baseline-actions .rs-ui-button {
+.rs-baseline-actions .ui-button {
   flex: 1 1 auto;
   gap: 8px;
 }
@@ -9526,7 +9316,7 @@ html:has(.rs-library-route) {
   color: var(--fg-soft);
 }
 
-.rs-report-actions .rs-ui-field {
+.rs-report-actions .ui-field {
   flex: 1 1 240px;
 }
 
@@ -9971,7 +9761,6 @@ html:has(.rs-library-route) {
   margin: 0 32px 16px;
 }
 
-/* The keys only help with a keyboard: not on a phone, or wherever there's no pointer to hover with. */
 @media (hover: none) {
   .rs-selection-hint {
     display: none;

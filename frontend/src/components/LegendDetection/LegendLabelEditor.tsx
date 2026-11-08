@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Select, type SelectOption } from "@/components/ui";
+import { Badge, Button, Select, type SelectOption } from "@pluscosmic/ui";
 import {
   useDeleteLegendLabel,
   useLegendNames,
