@@ -20,6 +20,7 @@
         "@fontsource-variable/fraunces": "^5.3.0",
         "@fontsource-variable/instrument-sans": "^5.3.0",
         "@microsoft/signalr": "^10.0.11",
+        "@pluscosmic/ui": "https://github.com/PlusCosmic/ui-foundation/releases/download/ui-v0.1.0/pluscosmic-ui-0.1.0.tgz",
         "@tabler/icons-react": "^3.47.0",
         "@tanstack/react-query": "^5.103.1",
         "@tanstack/react-router": "^1.170.38",
@@ -232,6 +233,8 @@
     "@oxc-project/types": ["@oxc-project/types@0.150.0", "", {}, "sha512-rDS5/31E9HfPl/CIzGrn0DOlvBbXFseQ5URJ9sYMfstbKLD/c6Gm9vmRzRGDdAXyOIL4zmO37lc9RIwYqVruZw=="],
 
     "@playwright/test": ["@playwright/test@1.63.0", "", { "dependencies": { "playwright": "1.63.0" }, "bin": { "playwright": "cli.js" } }, "sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ=="],
+
+    "@pluscosmic/ui": ["@pluscosmic/ui@https://github.com/PlusCosmic/ui-foundation/releases/download/ui-v0.1.0/pluscosmic-ui-0.1.0.tgz", { "dependencies": { "@fontsource-variable/fraunces": "^5.3.0", "@fontsource-variable/instrument-sans": "^5.3.0", "@tabler/icons-react": "^3.47.0" }, "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0", "vite": ">=6" }, "optionalPeers": ["vite"] }, "sha512-/zrlicN2mUfy/0a+YYUTBITMKYppxssUIqJ13KXunsB5a/XT7O7yUIszkKDaokIz/LAkUsJ7ocrKI1qL/b95wQ=="],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.9", "", { "os": "android", "cpu": "arm" }, "sha512-tNISae1QEf/vkb3xkRcjV5SEdzPE97We5IVaa2Z8jSszQPZ8U60B/YCYpw4QI7VidYsBtKavczXf+DyDs9WGxw=="],
 
