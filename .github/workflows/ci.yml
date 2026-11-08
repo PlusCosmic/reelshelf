@@ -147,17 +147,27 @@ jobs:
       - name: Check committed API client matches the API
         run: bun run check:api-client-drift
 
-  # The desktop uploader in Rust (desktop/Cargo.toml): formatting, lints and tests for the workspace, on Linux.
+  # The desktop uploader in Rust (desktop/Cargo.toml): formatting, lints and tests for the workspace, on Linux,
+  # including the app's headless checks, which draw every window with Rune on lavapipe (Mesa's software Vulkan).
   desktop:
     name: Desktop
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: desktop
+    env:
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Rune links libxkbcommon and libwayland-client; its headless renders need a Vulkan driver.
+      - name: Install the system libraries
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libxkbcommon-dev libwayland-dev libxkbcommon-x11-0 mesa-vulkan-drivers
 
       # rustup reads the channel and components from desktop/rust-toolchain.toml.
       - name: Install the Rust toolchain
@@ -176,6 +186,20 @@ jobs:
 
       - name: Test
         run: cargo test
+
+      # Every window and flyout state, light and dark, at 2x, so a PR shows its windows.
+      - name: Render every scene
+        env:
+          REELSHELF_RENDERS: ${{ runner.temp }}/desktop-renders
+        run: cargo test -p reelshelf-app --test scenes every_scene_renders_light_and_dark
+
+      - name: Upload the renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-renders
+          path: ${{ runner.temp }}/desktop-renders/*.png
+          if-no-files-found: error
 
   # The desktop uploader's Windows app (desktop/Reelshelf.Uploader.sln): builds it, runs its Windows-only tests and
   # builds the MSIX to prove packaging works. Not a required check until the app has shipped once; Core and its tests
