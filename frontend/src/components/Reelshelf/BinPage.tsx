@@ -20,7 +20,7 @@ import {
 import { binDaysLeft } from "./binModel";
 import { useBin } from "./BinToast";
 import { chosenCount, isChosen, useClipSelection } from "./clipSelection";
-import { Dialog } from "./Dialog";
+import { Dialog } from "@pluscosmic/ui";
 import { ClipThumb } from "./primitives/ClipViews";
 import { categoryForClip, formatDate } from "./reelshelf-model";
 import { useLibraryData } from "./useLibraryData";

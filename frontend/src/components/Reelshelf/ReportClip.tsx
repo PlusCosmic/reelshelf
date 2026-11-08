@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { IconFlag } from "@tabler/icons-react";
-import { Dialog } from "@/components/Reelshelf/Dialog";
+import { Dialog } from "@pluscosmic/ui";
 import { commonCopy } from "@/copy/common";
 import { shareCopy } from "@/copy/share";
 import { useReportSharedClip } from "@/hooks/queries";

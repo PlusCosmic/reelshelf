@@ -3108,55 +3108,6 @@ html:has(.rs-library-route) {
   gap: 16px;
 }
 
-.rs-modal-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: color-mix(in oklab, var(--bg) 68%, rgba(0, 0, 0, 0.42));
-  backdrop-filter: blur(12px);
-}
-
-/* A column so the panel is what shrinks and scrolls on short screens, keeping the error visible. */
-.rs-modal {
-  display: flex;
-  flex-direction: column;
-  width: min(560px, 100%);
-  max-height: min(720px, calc(100vh - 48px));
-  max-height: min(720px, calc(100dvh - 48px));
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--bg);
-  box-shadow:
-    0 24px 80px color-mix(in oklab, var(--shadow) 28%, transparent),
-    0 1px 4px color-mix(in oklab, var(--shadow) 12%, transparent);
-}
-
-.rs-modal-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 22px 24px 16px;
-  border-bottom: 1px solid var(--line);
-}
-
-.rs-modal-header .rs-eyebrow {
-  margin: 0 0 7px;
-}
-
-.rs-modal-title {
-  margin: 0;
-  color: var(--fg);
-  font-size: 22px;
-  line-height: 1.1;
-  letter-spacing: 0;
-  overflow-wrap: anywhere;
-}
-
 /* A list of choices in a dialog, each one toggled on or off, like which collections hold a clip. */
 .rs-picker {
   display: grid;

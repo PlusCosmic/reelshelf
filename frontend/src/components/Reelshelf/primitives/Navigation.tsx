@@ -6,9 +6,9 @@ import {
   IconFolderPlus,
   IconShare3,
   IconTrash,
-  IconX,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Dialog } from "@pluscosmic/ui";
 import type { Clip } from "@/api-client";
 import { libraryCopy } from "@/copy/library";
 import { useCurrentUser, useShareClip } from "@/hooks/queries";
@@ -113,15 +113,6 @@ function ShareClipDialog({
     shareClip.mutate(clip.clipId);
   }, [clip.clipId]);
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
   const shareUrl = useMemo(() => {
     if (!shareClip.data?.sharePath) return "";
     return new URL(shareClip.data.sharePath, window.location.origin).toString();
@@ -146,84 +137,64 @@ function ShareClipDialog({
   }
 
   return (
-    <div className="rs-modal-layer" role="presentation" onMouseDown={onClose}>
-      <section
-        className="rs-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="share-clip-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header className="rs-modal-header">
-          <div>
-            <p className="rs-eyebrow">{libraryCopy.shareDialog.eyebrow}</p>
-            <h2 className="rs-modal-title" id="share-clip-title">
-              {clip.video.title}
-            </h2>
-          </div>
-          <button
-            className="rs-icon-button"
-            type="button"
-            onClick={onClose}
-            aria-label={libraryCopy.shareDialog.close}
-          >
-            <IconX size={16} />
-          </button>
-        </header>
-        <div className="rs-modal-panel">
-          {shareClip.isPending ? (
-            <p className="rs-modal-note rs-inline-status">
-              <span className="rs-spinner" aria-hidden="true" />
-              {libraryCopy.shareDialog.creating}
+    <Dialog
+      eyebrow={libraryCopy.shareDialog.eyebrow}
+      title={clip.video.title}
+      onClose={onClose}
+    >
+      <div className="rs-modal-panel">
+        {shareClip.isPending ? (
+          <p className="rs-modal-note rs-inline-status">
+            <span className="rs-spinner" aria-hidden="true" />
+            {libraryCopy.shareDialog.creating}
+          </p>
+        ) : null}
+
+        {shareClip.isError ? (
+          <>
+            <p className="rs-modal-error rs-modal-error-inline">
+              {errorMessage}
             </p>
-          ) : null}
+            <button
+              className="rs-secondary rs-modal-submit"
+              type="button"
+              onClick={() => shareClip.mutate(clip.clipId)}
+            >
+              {libraryCopy.shareDialog.retry}
+            </button>
+          </>
+        ) : null}
 
-          {shareClip.isError ? (
-            <>
-              <p className="rs-modal-error rs-modal-error-inline">
-                {errorMessage}
-              </p>
-              <button
-                className="rs-secondary rs-modal-submit"
-                type="button"
-                onClick={() => shareClip.mutate(clip.clipId)}
-              >
-                {libraryCopy.shareDialog.retry}
-              </button>
-            </>
-          ) : null}
-
-          {shareUrl ? (
-            <>
-              <label className="rs-field" htmlFor="share-url">
-                {libraryCopy.shareDialog.link}
-                <div className="rs-share-copy-row">
-                  <input
-                    ref={inputRef}
-                    id="share-url"
-                    className="rs-share-url"
-                    value={shareUrl}
-                    readOnly
-                    onFocus={(event) => event.currentTarget.select()}
-                  />
-                  <button
-                    className="rs-primary"
-                    type="button"
-                    onClick={copyShareUrl}
-                  >
-                    <IconCopy size={15} />
-                    {copied
-                      ? libraryCopy.shareDialog.copied
-                      : libraryCopy.shareDialog.copy}
-                  </button>
-                </div>
-              </label>
-              <p className="rs-modal-note">{libraryCopy.shareDialog.note}</p>
-            </>
-          ) : null}
-        </div>
-      </section>
-    </div>
+        {shareUrl ? (
+          <>
+            <label className="rs-field" htmlFor="share-url">
+              {libraryCopy.shareDialog.link}
+              <div className="rs-share-copy-row">
+                <input
+                  ref={inputRef}
+                  id="share-url"
+                  className="rs-share-url"
+                  value={shareUrl}
+                  readOnly
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+                <button
+                  className="rs-primary"
+                  type="button"
+                  onClick={copyShareUrl}
+                >
+                  <IconCopy size={15} />
+                  {copied
+                    ? libraryCopy.shareDialog.copied
+                    : libraryCopy.shareDialog.copy}
+                </button>
+              </div>
+            </label>
+            <p className="rs-modal-note">{libraryCopy.shareDialog.note}</p>
+          </>
+        ) : null}
+      </div>
+    </Dialog>
   );
 }
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Dialog } from "@/components/Reelshelf/Dialog";
+import { Dialog } from "@pluscosmic/ui";
 import { useDeleteAccount, usePlan } from "@/hooks/queries";
 import { ApiError } from "@/shared/services/apiError";
 import { deleteAccountPhrase } from "@/shared/services/user";

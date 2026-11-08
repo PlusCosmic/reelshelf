@@ -1,7 +1,7 @@
-import { useEffect, useEffectEvent, useId, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import type { GameCategoryResponse } from "@/api-client";
-import { IconX } from "@tabler/icons-react";
+import { Dialog } from "@pluscosmic/ui";
 import { CustomCategoryPanel } from "@/components/AddCategory/CustomCategoryPanel";
 import { GameSearchPanel } from "@/components/AddCategory/GameSearchPanel";
 import {
@@ -30,7 +30,6 @@ export function AddCategoryModal({
   pendingClipCount = 0,
   onAdded,
 }: AddCategoryModalProps) {
-  const titleId = useId();
   const [activeTab, setActiveTab] = useState<AddCategoryTab>("search");
   const [search, setSearch] = useState("");
   const [customName, setCustomName] = useState("");
@@ -43,26 +42,8 @@ export function AddCategoryModal({
   const addCustomMutation = useAddCustomCategory();
   const isSaving = addFromIgdbMutation.isPending || addCustomMutation.isPending;
   const error = addFromIgdbMutation.error ?? addCustomMutation.error;
-  const closeOnEscape = useEffectEvent(() => {
-    if (!isSaving) onClose();
-  });
-
-  useEffect(() => {
-    if (!opened) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeOnEscape();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [opened]);
 
   if (!opened) return null;
-
-  const closeModal = () => {
-    if (!isSaving) onClose();
-  };
 
   const handleAddFromIgdb = (igdbId: number) => {
     addFromIgdbMutation.mutate(igdbId, {
@@ -93,68 +74,45 @@ export function AddCategoryModal({
   };
 
   return (
-    <div
-      className="rs-modal-layer"
-      role="presentation"
-      onMouseDown={closeModal}
+    <Dialog
+      eyebrow={addGameCopy.eyebrow}
+      title={
+        pendingClipCount > 0
+          ? addGameCopy.pendingTitle(pendingClipCount)
+          : addGameCopy.title
+      }
+      busy={isSaving}
+      onClose={onClose}
     >
-      <section
-        className="rs-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header className="rs-modal-header">
-          <div>
-            <p className="rs-eyebrow">{addGameCopy.eyebrow}</p>
-            <h2 className="rs-modal-title" id={titleId}>
-              {pendingClipCount > 0
-                ? addGameCopy.pendingTitle(pendingClipCount)
-                : addGameCopy.title}
-            </h2>
-          </div>
-          <button
-            className="rs-icon-button"
-            type="button"
-            aria-label={addGameCopy.closeLabel}
-            onClick={closeModal}
-            disabled={isSaving}
-          >
-            <IconX size={16} />
-          </button>
-        </header>
+      <ModalTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-        <ModalTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+      {activeTab === "search" ? (
+        <GameSearchPanel
+          debouncedSearch={debouncedSearch}
+          isSaving={isSaving}
+          isSearching={isSearching}
+          onAddGame={handleAddFromIgdb}
+          search={search}
+          searchResults={searchResults}
+          setSearch={setSearch}
+        />
+      ) : (
+        <CustomCategoryPanel
+          customCoverUrl={customCoverUrl}
+          customName={customName}
+          isSaving={isSaving}
+          isSubmitting={addCustomMutation.isPending}
+          onSubmit={handleAddCustom}
+          setCustomCoverUrl={setCustomCoverUrl}
+          setCustomName={setCustomName}
+        />
+      )}
 
-        {activeTab === "search" ? (
-          <GameSearchPanel
-            debouncedSearch={debouncedSearch}
-            isSaving={isSaving}
-            isSearching={isSearching}
-            onAddGame={handleAddFromIgdb}
-            search={search}
-            searchResults={searchResults}
-            setSearch={setSearch}
-          />
-        ) : (
-          <CustomCategoryPanel
-            customCoverUrl={customCoverUrl}
-            customName={customName}
-            isSaving={isSaving}
-            isSubmitting={addCustomMutation.isPending}
-            onSubmit={handleAddCustom}
-            setCustomCoverUrl={setCustomCoverUrl}
-            setCustomName={setCustomName}
-          />
-        )}
-
-        {error ? (
-          <p className="rs-modal-error">
-            {error instanceof Error ? error.message : addGameCopy.addFailed}
-          </p>
-        ) : null}
-      </section>
-    </div>
+      {error ? (
+        <p className="rs-modal-error">
+          {error instanceof Error ? error.message : addGameCopy.addFailed}
+        </p>
+      ) : null}
+    </Dialog>
   );
 }
