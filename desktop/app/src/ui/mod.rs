@@ -31,9 +31,6 @@ pub fn view(s: &Ui, cx: &mut Cx<Ui>) -> El {
     match s.kind {
         WindowKind::SignIn => sign_in::view(s, l),
         WindowKind::Setup => setup::view(s, l),
-        WindowKind::BookPicker => book_picker::view(s, l),
-        WindowKind::Recent => recent::view(s, l),
-        WindowKind::Settings => settings::view(s, l),
         WindowKind::Quit => quit::view(s, l),
         WindowKind::Flyout => flyout::view(s, l),
     }
@@ -43,9 +40,6 @@ pub fn view(s: &Ui, cx: &mut Cx<Ui>) -> El {
 pub fn title(kind: WindowKind) -> &'static str {
     match kind {
         WindowKind::SignIn | WindowKind::Setup | WindowKind::Quit | WindowKind::Flyout => copy::APP_NAME,
-        WindowKind::BookPicker => copy::book_picker::WINDOW_TITLE,
-        WindowKind::Recent => copy::recent::WINDOW_TITLE,
-        WindowKind::Settings => copy::settings::WINDOW_TITLE,
     }
 }
 
@@ -55,9 +49,6 @@ pub fn size(kind: WindowKind) -> (f32, f32) {
     match kind {
         WindowKind::SignIn => (520.0, 500.0),
         WindowKind::Setup => (580.0, 700.0),
-        WindowKind::BookPicker => (480.0, 600.0),
-        WindowKind::Recent => (600.0, 640.0),
-        WindowKind::Settings => (600.0, 780.0),
         WindowKind::Quit => (440.0, 210.0),
         WindowKind::Flyout => (FLYOUT_WIDTH, 300.0),
     }

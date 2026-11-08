@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use reelshelf_app::app_core::{AppCore, CoreParts};
 use reelshelf_app::fixtures::{self, FixtureCommands};
 use reelshelf_app::links::{self, Link};
-use reelshelf_app::model::{Change, Commands, SetupDraft, Ui, WindowHost, WindowKind};
+use reelshelf_app::model::{Change, Commands, FlyoutPage, SetupDraft, Ui, WindowHost, WindowKind};
 use reelshelf_app::platform::{MemoryCredentials, NeverInAGame, NoStartup, Platform, Shell};
 use reelshelf_app::{shell, tray};
 use reelshelf_core::api::{
@@ -204,9 +204,16 @@ fn start_watching_saves_the_folder_and_its_choices() {
     assert!(ui.setup.matches[1].1.is_none(), "Overwatch 2 matches no book");
     let mut rt = support::runtime(ui, reelshelf_app::ui::size(WindowKind::Setup), false);
 
-    // Choose… on the unmatched folder opens S3.
+    // Choose… on the unmatched folder offers the books, and picking one saves it for the folder.
     press(&mut rt, "choose-1");
-    assert!(world.host.calls().contains(&"open BookPicker".to_owned()));
+    assert!(rt.popup_menu().is_some(), "Choose… opens the books");
+    let valorant_id = valorant.to_string();
+    rt.resolve_popup(Some(valorant_id.as_str())).unwrap();
+    rt.frame(1.0 / 60.0);
+    assert_eq!(
+        world.core.engine().settings().saved_book_for("Overwatch 2"),
+        Some(valorant)
+    );
 
     press(&mut rt, "start-watching");
     let settings = world.core.engine().settings();
@@ -256,10 +263,11 @@ fn start_watching_without_a_folder_asks_for_one() {
 #[test]
 fn use_this_book_saves_the_choice() {
     let world = world();
-    let mut ui = world.ui(WindowKind::BookPicker);
+    let mut ui = world.ui(WindowKind::Flyout);
+    ui.flyout.page = FlyoutPage::Book;
     ui.picker.folder = "Marvel Rivals".to_owned();
     assert_eq!(ui.model.books.len(), 6);
-    let mut rt = support::runtime(ui, reelshelf_app::ui::size(WindowKind::BookPicker), false);
+    let mut rt = support::runtime(ui, (388.0, 700.0), false);
 
     // Nothing is saved before a book is picked.
     press(&mut rt, "use-book");
@@ -312,14 +320,21 @@ fn the_flyouts_actions_reach_the_engine() {
     press(&mut rt, "open-library");
     assert_eq!(world.opened.0.lock().unwrap().as_slice(), ["https://reelshelf.app"]);
 
+    // Settings and Recent uploads are pages of the flyout, each with Back to the menu.
     press(&mut rt, "settings");
-    assert!(world.host.calls().contains(&"open Settings".to_owned()));
+    assert_eq!(rt.state.flyout.page, FlyoutPage::Settings);
+    press(&mut rt, "back");
+    assert_eq!(rt.state.flyout.page, FlyoutPage::Home);
+    press(&mut rt, "recent");
+    assert_eq!(rt.state.flyout.page, FlyoutPage::Recent);
+    press(&mut rt, "back");
 
-    // T1's action shows recent uploads.
+    // T1's action shows recent uploads too.
     rt.update(|s, _| s.refresh());
     rt.frame(1.0 / 60.0);
     press(&mut rt, "state-action");
-    assert!(world.host.calls().contains(&"open Recent".to_owned()));
+    assert_eq!(rt.state.flyout.page, FlyoutPage::Recent);
+    press(&mut rt, "back");
 
     // With nothing uploading, Quit quits without asking.
     press(&mut rt, "quit");
@@ -352,12 +367,12 @@ fn the_tray_menu_and_notification_links_reach_the_commands() {
     assert_eq!(
         commands.calls(),
         [
-            "show Recent".to_owned(),
+            "show Flyout(Recent)".to_owned(),
             format!("open_link {:?}", Link::Library),
-            "show Settings".to_owned(),
+            "show Flyout(Settings)".to_owned(),
             "quit false".to_owned(),
             format!("open_link {:?}", Link::Library),
-            "show BookPicker(\"Marvel Rivals\")".to_owned(),
+            "show ChooseBook(\"Marvel Rivals\")".to_owned(),
             format!("open_link {:?}", Link::Plans),
             format!("open_link {:?}", Link::Store),
             "show SignIn".to_owned(),

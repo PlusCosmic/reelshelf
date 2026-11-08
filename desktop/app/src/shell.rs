@@ -16,7 +16,7 @@ use rune::{App, AppHandle, RunOptions, Titlebar, Tx, WindowHandle, WindowOptions
 use crate::api_adapter::ReelshelfApi;
 use crate::app_core::{AppCore, CoreParts};
 use crate::links;
-use crate::model::{Change, Commands, Show, Ui, WindowHost, WindowKind};
+use crate::model::{Change, Commands, FlyoutPage, Show, Ui, WindowHost, WindowKind};
 use crate::platform::Platform;
 use crate::tray::Placement;
 use crate::{tray, ui};
@@ -56,8 +56,7 @@ impl RuneHost {
         lock(&self.display).map(|(display, scale)| Placement::bottom_right(display, scale))
     }
 
-    /// After each frame of a window: the flyout moves back beside the tray when its height changed, and S3 and S5
-    /// keep only Close (winit puts the minimize box back whenever it restyles a window, such as when it is shown).
+    /// After each frame of the flyout: it moves back beside the tray when its height changed (each page has its own).
     fn after_frame(&self, kind: WindowKind) {
         let Some(window) = lock(&self.native).get(&kind).cloned() else {
             return;
@@ -71,10 +70,6 @@ impl RuneHost {
                 window.set_position(wanted);
             }
         }
-        #[cfg(windows)]
-        if matches!(kind, WindowKind::BookPicker | WindowKind::Settings) {
-            crate::win::close_button_only(&window);
-        }
     }
 
     /// The tray's events: a primary click opens or closes the flyout, the menu does what it says.
@@ -84,7 +79,7 @@ impl RuneHost {
                 if host.is_open(WindowKind::Flyout) {
                     host.close(WindowKind::Flyout);
                 } else {
-                    commands.show(Show::Flyout);
+                    commands.show(Show::Flyout(FlyoutPage::Home));
                 }
             }
             TrayEvent::Menu(id) => tray::on_menu(&id, commands.as_ref()),
@@ -174,8 +169,9 @@ fn window_app(kind: WindowKind, commands: &Arc<dyn Commands>) -> App<Ui> {
                 ..WindowOptions::default()
             })
             .fit_content_height()
-            .on_focus(|_: &mut Ui, focused: bool, tx: &mut Tx| {
-                if !focused {
+            .on_focus(|s: &mut Ui, focused: bool, tx: &mut Tx| {
+                // A folder picker or menu the flyout opened takes the focus; the flyout stays for its answer.
+                if !focused && !s.flyout.held_open {
                     tx.close_window();
                 }
             }),
@@ -197,12 +193,12 @@ fn window_app(kind: WindowKind, commands: &Arc<dyn Commands>) -> App<Ui> {
                 host.after_frame(kind);
             }
         });
-    if kind == WindowKind::Settings {
-        // A second launch reopens the app (Windows hands it over through `single_instance`): it shows S5. Links from
-        // notifications arrive here too.
+    if kind == WindowKind::Flyout {
+        // A second launch reopens the app (Windows hands it over through `single_instance`): it shows the flyout's
+        // Settings. Links from notifications arrive here too.
         app = app
             .on_reopen(|s: &mut Ui, _: bool, _: &mut Tx| {
-                s.commands.show(Show::Settings);
+                s.commands.show(Show::Flyout(FlyoutPage::Settings));
                 true
             })
             .on_open_url(|s: &mut Ui, url: &str, _: &mut Tx| on_app_link(s.commands.as_ref(), url));
@@ -214,7 +210,7 @@ fn window_app(kind: WindowKind, commands: &Arc<dyn Commands>) -> App<Ui> {
 pub fn on_app_link(commands: &dyn Commands, url: &str) {
     match links::parse_app_link(url) {
         Some(NotificationAction::OpenLibrary) => commands.open_link(links::Link::Library),
-        Some(NotificationAction::ChooseBook(folder)) => commands.show(Show::BookPicker(folder)),
+        Some(NotificationAction::ChooseBook(folder)) => commands.show(Show::ChooseBook(folder)),
         Some(NotificationAction::NotNow) => {}
         Some(NotificationAction::SeePlans) => commands.open_link(links::Link::Plans),
         Some(NotificationAction::OpenStore) => commands.open_link(links::Link::Store),

@@ -232,7 +232,9 @@ fn nothing_overflows_the_window() {
                     element.text,
                     element.visible
                 );
-                if element.text.is_some() && element.scrolled == [0.0, 0.0] {
+                // A row at the foot of a list that scrolls is meant to be partly hidden.
+                let in_list = element.path.split('/').any(|key| key.ends_with("-scroll"));
+                if element.text.is_some() && element.scrolled == [0.0, 0.0] && !in_list {
                     let [_, _, rw, rh] = element.rect;
                     assert!(
                         ew + SLACK >= rw && eh + SLACK >= rh,

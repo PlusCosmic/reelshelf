@@ -7,7 +7,7 @@ use rune::{El, FileDialogOptions, PopupMenu, Tx, col, icon, row, text};
 use uuid::Uuid;
 
 use crate::links::Link;
-use crate::model::{Show, Ui};
+use crate::model::Ui;
 use crate::theme::{Look, ty};
 use crate::ui::icons;
 use crate::ui::parts::{self, Tone};
@@ -203,8 +203,32 @@ fn match_row(l: &Look, index: usize, folder: &str, book: Option<&Book>, last: bo
                 .child(text(name).font(ty::ROW_STRONG).color(ink).truncate().min_w(0.0)),
         )
         .child(
-            parts::button(l, &format!("choose-{index}"), words::CHOOSE_BOOK, Tone::Link, 6.0, 4.0)
-                .on_press(move |s: &mut Ui| s.commands.show(Show::BookPicker(owned.clone()))),
+            parts::button(l, &format!("choose-{index}"), words::CHOOSE_BOOK, Tone::Link, 6.0, 4.0).on_press_tx(
+                move |s: &mut Ui, tx: &mut Tx| {
+                    let folder = owned.clone();
+                    let current = s
+                        .setup
+                        .matches
+                        .iter()
+                        .find(|(name, _)| *name == folder)
+                        .and_then(|(_, book)| book.as_ref())
+                        .map_or(String::new(), |book| book.id.to_string());
+                    let options = s
+                        .model
+                        .books
+                        .iter()
+                        .map(|book| (book.id.to_string(), book.name.clone()));
+                    tx.popup_menu(
+                        PopupMenu::picker(options, &current),
+                        format!("choose-{index}"),
+                        move |s: &mut Ui, picked, _tx: &mut Tx| {
+                            if let Some(book) = picked.and_then(picked_book) {
+                                s.commands.choose_book(&folder, book);
+                            }
+                        },
+                    );
+                },
+            ),
         )
 }
 

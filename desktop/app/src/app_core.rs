@@ -19,7 +19,9 @@ use tokio::sync::broadcast::error::RecvError;
 use uuid::Uuid;
 
 use crate::links::{self, Link};
-use crate::model::{Commands, Model, SetupDraft, Show, SignInPhase, Ui, WindowHost, WindowKind};
+use crate::model::{
+    Commands, FlyoutDraft, FlyoutPage, Model, SetupDraft, Show, SignInPhase, Ui, WindowHost, WindowKind,
+};
 use crate::platform::{self, Platform};
 use crate::ui;
 
@@ -262,18 +264,25 @@ impl<A: UploaderApi> Commands for AppCore<A> {
                 let draft = self.setup_draft();
                 self.open(WindowKind::Setup, move |ui, _| ui.setup = draft);
             }
-            Show::BookPicker(folder) => {
+            Show::ChooseBook(folder) => {
                 let engine = self.engine.clone();
                 self.runtime.spawn(async move { engine.refresh_books().await });
-                self.open(WindowKind::BookPicker, move |ui, _| {
+                self.open(WindowKind::Flyout, move |ui, _| {
+                    ui.flyout = FlyoutDraft {
+                        page: FlyoutPage::Book,
+                        ..FlyoutDraft::default()
+                    };
                     ui.picker.folder = folder;
                     ui.picker.selected = None;
                 });
             }
-            Show::Recent => self.open(WindowKind::Recent, |_, _| {}),
-            Show::Settings if !self.engine.is_signed_in() => self.show(Show::SignIn),
-            Show::Settings => self.open(WindowKind::Settings, |_, _| {}),
-            Show::Flyout => self.open(WindowKind::Flyout, |ui, _| ui.flyout = Default::default()),
+            Show::Flyout(FlyoutPage::Settings) if !self.engine.is_signed_in() => self.show(Show::SignIn),
+            Show::Flyout(page) => self.open(WindowKind::Flyout, move |ui, _| {
+                ui.flyout = FlyoutDraft {
+                    page,
+                    ..FlyoutDraft::default()
+                };
+            }),
         }
     }
 
@@ -372,12 +381,12 @@ impl<A: UploaderApi> Commands for AppCore<A> {
 
     fn tray_action(&self, action: TrayAction) {
         match action {
-            TrayAction::ShowRecent => self.show(Show::Recent),
+            TrayAction::ShowRecent => self.show(Show::Flyout(FlyoutPage::Recent)),
             TrayAction::UploadNow => self.engine.upload_now(),
             TrayAction::Resume => self.engine.resume(),
             TrayAction::ChooseBook => {
                 if let Some((folder, _)) = self.engine.inputs().needs_book {
-                    self.show(Show::BookPicker(folder));
+                    self.show(Show::ChooseBook(folder));
                 }
             }
             TrayAction::SeePlans => self.open_link(Link::Plans),

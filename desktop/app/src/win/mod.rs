@@ -17,7 +17,7 @@ pub use credentials::CredentialManager;
 pub use game::FullScreenCheck;
 pub use startup::{STARTUP_TASK_ID, StartupTask};
 pub use toasts::Toasts;
-pub use window::{close_button_only, flyout_placement};
+pub use window::flyout_placement;
 
 use crate::platform::{Platform, SystemShell};
 
