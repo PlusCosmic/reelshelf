@@ -3,5 +3,12 @@
 //! Part 4.
 
 pub mod api_adapter;
+pub mod app_core;
+pub mod fixtures;
+pub mod links;
+pub mod model;
 pub mod platform;
+pub mod shell;
 pub mod theme;
+pub mod tray;
+pub mod ui;

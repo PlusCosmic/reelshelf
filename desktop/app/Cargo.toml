@@ -6,6 +6,10 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[[bin]]
+name = "reelshelf"
+path = "src/main.rs"
+
 [dependencies]
 chrono.workspace = true
 reelshelf-api = { path = "../api" }
