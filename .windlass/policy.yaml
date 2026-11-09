@@ -1,0 +1,32 @@
+# Windlass policy for agent-authored PRs (https://github.com/PlusCosmic/windlass).
+# Phase 1: shadow mode. Windlass comments and labels; it never merges.
+# Changes to this file always escalate, and the policy is read from main, never from a PR.
+policy: v1
+defaults:
+  always:
+    - gate: no_new_skips
+    - gate: ci_green
+      with:
+        # The checks the "Protect main" ruleset requires. Until all three report,
+        # the decision waits; any other check that runs (Desktop, Windows uploader) must pass too.
+        required: [Frontend, API, API client drift]
+  on_evaluator_error: escalate
+
+categories:
+  docs_only:
+    gates:
+      # Narrower than "**/*.md": the LLM prompts under api/**/Resources/ are Markdown but change behaviour,
+      # and AGENTS.md/CLAUDE.md change how agents work, so both escalate.
+      - paths_only: ["**/README.md", "CONTEXT.md", "docs/**"]
+    outcome: merge
+
+  test_only:
+    gates:
+      # Test sources only. Project files (*.csproj) and test config can exclude tests, so they escalate.
+      - paths_only:
+          - "tests/**/*.cs"
+          - "desktop/*/tests/**/*.rs"
+          - "frontend/src/**/*.test.{ts,tsx}"
+    outcome: merge
+
+fallback: escalate

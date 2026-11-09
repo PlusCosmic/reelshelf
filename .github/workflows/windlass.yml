@@ -1,0 +1,40 @@
+# Windlass decides whether an agent-authored PR could merge, should escalate to a human, or is blocked.
+# Shadow mode: it comments and labels (windlass/would-merge, windlass/escalate, windlass/block) and never merges.
+# Policy: .windlass/policy.yaml, always read from the PR's base branch.
+name: Windlass
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  # Re-decide once CI has finished. workflow_run only fires for this file as it is on main.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pull-request:
+        description: PR number to evaluate
+        required: true
+
+permissions:
+  contents: read # policy file on the base branch
+  pull-requests: write # read the PR and diff
+  issues: write # comment and label
+  checks: read
+  statuses: read
+
+jobs:
+  # Windlass ignores the check named after this job key so it never waits on itself.
+  # Don't give the job a `name:` without adding it to `ignore-checks`.
+  windlass:
+    runs-on: ubuntu-latest
+    steps:
+      - id: windlass
+        uses: PlusCosmic/windlass@master
+        with:
+          pull-request: ${{ inputs.pull-request }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windlass-decisions-${{ github.run_id }}
+          path: ${{ steps.windlass.outputs.decision-dir }}
+          if-no-files-found: ignore
