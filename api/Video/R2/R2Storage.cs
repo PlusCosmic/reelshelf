@@ -1,3 +1,4 @@
+using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -6,9 +7,11 @@ using Reelshelf.Video.Transcoding;
 namespace Reelshelf.Video.R2;
 
 /// <summary>
-/// The R2 bucket, through AWSSDK.S3 and only S3-compatible calls, so moving to S3 later is a copy job and a new
-/// endpoint. Presigning needs no network: it signs with the key alone. Payload signing and the SDK's default
-/// checksums are off because R2 accepts neither the streaming signature nor every checksum the SDK would send.
+/// The media bucket, on R2 or AWS S3 (<see cref="R2Options"/>), through AWSSDK.S3 and only calls both answer alike, so
+/// moving between them is a copy job and new settings. Presigning needs no network: it signs with the key alone.
+/// Payload signing and the SDK's default checksums are off because R2 accepts neither the streaming signature nor
+/// every checksum the SDK would send; S3 accepts the plain requests too, and the SDK still adds the checksums an
+/// operation requires (DeleteObjects' CRC32).
 /// </summary>
 public sealed class R2Storage : ITranscodeStorage, IDisposable
 {
@@ -41,17 +44,36 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
     internal static AWSCredentials Credentials(R2Options options) =>
         new BasicAWSCredentials(options.AccessKeyId, options.SecretAccessKey);
 
-    internal static AmazonS3Config ClientConfig(R2Options options) => new()
+    /// <summary>
+    /// An S3-compatible endpoint is called at its URL, path-style and signed for its region (R2's is <c>auto</c>);
+    /// AWS S3 is reached from the region alone, virtual-hosted style, which the SDK picks. Either way the endpoint
+    /// comes from <see cref="R2Options"/> alone, never from <c>AWS_ENDPOINT_URL*</c> or a shared config file's
+    /// <c>endpoint_url</c>.
+    /// </summary>
+    internal static AmazonS3Config ClientConfig(R2Options options)
     {
-        ServiceURL = options.ServiceUrl,
-        AuthenticationRegion = R2Options.Region,
-        ForcePathStyle = true,
-        RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
-        ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
-    };
+        AmazonS3Config config = new()
+        {
+            IgnoreConfiguredEndpointUrls = true,
+            RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+            ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
+        };
+        if (options.ServiceUrl is { } serviceUrl)
+        {
+            config.ServiceURL = serviceUrl;
+            config.AuthenticationRegion = options.SigningRegion;
+            config.ForcePathStyle = true;
+        }
+        else
+        {
+            config.RegionEndpoint = RegionEndpoint.GetBySystemName(options.Region);
+        }
+
+        return config;
+    }
 
     /// <summary>
-    /// A GET for <paramref name="key"/>. With <paramref name="contentDisposition"/>, R2 answers with that
+    /// A GET for <paramref name="key"/>. With <paramref name="contentDisposition"/>, the store answers with that
     /// <c>Content-Disposition</c> (the signed <c>response-content-disposition</c> parameter), which is how a download
     /// gets its file name.
     /// </summary>
@@ -216,7 +238,7 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
 
     /// <summary>
     /// A PUT of part <paramref name="partNumber"/> of upload <paramref name="uploadId"/>. It signs no headers beyond
-    /// the host, so the browser sends the bytes alone; R2 refuses it for any other key or upload.
+    /// the host, so the browser sends the bytes alone; the store refuses it for any other key or upload.
     /// </summary>
     public string PresignUploadPart(string key, string uploadId, int partNumber, TimeSpan lifetime)
     {
