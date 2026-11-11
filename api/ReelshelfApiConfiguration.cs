@@ -14,6 +14,7 @@ using Reelshelf.Auth;
 using Reelshelf.Billing;
 using Reelshelf.ClipBin;
 using Reelshelf.FeatureFlags;
+using Reelshelf.ClipSearch;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
 using Reelshelf.Core;
@@ -105,6 +106,7 @@ internal static class ReelshelfApiConfiguration
 
         RouteGroupBuilder apiGroup = app.MapGroup("/api");
         apiGroup.MapClipsEndpoints();
+        apiGroup.MapClipSearchEndpoints();
         apiGroup.MapClipBinEndpoints();
         apiGroup.MapMultipartUploadEndpoints();
         apiGroup.MapSharedClipsEndpoints();
@@ -399,6 +401,14 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddSingleton<IClipSummarizerFactory, ClipSummarizerFactory>();
         builder.Services.AddScoped<ClipSummaryStatements>();
         builder.Services.AddScoped<ClipSummaryService>();
+
+        // Clip search answers "not available" until ClipSearch:Model is set and its provider has a key.
+        builder.Services.Configure<ClipSearchOptions>(
+            builder.Configuration.GetSection(ClipSearchOptions.SectionName));
+        builder.Services.AddSingleton<ClipQueryParserResources>();
+        builder.Services.AddSingleton<IClipQueryParserFactory, ClipQueryParserFactory>();
+        builder.Services.AddScoped<ClipSearchStatements>();
+        builder.Services.AddScoped<ClipSearchService>();
 
         // Gauges for every run table above; the sampler stays out of the OpenApi environment like the services below.
         builder.AddQueueMetrics();
