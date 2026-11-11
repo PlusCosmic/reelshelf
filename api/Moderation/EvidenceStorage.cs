@@ -119,20 +119,26 @@ public static class CdnPurgeResults
 {
     public const string Purged = "purged";
 
-    /// <summary>R2 is on but no Cloudflare token is set: the media domain may serve cached copies until purged by hand.</summary>
+    /// <summary>
+    /// The object store is on but neither <c>Moderation:Cloudflare</c> nor <c>Moderation:CloudFront</c> is set: the
+    /// media domain may serve cached copies until purged by hand.
+    /// </summary>
     public const string NotConfigured = "not_configured";
 
-    /// <summary>R2 isn't configured, so nothing of the clip was ever on the media domain.</summary>
+    /// <summary>The object store isn't configured, so nothing of the clip was ever on the media domain.</summary>
     public const string NotNeeded = "not_needed";
 }
 
 /// <summary>
 /// Purges a removed clip's files from the media domain's cache. Its outputs are cached <c>immutable</c> for a year, so
-/// deleting them from R2 alone would leave Cloudflare serving them.
+/// deleting them from the bucket alone would leave the CDN (Cloudflare or CloudFront) serving them.
 /// </summary>
 public interface ICdnPurger
 {
-    /// <summary>Purges every output of versions 1 to <paramref name="maxVersion"/>; returns a <see cref="CdnPurgeResults"/> value.</summary>
+    /// <summary>
+    /// Purges every output of versions 1 to <paramref name="maxVersion"/> at least; returns a
+    /// <see cref="CdnPurgeResults"/> value once the CDN has accepted the purge, and throws when it refuses it.
+    /// </summary>
     Task<string> PurgeClipAsync(Guid clipId, int maxVersion, CancellationToken cancellationToken);
 }
 

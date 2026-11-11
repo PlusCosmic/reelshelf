@@ -195,8 +195,8 @@ public sealed class ClipEvidenceProcessor(
         string purge = await cdn.PurgeClipAsync(clip.Id, MaxVersion(clip), cancellationToken);
         if (purge == CdnPurgeResults.NotConfigured)
         {
-            logger.LogWarning("Clip {ClipId} was removed but the media domain wasn't purged: set Moderation:Cloudflare, " +
-                              "or purge its URLs by hand", clip.Id);
+            logger.LogWarning("Clip {ClipId} was removed but the media domain wasn't purged: set Moderation:Cloudflare " +
+                              "or Moderation:CloudFront for its CDN, or purge its URLs by hand", clip.Id);
         }
 
         return purge;

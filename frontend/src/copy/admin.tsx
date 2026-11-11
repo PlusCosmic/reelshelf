@@ -101,7 +101,7 @@ export const adminCopy = {
       kept: (date: string) =>
         `Kept privately as evidence until ${date}, and gone from public storage.`,
       notPurged:
-        "The media domain wasn't purged, so it may still serve cached copies. Purge the clip's URLs in Cloudflare by hand.",
+        "The media domain wasn't purged, so it may still serve cached copies. Purge the clip's files from the media domain's CDN by hand.",
       ownerSuspended: "The owner's account is suspended.",
       ownerNotSuspended:
         "The owner's account isn't suspended (Admins can't be).",
