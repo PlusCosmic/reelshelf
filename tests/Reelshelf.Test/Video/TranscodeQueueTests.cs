@@ -56,8 +56,8 @@ public class TranscodeQueueTests
             await test.Queue.CompleteAsync(job.RunId, job.LeaseId, outputs.RootElement, 31.6, 12_345_678));
 
         ClipAfter clip = await test.ClipAsync(clipId);
-        Assert.Equal(("ready", 100, 32, 12_345_678L, (int?)null),
-            (clip.VideoState, clip.EncodeProgress, clip.Length, clip.StorageSize, clip.VideoStatus));
+        Assert.Equal(("ready", 100, 32, 12_345_678L),
+            (clip.VideoState, clip.EncodeProgress, clip.Length, clip.StorageSize));
         // The quota counts the AV1 output alone, and the clip's sources are typed with its codecs and height.
         Assert.Equal((1, "av01.0.08M.08,opus", 1080, (long?)null),
             (clip.VideoVersion, clip.VideoCodecs, clip.VideoHeight, clip.FileSize));
@@ -518,7 +518,6 @@ public class TranscodeQueueTests
         public int? EncodeProgress { get; set; }
         public int? Length { get; set; }
         public long? StorageSize { get; set; }
-        public int? VideoStatus { get; set; }
         public int VideoVersion { get; set; }
         public string? VideoCodecs { get; set; }
         public int? VideoHeight { get; set; }
@@ -636,8 +635,8 @@ public class TranscodeQueueTests
 
         public async Task<ClipAfter> ClipAsync(Guid clipId) =>
             await Connection.QuerySingleAsync<ClipAfter>("""
-                SELECT video_state, encode_progress, length, storage_size, video_status, video_version, video_codecs,
-                       video_height, file_size
+                SELECT video_state, encode_progress, length, storage_size, video_version, video_codecs, video_height,
+                       file_size
                 FROM clip WHERE id = @ClipId
                 """, new { ClipId = clipId });
 

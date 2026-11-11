@@ -30,7 +30,8 @@ public class PlanEnforcementStatementsTests
                 CREATE TABLE app_user (id uuid PRIMARY KEY, email text, deletion_requested_at timestamptz);
                 CREATE TABLE game_category (id uuid PRIMARY KEY, name text NOT NULL);
                 """);
-            await TestClipSchema.CreateAsync(connection);
+            // V59 below reads the Bunny columns V67 drops, so V67 runs after it.
+            await TestClipSchema.CreateAsync(connection, beforeV67: true);
             await connection.ExecuteAsync(
                 await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V47__plan_enforcement.sql")));
             await connection.ExecuteAsync(
@@ -42,6 +43,8 @@ public class PlanEnforcementStatementsTests
                 """);
             await connection.ExecuteAsync(
                 await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V59__state_check_constraints.sql")));
+            await connection.ExecuteAsync(
+                await File.ReadAllTextAsync(TestClipSchema.MigrationPath("V67__drop_bunny_and_whitelist_leftovers.sql")));
             await AccountsAsync(connection, new PlanEnforcementStatements(dataSource.CreateConnection()));
             await ExportsAsync(connection, new ClipExportStatements(dataSource.CreateConnection()));
             await LeasesAsync(connection, new ClipExportStatements(dataSource.CreateConnection()));

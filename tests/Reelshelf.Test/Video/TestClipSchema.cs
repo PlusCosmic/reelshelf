@@ -6,11 +6,12 @@ namespace Reelshelf.Test.Video;
 
 /// <summary>
 /// A minimal <c>clip</c> table with the columns the clip statements read, plus the video pipeline's migrations, the bin's and moving between books', for
-/// <see cref="PostgresFactAttribute"/> tests that run in a schema of their own.
+/// <see cref="PostgresFactAttribute"/> tests that run in a schema of their own. <paramref name="beforeV67"/> stops
+/// before V67 drops the Bunny columns, for tests of migrations that ran while they were there.
 /// </summary>
 internal static class TestClipSchema
 {
-    public static async Task CreateAsync(NpgsqlConnection connection)
+    public static async Task CreateAsync(NpgsqlConnection connection, bool beforeV67 = false)
     {
         await connection.ExecuteAsync("""
             CREATE TABLE clip (
@@ -41,6 +42,11 @@ internal static class TestClipSchema
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V60__clip_filed_category.sql")));
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V62__bunny_removed.sql")));
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V66__transcode_run_audio.sql")));
+        if (!beforeV67)
+        {
+            await connection.ExecuteAsync(
+                await File.ReadAllTextAsync(MigrationPath("V67__drop_bunny_and_whitelist_leftovers.sql")));
+        }
     }
 
     public static string MigrationPath(string fileName)
