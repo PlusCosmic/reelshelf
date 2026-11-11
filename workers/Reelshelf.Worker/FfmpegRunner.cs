@@ -9,7 +9,7 @@ namespace Reelshelf.Worker;
 public sealed class FfmpegException(string message) : Exception(message);
 
 /// <summary>What the installed ffmpeg can do, checked once at startup.</summary>
-public sealed record FfmpegCapabilities(bool SvtAv1, bool Opus, bool ZScale, bool Tonemap)
+public sealed record FfmpegCapabilities(bool SvtAv1, bool Aac, bool ZScale, bool Tonemap)
 {
     /// <summary>HDR sources can be tone-mapped; without these filters they are refused as unsupported input.</summary>
     public bool CanToneMap => ZScale && Tonemap;
@@ -88,7 +88,7 @@ public sealed class FfmpegRunner(IOptions<WorkerSettings> options)
     {
         HashSet<string> encoders = await ListNamesAsync("-encoders", cancellationToken);
         HashSet<string> filters = await ListNamesAsync("-filters", cancellationToken);
-        return new FfmpegCapabilities(encoders.Contains("libsvtav1"), encoders.Contains("libopus"),
+        return new FfmpegCapabilities(encoders.Contains("libsvtav1"), encoders.Contains("aac"),
             filters.Contains("zscale"), filters.Contains("tonemap"));
     }
 

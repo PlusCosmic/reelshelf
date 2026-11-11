@@ -18,7 +18,7 @@ RUN dotnet publish "workers/Reelshelf.Worker/Reelshelf.Worker.csproj" -c $BUILD_
 # libSvtAv1Enc on the dedicated server's VM (which reports one CPU socket per vCPU) for an ordinary 1080p60 H.264
 # clip that trixie's 2.3 encodes there without trouble.
 FROM debian:trixie-slim AS final
-# Debian's ffmpeg is built with SVT-AV1, Opus and zimg (zscale, for tone-mapping HDR). The build fails if any of them
+# Debian's ffmpeg is built with SVT-AV1, its own AAC encoder and zimg (zscale, for tone-mapping HDR). The build fails if any of them
 # is missing, or if SVT-AV1 is older than 2.x, rather than shipping a worker that refuses to start, refuses HDR or
 # crashes on its first real clip.
 RUN apt-get update \
@@ -27,7 +27,7 @@ RUN apt-get update \
     && ffmpeg -hide_banner -encoders > /tmp/encoders \
     && ffmpeg -hide_banner -filters > /tmp/filters \
     && grep -E '^ V\S* libsvtav1 ' /tmp/encoders \
-    && grep -E '^ A\S* libopus ' /tmp/encoders \
+    && grep -E '^ A\S* aac ' /tmp/encoders \
     && grep -E '^ \S+ zscale ' /tmp/filters \
     && grep -E '^ \S+ tonemap ' /tmp/filters \
     && ldconfig -p | grep -E 'libSvtAv1Enc\.so\.[2-9]' \

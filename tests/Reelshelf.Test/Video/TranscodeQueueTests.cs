@@ -110,6 +110,65 @@ public class TranscodeQueueTests
     }
 
     [PostgresFact]
+    public async Task Audio_MovesTheReadyClipToItsNewVersion_WithAacCodecs_AndDeletesTheOldOne()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync();
+        Guid clipId = await test.AddClipAsync("ready");
+        await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Audio, new TranscodeRunInput(), videoVersion: 2);
+
+        ClaimedTranscodeRun job = Assert.IsType<ClaimedTranscodeRun>(await test.Queue.ClaimAsync());
+        Assert.Equal($"get audio {clipId} v2 from v1 for {TimeSpan.FromHours(2)}", job.SourceUrl);
+
+        await test.Queue.ReportProgressAsync(job.RunId, job.LeaseId, 50, true);
+        Assert.Equal("ready", (await test.ClipStateAsync(clipId)).State);
+
+        using JsonDocument outputs = JsonDocument.Parse("""{"codecs": "av01.0.08M.08,mp4a.40.2", "height": 1080}""");
+        Assert.Equal(TranscodeReportOutcome.Applied,
+            await test.Queue.CompleteAsync(job.RunId, job.LeaseId, outputs.RootElement, 30, 15_000_000));
+
+        ClipAfter clip = await test.ClipAsync(clipId);
+        Assert.Equal(("ready", 2, "av01.0.08M.08,mp4a.40.2", 1080),
+            (clip.VideoState, clip.VideoVersion, clip.VideoCodecs, clip.VideoHeight));
+        Assert.Equal([(clipId, 1)], test.Storage.DeletedVersions);
+        Assert.Empty(test.Storage.DeletedSources);
+    }
+
+    [PostgresFact]
+    public async Task AacBackfill_QueuesReadyOpusClipsOnTheirNextVersion_UpToTheBatch()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync();
+        TranscodeStatements statements = new(test.Connection);
+        Guid opus = await test.AddClipAsync("ready");
+        Guid opusTrimmed = await test.AddClipAsync("ready");
+        Guid aac = await test.AddClipAsync("ready");
+        Guid silent = await test.AddClipAsync("ready");
+        Guid encoding = await test.AddClipAsync("processing");
+        Guid busy = await test.AddClipAsync("ready");
+        Guid gaveUp = await test.AddClipAsync("ready");
+        await test.Connection.ExecuteAsync("""
+            UPDATE clip SET video_codecs = CASE
+                WHEN id = @Aac THEN 'av01.0.08M.08,mp4a.40.2'
+                WHEN id = @Silent THEN 'av01.0.08M.08'
+                ELSE 'av01.0.08M.08,opus' END,
+              video_version = CASE WHEN id = @OpusTrimmed THEN 3 ELSE 1 END
+            """, new { Aac = aac, Silent = silent, OpusTrimmed = opusTrimmed });
+        // One with a job already waiting, and one whose audio job failed on its current version.
+        await test.Queue.EnqueueAsync(busy, TranscodeRunTypes.Thumbnails, new TranscodeRunInput());
+        await test.Connection.ExecuteAsync("""
+            INSERT INTO transcode_run (clip_id, type, input, video_version, priority, status)
+            VALUES (@GaveUp, 'audio', '{}', 2, 2, 'failed')
+            """, new { GaveUp = gaveUp });
+
+        Assert.Equal(1, await statements.EnqueueAacBackfillAsync(1, 2));
+        Assert.Equal(1, await statements.EnqueueAacBackfillAsync(5, 2));
+        Assert.Equal(0, await statements.EnqueueAacBackfillAsync(5, 2));
+
+        List<(Guid ClipId, int VideoVersion, int Priority)> queued = (await test.Connection.QueryAsync<(Guid, int, int)>(
+            "SELECT clip_id, video_version, priority FROM transcode_run WHERE type = 'audio' AND status = 'pending'")).ToList();
+        Assert.Equal([(opus, 2, 2), (opusTrimmed, 4, 2)], queued.OrderBy(run => run.VideoVersion));
+    }
+
+    [PostgresFact]
     public async Task Trims_FinishingOutOfOrder_LeaveTheClipOnTheNewerVersion_AndDeleteTheOlderTrimsOutputs()
     {
         await using TestQueue test = await TestQueue.CreateAsync();

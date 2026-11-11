@@ -7,8 +7,8 @@ namespace Reelshelf.Video.R2;
 /// <list type="bullet">
 /// <item><c>uploads/{clipId}</c>: the source as uploaded, deleted once its transcode succeeds.</item>
 /// <item><c>clips/{clipId}/v{n}/</c>: version <c>n</c>'s outputs (<see cref="Av1"/>, the six thumbnails and
-/// <see cref="Preview"/>). The clip records its current version (<c>clip.video_version</c>); a trim writes the next
-/// one, and the old one is deleted once the clip moves to it.</item>
+/// <see cref="Preview"/>). The clip records its current version (<c>clip.video_version</c>); a trim or an audio job
+/// writes the next one, and the old one is deleted once the clip moves to it.</item>
 /// </list>
 /// The worker never builds these: it is handed presigned URLs at claim time (reelshelf-docs/video-pipeline/workers-and-jobs.md).
 /// </summary>
@@ -50,7 +50,7 @@ public static class R2ObjectKeys
     {
         TranscodeRunTypes.Transcode => AllOutputs,
         TranscodeRunTypes.Thumbnails => Thumbnails,
-        TranscodeRunTypes.Trim => [Av1, .. Thumbnails],
+        TranscodeRunTypes.Trim or TranscodeRunTypes.Audio => [Av1, .. Thumbnails],
         _ => []
     };
 

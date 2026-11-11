@@ -26,6 +26,10 @@ public static class JobTypes
     public const string Transcode = "transcode";
     public const string Thumbnails = "thumbnails";
     public const string Trim = "trim";
+
+    /// <summary>The current output with its video copied and its audio re-encoded as AAC-LC.</summary>
+    public const string Audio = "audio";
+
     public const string Fallback = "fallback";
 }
 

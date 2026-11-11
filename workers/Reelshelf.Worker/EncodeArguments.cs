@@ -54,7 +54,7 @@ public static class EncodeArguments
 
     /// <summary>
     /// The source (or the part of it <paramref name="trim"/> keeps) as the AV1 MP4 at a constant
-    /// <paramref name="frameRate"/>: SVT-AV1 at the bitrate for that rate with a keyframe every second, Opus audio when there is any, metadata dropped, <c>+faststart</c>, progress on stdout.
+    /// <paramref name="frameRate"/>: SVT-AV1 at the bitrate for that rate with a keyframe every second, AAC-LC audio when there is any (Safari plays no Opus in MP4), metadata dropped, <c>+faststart</c>, progress on stdout.
     /// Seeking as an input option and re-encoding makes the cut frame-accurate.
     /// </summary>
     public static IReadOnlyList<string> Transcode(
@@ -81,21 +81,39 @@ public static class EncodeArguments
             args.AddRange(["-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709"]);
         }
 
-        args.AddRange(["-c:a", "libopus", "-b:a", $"{Invariant(settings.AudioBitrateKbps)}k", "-ac", "2"]);
+        AddAac(args, settings);
         args.AddRange(["-movflags", "+faststart", "-progress", "pipe:1", "-nostats", output]);
         return args;
     }
 
     /// <summary>
-    /// A cut of an existing output without re-encoding. The cut starts on the keyframe at or before the trim's start,
-    /// which the encode's <c>-g</c> (one keyframe a second at its frame rate) keeps within a second.
+    /// A cut of an existing output (or all of it) with its video copied, not re-encoded. The cut starts on the keyframe
+    /// at or before the trim's start, which the encode's <c>-g</c> (one keyframe a second at its frame rate) keeps within
+    /// a second. With <paramref name="aacSettings"/> the audio is re-encoded as AAC-LC, for outputs made before the
+    /// pipeline moved off Opus; without, it is copied too.
     /// </summary>
-    public static IReadOnlyList<string> TrimCopy(string input, string output, TrimRange trim)
+    public static IReadOnlyList<string> TrimCopy(string input, string output, TrimRange trim, WorkerSettings? aacSettings = null)
     {
         List<string> args = ["-hide_banner", "-nostdin", "-y", "-loglevel", "error"];
         AddTrim(args, trim);
         args.AddRange(["-i", input, "-map", "0:v:0", "-map", "0:a:0?", "-map_metadata", "-1", "-map_chapters", "-1"]);
-        args.AddRange(["-c", "copy", "-avoid_negative_ts", "make_zero"]);
+        if (aacSettings is null)
+        {
+            args.AddRange(["-c", "copy"]);
+        }
+        else
+        {
+            args.AddRange(["-c:v", "copy"]);
+            AddAac(args, aacSettings);
+        }
+
+        if (trim.IsCut)
+        {
+            // A cut starts on a keyframe before the trim's start; shift it to zero. A whole copy keeps its timing,
+            // which an AAC encoder's priming would otherwise push the video 21 ms late against.
+            args.AddRange(["-avoid_negative_ts", "make_zero"]);
+        }
+
         args.AddRange(["-movflags", "+faststart", "-progress", "pipe:1", "-nostats", output]);
         return args;
     }
@@ -144,6 +162,13 @@ public static class EncodeArguments
     /// <summary>ffprobe's description of a file as JSON, which <see cref="MediaInfo.Parse"/> reads.</summary>
     public static IReadOnlyList<string> Probe(string input) =>
         ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", input];
+
+    /// <summary>
+    /// Stereo AAC-LC, which every browser plays in MP4. Opus in MP4 doesn't play in Safari, on iOS or macOS, whatever
+    /// its AV1 support.
+    /// </summary>
+    private static void AddAac(List<string> args, WorkerSettings settings) =>
+        args.AddRange(["-c:a", "aac", "-b:a", $"{Invariant(settings.AudioBitrateKbps)}k", "-ac", "2"]);
 
     private static void AddTrim(List<string> args, TrimRange trim)
     {

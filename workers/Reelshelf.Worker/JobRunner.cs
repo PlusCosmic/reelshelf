@@ -23,7 +23,7 @@ public sealed class JobRunner(
         JobReporter reporter,
         CancellationToken cancellationToken)
     {
-        if (job.Type is not (JobTypes.Transcode or JobTypes.Thumbnails or JobTypes.Trim))
+        if (job.Type is not (JobTypes.Transcode or JobTypes.Thumbnails or JobTypes.Trim or JobTypes.Audio))
         {
             throw new JobFailedException($"This worker doesn't run {job.Type} jobs", retryable: false);
         }
@@ -46,6 +46,7 @@ public sealed class JobRunner(
         {
             JobTypes.Transcode => await TranscodeAsync(job, input, source, media, capabilities, reporter, workDirectory, cancellationToken),
             JobTypes.Thumbnails => await ThumbnailsAsync(job, source, media, sourceBytes, reporter, workDirectory, cancellationToken),
+            JobTypes.Audio => await AudioAsync(job, source, media, reporter, workDirectory, cancellationToken),
             _ => await TrimAsync(job, input, source, media, reporter, workDirectory, cancellationToken)
         };
     }
@@ -127,9 +128,44 @@ public sealed class JobRunner(
         string video = Path.Combine(workDirectory, OutputFiles.Video);
         IReadOnlyList<string> arguments = input.FrameAccurate
             ? EncodeArguments.Transcode(source, video, settings, trim, toneMap: false, media.Video!.TargetFrameRate)
-            : EncodeArguments.TrimCopy(source, video, trim);
+            : EncodeArguments.TrimCopy(source, video, trim, NeedsAac(media) ? settings : null);
+        return await CopyAsync(job, video, arguments, trim.LengthSeconds, reporter, workDirectory, cancellationToken);
+    }
+
+    /// <summary>
+    /// All of the current output with its video copied and its audio re-encoded as AAC-LC: the fix for outputs encoded
+    /// with Opus, which Safari doesn't play in MP4. The video isn't touched, so the only loss is the audio's
+    /// generation. Frames come from the new version, which plays the same picture.
+    /// </summary>
+    private async Task<JobResult> AudioAsync(
+        WorkerJob job,
+        string source,
+        MediaInfo media,
+        JobReporter reporter,
+        string workDirectory,
+        CancellationToken cancellationToken)
+    {
+        TrimRange whole = new(0, media.DurationSeconds, false);
+        string video = Path.Combine(workDirectory, OutputFiles.Video);
+        IReadOnlyList<string> arguments = EncodeArguments.TrimCopy(source, video, whole, NeedsAac(media) ? settings : null);
+        return await CopyAsync(job, video, arguments, whole.LengthSeconds, reporter, workDirectory, cancellationToken);
+    }
+
+    /// <summary>Audio other than AAC is re-encoded whenever the job writes a new version; AAC is copied as it is.</summary>
+    private static bool NeedsAac(MediaInfo media) => media.Audio is { Codec: not "aac" };
+
+    /// <summary>Runs a copy of the current output, then takes the new version's frames and uploads it.</summary>
+    private async Task<JobResult> CopyAsync(
+        WorkerJob job,
+        string video,
+        IReadOnlyList<string> arguments,
+        double lengthSeconds,
+        JobReporter reporter,
+        string workDirectory,
+        CancellationToken cancellationToken)
+    {
         reporter.EncodeStarting();
-        await ffmpeg.RunFfmpegAsync(arguments, cancellationToken, trim.LengthSeconds,
+        await ffmpeg.RunFfmpegAsync(arguments, cancellationToken, lengthSeconds,
             share => reporter.Report((int)(share * 100)));
 
         MediaInfo trimmed = await ffmpeg.ProbeAsync(video, cancellationToken);

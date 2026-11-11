@@ -35,7 +35,7 @@ public sealed record ClaimedTranscodeRun(
 /// The transcode job queue (<c>transcode_run</c>). The video host enqueues jobs; workers claim them and report
 /// back through <see cref="WorkerEndpoints"/>, never touching Postgres themselves, and results reach the clip
 /// through <see cref="ClipVideoUpdateHandler"/>. A <c>transcode</c> drives the clip's status; a finished
-/// <c>transcode</c> or <c>trim</c> moves the clip to its new video version, after which the storage deletes the
+/// <c>transcode</c>, <c>trim</c> or <c>audio</c> moves the clip to its new video version, after which the storage deletes the
 /// uploaded source and any version it replaced. The other types
 /// record their output on the run until the features that use them land.
 /// </summary>
@@ -196,7 +196,7 @@ public class TranscodeQueue(
         TranscodeStatements.FinishedRunRow? run = await statements.InTransactionAsync(async () =>
         {
             TranscodeStatements.FinishedRunRow? completed = await statements.CompleteRunAsync(runId, leaseId, outputJson);
-            if (completed is { Type: TranscodeRunTypes.Transcode or TranscodeRunTypes.Trim })
+            if (completed is not null && TranscodeRunTypes.MovesClip(completed.Type))
             {
                 int? previousVersion = await updateHandler.ApplyTranscodeCompletedAsync(completed.ClipId,
                     completed.VideoVersion, clipLength, sizeBytes, reported.Codecs, reported.Height);
@@ -228,7 +228,7 @@ public class TranscodeQueue(
 
             // A repeat can't tell whether the first report moved the clip. One whose clip is no longer on R2 on the
             // job's version or a later one was superseded (or the clip moved since), so it retries nothing.
-            if (run.Type is TranscodeRunTypes.Transcode or TranscodeRunTypes.Trim)
+            if (TranscodeRunTypes.MovesClip(run.Type))
             {
                 TranscodeStatements.ClipVersionRow? clip = await statements.GetClipVersionAsync(run.ClipId);
                 if (clip is not { VideoHost: VideoHostNames.R2 } || clip.VideoVersion < run.VideoVersion)
