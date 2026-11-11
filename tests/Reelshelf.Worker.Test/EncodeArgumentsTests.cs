@@ -14,7 +14,7 @@ public class EncodeArgumentsTests
     private static readonly TrimRange Whole = new(0, 60, false);
 
     [Fact]
-    public void Transcode_EncodesSvtAv1_At30FpsWithAKeyframeEverySecond_AndOpus()
+    public void Transcode_EncodesSvtAv1_At30FpsWithAKeyframeEverySecond_AndAac()
     {
         IReadOnlyList<string> args = EncodeArguments.Transcode("in", "out.mp4", Settings, Whole, toneMap: false, Thirty);
 
@@ -25,8 +25,9 @@ public class EncodeArgumentsTests
         AssertOption(args, "-svtav1-params", "lp=4");
         AssertOption(args, "-fps_mode", "cfr");
         AssertOption(args, "-movflags", "+faststart");
-        AssertOption(args, "-c:a", "libopus");
-        AssertOption(args, "-b:a", "128k");
+        AssertOption(args, "-c:a", "aac");
+        AssertOption(args, "-b:a", "192k");
+        AssertOption(args, "-ac", "2");
         AssertOption(args, "-map_metadata", "-1");
         AssertOption(args, "-progress", "pipe:1");
         Assert.Equal("out.mp4", args[^1]);
@@ -166,6 +167,20 @@ public class EncodeArgumentsTests
         AssertOption(args, "-t", "10");
         AssertOption(args, "-movflags", "+faststart");
         Assert.DoesNotContain("-vf", args);
+        Assert.DoesNotContain("libsvtav1", args);
+    }
+
+    [Fact]
+    public void TrimCopy_WithAacSettings_CopiesTheVideo_AndReencodesTheAudio()
+    {
+        IReadOnlyList<string> args = EncodeArguments.TrimCopy("in.mp4", "out.mp4", Whole, Settings);
+
+        AssertOption(args, "-c:v", "copy");
+        AssertOption(args, "-c:a", "aac");
+        AssertOption(args, "-b:a", "192k");
+        Assert.DoesNotContain("-c", args);
+        Assert.DoesNotContain("-ss", args);
+        Assert.DoesNotContain("-t", args);
         Assert.DoesNotContain("libsvtav1", args);
     }
 

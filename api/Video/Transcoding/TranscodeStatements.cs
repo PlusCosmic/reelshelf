@@ -30,6 +30,38 @@ public class TranscodeStatements(NpgsqlConnection connection)
     }
 
     /// <summary>
+    /// Queues <c>audio</c> jobs for ready R2 clips whose output carries Opus audio, newest first, until
+    /// <paramref name="batchSize"/> are waiting or running. A clip with any job waiting or running is left for a later
+    /// pass, and one whose audio job failed on its current version is left alone, so a clip that can't be done isn't
+    /// tried for ever. The partial unique index on active audio jobs keeps two instances from queueing a clip twice.
+    /// Returns how many were queued.
+    /// </summary>
+    public async Task<int> EnqueueAacBackfillAsync(int batchSize, int priority)
+    {
+        const string sql = """
+            INSERT INTO transcode_run (clip_id, type, input, video_version, priority)
+            SELECT clip.id, 'audio', '{}'::jsonb, clip.video_version + 1, @Priority
+            FROM clip
+            WHERE clip.video_host = 'r2'
+              AND clip.video_state = 'ready'
+              AND clip.video_codecs LIKE '%,opus'
+              AND NOT EXISTS (
+                  SELECT 1 FROM transcode_run run
+                  WHERE run.clip_id = clip.id AND run.status IN ('pending', 'running'))
+              AND NOT EXISTS (
+                  SELECT 1 FROM transcode_run run
+                  WHERE run.clip_id = clip.id AND run.type = 'audio' AND run.status = 'failed'
+                    AND run.video_version = clip.video_version + 1)
+            ORDER BY clip.created_at DESC
+            LIMIT GREATEST(0, @BatchSize - (
+                SELECT count(*) FROM transcode_run
+                WHERE type = 'audio' AND status IN ('pending', 'running')))
+            ON CONFLICT DO NOTHING
+            """;
+        return await connection.ExecuteAsync(sql, new { BatchSize = batchSize, Priority = priority });
+    }
+
+    /// <summary>
     /// Fails the jobs that have used up their attempts: running ones whose worker went quiet past
     /// <paramref name="staleAfter"/> on their last attempt, and pending ones left over when the cap was lowered.
     /// SKIP LOCKED leaves rows another claim is already failing (or a worker is reporting on) to that one.

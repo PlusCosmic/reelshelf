@@ -42,6 +42,18 @@ public sealed class TranscodingOptions
     /// </summary>
     public bool QueueDetectionOnThumbnails { get; set; }
 
+    /// <summary>
+    /// Queue an <c>audio</c> job for every ready clip whose output carries Opus audio (<see cref="AacBackfillService"/>),
+    /// so it plays in Safari. Off by default: turn it on once every worker runs a build that knows the job type.
+    /// </summary>
+    public bool AacBackfill { get; set; }
+
+    /// <summary>How many backfill <c>audio</c> jobs may wait or run at once; each pass tops the queue up to this.</summary>
+    public int AacBackfillBatchSize { get; set; } = 10;
+
+    /// <summary>How often the backfill tops the queue up.</summary>
+    public TimeSpan AacBackfillInterval { get; set; } = TimeSpan.FromMinutes(1);
+
     public int EffectiveMaxAttempts => Math.Max(1, MaxAttempts);
 
     public int EffectiveMaxReleases => Math.Max(0, MaxReleases);
@@ -59,10 +71,22 @@ public static class TranscodeRunTypes
     /// <summary>A shorter video version cut from the current output.</summary>
     public const string Trim = "trim";
 
+    /// <summary>
+    /// A new video version from the current output with its video copied and its audio re-encoded as AAC-LC, for
+    /// outputs encoded with Opus, which Safari doesn't play in MP4 (<see cref="AacBackfillService"/> queues them).
+    /// </summary>
+    public const string Audio = "audio";
+
     /// <summary>The on-demand H.264 file.</summary>
     public const string Fallback = "fallback";
 
-    public static readonly IReadOnlyList<string> All = [Transcode, Thumbnails, Trim, Fallback];
+    public static readonly IReadOnlyList<string> All = [Transcode, Thumbnails, Trim, Audio, Fallback];
+
+    /// <summary>The types that write a new video version from the current output and move the clip to it once done.</summary>
+    public static bool MakesVersionFromOutput(string type) => type is Trim or Audio;
+
+    /// <summary>The types whose completion moves the clip to the job's video version.</summary>
+    public static bool MovesClip(string type) => type is Transcode || MakesVersionFromOutput(type);
 
     /// <summary>
     /// Default claim order: someone is waiting on a new upload, a trim or a fallback, while regenerating thumbnails

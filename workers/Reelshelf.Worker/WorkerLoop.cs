@@ -143,11 +143,11 @@ public sealed class WorkerLoop(
     internal async Task StartAsync()
     {
         capabilities = await ffmpeg.CapabilitiesAsync(CancellationToken.None);
-        if (!capabilities.SvtAv1 || !capabilities.Opus)
+        if (!capabilities.SvtAv1 || !capabilities.Aac)
         {
             Environment.ExitCode = 1;
             throw new InvalidOperationException(
-                $"ffmpeg ({settings.FfmpegPath}) lacks libsvtav1 or libopus; the worker can't encode with it");
+                $"ffmpeg ({settings.FfmpegPath}) lacks libsvtav1 or aac; the worker can't encode with it");
         }
 
         if (!capabilities.CanToneMap)

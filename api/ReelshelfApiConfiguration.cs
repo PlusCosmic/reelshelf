@@ -419,6 +419,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<ClipSummaryBackgroundService>();
             builder.Services.AddHostedService<AccountDeletionBackgroundService>();
             builder.Services.AddHostedService<ClipBinSweepService>();
+            builder.Services.AddHostedService<AacBackfillService>();
         }
     }
 }

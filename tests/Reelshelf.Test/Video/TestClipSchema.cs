@@ -40,6 +40,7 @@ internal static class TestClipSchema
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V55__clip_bin.sql")));
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V60__clip_filed_category.sql")));
         await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V62__bunny_removed.sql")));
+        await connection.ExecuteAsync(await File.ReadAllTextAsync(MigrationPath("V66__transcode_run_audio.sql")));
     }
 
     public static string MigrationPath(string fileName)

@@ -230,7 +230,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The Dockerfile fails the build when the image's ffmpeg lacks libsvtav1, libopus or zscale/tonemap.
+      # The Dockerfile fails the build when the image's ffmpeg lacks libsvtav1, aac or zscale/tonemap.
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:

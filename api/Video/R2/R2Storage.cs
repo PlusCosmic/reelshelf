@@ -98,7 +98,7 @@ public sealed class R2Storage : ITranscodeStorage, IDisposable
         {
             TranscodeRunTypes.Transcode => R2ObjectKeys.Upload(clipId),
             TranscodeRunTypes.Thumbnails => R2ObjectKeys.Output(clipId, videoVersion, R2ObjectKeys.Av1),
-            TranscodeRunTypes.Trim => R2ObjectKeys.Output(clipId, currentVersion, R2ObjectKeys.Av1),
+            TranscodeRunTypes.Trim or TranscodeRunTypes.Audio => R2ObjectKeys.Output(clipId, currentVersion, R2ObjectKeys.Av1),
             _ => null
         };
         if (sourceKey is null)

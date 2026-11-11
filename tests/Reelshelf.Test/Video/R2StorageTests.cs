@@ -42,6 +42,7 @@ public class R2StorageTests
         Assert.Equal(["av1.mp4", .. Thumbnails, "preview.mp4"], R2ObjectKeys.OutputsFor(TranscodeRunTypes.Transcode));
         Assert.Equal(Thumbnails, R2ObjectKeys.OutputsFor(TranscodeRunTypes.Thumbnails));
         Assert.Equal(["av1.mp4", .. Thumbnails], R2ObjectKeys.OutputsFor(TranscodeRunTypes.Trim));
+        Assert.Equal(["av1.mp4", .. Thumbnails], R2ObjectKeys.OutputsFor(TranscodeRunTypes.Audio));
         Assert.Empty(R2ObjectKeys.OutputsFor(TranscodeRunTypes.Fallback));
         Assert.Equal("video/mp4", R2ObjectKeys.ContentType("preview.mp4"));
         Assert.Equal("image/jpeg", R2ObjectKeys.ContentType("thumbnail_3.jpg"));
@@ -99,6 +100,18 @@ public class R2StorageTests
         using R2Storage storage = new(Options, NullLogger<R2Storage>.Instance);
 
         TranscodeJobUrls urls = storage.UrlsFor(ClipId, TranscodeRunTypes.Trim, 3, 2, TimeSpan.FromHours(2));
+
+        Assert.Equal($"/reelshelf-dev/clips/{ClipId}/v2/av1.mp4", new Uri(urls.SourceUrl!).AbsolutePath);
+        Assert.Equal(Sorted(["av1.mp4", .. Thumbnails]), Sorted(urls.UploadUrls!.Keys));
+        Assert.Equal($"/reelshelf-dev/clips/{ClipId}/v3/av1.mp4", new Uri(urls.UploadUrls["av1.mp4"]).AbsolutePath);
+    }
+
+    [Fact]
+    public void AnAudioJob_ReadsTheCurrentVersion_AndWritesTheNext()
+    {
+        using R2Storage storage = new(Options, NullLogger<R2Storage>.Instance);
+
+        TranscodeJobUrls urls = storage.UrlsFor(ClipId, TranscodeRunTypes.Audio, 3, 2, TimeSpan.FromHours(2));
 
         Assert.Equal($"/reelshelf-dev/clips/{ClipId}/v2/av1.mp4", new Uri(urls.SourceUrl!).AbsolutePath);
         Assert.Equal(Sorted(["av1.mp4", .. Thumbnails]), Sorted(urls.UploadUrls!.Keys));

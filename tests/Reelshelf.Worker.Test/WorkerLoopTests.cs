@@ -118,7 +118,7 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
         Assert.InRange(completion.GetProperty("length_seconds").GetDouble(), 2.9, 3.1);
         Assert.Equal(api.Uploads[OutputFiles.Video].Length, completion.GetProperty("size_bytes").GetInt64());
         JsonElement outputs = completion.GetProperty("outputs");
-        Assert.Matches(Av1WithOpus(), outputs.GetProperty("codecs").GetString());
+        Assert.Matches(Av1WithAac(), outputs.GetProperty("codecs").GetString());
         Assert.Equal(1280, outputs.GetProperty("width").GetInt32());
         Assert.Equal(720, outputs.GetProperty("height").GetInt32());
         Assert.Equal(TranscodeOutputs.Order(), outputs.GetProperty("files").EnumerateArray().Select(file => file.GetString()).Order());
@@ -128,7 +128,7 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
 
         MediaInfo video = await ProbeAsync(api.Uploads[OutputFiles.Video].Path);
         Assert.Equal("av1", video.Video!.Codec);
-        Assert.Equal("opus", video.Audio!.Codec);
+        Assert.Equal("aac", video.Audio!.Codec);
         Assert.Equal(outputs.GetProperty("codecs").GetString(), Codecs.For(video));
         // The source's 60 fps is kept, with a keyframe every second (60 frames).
         Assert.Equal("60/1", await FrameRateAsync(api.Uploads[OutputFiles.Video].Path));
@@ -185,10 +185,38 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
         JsonElement completion = api.Completion!.Value;
         // The cut starts on a keyframe, at most a second early.
         Assert.InRange(completion.GetProperty("length_seconds").GetDouble(), 1.9, 3.1);
-        Assert.Matches(Av1WithOpus(), completion.GetProperty("outputs").GetProperty("codecs").GetString());
+        // The source is an output from before AAC, so its Opus audio is re-encoded on the way.
+        Assert.Matches(Av1WithAac(), completion.GetProperty("outputs").GetProperty("codecs").GetString());
         Assert.Equal(TrimOutputs.Order(), api.Uploads.Keys.Order());
         AssertUploadHeaders(TrimOutputs);
         AssertFramesReportedAfterUpload();
+    }
+
+    [SvtAv1Fact]
+    public async Task Audio_CopiesTheVideo_ReencodesOpusAsAac_AndTakesNewFrames()
+    {
+        string source = await Av1SourceAsync();
+        api.Enqueue(JobTypes.Audio, source, TrimOutputs);
+
+        Assert.True(await RunOnceAsync());
+
+        Assert.Null(api.Failure);
+        JsonElement completion = api.Completion!.Value;
+        MediaInfo before = await ProbeAsync(source);
+        Assert.InRange(completion.GetProperty("length_seconds").GetDouble(), before.DurationSeconds - 0.1,
+            before.DurationSeconds + 0.1);
+        Assert.Matches(Av1WithAac(), completion.GetProperty("outputs").GetProperty("codecs").GetString());
+        Assert.Equal(TrimOutputs.Order(), api.Uploads.Keys.Order());
+        AssertUploadHeaders(TrimOutputs);
+        AssertFramesReportedAfterUpload();
+
+        MediaInfo after = await ProbeAsync(api.Uploads[OutputFiles.Video].Path);
+        Assert.Equal("aac", after.Audio!.Codec);
+        // The picture is copied as it was, not re-encoded.
+        Assert.Equal(before.Video!.Codec, after.Video!.Codec);
+        Assert.Equal(before.Video.Width, after.Video.Width);
+        Assert.Equal(before.Video.Level, after.Video.Level);
+        Assert.Equal(await KeyframeTimesAsync(source), await KeyframeTimesAsync(api.Uploads[OutputFiles.Video].Path));
     }
 
     [SvtAv1Fact]
@@ -511,6 +539,6 @@ public sealed partial class WorkerLoopTests : IAsyncLifetime
         return stdout;
     }
 
-    [GeneratedRegex(@"^av01\.0\.\d\dM\.08,opus$")]
-    private static partial Regex Av1WithOpus();
+    [GeneratedRegex(@"^av01\.0\.\d\dM\.08,mp4a\.40\.2$")]
+    private static partial Regex Av1WithAac();
 }
