@@ -50,7 +50,7 @@ public sealed class WorkerSettings
     public int HighFrameRateBitrateKbps { get; set; } = 6000;
 
     /// <summary>The AAC-LC audio bitrate.</summary>
-    public int AudioBitrateKbps { get; set; } = 160;
+    public int AudioBitrateKbps { get; set; } = 192;
 
     /// <summary>ffmpeg and ffprobe run under <c>nice -n</c> this value; 0 runs them at the worker's own priority.</summary>
     public int Niceness { get; set; } = 10;

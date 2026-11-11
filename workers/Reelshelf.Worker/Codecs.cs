@@ -4,7 +4,7 @@ namespace Reelshelf.Worker;
 
 /// <summary>
 /// The RFC 6381 <c>codecs</c> value for a produced file, as players pass it to <c>mediaCapabilities</c> and
-/// <c>canPlayType</c>, e.g. <c>av01.0.08M.08,opus</c>.
+/// <c>canPlayType</c>, e.g. <c>av01.0.08M.08,mp4a.40.2</c>.
 /// </summary>
 public static class Codecs
 {

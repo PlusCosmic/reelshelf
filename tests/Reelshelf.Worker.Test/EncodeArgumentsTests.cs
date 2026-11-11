@@ -26,7 +26,7 @@ public class EncodeArgumentsTests
         AssertOption(args, "-fps_mode", "cfr");
         AssertOption(args, "-movflags", "+faststart");
         AssertOption(args, "-c:a", "aac");
-        AssertOption(args, "-b:a", "160k");
+        AssertOption(args, "-b:a", "192k");
         AssertOption(args, "-ac", "2");
         AssertOption(args, "-map_metadata", "-1");
         AssertOption(args, "-progress", "pipe:1");
@@ -177,7 +177,7 @@ public class EncodeArgumentsTests
 
         AssertOption(args, "-c:v", "copy");
         AssertOption(args, "-c:a", "aac");
-        AssertOption(args, "-b:a", "160k");
+        AssertOption(args, "-b:a", "192k");
         Assert.DoesNotContain("-c", args);
         Assert.DoesNotContain("-ss", args);
         Assert.DoesNotContain("-t", args);
