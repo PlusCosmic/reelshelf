@@ -41,16 +41,34 @@ public sealed class ModerationOptions
 
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>Purges the media domain when it is on Cloudflare. Set this or <see cref="CloudFront"/>, never both.</summary>
     public CloudflareOptions Cloudflare { get; set; } = new();
+
+    /// <summary>Purges the media domain when it is on CloudFront. Set this or <see cref="Cloudflare"/>, never both.</summary>
+    public CloudFrontOptions CloudFront { get; set; } = new();
 
     public sealed class CloudflareOptions
     {
-        /// <summary>The zone of the media domain (<c>R2:MediaBaseUrl</c>).</summary>
+        /// <summary>The zone of the media domain (<c>Storage:MediaBaseUrl</c>).</summary>
         public string ZoneId { get; set; } = "";
 
         /// <summary>An API token with only the zone's Cache Purge permission.</summary>
         public string ApiToken { get; set; } = "";
 
         public bool IsConfigured => ZoneId.Length > 0 && ApiToken.Length > 0;
+
+        /// <summary>Either setting given, even without the other, which counts when checking for a second CDN.</summary>
+        public bool IsSet => ZoneId.Trim().Length > 0 || ApiToken.Trim().Length > 0;
+    }
+
+    public sealed class CloudFrontOptions
+    {
+        /// <summary>
+        /// The media domain's distribution. Invalidations are signed with the object store's credentials
+        /// (<c>Storage:AccessKeyId</c>/<c>SecretAccessKey</c>), which need <c>cloudfront:CreateInvalidation</c> on it.
+        /// </summary>
+        public string DistributionId { get; set; } = "";
+
+        public bool IsConfigured => DistributionId.Trim().Length > 0;
     }
 }

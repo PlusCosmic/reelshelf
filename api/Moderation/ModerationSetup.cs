@@ -8,8 +8,9 @@ public static class ModerationSetup
     /// <summary>
     /// Reports, takedowns and removals. Removing a clip needs the private evidence bucket (<c>Moderation:EvidenceBucket</c>,
     /// reached through the media bucket's store and credentials, <c>Storage:*</c> or <c>R2:*</c>); without it the queue
-    /// still works but clips can't be removed. Purging the media domain needs <c>Moderation:Cloudflare</c>. The evidence
-    /// service never runs in <c>OpenApi</c>.
+    /// still works but clips can't be removed. Purging the media domain needs <c>Moderation:Cloudflare</c> (a zone) or
+    /// <c>Moderation:CloudFront</c> (a distribution, invalidated with the store's own AWS credentials), whichever CDN
+    /// serves it; setting both fails startup. The evidence service never runs in <c>OpenApi</c>.
     /// </summary>
     public static void AddModeration(this WebApplicationBuilder builder)
     {
@@ -17,6 +18,12 @@ public static class ModerationSetup
         builder.Services.Configure<ModerationOptions>(section);
         ModerationOptions options = section.Get<ModerationOptions>() ?? new ModerationOptions();
         R2Options? r2 = R2Options.FromConfiguration(builder.Configuration);
+        if (options.CloudFront.IsConfigured && options.Cloudflare.IsSet)
+        {
+            throw new InvalidOperationException(
+                "Moderation:CloudFront and Moderation:Cloudflare are both set; the media domain is on one CDN, so set " +
+                "only the one that serves it");
+        }
 
         builder.Services.AddScoped<ContentReportStatements>();
         builder.Services.AddScoped<ContentReportService>();
@@ -42,6 +49,20 @@ public static class ModerationSetup
         if (r2 is null)
         {
             builder.Services.AddSingleton<ICdnPurger>(new NoCdnPurger(CdnPurgeResults.NotNeeded));
+        }
+        else if (options.CloudFront.IsConfigured)
+        {
+            if (r2.ServiceUrl is not null)
+            {
+                // Its keys are the endpoint's own, not AWS's, so every invalidation would be refused, and a failing
+                // purge holds up the evidence copy behind it.
+                throw new InvalidOperationException(
+                    "Moderation:CloudFront:DistributionId needs the object store on AWS S3 (Storage:Region without " +
+                    "Storage:Endpoint), whose credentials sign the invalidations");
+            }
+
+            string distributionId = options.CloudFront.DistributionId.Trim();
+            builder.Services.AddSingleton<ICdnPurger>(_ => new CloudFrontCdnPurger(r2, distributionId));
         }
         else if (options.Cloudflare.IsConfigured)
         {
