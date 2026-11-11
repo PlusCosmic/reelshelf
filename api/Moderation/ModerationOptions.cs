@@ -9,8 +9,9 @@ public sealed class ModerationOptions
     public string ContactEmail { get; set; } = "support@reelshelf.app";
 
     /// <summary>
-    /// The private R2 bucket removed clips are copied into, in the same account and reached with the same <c>R2:*</c>
-    /// credentials as the media bucket. It must have no public domain. Without it, clips can't be removed.
+    /// The private bucket removed clips are copied into, in the same store and reached with the same credentials as
+    /// the media bucket (<c>Storage:*</c> or <c>R2:*</c>). It must have no public domain. Without it, clips can't be
+    /// removed.
     /// </summary>
     public string EvidenceBucket { get; set; } = "";
 

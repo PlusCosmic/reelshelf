@@ -7,8 +7,9 @@ public static class ModerationSetup
 {
     /// <summary>
     /// Reports, takedowns and removals. Removing a clip needs the private evidence bucket (<c>Moderation:EvidenceBucket</c>,
-    /// reached with the <c>R2:*</c> credentials); without it the queue still works but clips can't be removed. Purging
-    /// the media domain needs <c>Moderation:Cloudflare</c>. The evidence service never runs in <c>OpenApi</c>.
+    /// reached through the media bucket's store and credentials, <c>Storage:*</c> or <c>R2:*</c>); without it the queue
+    /// still works but clips can't be removed. Purging the media domain needs <c>Moderation:Cloudflare</c>. The evidence
+    /// service never runs in <c>OpenApi</c>.
     /// </summary>
     public static void AddModeration(this WebApplicationBuilder builder)
     {
@@ -26,14 +27,7 @@ public static class ModerationSetup
 
         if (r2 is not null && options.EvidenceBucket.Length > 0)
         {
-            R2Options evidenceBucket = new()
-            {
-                AccountId = r2.AccountId,
-                AccessKeyId = r2.AccessKeyId,
-                SecretAccessKey = r2.SecretAccessKey,
-                Bucket = options.EvidenceBucket,
-                MediaBaseUrl = r2.MediaBaseUrl
-            };
+            R2Options evidenceBucket = r2.WithBucket(options.EvidenceBucket);
             builder.Services.AddSingleton<IEvidenceStorage>(provider => new R2EvidenceStorage(
                 new R2Storage(evidenceBucket, provider.GetRequiredService<ILogger<R2Storage>>())));
         }
