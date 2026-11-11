@@ -90,6 +90,8 @@ public class TranscodeQueue(
     /// <summary>
     /// Hands the next job to a worker, or null when there is none. Jobs that ran out of attempts are failed
     /// first, so a clip whose transcode keeps dying ends <c>encode_failed</c> rather than waiting for ever.
+    /// <paramref name="worker"/> is the name of the worker's secret: a pool limited to some job types
+    /// (<see cref="TranscodingOptions.WorkerJobTypes"/>) is handed only those, and gets null while only others wait.
     /// </summary>
     public async Task<ClaimedTranscodeRun?> ClaimAsync(string? worker = null)
     {
@@ -113,7 +115,8 @@ public class TranscodeQueue(
                 run.Type, run.Id, run.ClipId, maxAttempts);
         }
 
-        TranscodeStatements.ClaimedRunRow? claimed = await statements.ClaimNextRunAsync(maxAttempts, current.StaleAfter);
+        TranscodeStatements.ClaimedRunRow? claimed = await statements.ClaimNextRunAsync(maxAttempts, current.StaleAfter,
+            current.JobTypesFor(worker));
         if (claimed is null)
         {
             return null;

@@ -88,8 +88,15 @@ public sealed class WorkerOptions
 /// <summary>A worker credential and the name of the pool of workers it belongs to.</summary>
 public sealed record WorkerSecret(string Name, string Value);
 
-/// <summary>Warns at startup about worker secrets that are set but ignored, so a short one doesn't fail silently.</summary>
-public sealed class WorkerSecretsCheck(IOptions<WorkerOptions> options, ILogger<WorkerSecretsCheck> logger) : IHostedService
+/// <summary>
+/// Warns at startup about worker secrets that are set but ignored, so a short one doesn't fail silently, and about
+/// job types set for a pool that has no usable secret (<see cref="TranscodingOptions.WorkerJobTypes"/>), so a
+/// misspelt pool name doesn't leave its workers claiming everything unnoticed.
+/// </summary>
+public sealed class WorkerSecretsCheck(
+    IOptions<WorkerOptions> options,
+    IOptions<TranscodingOptions> transcoding,
+    ILogger<WorkerSecretsCheck> logger) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -98,7 +105,26 @@ public sealed class WorkerSecretsCheck(IOptions<WorkerOptions> options, ILogger<
             logger.LogWarning("Ignoring the worker secret named {WorkerSecret}: {Reason}", name, reason);
         }
 
+        foreach (string pool in PoolsWithoutSecret(options.Value, transcoding.Value))
+        {
+            logger.LogWarning(
+                "Transcoding:WorkerJobTypes:{WorkerSecret} limits a pool that has no usable worker secret, so it limits nothing",
+                pool);
+        }
+
         return Task.CompletedTask;
+    }
+
+    /// <summary>The pools given job types that no usable worker secret is named after.</summary>
+    internal static IReadOnlyList<string> PoolsWithoutSecret(WorkerOptions workers, TranscodingOptions transcoding)
+    {
+        HashSet<string> names = workers.EffectiveSecrets
+            .Select(secret => secret.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return transcoding.WorkerJobTypes.Keys
+            .Where(pool => !names.Contains(pool.Trim()))
+            .OrderBy(pool => pool, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
 
 namespace Reelshelf.Video.Transcoding;
 
@@ -54,9 +55,54 @@ public sealed class TranscodingOptions
     /// <summary>How often the backfill tops the queue up.</summary>
     public TimeSpan AacBackfillInterval { get; set; } = TimeSpan.FromMinutes(1);
 
+    /// <summary>
+    /// The job types a pool of workers may claim, by the name of its worker secret
+    /// (<c>Transcoding:WorkerJobTypes:aws=transcode,trim,thumbnails</c>; <see cref="WorkerOptions.DefaultSecretName"/>
+    /// for <c>Worker:Secret</c>), comma-separated. A pool with no entry, or an empty one, claims every type. It keeps
+    /// jobs off workers where they cost more than elsewhere: an overflow worker pays for every byte it uploads, and a
+    /// backfill <c>audio</c> job uploads a whole video for a few seconds of work, so those wait for the dedicated
+    /// workers. Keep <c>Overflow:JobTypes</c> to the same types, or the scaler starts workers for jobs they can't take.
+    /// </summary>
+    public Dictionary<string, string?> WorkerJobTypes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     public int EffectiveMaxAttempts => Math.Max(1, MaxAttempts);
 
     public int EffectiveMaxReleases => Math.Max(0, MaxReleases);
+
+    /// <summary>The job types the named pool's workers may claim; empty means every type.</summary>
+    public IReadOnlyList<string> JobTypesFor(string? worker) =>
+        SplitJobTypes(WorkerJobTypes
+            .FirstOrDefault(entry => string.Equals(entry.Key.Trim(), worker, StringComparison.OrdinalIgnoreCase))
+            .Value);
+
+    /// <summary>What is wrong with <see cref="WorkerJobTypes"/>, for startup: a job type that doesn't exist.</summary>
+    public IReadOnlyList<string> WorkerJobTypeProblems() =>
+    [
+        .. WorkerJobTypes
+            .OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(entry => (entry.Key, Unknown: SplitJobTypes(entry.Value).Except(TranscodeRunTypes.All).ToList()))
+            .Where(entry => entry.Unknown.Count > 0)
+            .Select(entry =>
+                $"{SectionName}:{nameof(WorkerJobTypes)}:{entry.Key} has unknown job types: {string.Join(", ", entry.Unknown)}")
+    ];
+
+    private static List<string> SplitJobTypes(string? types) =>
+        (types ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(type => type.ToLowerInvariant())
+        .Distinct()
+        .ToList();
+}
+
+/// <summary>Fails startup on a <see cref="TranscodingOptions.WorkerJobTypes"/> entry naming a job type that doesn't exist.</summary>
+public sealed class TranscodingOptionsValidation : IValidateOptions<TranscodingOptions>
+{
+    public ValidateOptionsResult Validate(string? name, TranscodingOptions options)
+    {
+        IReadOnlyList<string> problems = options.WorkerJobTypeProblems();
+        return problems.Count == 0
+            ? ValidateOptionsResult.Success
+            : ValidateOptionsResult.Fail(problems);
+    }
 }
 
 /// <summary>The job types in <c>transcode_run.type</c>; see reelshelf-docs/video-pipeline/workers-and-jobs.md.</summary>

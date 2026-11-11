@@ -241,6 +241,44 @@ public class TranscodeQueueTests
     }
 
     [PostgresFact]
+    public async Task Claim_HandsAPoolOnlyItsJobTypes_AndLeavesTheRestForOtherWorkers()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync(
+            workerJobTypes: new() { ["aws"] = "transcode, trim,thumbnails" });
+        Guid ready = await test.AddClipAsync("ready");
+        Guid uploaded = await test.AddClipAsync("uploaded");
+
+        // The backfill's audio job is older, but an overflow worker would pay to upload the whole video again.
+        Guid? audio = await test.Queue.EnqueueAsync(ready, TranscodeRunTypes.Audio, new TranscodeRunInput(), videoVersion: 2);
+        Guid? transcode = await test.Queue.EnqueueAsync(uploaded, TranscodeRunTypes.Transcode, new TranscodeRunInput("a"));
+        await test.Connection.ExecuteAsync("UPDATE transcode_run SET priority = 0, created_at = now() - interval '1 minute' WHERE id = @Id",
+            new { Id = audio });
+
+        Assert.Equal(transcode, (await test.Queue.ClaimAsync("AWS"))?.RunId);
+        // Only the audio job waits now: the pool gets nothing, so its workers go idle and stop.
+        Assert.Null(await test.Queue.ClaimAsync("aws"));
+        Assert.Equal((0, "pending"), await test.Connection.QuerySingleAsync<(int, string)>(
+            "SELECT attempts, status FROM transcode_run WHERE id = @Id", new { Id = audio }));
+
+        // A pool with no entry claims every type.
+        Assert.Equal(audio, (await test.Queue.ClaimAsync("default"))?.RunId);
+    }
+
+    [PostgresFact]
+    public async Task Claim_DoesNotReclaimAStaleJobOfATypeThePoolMayNotTake()
+    {
+        await using TestQueue test = await TestQueue.CreateAsync(workerJobTypes: new() { ["aws"] = "transcode" });
+        Guid clipId = await test.AddClipAsync("ready");
+        Guid? audio = await test.Queue.EnqueueAsync(clipId, TranscodeRunTypes.Audio, new TranscodeRunInput(), videoVersion: 2);
+        Assert.Equal(audio, (await test.Queue.ClaimAsync("default"))?.RunId);
+        await test.Connection.ExecuteAsync(
+            "UPDATE transcode_run SET heartbeat_at = now() - interval '1 hour' WHERE id = @Id", new { Id = audio });
+
+        Assert.Null(await test.Queue.ClaimAsync("aws"));
+        Assert.Equal(2, (await test.Queue.ClaimAsync("default"))?.Attempt);
+    }
+
+    [PostgresFact]
     public async Task Claim_GoesByPriority_ThenAge()
     {
         await using TestQueue test = await TestQueue.CreateAsync();
@@ -537,7 +575,7 @@ public class TranscodeQueueTests
 
         /// <param name="storage">The storage the queue uses instead of <see cref="Storage"/>, e.g. R2 over <see cref="FakeR2Client"/>.</param>
         public static async Task<TestQueue> CreateAsync(int maxAttempts = 3, int maxReleases = 10,
-            ITranscodeStorage? storage = null)
+            ITranscodeStorage? storage = null, Dictionary<string, string?>? workerJobTypes = null)
         {
             // The API sets this at startup; the statements' row classes rely on it.
             DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -570,7 +608,10 @@ public class TranscodeQueueTests
                 new TranscodeStatements(scoped),
                 handler,
                 storage ?? fake,
-                new FixedOptions<TranscodingOptions>(new TranscodingOptions { MaxAttempts = maxAttempts, MaxReleases = maxReleases }),
+                new FixedOptions<TranscodingOptions>(new TranscodingOptions
+                {
+                    MaxAttempts = maxAttempts, MaxReleases = maxReleases, WorkerJobTypes = workerJobTypes ?? []
+                }),
                 NullLogger<TranscodeQueue>.Instance);
             return new TestQueue(dataSource, connection, schema, queue, fake);
         }
