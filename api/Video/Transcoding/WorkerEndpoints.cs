@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Options;
 
 namespace Reelshelf.Video.Transcoding;
 
@@ -187,7 +188,10 @@ public static class WorkerSetup
     /// </summary>
     public static void AddTranscodeWorkers(this WebApplicationBuilder builder)
     {
-        builder.Services.Configure<TranscodingOptions>(builder.Configuration.GetSection(TranscodingOptions.SectionName));
+        builder.Services.AddOptions<TranscodingOptions>()
+            .Bind(builder.Configuration.GetSection(TranscodingOptions.SectionName))
+            .ValidateOnStart();
+        builder.Services.AddSingleton<IValidateOptions<TranscodingOptions>, TranscodingOptionsValidation>();
         builder.Services.Configure<WorkerOptions>(builder.Configuration.GetSection(WorkerOptions.SectionName));
         builder.Services.AddHostedService<WorkerSecretsCheck>();
         builder.Services.AddScoped<TranscodeStatements>();

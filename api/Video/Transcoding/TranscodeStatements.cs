@@ -90,9 +90,11 @@ public class TranscodeStatements(NpgsqlConnection connection)
     /// the oldest. Each claim issues a new lease, and the run comes back with its clip's current video version, which
     /// a trim reads from. SKIP LOCKED keeps two
     /// workers (or API instances) from claiming the same job; a row another claim changed meanwhile is re-checked
-    /// against the conditions and skipped.
+    /// against the conditions and skipped. With <paramref name="jobTypes"/>, only jobs of those types are claimed
+    /// (<see cref="TranscodingOptions.WorkerJobTypes"/>); the rest wait for a worker that may take them.
     /// </summary>
-    public async Task<ClaimedRunRow?> ClaimNextRunAsync(int maxAttempts, TimeSpan staleAfter)
+    public async Task<ClaimedRunRow?> ClaimNextRunAsync(int maxAttempts, TimeSpan staleAfter,
+        IReadOnlyCollection<string>? jobTypes = null)
     {
         const string sql = """
             UPDATE transcode_run run
@@ -108,6 +110,7 @@ public class TranscodeStatements(NpgsqlConnection connection)
                 WHERE attempts < @MaxAttempts
                   AND ((status = 'pending' AND available_at <= now())
                     OR (status = 'running' AND heartbeat_at < now() - @StaleAfter))
+                  AND (cardinality(@JobTypes) = 0 OR type = ANY(@JobTypes))
                 ORDER BY priority, created_at
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED)
@@ -116,7 +119,7 @@ public class TranscodeStatements(NpgsqlConnection connection)
                       clip.video_version AS current_video_version
             """;
         return await connection.QuerySingleOrDefaultAsync<ClaimedRunRow>(sql,
-            new { MaxAttempts = maxAttempts, StaleAfter = staleAfter });
+            new { MaxAttempts = maxAttempts, StaleAfter = staleAfter, JobTypes = jobTypes?.ToArray() ?? [] });
     }
 
     /// <summary>
