@@ -47,7 +47,7 @@ fn toolbar(s: &Monitor, l: &Look, title: &str, open: bool) -> Toolbar {
         actions = actions.child(
             SegmentedControl::new(&labels, picked)
                 .label(copy::TIME_RANGE)
-                .fit()
+                .width(Some(192.0))
                 .on_pick(|s: &mut Monitor, i: usize, _: &mut Tx| s.reload(TimeRange::ALL[i]))
                 .build(k)
                 .key("range"),
