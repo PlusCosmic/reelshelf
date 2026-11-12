@@ -1,0 +1,114 @@
+{
+ "results": {
+  "A": {
+   "status": 200,
+   "frames": [
+    {
+     "schema": {
+      "refId": "A",
+      "meta": {
+       "type": "timeseries-multi"
+      },
+      "fields": [
+       {
+        "name": "Time",
+        "type": "time",
+        "typeInfo": {
+         "frame": "time.Time"
+        },
+        "config": {
+         "interval": 60000
+        }
+       },
+       {
+        "name": "Value",
+        "type": "number",
+        "labels": {},
+        "config": {
+         "displayNameFromDS": "p50"
+        }
+       }
+      ]
+     },
+     "data": {
+      "values": [
+       [
+        1731400000000,
+        1731400060000,
+        1731400120000,
+        1731400180000,
+        1731400240000
+       ],
+       [
+        0.012,
+        0.014,
+        0.013,
+        0.015,
+        0.011
+       ]
+      ]
+     }
+    }
+   ]
+  },
+  "B": {
+   "status": 200,
+   "frames": [
+    {
+     "schema": {
+      "refId": "B",
+      "meta": {
+       "type": "timeseries-multi"
+      },
+      "fields": [
+       {
+        "name": "Time",
+        "type": "time",
+        "typeInfo": {
+         "frame": "time.Time"
+        },
+        "config": {
+         "interval": 60000
+        }
+       },
+       {
+        "name": "Value",
+        "type": "number",
+        "labels": {},
+        "config": {
+         "displayNameFromDS": "p95"
+        }
+       }
+      ]
+     },
+     "data": {
+      "values": [
+       [
+        1731400000000,
+        1731400060000,
+        1731400120000,
+        1731400180000,
+        1731400240000
+       ],
+       [
+        0.08,
+        0.11,
+        null,
+        null,
+        0.09
+       ]
+      ],
+      "entities": [
+       null,
+       {
+        "NaN": [
+         2
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

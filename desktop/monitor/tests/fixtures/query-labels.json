@@ -1,0 +1,55 @@
+{
+ "results": {
+  "A": {
+   "status": 200,
+   "frames": [
+    {
+     "schema": {
+      "refId": "A",
+      "meta": {
+       "type": "timeseries-multi"
+      },
+      "fields": [
+       {
+        "name": "Time",
+        "type": "time",
+        "typeInfo": {
+         "frame": "time.Time"
+        },
+        "config": {
+         "interval": 60000
+        }
+       },
+       {
+        "name": "Value",
+        "type": "number",
+        "labels": {
+         "status": "2xx"
+        },
+        "config": {}
+       }
+      ]
+     },
+     "data": {
+      "values": [
+       [
+        1731400000000,
+        1731400060000,
+        1731400120000,
+        1731400180000,
+        1731400240000
+       ],
+       [
+        1,
+        2,
+        3,
+        4,
+        5
+       ]
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

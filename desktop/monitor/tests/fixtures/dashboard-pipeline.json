@@ -1,0 +1,663 @@
+{
+ "dashboard": {
+  "uid": "reelshelf-pipeline",
+  "title": "Reelshelf pipeline",
+  "tags": [
+   "reelshelf"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 3,
+  "refresh": "30s",
+  "time": {
+   "from": "now-6h",
+   "to": "now"
+  },
+  "editable": false,
+  "graphTooltip": 1,
+  "templating": {
+   "list": [
+    {
+     "name": "env",
+     "label": "Environment",
+     "type": "query",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "query": {
+      "query": "label_values(reelshelf_queue_pending, deployment_environment_name)",
+      "refId": "env"
+     },
+     "definition": "label_values(reelshelf_queue_pending, deployment_environment_name)",
+     "refresh": 2,
+     "includeAll": true,
+     "multi": false,
+     "current": {
+      "selected": true,
+      "text": "Production",
+      "value": "Production"
+     },
+     "allValue": ".*"
+    },
+    {
+     "name": "gcm",
+     "label": "Cloud Monitoring",
+     "type": "datasource",
+     "query": "stackdriver",
+     "hide": 2,
+     "current": {}
+    }
+   ]
+  },
+  "annotations": {
+   "list": []
+  },
+  "panels": [
+   {
+    "type": "row",
+    "title": "Transcoding",
+    "id": 1,
+    "collapsed": false,
+    "gridPos": {
+     "h": 1,
+     "w": 24,
+     "x": 0,
+     "y": 0
+    },
+    "panels": []
+   },
+   {
+    "type": "stat",
+    "title": "Waiting to be claimed",
+    "id": 2,
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "gridPos": {
+     "h": 4,
+     "w": 6,
+     "x": 0,
+     "y": 1
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum(max by (deployment_environment_name) (reelshelf_queue_pending{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "instant": true
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {
+      "unit": "short",
+      "thresholds": {
+       "mode": "absolute",
+       "steps": [
+        {
+         "color": "text",
+         "value": null
+        }
+       ]
+      },
+      "color": {
+       "mode": "thresholds"
+      }
+     },
+     "overrides": []
+    },
+    "options": {
+     "reduceOptions": {
+      "calcs": [
+       "lastNotNull"
+      ],
+      "fields": "",
+      "values": false
+     },
+     "colorMode": "value",
+     "graphMode": "area",
+     "textMode": "auto",
+     "justifyMode": "auto"
+    }
+   },
+   {
+    "type": "stat",
+    "title": "Being worked on",
+    "id": 3,
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "gridPos": {
+     "h": 4,
+     "w": 6,
+     "x": 6,
+     "y": 1
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum(max by (deployment_environment_name) (reelshelf_queue_running{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "instant": true
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {
+      "unit": "short",
+      "thresholds": {
+       "mode": "absolute",
+       "steps": [
+        {
+         "color": "text",
+         "value": null
+        }
+       ]
+      },
+      "color": {
+       "mode": "thresholds"
+      }
+     },
+     "overrides": []
+    },
+    "options": {
+     "reduceOptions": {
+      "calcs": [
+       "lastNotNull"
+      ],
+      "fields": "",
+      "values": false
+     },
+     "colorMode": "value",
+     "graphMode": "area",
+     "textMode": "auto",
+     "justifyMode": "auto"
+    }
+   },
+   {
+    "type": "stat",
+    "title": "Oldest wait",
+    "id": 4,
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "gridPos": {
+     "h": 4,
+     "w": 6,
+     "x": 12,
+     "y": 1
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "max(reelshelf_queue_oldest_pending_age_seconds{queue=\"transcode\",deployment_environment_name=~\"$env\"})",
+      "instant": true
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {
+      "unit": "s",
+      "thresholds": {
+       "mode": "absolute",
+       "steps": [
+        {
+         "color": "green",
+         "value": null
+        },
+        {
+         "color": "orange",
+         "value": 120
+        },
+        {
+         "color": "red",
+         "value": 600
+        }
+       ]
+      },
+      "color": {
+       "mode": "thresholds"
+      }
+     },
+     "overrides": []
+    },
+    "options": {
+     "reduceOptions": {
+      "calcs": [
+       "lastNotNull"
+      ],
+      "fields": "",
+      "values": false
+     },
+     "colorMode": "value",
+     "graphMode": "area",
+     "textMode": "auto",
+     "justifyMode": "auto"
+    }
+   },
+   {
+    "type": "stat",
+    "title": "Stale (worker gone)",
+    "id": 5,
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "gridPos": {
+     "h": 4,
+     "w": 6,
+     "x": 18,
+     "y": 1
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum(max by (deployment_environment_name) (reelshelf_queue_stale_running{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "instant": true
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {
+      "unit": "short",
+      "thresholds": {
+       "mode": "absolute",
+       "steps": [
+        {
+         "color": "green",
+         "value": null
+        },
+        {
+         "color": "red",
+         "value": 1
+        }
+       ]
+      },
+      "color": {
+       "mode": "thresholds"
+      }
+     },
+     "overrides": []
+    },
+    "options": {
+     "reduceOptions": {
+      "calcs": [
+       "lastNotNull"
+      ],
+      "fields": "",
+      "values": false
+     },
+     "colorMode": "value",
+     "graphMode": "area",
+     "textMode": "auto",
+     "justifyMode": "auto"
+    }
+   },
+   {
+    "type": "timeseries",
+    "title": "Queue by job type",
+    "id": 6,
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "gridPos": {
+     "h": 8,
+     "w": 12,
+     "x": 0,
+     "y": 5
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum by (trigger) (max by (deployment_environment_name, trigger) (reelshelf_queue_pending{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "legendFormat": "waiting: {{trigger}}"
+     },
+     {
+      "refId": "B",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum by (trigger) (max by (deployment_environment_name, trigger) (reelshelf_queue_running{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "legendFormat": "running: {{trigger}}"
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {
+      "unit": "short",
+      "min": 0,
+      "custom": {
+       "drawStyle": "line",
+       "lineWidth": 2,
+       "fillOpacity": 5,
+       "stacking": {
+        "mode": "none",
+        "group": "A"
+       },
+       "showPoints": "never",
+       "spanNulls": true,
+       "lineInterpolation": "stepAfter"
+      }
+     },
+     "overrides": []
+    },
+    "options": {
+     "legend": {
+      "displayMode": "list",
+      "placement": "bottom",
+      "showLegend": true
+     },
+     "tooltip": {
+      "mode": "multi",
+      "sort": "desc"
+     }
+    }
+   },
+   {
+    "type": "timeseries",
+    "title": "Oldest wait",
+    "id": 7,
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "gridPos": {
+     "h": 8,
+     "w": 12,
+     "x": 12,
+     "y": 5
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "max by (trigger) (reelshelf_queue_oldest_pending_age_seconds{queue=\"transcode\",deployment_environment_name=~\"$env\"})",
+      "legendFormat": "{{trigger}}"
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {
+      "unit": "s",
+      "min": 0,
+      "custom": {
+       "drawStyle": "line",
+       "lineWidth": 2,
+       "fillOpacity": 5,
+       "stacking": {
+        "mode": "none",
+        "group": "A"
+       },
+       "showPoints": "never",
+       "spanNulls": true,
+       "lineInterpolation": "stepAfter"
+      }
+     },
+     "overrides": []
+    },
+    "options": {
+     "legend": {
+      "displayMode": "list",
+      "placement": "bottom",
+      "showLegend": true
+     },
+     "tooltip": {
+      "mode": "multi",
+      "sort": "desc"
+     }
+    }
+   },
+   {
+    "type": "timeseries",
+    "title": "Finished in the last hour",
+    "id": 8,
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "gridPos": {
+     "h": 8,
+     "w": 12,
+     "x": 0,
+     "y": 13
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum(max by (deployment_environment_name) (reelshelf_queue_succeeded_last_hour{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "legendFormat": "succeeded"
+     },
+     {
+      "refId": "B",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum(max by (deployment_environment_name) (reelshelf_queue_failed_last_hour{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "legendFormat": "failed"
+     },
+     {
+      "refId": "C",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum(max by (deployment_environment_name) (reelshelf_queue_exhausted_last_hour{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "legendFormat": "out of attempts"
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {
+      "unit": "short",
+      "min": 0,
+      "custom": {
+       "drawStyle": "line",
+       "lineWidth": 2,
+       "fillOpacity": 5,
+       "stacking": {
+        "mode": "none",
+        "group": "A"
+       },
+       "showPoints": "never",
+       "spanNulls": true,
+       "lineInterpolation": "stepAfter"
+      }
+     },
+     "overrides": []
+    },
+    "options": {
+     "legend": {
+      "displayMode": "list",
+      "placement": "bottom",
+      "showLegend": true
+     },
+     "tooltip": {
+      "mode": "multi",
+      "sort": "desc"
+     }
+    }
+   },
+   {
+    "type": "timeseries",
+    "title": "Retrying and stale",
+    "id": 9,
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "gridPos": {
+     "h": 8,
+     "w": 12,
+     "x": 12,
+     "y": 13
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum(max by (deployment_environment_name) (reelshelf_queue_retrying{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "legendFormat": "waiting out retry delay"
+     },
+     {
+      "refId": "B",
+      "datasource": {
+       "type": "prometheus",
+       "uid": "prometheus"
+      },
+      "expr": "sum(max by (deployment_environment_name) (reelshelf_queue_stale_running{queue=\"transcode\",deployment_environment_name=~\"$env\"}))",
+      "legendFormat": "stale running"
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {
+      "unit": "short",
+      "min": 0,
+      "custom": {
+       "drawStyle": "line",
+       "lineWidth": 2,
+       "fillOpacity": 5,
+       "stacking": {
+        "mode": "none",
+        "group": "A"
+       },
+       "showPoints": "never",
+       "spanNulls": true,
+       "lineInterpolation": "stepAfter"
+      }
+     },
+     "overrides": []
+    },
+    "options": {
+     "legend": {
+      "displayMode": "list",
+      "placement": "bottom",
+      "showLegend": true
+     },
+     "tooltip": {
+      "mode": "multi",
+      "sort": "desc"
+     }
+    }
+   },
+   {
+    "type": "timeseries",
+    "title": "Worker VMs",
+    "id": 22,
+    "datasource": {
+     "type": "stackdriver",
+     "uid": "${gcm}"
+    },
+    "gridPos": {
+     "h": 8,
+     "w": 12,
+     "x": 0,
+     "y": 21
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "stackdriver",
+       "uid": "${gcm}"
+      },
+      "queryType": "timeSeriesList",
+      "timeSeriesList": {
+       "projectName": "example-project",
+       "filters": [
+        "metric.type",
+        "=",
+        "compute.googleapis.com/instance/cpu/utilization"
+       ]
+      },
+      "aliasBy": "VMs"
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {
+      "min": 0,
+      "decimals": 0,
+      "custom": {
+       "lineInterpolation": "stepAfter",
+       "fillOpacity": 15,
+       "showPoints": "never"
+      }
+     },
+     "overrides": []
+    }
+   },
+   {
+    "type": "table",
+    "title": "Spend by SKU (time range)",
+    "id": 28,
+    "datasource": {
+     "type": "grafana-bigquery-datasource",
+     "uid": "${bq}"
+    },
+    "gridPos": {
+     "h": 8,
+     "w": 12,
+     "x": 12,
+     "y": 21
+    },
+    "targets": [
+     {
+      "refId": "A",
+      "datasource": {
+       "type": "grafana-bigquery-datasource",
+       "uid": "${bq}"
+      },
+      "rawSql": "SELECT service, sku, spend FROM example.billing",
+      "rawQuery": true,
+      "editorMode": "code",
+      "format": 1
+     }
+    ],
+    "fieldConfig": {
+     "defaults": {},
+     "overrides": []
+    },
+    "options": {
+     "showHeader": true,
+     "sortBy": [
+      {
+       "displayName": "spend",
+       "desc": true
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "meta": {
+  "url": "/d/reelshelf-pipeline/reelshelf-pipeline",
+  "type": "db"
+ }
+}

@@ -1,0 +1,33 @@
+[
+ {
+  "id": 1,
+  "uid": "reelshelf-api",
+  "title": "Reelshelf API",
+  "url": "/d/reelshelf-api/reelshelf-api",
+  "type": "dash-db",
+  "tags": []
+ },
+ {
+  "id": 9,
+  "uid": "folder-1",
+  "title": "Archive",
+  "url": "/dashboards/f/folder-1/",
+  "type": "dash-folder"
+ },
+ {
+  "id": 2,
+  "uid": "reelshelf-pipeline",
+  "title": "Reelshelf pipeline",
+  "url": "/d/reelshelf-pipeline/reelshelf-pipeline",
+  "type": "dash-db",
+  "tags": []
+ },
+ {
+  "id": 3,
+  "uid": "reelshelf-r2",
+  "title": "Reelshelf R2 storage",
+  "url": "/d/reelshelf-r2/reelshelf-r2-storage",
+  "type": "dash-db",
+  "folderTitle": "Legacy"
+ }
+]
