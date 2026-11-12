@@ -169,10 +169,23 @@ pub fn time_series<S: 'static>(
             run.clear();
             out
         };
+        // Prometheus leaves out samples it has nothing for; a gap well past the series' step breaks the line, as
+        // Grafana's does.
+        let step = series_step(s);
+        let mut last: Option<i64> = None;
         for (t, v) in &s.points {
+            if last.is_some_and(|l| step.is_some_and(|step| t - l > step * 5 / 2)) {
+                shape = flush(&mut run, shape);
+            }
             match v {
-                Some(v) if *t >= from && *t <= to => run.push([px(*t), py(*v)]),
-                _ => shape = flush(&mut run, shape),
+                Some(v) if *t >= from && *t <= to => {
+                    run.push([px(*t), py(*v)]);
+                    last = Some(*t);
+                }
+                _ => {
+                    shape = flush(&mut run, shape);
+                    last = None;
+                }
             }
         }
         shape = flush(&mut run, shape);
@@ -230,6 +243,11 @@ pub fn time_series<S: 'static>(
                 leave(s, None);
             }
         })
+}
+
+/// The series' sampling step: the shortest time between two of its points.
+fn series_step(s: &Series) -> Option<i64> {
+    s.points.windows(2).map(|w| w[1].0 - w[0].0).filter(|d| *d > 0).min()
 }
 
 /// The sample time nearest `t` across every series.
@@ -365,6 +383,15 @@ mod tests {
     fn long_names_are_cut() {
         assert_eq!(short_name("abc", 5), "abc");
         assert_eq!(short_name("abcdefgh", 5), "abcd…");
+    }
+
+    #[test]
+    fn the_step_is_the_shortest_spacing() {
+        let s = Series {
+            name: "a".into(),
+            points: vec![(0, Some(1.0)), (60, Some(1.0)), (6000, Some(2.0))],
+        };
+        assert_eq!(series_step(&s), Some(60));
     }
 
     #[test]

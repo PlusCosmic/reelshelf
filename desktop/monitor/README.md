@@ -21,6 +21,16 @@ GRAFANA_URL=http://<tailscale host>:3020 GRAFANA_TOKEN=<token> cargo run -p reel
 Without Grafana, `REELSHELF_MONITOR_FIXTURES=1` shows the fixture dashboards with made-up data
 (`REELSHELF_MONITOR_SCENE=dashboard-api`, `dashboard-pipeline`, `dashboard-hover` or `dashboards`).
 
+To render one real dashboard headless (for screenshots, without the window):
+
+```sh
+GRAFANA_URL=… GRAFANA_TOKEN=… cargo run -p reelshelf-monitor --example snap -- reelshelf-api 24h Latency 300 \
+  -- --snap api-dark.png --theme dark --at 0.5
+```
+
+(the dashboard's uid, the range, and optionally a panel title and the pointer's x for the hover readout; everything
+after the second `--` goes to Rune).
+
 The token is read once and only sent to Grafana; the app never logs or shows it.
 
 ## Layout
