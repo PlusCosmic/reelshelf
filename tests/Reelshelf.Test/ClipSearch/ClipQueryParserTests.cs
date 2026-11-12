@@ -124,6 +124,21 @@ public class ClipQueryParserTests
         Assert.Same(TimeZoneInfo.Utc, ClipSearchService.FindTimeZone(null));
     }
 
+    [Theory]
+    [InlineData("none", ReasoningEffort.None)]
+    [InlineData("minimal", ReasoningEffort.None)]
+    [InlineData("low", ReasoningEffort.Low)]
+    [InlineData(" Medium ", ReasoningEffort.Medium)]
+    [InlineData("high", ReasoningEffort.High)]
+    [InlineData("xhigh", ReasoningEffort.ExtraHigh)]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("loud", null)]
+    public void ReasoningEffort_MapsTheSettingsSpelling(string? setting, ReasoningEffort? expected)
+    {
+        Assert.Equal(expected, ClipQueryParserFactory.ToReasoningEffort(setting));
+    }
+
     private sealed class RecordingChatClient(string responseText) : IChatClient
     {
         public List<ChatMessage>? Messages { get; private set; }

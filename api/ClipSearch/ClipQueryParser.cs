@@ -6,7 +6,6 @@ using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using OpenAI;
-using OpenAI.Responses;
 using Reelshelf.ClipSummary;
 
 namespace Reelshelf.ClipSearch;
@@ -251,35 +250,42 @@ public sealed class ClipQueryParserFactory(
         return new ChatClientClipQueryParser(chatClient, resources);
     }
 
-    /// <summary>The Responses API, as summaries use, asking OpenAI not to store the response, with the prompt cached.</summary>
-    // OPENAI001: the SDK still marks its Responses API client as evaluation-only.
-#pragma warning disable OPENAI001
+    /// <summary>
+    /// Chat Completions, asking OpenAI not to store the response. A search is one short exchange, so the Responses API
+    /// that summaries use buys nothing here. The effort goes through Microsoft.Extensions.AI's own reasoning option.
+    /// </summary>
     private static IChatClient CreateOpenAIChatClient(string model, string apiKey, string? reasoningEffort)
     {
+        ReasoningEffort? effort = ToReasoningEffort(reasoningEffort);
         return new OpenAIClient(new System.ClientModel.ApiKeyCredential(apiKey), ClientOptions)
-            .GetResponsesClient()
-            .AsIChatClient(model)
+            .GetChatClient(model)
+            .AsIChatClient()
             .AsBuilder()
-            .ConfigureOptions(chatOptions => chatOptions.RawRepresentationFactory = _ =>
+            .ConfigureOptions(chatOptions =>
             {
-                CreateResponseOptions request = new()
+                chatOptions.RawRepresentationFactory = _ =>
+                    new OpenAI.Chat.ChatCompletionOptions { StoredOutputEnabled = false };
+                if (effort is { } level)
                 {
-                    PromptCacheKey = "reelshelf-clip-search",
-                    StoredOutputEnabled = false
-                };
-                if (reasoningEffort is not null)
-                {
-                    request.ReasoningOptions = new ResponseReasoningOptions
-                    {
-                        ReasoningEffortLevel = new ResponseReasoningEffortLevel(reasoningEffort)
-                    };
+                    chatOptions.Reasoning = new ReasoningOptions { Effort = level };
                 }
-
-                return request;
             })
             .Build();
     }
-#pragma warning restore OPENAI001
+
+    /// <summary>An effort in <c>LegendReasoningEffort.All</c>'s spelling; null (or one it doesn't know) leaves the model's default.</summary>
+    internal static ReasoningEffort? ToReasoningEffort(string? effort)
+    {
+        return effort?.Trim().ToLowerInvariant() switch
+        {
+            "none" or "minimal" => ReasoningEffort.None,
+            "low" => ReasoningEffort.Low,
+            "medium" => ReasoningEffort.Medium,
+            "high" => ReasoningEffort.High,
+            "xhigh" => ReasoningEffort.ExtraHigh,
+            _ => null
+        };
+    }
 
     private string? ApiKey(string provider)
     {
