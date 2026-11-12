@@ -279,7 +279,7 @@ public class DeviceSignInTests
         (HttpMethod Method, string Path, object? Json)[] unlisted =
         [
             (HttpMethod.Get, "/api/clips", null),
-            (HttpMethod.Get, "/api/me", null),
+            (HttpMethod.Get, "/api/me/identities", null),
             (HttpMethod.Put, "/api/me/email", new { email = "new@example.test" }),
             (HttpMethod.Get, "/api/me/devices", null),
             (HttpMethod.Get, $"/api/games/categories/{book}", null),
@@ -316,6 +316,12 @@ public class DeviceSignInTests
             using HttpResponseMessage plan = await api.SendAsync(HttpMethod.Get, "/api/me/plan",
                 cookieUser: cookie, deviceToken: bearer);
             Assert.Equal(HttpStatusCode.OK, plan.StatusCode);
+            using HttpResponseMessage me = await api.SendAsync(HttpMethod.Get, "/api/me",
+                cookieUser: cookie, deviceToken: bearer);
+            Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+            using HttpResponseMessage features = await api.SendAsync(HttpMethod.Get, "/api/me/features",
+                cookieUser: cookie, deviceToken: bearer);
+            Assert.Equal(HttpStatusCode.OK, features.StatusCode);
 
             using HttpResponseMessage prepared = await api.SendAsync(HttpMethod.Post,
                 $"/api/clips/categories/{book}/videos?videoTitle={title}&fileSize=1048576&md5Hash={Guid.NewGuid():N}",

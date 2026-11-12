@@ -107,10 +107,10 @@ public sealed record OpsAiFailure(
     DateTimeOffset? CompletedAt);
 
 /// <summary>
-/// Runs finished by one model, over the last day and 30 days. Only legend detection records a cost: what the provider
+/// Runs finished by one model, over the last day and the last 30 days (LastMonth). Only legend detection records a cost: what the provider
 /// billed (<c>cost_usd</c>), else its tokens at the model's prices (<c>legend_model_price</c>).
 /// </summary>
-public sealed record OpsAiSpend(string Queue, string? Provider, string Model, OpsAiUsage LastDay, OpsAiUsage Last30Days);
+public sealed record OpsAiSpend(string Queue, string? Provider, string Model, OpsAiUsage LastDay, OpsAiUsage LastMonth);
 
 /// <param name="CostUsd">The cost of the runs whose cost is known; null when none is.</param>
 /// <param name="UnpricedRuns">Runs whose cost isn't known, so <paramref name="CostUsd"/> leaves them out.</param>
