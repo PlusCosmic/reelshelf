@@ -96,8 +96,8 @@ fn summary(v: &OpsCosts, l: &Look) -> El {
         .w_full()
         .h(0.0)
         .on_layout_tx(|s: &mut Monitor, r: [f32; 4], tx: &mut Tx| {
-            if (s.costs_width - r[2]).abs() > 0.5 {
-                s.costs_width = r[2];
+            if (s.chart_width - r[2]).abs() > 0.5 {
+                s.chart_width = r[2];
             } else {
                 tx.live_only();
             }
@@ -247,7 +247,7 @@ fn daily_chart(s: &Monitor, p: &OpsCostProvider, index: usize, key: &str, paint:
             min: None,
             max: None,
             span,
-            size: (s.costs_width.max(240.0), CHART_HEIGHT),
+            size: (s.chart_width.max(240.0), CHART_HEIGHT),
             hover: s.hover.filter(|h| h.panel == id).map(|h| h.x),
             tz: &s.tz,
         },

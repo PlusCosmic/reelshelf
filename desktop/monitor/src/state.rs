@@ -201,8 +201,8 @@ pub struct Monitor {
     pub transcoding: Fetched<OpsTranscoding>,
     pub ai: Fetched<OpsAi>,
     pub costs: Fetched<OpsCosts>,
-    /// The Costs page's width, as last laid out, for its charts.
-    pub costs_width: f32,
+    /// The Costs and Storage pages' card width, as last laid out, for their charts.
+    pub chart_width: f32,
     /// What GitHub says for Releases.
     pub releases: Fetched<Releases>,
     /// A GitHub token is kept (or came from the environment).
@@ -253,7 +253,7 @@ impl Monitor {
             transcoding: Fetched::default(),
             ai: Fetched::default(),
             costs: Fetched::default(),
-            costs_width: 1040.0,
+            chart_width: 1040.0,
             releases: Fetched::default(),
             github: false,
             github_form: GithubForm::default(),

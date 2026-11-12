@@ -200,6 +200,11 @@ pub fn bytes(n: i64) -> String {
     format(n as f64, Some("bytes"), None)
 }
 
+/// Bytes with their sign, `+1.2 GiB` or `-300 MiB`.
+pub fn signed_bytes(n: i64) -> String {
+    if n > 0 { format!("+{}", bytes(n)) } else { bytes(n) }
+}
+
 /// Dollars: two places, or "under a cent" as None for the caller's words.
 pub fn dollars(v: f64) -> Option<String> {
     (v == 0.0 || v >= 0.005).then(|| format!("${v:.2}"))

@@ -1,6 +1,7 @@
 //! Overview: a card per ops section and Admin's open reports, with its headline numbers and, in red, anything that
 //! needs attention (failures in the last hour, running jobs whose worker went quiet, a pending job waiting over 10
-//! minutes, no object store, a cost provider that couldn't be read, a workflow failing on main, an urgent report open).
+//! minutes, no object store, CloudFront's 5xx rate over 1%, the bucket's difference from the database growing, a cost
+//! provider that couldn't be read, a workflow failing on main, an urgent report open).
 
 use rune::{El, row, spacer, text};
 use rune_kit::{Button, ButtonVariant, ControlSize};
@@ -41,14 +42,23 @@ fn storage(s: &Monitor, l: &Look) -> Summary {
         return Summary::Loading;
     };
     let accounts: i64 = v.by_tier.iter().map(|t| t.accounts).sum();
-    Summary::Ready(
-        vec![
-            parts::stat(l, copy::STORED, bytes(v.total.bytes), false),
-            parts::stat(l, copy::CLIPS, count(v.total.clips), false),
-            parts::stat(l, copy::ACCOUNTS, count(accounts), false),
-        ],
-        alerts::storage(v),
-    )
+    let mut stats = vec![
+        parts::stat(l, copy::STORED, bytes(v.total.bytes), false),
+        parts::stat(l, copy::CLIPS, count(v.total.clips), false),
+        parts::stat(l, copy::ACCOUNTS, count(accounts), false),
+    ];
+    if let Some(gap) = v.bucket.as_ref().and_then(|b| b.gap.as_ref()) {
+        stats.push(parts::stat(l, copy::BUCKET_SIZE, bytes(gap.bucket_bytes), false));
+    }
+    if let Some(rate) = v.cdn.as_ref().and_then(|c| c.server_error_rate_last_day) {
+        stats.push(parts::stat(
+            l,
+            copy::SERVER_ERRORS_24H,
+            crate::units::format(rate, Some("percent"), Some(2)),
+            rate > alerts::SERVER_ERROR_LIMIT,
+        ));
+    }
+    Summary::Ready(stats, alerts::storage(v))
 }
 
 /// Waiting (pending and retrying), running and finished in the last hour, over a queue's rows.

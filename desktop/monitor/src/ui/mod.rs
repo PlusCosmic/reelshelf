@@ -198,7 +198,7 @@ pub fn view(s: &Monitor, cx: &mut Cx<Monitor>) -> El {
         | Section::Costs) => {
             let page = sign_in::gate(s, l).unwrap_or_else(|| match section {
                 Section::Overview => overview::page(s, l),
-                Section::Storage => storage::page(s, l),
+                Section::Storage => storage::page(s, l, &paint(dark)),
                 Section::Transcoding => transcoding::page(s, l),
                 Section::Costs => costs::page(s, l, &paint(dark)),
                 _ => ai::page(s, l),
