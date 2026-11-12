@@ -4,7 +4,7 @@ import {
   leftShelves,
   rightShelves,
   type SideShelfBook,
-} from "./landingSideShelves";
+} from "./landingSideShelfLayout";
 
 const up = (height: number): SideShelfBook => ({
   kind: "upright",
