@@ -367,6 +367,7 @@ impl Monitor {
         self.session = session;
         if signed_in {
             self.poll();
+            self.search_accounts();
         } else {
             self.refusal = None;
             self.storage = Fetched::default();

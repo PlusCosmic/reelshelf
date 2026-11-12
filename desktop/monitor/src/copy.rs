@@ -470,9 +470,6 @@ pub const CANT_CHANGE_SELF: &str = "You can't change your own role or suspend yo
 pub const CANT_SUSPEND_ADMIN: &str = "Admins can't be suspended; change the role first.";
 pub const CHANGES: &str = "Changes";
 pub const NO_CHANGES: &str = "No changes recorded.";
-pub const WHEN: &str = "When";
-pub const CHANGE: &str = "Change";
-pub const BY: &str = "By";
 pub const REASON: &str = "Reason";
 pub const SUSPENSION_LIFTED: &str = "Suspension lifted";
 pub const NONE: &str = "none";
@@ -492,6 +489,9 @@ pub fn suspended_since(date: &str) -> String {
 }
 pub fn identity(provider: &str, username: &str, id: &str) -> String {
     format!("{provider}: {username} ({id})")
+}
+pub fn by_when(by: &str, when: &str) -> String {
+    format!("{by} · {when}")
 }
 pub fn changed(field: &str, from: &str, to: &str) -> String {
     format!("{field}: {from} → {to}")

@@ -12,7 +12,7 @@ use rune_kit::{
 use reelshelf_api::{AdminAccountDetail, AdminContentReport};
 use reelshelf_app::theme::{Look, ty};
 
-use super::parts::{self, Cell, Tone, column};
+use super::parts;
 use crate::admin::{self, AdminTab, Change, GRANTS, REASONS, ROLES, StatusFilter, is_urgent};
 use crate::copy;
 use crate::state::{Load, Monitor};
@@ -375,47 +375,51 @@ fn changes(s: &Monitor, l: &Look, d: &AdminAccountDetail) -> El {
             Some(v) => copy::tier(v).to_owned(),
         }
     };
-    let rows = d
-        .changes
-        .iter()
-        .map(|c| {
-            let what = match c.field.as_str() {
-                "suspended" if c.new_value.is_some() => copy::SUSPENDED.to_owned(),
-                "suspended" => copy::SUSPENSION_LIFTED.to_owned(),
-                field => copy::changed(
-                    if field == "role" {
-                        copy::ROLE
-                    } else {
-                        copy::GRANTED_PLAN
-                    },
-                    &describe(field, c.old_value.as_deref()),
-                    &describe(field, c.new_value.as_deref()),
+    let mut children = Vec::new();
+    for (i, c) in d.changes.iter().enumerate() {
+        let what = match c.field.as_str() {
+            "suspended" if c.new_value.is_some() => copy::SUSPENDED.to_owned(),
+            "suspended" => copy::SUSPENSION_LIFTED.to_owned(),
+            field => copy::changed(
+                if field == "role" {
+                    copy::ROLE
+                } else {
+                    copy::GRANTED_PLAN
+                },
+                &describe(field, c.old_value.as_deref()),
+                &describe(field, c.new_value.as_deref()),
+            ),
+        };
+        let by = c.changed_by_name.as_deref().unwrap_or(copy::NOBODY);
+        children.push(
+            col()
+                .key(format!("change-{i}"))
+                .w_full()
+                .gap(4.0)
+                .pt(10.0)
+                .border_sides([1.0, 0.0, 0.0, 0.0], l.c.line)
+                .child(
+                    row()
+                        .w_full()
+                        .gap(12.0)
+                        .center_y()
+                        .child(text(what).font(ty::ROW_STRONG).color(l.c.fg).wrap().grow(1.0))
+                        .child(
+                            text(copy::by_when(by, &when(c.changed_at, s.now_ms, &s.tz)))
+                                .font(ty::META)
+                                .color(l.c.fg_soft),
+                        ),
+                )
+                .child(
+                    text(c.reason.clone())
+                        .font(ty::ROW)
+                        .color(l.c.fg_soft)
+                        .wrap()
+                        .selectable(true),
                 ),
-            };
-            vec![
-                Cell::new(c.reason.clone()),
-                Cell::new(what).tone(Tone::Strong),
-                Cell::new(c.changed_by_name.clone().unwrap_or_else(|| copy::NOBODY.to_owned())).tone(Tone::Soft),
-                Cell::new(when(c.changed_at, s.now_ms, &s.tz)).tone(Tone::Soft),
-            ]
-        })
-        .collect();
-    parts::card(
-        l,
-        "changes",
-        copy::CHANGES,
-        vec![parts::table(
-            l,
-            "changes-table",
-            &[
-                column(copy::REASON, 0.0),
-                column(copy::CHANGE, 190.0),
-                column(copy::BY, 110.0),
-                column(copy::WHEN, 130.0),
-            ],
-            rows,
-        )],
-    )
+        );
+    }
+    parts::card(l, "changes", copy::CHANGES, children)
 }
 
 // Reports.

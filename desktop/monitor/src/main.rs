@@ -46,6 +46,10 @@ fn main() {
         let section = std::env::var("REELSHELF_MONITOR_SECTION")
             .ok()
             .and_then(|n| Section::named(&n));
+        // Admin's Accounts tab searched for this, for screenshots (`REELSHELF_MONITOR_SEARCH=quiet`).
+        let search = std::env::var("REELSHELF_MONITOR_SEARCH")
+            .ok()
+            .filter(|q| !q.trim().is_empty());
         // Start signing in at launch, as Sign in does (`REELSHELF_MONITOR_SIGN_IN=1`), for scripted runs.
         let sign_in = std::env::var("REELSHELF_MONITOR_SIGN_IN").is_ok_and(|v| v == "1");
         app.init(move || {
@@ -59,6 +63,11 @@ fn main() {
             s.poll();
             if sign_in {
                 s.sign_in();
+            }
+            if let Some(query) = &search {
+                s.section = Section::Admin;
+                s.admin_tab(reelshelf_monitor::admin::AdminTab::Accounts);
+                s.admin.query.replace_text(query);
             }
             s
         })

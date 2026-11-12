@@ -79,6 +79,7 @@ cargo run -p reelshelf-monitor
 Release builds use `https://reelshelf.app`; debug builds read `REELSHELF_API_BASE_URL` (a local API, say) first.
 
 `REELSHELF_MONITOR_SIGN_IN=1` starts signing in at launch, as Sign in does.
+`REELSHELF_MONITOR_SEARCH=<query>` opens Admin's Accounts tab searched for it.
 `REELSHELF_MONITOR_SECTION` (`storage`, `transcoding`, `ai-pipelines`, ...) opens on that section; with Rune's
 `--snap file.png --theme dark --at 6` it renders the live window once it has read its numbers.
 
