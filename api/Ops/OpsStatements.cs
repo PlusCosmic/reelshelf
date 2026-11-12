@@ -196,6 +196,55 @@ public sealed class OpsStatements(NpgsqlDataSource dataSource)
             cancellationToken: cancellationToken))).ToList();
     }
 
+    /// <summary>How long a day's sample of the database's storage total is kept.</summary>
+    public static readonly TimeSpan StorageSampleRetention = TimeSpan.FromDays(90);
+
+    /// <summary>
+    /// Records <paramref name="databaseBytes"/> as <paramref name="now"/>'s UTC day's total, at most every
+    /// <paramref name="every"/> (so a day ends with a reading from near its end), drops days older than
+    /// <see cref="StorageSampleRetention"/>, and answers the days from <paramref name="from"/> on, oldest first. Two
+    /// instances recording at once both land, the later reading winning.
+    /// </summary>
+    public async Task<List<StorageSampleRow>> RecordStorageSampleAsync(long databaseBytes, DateTimeOffset now,
+        TimeSpan every, DateOnly from, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO ops_storage_sample (day, database_bytes, recorded_at)
+            VALUES (@Day::date, @DatabaseBytes, @Now)
+            ON CONFLICT (day) DO UPDATE
+                SET database_bytes = EXCLUDED.database_bytes, recorded_at = EXCLUDED.recorded_at
+                WHERE ops_storage_sample.recorded_at <= EXCLUDED.recorded_at - @Every;
+
+            DELETE FROM ops_storage_sample WHERE day < @Oldest::date;
+
+            SELECT to_char(day, 'YYYY-MM-DD') AS day, database_bytes
+            FROM ops_storage_sample
+            WHERE day >= @From::date
+            ORDER BY day;
+            """;
+        DateOnly today = DateOnly.FromDateTime(now.UtcDateTime);
+        await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using SqlMapper.GridReader grid = await connection.QueryMultipleAsync(new CommandDefinition(sql, new
+        {
+            Day = Iso(today),
+            DatabaseBytes = databaseBytes,
+            Now = now,
+            Every = every,
+            Oldest = Iso(today.AddDays(-(int)StorageSampleRetention.TotalDays)),
+            From = Iso(from)
+        }, cancellationToken: cancellationToken));
+        return (await grid.ReadAsync<StorageSampleRow>()).ToList();
+    }
+
+    private static string Iso(DateOnly day) => day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>A day's database total; <see cref="Day"/> is <c>yyyy-MM-dd</c>.</summary>
+    public sealed class StorageSampleRow
+    {
+        public string Day { get; set; } = "";
+        public long DatabaseBytes { get; set; }
+    }
+
     public sealed record StorageRows(TotalRow Total, List<TierRow> Tiers, List<AccountRow> Accounts, ExportRow Exports);
 
     public sealed class TotalRow

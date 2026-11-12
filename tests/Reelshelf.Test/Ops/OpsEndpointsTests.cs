@@ -1,7 +1,9 @@
 using System.Net;
 using System.Text.Json;
 using Dapper;
+using Microsoft.Extensions.DependencyInjection;
 using Reelshelf.Devices;
+using Reelshelf.Ops;
 using Reelshelf.Test.Devices;
 using Xunit;
 
@@ -285,11 +287,47 @@ public class OpsEndpointsTests
         Assert.Equal(2, top[2].GetProperty("clips").GetInt64());
         Assert.DoesNotContain(admin, top.Select(account => account.GetProperty("user_id").GetGuid()));
 
+        // The test store is an S3-compatible endpoint, which CloudWatch doesn't watch, and no CDN is set.
+        JsonElement bucket = root.GetProperty("bucket");
+        Assert.Equal("unavailable", bucket.GetProperty("status").GetString());
+        Assert.Equal(0, bucket.GetProperty("sizes").GetArrayLength());
+        Assert.Equal(JsonValueKind.Null, bucket.GetProperty("gap").ValueKind);
+        Assert.Equal("not_configured", root.GetProperty("cdn").GetProperty("status").GetString());
+        Assert.Equal(0, await api.Connection.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM ops_storage_sample"));
+
         JsonElement exports = root.GetProperty("exports");
         Assert.Equal(1, exports.GetProperty("held").GetInt64());
         Assert.Equal(1_000, exports.GetProperty("held_bytes").GetInt64());
         Assert.Equal(1, exports.GetProperty("pending").GetInt64());
         Assert.Equal(0, exports.GetProperty("running").GetInt64());
+    }
+
+    [PostgresFact]
+    public async Task TheDatabasesStorageTotal_IsRecordedOncePerDay_TheLatestReadingWinning()
+    {
+        await using DeviceApi api = await DeviceApi.StartAsync(FlagOn);
+        OpsStatements statements = api.Services.GetRequiredService<OpsStatements>();
+        DateTimeOffset morning = new(2026, 11, 12, 8, 0, 0, TimeSpan.Zero);
+        DateOnly from = new(2026, 10, 1);
+        TimeSpan every = TimeSpan.FromMinutes(15);
+        await api.Connection.ExecuteAsync("""
+            INSERT INTO ops_storage_sample (day, database_bytes, recorded_at) VALUES
+                ('2026-11-11', 500, '2026-11-11T23:50:00Z'),
+                ('2026-07-01', 1, '2026-07-01T12:00:00Z');
+            """);
+
+        List<OpsStatements.StorageSampleRow> first =
+            await statements.RecordStorageSampleAsync(1_000, morning, every, from, CancellationToken.None);
+        // Within the quarter hour the day's reading stands; after it, the newer one replaces it.
+        await statements.RecordStorageSampleAsync(1_100, morning.AddMinutes(10), every, from, CancellationToken.None);
+        List<OpsStatements.StorageSampleRow> later =
+            await statements.RecordStorageSampleAsync(1_200, morning.AddMinutes(20), every, from, CancellationToken.None);
+
+        Assert.Equal(["2026-11-11:500", "2026-11-12:1000"], first.Select(row => $"{row.Day}:{row.DatabaseBytes}"));
+        Assert.Equal(["2026-11-11:500", "2026-11-12:1200"], later.Select(row => $"{row.Day}:{row.DatabaseBytes}"));
+        // Days past the 90 kept are dropped.
+        Assert.Equal(0, await api.Connection.ExecuteScalarAsync<long>(
+            "SELECT COUNT(*) FROM ops_storage_sample WHERE day = '2026-07-01'"));
     }
 
     [PostgresFact]

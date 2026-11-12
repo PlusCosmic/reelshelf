@@ -3,14 +3,108 @@ namespace Reelshelf.Ops;
 // What GET /api/admin/ops/* answer, for the monitor app. Each response is at most OpsSnapshotCache.Lifetime old;
 // GeneratedAt says when it was read from the database.
 
-/// <summary>Clip storage as the database records it (never by listing the bucket), and the store it is kept in.</summary>
+/// <summary>
+/// Clip storage as the database records it (never by listing the bucket), the store it is kept in, and, from
+/// CloudWatch, the bucket's own size and objects (<see cref="Bucket"/>) and the media domain's CloudFront traffic
+/// (<see cref="Cdn"/>), which are read at most hourly.
+/// </summary>
 public sealed record OpsStorageResponse(
     DateTimeOffset GeneratedAt,
     OpsObjectStore Store,
     OpsStorageTotals Total,
     List<OpsTierStorage> ByTier,
     List<OpsAccountStorage> TopAccounts,
-    OpsExportStorage Exports);
+    OpsExportStorage Exports,
+    OpsBucketMetrics Bucket,
+    OpsCdnMetrics Cdn);
+
+/// <summary>How a CloudWatch read went, for <see cref="OpsBucketMetrics"/> and <see cref="OpsCdnMetrics"/>.</summary>
+public static class OpsMetricStatuses
+{
+    /// <summary>Read; the numbers are CloudWatch's.</summary>
+    public const string Ok = "ok";
+
+    /// <summary>Nothing to read: no object store, or no CloudFront distribution (<c>Moderation:CloudFront:DistributionId</c>).</summary>
+    public const string NotConfigured = "not_configured";
+
+    /// <summary>The object store is an S3-compatible endpoint, which CloudWatch doesn't watch.</summary>
+    public const string Unavailable = "unavailable";
+
+    /// <summary>The store's keys may not read CloudWatch; the permission they need is in <c>permission</c>.</summary>
+    public const string Denied = "denied";
+
+    /// <summary>CloudWatch couldn't be read for another reason, in <c>error</c>.</summary>
+    public const string Failed = "failed";
+}
+
+/// <summary>
+/// The bucket as CloudWatch's free daily S3 storage metrics see it over the last 30 days: <c>BucketSizeBytes</c> by
+/// storage class and <c>NumberOfObjects</c>, one point a day (CloudWatch stamps each day at 00:00 UTC). The series are
+/// empty unless <see cref="Status"/> is <c>ok</c>.
+/// </summary>
+/// <param name="Status">One of <see cref="OpsMetricStatuses"/>.</param>
+/// <param name="Error">Why it couldn't be read: CloudWatch's own words, or why there is nothing to read.</param>
+/// <param name="Permission">The IAM action the store's keys need, while <see cref="Status"/> is <c>denied</c>.</param>
+/// <param name="ReadAt">When CloudWatch was read.</param>
+/// <param name="Gap">The bucket's size against the database's total, once CloudWatch has a day of the bucket.</param>
+public sealed record OpsBucketMetrics(
+    string Status,
+    string? Error,
+    string? Permission,
+    DateTimeOffset? ReadAt,
+    List<OpsStorageClassSeries> Sizes,
+    List<OpsMetricPoint> Objects,
+    OpsStorageGap? Gap);
+
+/// <summary>A storage class's daily size in bytes (<c>StandardStorage</c>, <c>StandardIAStorage</c>, ...).</summary>
+public sealed record OpsStorageClassSeries(string StorageType, List<OpsMetricPoint> Points);
+
+public sealed record OpsMetricPoint(DateTimeOffset At, double Value);
+
+/// <summary>
+/// What the bucket holds against what the database accounts for (every clip as the plan counts it, plus the exports
+/// held). The bucket also holds thumbnails, previews and game art, which the database doesn't count, so a steady
+/// difference is expected; one that grows means objects nothing points at any more.
+/// </summary>
+/// <param name="DatabaseBytes">The database's total now.</param>
+/// <param name="BucketBytes">Every storage class together on <paramref name="BucketDay"/>, CloudWatch's latest day.</param>
+/// <param name="DifferenceBytes">
+/// <paramref name="BucketBytes"/> less the database's total recorded that day, else its total now.
+/// </param>
+/// <param name="GrowthLastWeekBytes">
+/// How much the difference grew from the earliest recorded day in the week before the latest one; null until two days
+/// are recorded.
+/// </param>
+/// <param name="Days">Each day both are known, oldest first. The database's totals are recorded while the monitor reads storage.</param>
+public sealed record OpsStorageGap(
+    long DatabaseBytes,
+    long BucketBytes,
+    DateOnly BucketDay,
+    long DifferenceBytes,
+    long? GrowthLastWeekBytes,
+    List<OpsStorageGapDay> Days);
+
+public sealed record OpsStorageGapDay(DateOnly Day, long DatabaseBytes, long BucketBytes, long DifferenceBytes);
+
+/// <summary>
+/// The media domain's CloudFront distribution over the last 7 days, hourly: requests, bytes downloaded and the 4xx
+/// and 5xx error rates (percent of requests). The series are empty unless <see cref="Status"/> is <c>ok</c>.
+/// </summary>
+/// <param name="Status">One of <see cref="OpsMetricStatuses"/>.</param>
+/// <param name="ServerErrorRateLastDay">
+/// The 5xx rate over the last 24 hours, weighted by each hour's requests; null without requests.
+/// </param>
+public sealed record OpsCdnMetrics(
+    string Status,
+    string? Error,
+    string? Permission,
+    string? DistributionId,
+    DateTimeOffset? ReadAt,
+    List<OpsMetricPoint> Requests,
+    List<OpsMetricPoint> BytesDownloaded,
+    List<OpsMetricPoint> ClientErrorRate,
+    List<OpsMetricPoint> ServerErrorRate,
+    double? ServerErrorRateLastDay);
 
 /// <summary>
 /// The object store this instance is configured with, without credentials: AWS S3 by region (<c>s3</c>), or an

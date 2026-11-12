@@ -3,6 +3,7 @@ using Npgsql;
 using Reelshelf.ApexLegends.LegendDetection;
 using Reelshelf.ClipSummary;
 using Reelshelf.ClipTranscription;
+using Reelshelf.Ops.Metrics;
 using Reelshelf.QueueMetrics;
 using Reelshelf.Video.R2;
 using Reelshelf.Video.Transcoding;
@@ -12,12 +13,14 @@ namespace Reelshelf.Ops;
 
 /// <summary>
 /// Builds the <c>/api/admin/ops/</c> responses from the database and this instance's own state, each kept for
-/// <see cref="OpsSnapshotCache.Lifetime"/>. It only reads: it never calls a cloud API, and never starts, stops or
-/// counts an overflow task itself.
+/// <see cref="OpsSnapshotCache.Lifetime"/>. It only reads (but for the database's daily storage total, recorded beside
+/// the bucket's): the only cloud API it calls is CloudWatch, for storage (<see cref="OpsStorageMetrics"/>, hourly), and
+/// it never starts, stops or counts an overflow task itself.
 /// </summary>
 public sealed class OpsService(
     OpsStatements statements,
     OpsSnapshotCache cache,
+    OpsStorageMetrics storageMetrics,
     NpgsqlDataSource dataSource,
     IServiceProvider services,
     IOptionsMonitor<TranscodingOptions> transcodingOptions,
@@ -44,11 +47,28 @@ public sealed class OpsService(
     public Task<OpsAiResponse> GetAiAsync(CancellationToken cancellationToken) =>
         cache.GetAsync("ai", LoadAiAsync, cancellationToken);
 
+    /// <summary>How often a day's database total is recorded again, so it ends near the day's end.</summary>
+    public static readonly TimeSpan StorageSampleEvery = TimeSpan.FromMinutes(15);
+
     private async Task<OpsStorageResponse> LoadStorageAsync(CancellationToken cancellationToken)
     {
         DateTimeOffset now = timeProvider.GetUtcNow();
         OpsStatements.StorageRows rows = await statements.GetStorageAsync(cancellationToken);
         Dictionary<string, OpsStatements.TierRow> byTier = rows.Tiers.ToDictionary(row => row.Tier);
+        StorageMetricsSnapshot metrics = await storageMetrics.GetAsync(cancellationToken);
+        OpsBucketMetrics bucket = metrics.Bucket;
+        if (storageMetrics.WatchesBucket)
+        {
+            // What the bucket should hold by the database's count, recorded each day so the difference can be followed.
+            long databaseBytes = rows.Total.Bytes + rows.Exports.HeldBytes;
+            Dictionary<DateOnly, long> recorded = (await statements.RecordStorageSampleAsync(databaseBytes, now,
+                    StorageSampleEvery, DateOnly.FromDateTime(now.UtcDateTime).AddDays(-OpsStorageMetrics.BucketDays - 1),
+                    cancellationToken))
+                .ToDictionary(row => DateOnly.ParseExact(row.Day, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    row => row.DatabaseBytes);
+            bucket = bucket with { Gap = OpsStorageMetrics.Gap(bucket.Sizes, databaseBytes, recorded) };
+        }
+
         return new OpsStorageResponse(
             now,
             ObjectStore(services.GetService<R2Options>()),
@@ -59,7 +79,9 @@ public sealed class OpsService(
                 .ToList(),
             rows.Accounts.Select(row => new OpsAccountStorage(row.UserId, row.Username, row.Tier, row.Clips, row.Bytes))
                 .ToList(),
-            new OpsExportStorage(rows.Exports.Held, rows.Exports.HeldBytes, rows.Exports.Pending, rows.Exports.Running));
+            new OpsExportStorage(rows.Exports.Held, rows.Exports.HeldBytes, rows.Exports.Pending, rows.Exports.Running),
+            bucket,
+            metrics.Cdn);
     }
 
     /// <summary>Where clips are kept, by name only: never a key or secret.</summary>

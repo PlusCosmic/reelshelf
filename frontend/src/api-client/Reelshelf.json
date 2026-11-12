@@ -8381,6 +8381,140 @@
           }
         }
       },
+      "OpsBucketMetrics": {
+        "required": [
+          "status",
+          "error",
+          "permission",
+          "read_at",
+          "sizes",
+          "objects",
+          "gap"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "permission": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "read_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "sizes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsStorageClassSeries"
+            }
+          },
+          "objects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsMetricPoint"
+            }
+          },
+          "gap": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/OpsStorageGap"
+              }
+            ]
+          }
+        }
+      },
+      "OpsCdnMetrics": {
+        "required": [
+          "status",
+          "error",
+          "permission",
+          "distribution_id",
+          "read_at",
+          "requests",
+          "bytes_downloaded",
+          "client_error_rate",
+          "server_error_rate",
+          "server_error_rate_last_day"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "permission": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "distribution_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "read_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsMetricPoint"
+            }
+          },
+          "bytes_downloaded": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsMetricPoint"
+            }
+          },
+          "client_error_rate": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsMetricPoint"
+            }
+          },
+          "server_error_rate": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsMetricPoint"
+            }
+          },
+          "server_error_rate_last_day": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        }
+      },
       "OpsCostDay": {
         "required": [
           "date",
@@ -8577,6 +8711,23 @@
           }
         }
       },
+      "OpsMetricPoint": {
+        "required": [
+          "at",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "value": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "OpsObjectStore": {
         "required": [
           "configured",
@@ -8749,6 +8900,93 @@
           }
         }
       },
+      "OpsStorageClassSeries": {
+        "required": [
+          "storage_type",
+          "points"
+        ],
+        "type": "object",
+        "properties": {
+          "storage_type": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsMetricPoint"
+            }
+          }
+        }
+      },
+      "OpsStorageGap": {
+        "required": [
+          "database_bytes",
+          "bucket_bytes",
+          "bucket_day",
+          "difference_bytes",
+          "growth_last_week_bytes",
+          "days"
+        ],
+        "type": "object",
+        "properties": {
+          "database_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bucket_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bucket_day": {
+            "type": "string",
+            "format": "date"
+          },
+          "difference_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "growth_last_week_bytes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsStorageGapDay"
+            }
+          }
+        }
+      },
+      "OpsStorageGapDay": {
+        "required": [
+          "day",
+          "database_bytes",
+          "bucket_bytes",
+          "difference_bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date"
+          },
+          "database_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bucket_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "difference_bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "OpsStorageResponse": {
         "required": [
           "generated_at",
@@ -8756,7 +8994,9 @@
           "total",
           "by_tier",
           "top_accounts",
-          "exports"
+          "exports",
+          "bucket",
+          "cdn"
         ],
         "type": "object",
         "properties": {
@@ -8784,6 +9024,12 @@
           },
           "exports": {
             "$ref": "#/components/schemas/OpsExportStorage"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/OpsBucketMetrics"
+          },
+          "cdn": {
+            "$ref": "#/components/schemas/OpsCdnMetrics"
           }
         }
       },

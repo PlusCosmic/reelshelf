@@ -29,6 +29,7 @@ using Reelshelf.LandingShelf;
 using Reelshelf.Moderation;
 using Reelshelf.Ops;
 using Reelshelf.Ops.Costs;
+using Reelshelf.Ops.Metrics;
 using Reelshelf.Playlists;
 using Reelshelf.QueueMetrics;
 using Reelshelf.Plans;
@@ -424,6 +425,21 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddSingleton<OpsStatements>();
         builder.Services.AddSingleton<OpsSnapshotCache>();
         builder.Services.AddSingleton<OpsService>();
+        // The bucket's size and objects and the CDN's traffic from CloudWatch, with the store's own AWS keys, only when
+        // the store is AWS S3; cached an hour.
+        if (R2Options.FromConfiguration(builder.Configuration) is { ServiceUrl: null } awsStore)
+        {
+            builder.Services.TryAddSingleton<ICloudWatchMetricsClient>(_ => new AwsCloudWatchMetricsClient(awsStore));
+        }
+
+        builder.Services.AddSingleton(provider => new OpsStorageMetrics(
+            provider.GetService<R2Options>(),
+            provider.GetService<ICloudWatchMetricsClient>(),
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<ModerationOptions>>().CurrentValue
+                .CloudFront.DistributionId,
+            provider.GetRequiredService<OpsSnapshotCache>(),
+            provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<ILogger<OpsStorageMetrics>>()));
 
         // The monitor's Costs (/api/admin/ops/costs): each provider under Ops:Costs (Stripe through billing) read in
         // the background, hourly (AWS every 6 h), and served from memory.
