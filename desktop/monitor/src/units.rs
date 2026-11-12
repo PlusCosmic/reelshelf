@@ -174,9 +174,59 @@ pub fn readout_time(t: i64, span: i64, tz: &FixedOffset) -> String {
     }
 }
 
+/// A count with thousands grouped: `12,345`.
+pub fn count(n: i64) -> String {
+    let digits = n.unsigned_abs().to_string();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    if n < 0 { format!("-{out}") } else { out }
+}
+
+/// Bytes in binary units: `1.21 TiB`.
+pub fn bytes(n: i64) -> String {
+    format(n as f64, Some("bytes"), None)
+}
+
+/// Dollars: two places, or "under a cent" as None for the caller's words.
+pub fn dollars(v: f64) -> Option<String> {
+    (v == 0.0 || v >= 0.005).then(|| format!("${v:.2}"))
+}
+
+/// When something happened: the time on the day of `now`, else the day and time (`Tue 12 Nov, 09:48`).
+pub fn when(t: DateTime<chrono::Utc>, now_ms: i64, tz: &FixedOffset) -> String {
+    let at = t.with_timezone(tz);
+    let now = tz.timestamp_millis_opt(now_ms).single().unwrap_or(at);
+    if at.date_naive() == now.date_naive() {
+        at.format("%H:%M").to_string()
+    } else {
+        at.format("%a %-d %b, %H:%M").to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn counts_bytes_money_and_times() {
+        assert_eq!(count(0), "0");
+        assert_eq!(count(1234567), "1,234,567");
+        assert_eq!(count(-1200), "-1,200");
+        assert_eq!(bytes(3 * 1024 * 1024), "3 MiB");
+        assert_eq!(dollars(12.345).as_deref(), Some("$12.35"));
+        assert_eq!(dollars(0.001), None);
+        let tz = FixedOffset::east_opt(0).unwrap();
+        let now = 1_731_420_000_000; // Tue 12 Nov 2024, 14:00 UTC
+        let t = chrono::DateTime::from_timestamp_millis(now - 3_600_000).unwrap();
+        assert_eq!(when(t, now, &tz), "13:00");
+        let t = chrono::DateTime::from_timestamp_millis(now - 86_400_000).unwrap();
+        assert_eq!(when(t, now, &tz), "Mon 11 Nov, 14:00");
+    }
 
     #[test]
     fn units_read_as_grafana_shows_them() {
