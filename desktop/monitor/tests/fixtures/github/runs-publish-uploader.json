@@ -1,0 +1,20 @@
+{
+  "total_count": 1,
+  "workflow_runs": [
+    {
+      "id": 42478160472,
+      "name": "Publish uploader",
+      "path": ".github/workflows/publish-uploader.yml",
+      "event": "push",
+      "head_branch": "uploader-v0.1.0",
+      "head_sha": "fc362050ebf8d2b4db3f40db2850fe861809bc99",
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/actions/runs/42478160472",
+      "created_at": "2026-11-08T11:59:50Z",
+      "updated_at": "2026-11-08T12:06:22Z",
+      "run_number": 1,
+      "display_title": "Merge pull request #373 from PlusCosmic/agent/desktop-flyout-pages"
+    }
+  ]
+}

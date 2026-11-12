@@ -1,10 +1,12 @@
 //! What needs attention, for Overview's cards: a queue's failures in the last hour, its running jobs whose worker
-//! went quiet, and a pending job that has waited over [`OLDEST_PENDING`]; storage with no object store; and a cost
-//! provider whose latest read failed.
+//! went quiet, and a pending job that has waited over [`OLDEST_PENDING`]; storage with no object store; a cost provider
+//! whose latest read failed; and a workflow whose latest finished run on main failed, or failing checks on the
+//! image-bump PR.
 
 use reelshelf_api::{OpsAi, OpsCosts, OpsQueueCounts, OpsStorage, OpsTranscoding};
 
 use crate::copy;
+use crate::github::{Checks, Releases};
 
 /// A pending job older than this needs attention.
 pub const OLDEST_PENDING: f64 = 10.0 * 60.0;
@@ -57,6 +59,16 @@ pub fn costs(c: &OpsCosts) -> Vec<String> {
         .filter(|p| p.status == "failed")
         .map(|p| copy::costs_unreadable(copy::provider(&p.provider)))
         .collect()
+}
+
+pub fn releases(r: &Releases) -> Vec<String> {
+    let mut out: Vec<String> = r.red().iter().map(|w| copy::red_on_main(w.name())).collect();
+    if let Ok(Some(bump)) = &r.bump
+        && bump.checks == Some(Checks::Failing)
+    {
+        out.push(copy::bump_failing(&bump.pull.title));
+    }
+    out
 }
 
 #[cfg(test)]

@@ -76,8 +76,8 @@ fn strings(value: &Value, into: &mut HashSet<String>) {
     }
 }
 
-/// What Reelshelf and Grafana say in a scene: usernames, queue, trigger, pool and model names, errors and clip ids;
-/// dashboard, folder, panel and series names.
+/// What Reelshelf, GitHub and Grafana say in a scene: usernames, queue, trigger, pool and model names, errors and clip
+/// ids; commit, pull request and run titles; dashboard, folder, panel and series names.
 fn data(s: &Monitor) -> HashSet<String> {
     let mut words = HashSet::new();
     for json in [
@@ -88,6 +88,12 @@ fn data(s: &Monitor) -> HashSet<String> {
         fixtures::ME,
     ] {
         strings(&serde_json::from_str(json).unwrap(), &mut words);
+    }
+    // GitHub's: commit, pull request and run titles, logins, workflow names and tags.
+    for (_, answer) in fixtures::GITHUB {
+        if let Ok(json) = serde_json::from_str::<Value>(answer) {
+            strings(&json, &mut words);
+        }
     }
     // What the person typed.
     words.insert(s.grafana_form.url.text.clone());
@@ -377,4 +383,52 @@ fn hovering_a_chart_shows_the_readout() {
     let latency = rt.state.hover.unwrap().panel;
     let keys: HashSet<String> = rt.elements().into_iter().filter_map(|e| e.key).collect();
     assert!(keys.contains(&format!("panel-{latency}-chart-readout")), "{keys:?}");
+}
+
+#[test]
+fn releases_shows_whats_deployed_and_whats_coming() {
+    let rt = runtime("releases", false);
+    let shown = texts(&rt);
+    for words in [
+        "Overflow workers (batch, ecs, ec2)",
+        "Not built from a commit",
+        "Up to date",
+        "Bump app images to sha-db118fec3e4857421ec21bff126e158ecb567c0b",
+        "uploader-v0.1.0",
+        "No checks",
+        "Draft",
+    ] {
+        assert!(shown.iter().any(|t| t == words), "releases shows {words:?}: {shown:?}");
+    }
+    let keys = keys(&rt);
+    // Prod's app lists the 6 commits main has that it doesn't; the worker offers its 29.
+    assert!(keys.contains("deployed-0-commits"), "{keys:?}");
+    assert!(keys.contains("deployed-0-commit-5"));
+    assert!(keys.contains("deployed-2-behind"));
+    let tree = rt.accessibility_json().to_string();
+    assert!(tree.contains("Show the 29 commits on main not in Worker"), "{tree}");
+
+    let shown = texts(&runtime("releases-collapsed", false));
+    assert!(shown.iter().any(|t| t == "6 behind"), "{shown:?}");
+
+    let shown = texts(&runtime("releases-unreadable", false));
+    assert!(
+        shown
+            .iter()
+            .any(|t| t == "Couldn't refresh: GitHub answered 404: Not Found")
+    );
+    assert!(shown.iter().any(|t| t == "uploader-v0.1.0"), "the rest still shows");
+
+    let shown = texts(&runtime("releases-not-connected", false));
+    assert!(shown.iter().any(|t| t == "GitHub isn't connected"));
+}
+
+#[test]
+fn the_overview_says_how_far_prod_is_behind_and_that_ci_is_red() {
+    let rt = runtime("overview", false);
+    let shown = texts(&rt);
+    assert!(keys(&rt).contains("card-Releases"));
+    for words in ["Prod behind main", "6", "Failing", "CI failed on main"] {
+        assert!(shown.iter().any(|t| t == words), "{words:?} in {shown:?}");
+    }
 }

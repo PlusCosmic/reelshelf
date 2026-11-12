@@ -1,0 +1,32 @@
+[
+  {
+    "number": 354,
+    "title": "Bump app images to sha-db118fec3e4857421ec21bff126e158ecb567c0b",
+    "html_url": "https://github.com/PlusCosmic/infrastructure/pull/354",
+    "state": "open",
+    "draft": false,
+    "created_at": "2026-11-12T17:46:54Z",
+    "user": {
+      "login": "PlusCosmic"
+    },
+    "head": {
+      "ref": "automation/app-images-db118fec3e4857421ec21bff126e158ecb567c0b",
+      "sha": "e15394fe1e34ca22673a907fc8232059b25bf145"
+    }
+  },
+  {
+    "number": 353,
+    "title": "reelshelf-maintenance: build the page into the image instead of bind-mounting it",
+    "html_url": "https://github.com/PlusCosmic/infrastructure/pull/353",
+    "state": "open",
+    "draft": false,
+    "created_at": "2026-11-12T13:38:42Z",
+    "user": {
+      "login": "PlusCosmic"
+    },
+    "head": {
+      "ref": "fix/maintenance-page-image",
+      "sha": "ec5b7e8371c324811fe5b4466197eb304cc10dc4"
+    }
+  }
+]

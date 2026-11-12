@@ -1,0 +1,13 @@
+# Trimmed: the image lines of PlusCosmic/infrastructure's services/clips.yml.
+services:
+  secrets:
+    image: 'infisical/cli:0.44.6'
+  nucleus-migrations:
+    image: 'ghcr.io/pluscosmic/reelshelf-migrations:sha-3f8936c3213939ff0ecf85f0d8856fb0628b51c6'
+  clips:
+    image: 'ghcr.io/pluscosmic/reelshelf:sha-3f8936c3213939ff0ecf85f0d8856fb0628b51c6'
+    environment:
+      - Overflow__Enabled=true
+      - Overflow__Batch__WorkerImage=ghcr.io/pluscosmic/reelshelf-worker:sha-118e6fc57a33f9bba08eac689f75c578003da0dc
+      - Overflow__Ecs__WorkerImage=ghcr.io/pluscosmic/reelshelf-worker:sha-118e6fc57a33f9bba08eac689f75c578003da0dc
+      - Overflow__Ec2__WorkerImage=ghcr.io/pluscosmic/reelshelf-worker:sha-118e6fc57a33f9bba08eac689f75c578003da0dc

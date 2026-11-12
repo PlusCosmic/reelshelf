@@ -1,0 +1,50 @@
+{
+  "total_count": 231,
+  "workflow_runs": [
+    {
+      "id": 43298371711,
+      "name": "CI",
+      "path": ".github/workflows/ci.yml",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "0262ee127b6c63559afa791496ba7d26245dcc77",
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/actions/runs/43298371711",
+      "created_at": "2026-11-12T20:14:50Z",
+      "updated_at": "2026-11-12T20:31:02Z",
+      "run_number": 568,
+      "display_title": "Monitor app: sign in, Overview, Storage, Transcoding and AI pipelines…"
+    },
+    {
+      "id": 43272651981,
+      "name": "CI",
+      "path": ".github/workflows/ci.yml",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "db118fec3e4857421ec21bff126e158ecb567c0b",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/actions/runs/43272651981",
+      "created_at": "2026-11-12T17:44:45Z",
+      "updated_at": "2026-11-12T17:47:51Z",
+      "run_number": 565,
+      "display_title": "Merge pull request #389 from PlusCosmic/task/5-monitor-api-admin-ops-…"
+    },
+    {
+      "id": 43271580539,
+      "name": "CI",
+      "path": ".github/workflows/ci.yml",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "93c564b7d95f49e02bcdfedad82b5d3663472515",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/actions/runs/43271580539",
+      "created_at": "2026-11-12T17:38:30Z",
+      "updated_at": "2026-11-12T17:42:22Z",
+      "run_number": 564,
+      "display_title": "Merge pull request #390 from PlusCosmic/task/4-monitor-app-spike-rune…"
+    }
+  ]
+}

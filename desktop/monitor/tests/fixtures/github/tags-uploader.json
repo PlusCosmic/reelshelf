@@ -1,0 +1,16 @@
+[
+  {
+    "ref": "refs/tags/uploader-v0.1.0",
+    "object": {
+      "sha": "c04226592079eb7509265aced5e6a574906f3d8e",
+      "type": "tag"
+    }
+  },
+  {
+    "ref": "refs/tags/uploader-v0.0.9",
+    "object": {
+      "sha": "5d1e0c7a9b3f4e2d8c6a1b0f9e8d7c6b5a4f3e2d",
+      "type": "tag"
+    }
+  }
+]

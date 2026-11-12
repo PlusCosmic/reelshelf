@@ -1,12 +1,17 @@
 //! Scenes for the headless checks and for running without Reelshelf or Grafana: the ops answers in `tests/fixtures/`
 //! (`ops-*.json`, shaped as the API answers them), each step of signing in, and the fixture dashboards (trimmed copies
 //! of the real ones) with made-up but plausible data, worked out from each panel's unit and legend so the charts look
-//! like the real thing. Nothing here reaches the network.
+//! like the real thing, and GitHub's answers for Releases (`tests/fixtures/github/`, trimmed copies of real ones, with
+//! main's CI turned red), put together by the same functions as a live read. Nothing here reaches the network.
 
 use std::collections::HashMap;
 
 use chrono::FixedOffset;
 
+use crate::github::deploy::{self, Image};
+use crate::github::model::{checks, parse_compare, parse_entries, parse_pulls, parse_refs, parse_runs};
+use crate::github::releases::{self, Behind, Deployed, PullStatus, Uploader, WorkflowStatus};
+use crate::github::{MAIN_WORKFLOWS, Releases};
 use crate::grafana::model::{parse_dashboard, parse_search};
 use crate::grafana::{Dashboard, Panel, PanelData, PanelKind, Series, TimeRange, query};
 use crate::session::{Pending, Refusal, Session, SignedOutReason};
@@ -24,6 +29,129 @@ pub const OPS_TRANSCODING: &str = include_str!("../tests/fixtures/ops-transcodin
 pub const OPS_AI: &str = include_str!("../tests/fixtures/ops-ai.json");
 pub const OPS_COSTS: &str = include_str!("../tests/fixtures/ops-costs.json");
 pub const ME: &str = include_str!("../tests/fixtures/me.json");
+
+/// "Now" for the GitHub scenes, which were read on 12 November 2026.
+pub const GITHUB_NOW: i64 = 1_794_516_000_000;
+
+/// GitHub's answers, by what they are.
+pub const GITHUB: &[(&str, &str)] = &[
+    ("services", include_str!("../tests/fixtures/github/services.json")),
+    ("services/clips.yml", include_str!("../tests/fixtures/github/clips.yml")),
+    (
+        "services/clips-dev.yml",
+        include_str!("../tests/fixtures/github/clips-dev.yml"),
+    ),
+    (
+        "services/reelshelf-worker.yml",
+        include_str!("../tests/fixtures/github/reelshelf-worker.yml"),
+    ),
+    (
+        "services/reelshelf-worker-dev.yml",
+        include_str!("../tests/fixtures/github/reelshelf-worker-dev.yml"),
+    ),
+    ("compare-app", include_str!("../tests/fixtures/github/compare-app.json")),
+    (
+        "compare-worker",
+        include_str!("../tests/fixtures/github/compare-worker.json"),
+    ),
+    (
+        "compare-main",
+        include_str!("../tests/fixtures/github/compare-main.json"),
+    ),
+    (
+        "pulls-infrastructure",
+        include_str!("../tests/fixtures/github/pulls-infrastructure.json"),
+    ),
+    (
+        "pulls-reelshelf",
+        include_str!("../tests/fixtures/github/pulls-reelshelf.json"),
+    ),
+    ("runs-by-sha", include_str!("../tests/fixtures/github/runs-by-sha.json")),
+    ("ci.yml", include_str!("../tests/fixtures/github/runs-ci.json")),
+    (
+        "publish-app-images.yml",
+        include_str!("../tests/fixtures/github/runs-publish-app-images.json"),
+    ),
+    (
+        "windlass.yml",
+        include_str!("../tests/fixtures/github/runs-windlass.json"),
+    ),
+    (
+        "publish-uploader.yml",
+        include_str!("../tests/fixtures/github/runs-publish-uploader.json"),
+    ),
+    ("tags", include_str!("../tests/fixtures/github/tags-uploader.json")),
+];
+
+fn github(name: &str) -> &'static str {
+    GITHUB
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|(_, json)| *json)
+        .unwrap_or_else(|| panic!("no GitHub fixture {name}"))
+}
+
+/// Releases as the fixtures answer it, put together as `github::Client::releases` does.
+pub fn releases() -> Releases {
+    let files = deploy::files(&parse_entries(github("services")).expect("services fixture"));
+    let images: Vec<Image> = files.iter().flat_map(|f| deploy::images(f, github(f))).collect();
+    let compares: Vec<Behind> = ["compare-app", "compare-worker", "compare-main"]
+        .iter()
+        .map(|n| Behind::from_compare(parse_compare(github(n)).expect("compare fixture")))
+        .collect();
+    let deployed = releases::order(images)
+        .into_iter()
+        .map(|(environment, image)| {
+            let at = match image.sha() {
+                None => Ok(None),
+                Some(sha) => compares
+                    .iter()
+                    .find(|b| b.commit.sha == sha)
+                    .cloned()
+                    .map(Some)
+                    .ok_or_else(|| "GitHub answered 404: No commit found".to_owned()),
+            };
+            Deployed { environment, image, at }
+        })
+        .collect();
+    let runs: serde_json::Value = serde_json::from_str(github("runs-by-sha")).expect("runs fixture");
+    let with_checks = |pull| {
+        let pull: crate::github::Pull = pull;
+        let found = runs
+            .get(&pull.head.sha)
+            .map(|r| parse_runs(&r.to_string()).expect("runs"));
+        PullStatus {
+            checks: found.map(|r| checks(&r)),
+            pull,
+        }
+    };
+    let bump =
+        releases::bump_pull(parse_pulls(github("pulls-infrastructure")).expect("pulls fixture")).map(with_checks);
+    let main = MAIN_WORKFLOWS
+        .iter()
+        .map(|f| WorkflowStatus::from_runs(f, parse_runs(github(f)).expect("runs fixture")))
+        .collect();
+    let uploader = Uploader {
+        tag: releases::latest_uploader_tag(&parse_refs(github("tags")).expect("tags fixture")),
+        run: parse_runs(github("publish-uploader.yml"))
+            .expect("runs fixture")
+            .into_iter()
+            .next(),
+    };
+    let pulls = parse_pulls(github("pulls-reelshelf"))
+        .expect("pulls fixture")
+        .into_iter()
+        .map(with_checks)
+        .collect();
+    Releases {
+        deployed: Ok(deployed),
+        bump: Ok(bump),
+        main: Ok(main),
+        uploader: Ok(uploader),
+        pulls: Ok(pulls),
+        read_at: chrono::DateTime::from_timestamp_millis(GITHUB_NOW).expect("a time"),
+    }
+}
 
 pub const SCENES: &[&str] = &[
     "overview",
@@ -46,6 +174,10 @@ pub const SCENES: &[&str] = &[
     "dashboard-api",
     "dashboard-pipeline",
     "dashboard-hover",
+    "releases",
+    "releases-collapsed",
+    "releases-unreadable",
+    "releases-not-connected",
     "coming-soon",
     "not-connected",
 ];
@@ -142,7 +274,31 @@ pub fn scene(name: &str, tz: FixedOffset) -> Option<Monitor> {
                 x: 380.0,
             });
         }
-        "coming-soon" => s.section = Section::Releases,
+        "releases" => {
+            s.section = Section::Releases;
+            s.now_ms = GITHUB_NOW;
+        }
+        "releases-collapsed" => {
+            s.section = Section::Releases;
+            s.now_ms = GITHUB_NOW;
+            s.release_open = None;
+            s.release_touched = true;
+        }
+        "releases-unreadable" => {
+            s.section = Section::Releases;
+            s.now_ms = GITHUB_NOW;
+            let mut r = releases();
+            let refused = "GitHub answered 404: Not Found".to_owned();
+            r.deployed = Err(refused.clone());
+            r.bump = Err(refused);
+            s.set_releases(r);
+        }
+        "releases-not-connected" => {
+            s.section = Section::Releases;
+            s.github = false;
+            s.releases = Fetched::default();
+        }
+        "coming-soon" => s.section = Section::Admin,
         "not-connected" => {
             s = Monitor::new(None, None, tz);
             s.section = Section::Dashboards;
@@ -161,6 +317,8 @@ fn signed_in(s: &mut Monitor) {
     s.transcoding = Fetched::ready(serde_json::from_str(OPS_TRANSCODING).expect("transcoding fixture"));
     s.ai = Fetched::ready(serde_json::from_str(OPS_AI).expect("ai fixture"));
     s.costs = Fetched::ready(serde_json::from_str(OPS_COSTS).expect("costs fixture"));
+    s.github = true;
+    s.set_releases(releases());
 }
 
 fn dashboard(json: &str) -> Dashboard {

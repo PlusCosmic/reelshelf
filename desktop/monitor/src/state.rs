@@ -1,5 +1,5 @@
-//! The window's state: which section shows, signing in to Reelshelf and the ops numbers it reads, Grafana's
-//! dashboard list, the open dashboard and each panel's data, and the Settings form. Loading goes through
+//! The window's state: which section shows, signing in to Reelshelf and the ops numbers it reads, what GitHub says
+//! for Releases, Grafana's dashboard list, the open dashboard and each panel's data, and the Settings forms. Loading goes through
 //! [`Fetcher`](crate::fetch::Fetcher); without one (headless scenes) the state only changes by hand.
 
 use std::collections::HashMap;
@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::copy;
 use crate::fetch::Fetcher;
+use crate::github::Releases;
 use crate::grafana::{Dashboard, PanelData, SearchHit, TimeRange};
 use crate::session::{Refusal, Session};
 
@@ -52,27 +53,40 @@ impl Section {
     /// The ops answers the section shows, which it polls while it shows.
     pub fn ops(self) -> &'static [OpsKind] {
         match self {
-            Section::Overview => &[OpsKind::Storage, OpsKind::Transcoding, OpsKind::Ai, OpsKind::Costs],
+            Section::Overview => &[
+                OpsKind::Storage,
+                OpsKind::Transcoding,
+                OpsKind::Ai,
+                OpsKind::Costs,
+                OpsKind::Releases,
+            ],
             Section::Storage => &[OpsKind::Storage],
             Section::Transcoding => &[OpsKind::Transcoding],
             Section::AiPipelines => &[OpsKind::Ai],
             Section::Costs => &[OpsKind::Costs],
+            Section::Releases => &[OpsKind::Releases],
             _ => &[],
         }
     }
 }
 
-/// One of the `/api/admin/ops/*` answers.
+/// One of the `/api/admin/ops/*` answers, or Releases' read of GitHub.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum OpsKind {
     Storage,
     Transcoding,
     Ai,
     Costs,
+    /// GitHub, read with its own token whether or not the app is signed in to Reelshelf.
+    Releases,
 }
 
 /// How often the section showing is read again.
 pub const POLL_EVERY: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// How often a poll reads GitHub again: each read is a couple of dozen requests against the token's 5,000 an hour.
+/// Refresh reads it at once.
+pub const RELEASES_EVERY: std::time::Duration = std::time::Duration::from_secs(120);
 
 /// Something on its way from Grafana.
 #[derive(Clone, Debug, PartialEq)]
@@ -127,6 +141,26 @@ pub struct Opened {
     pub generation: u64,
 }
 
+/// Settings' GitHub form: a token alone.
+pub struct GithubForm {
+    /// Empty until a new token is typed; the kept one is never read back into the field.
+    pub token: TextEdit,
+    /// GitHub came from `GITHUB_TOKEN` (debug builds), not the Keychain.
+    pub from_env: bool,
+    /// What the last Save or Remove said.
+    pub note: Option<Result<(), String>>,
+}
+
+impl Default for GithubForm {
+    fn default() -> Self {
+        GithubForm {
+            token: TextEdit::new("").secure(),
+            from_env: false,
+            note: None,
+        }
+    }
+}
+
 /// Settings' Grafana form.
 pub struct GrafanaForm {
     pub url: TextEdit,
@@ -168,6 +202,17 @@ pub struct Monitor {
     pub costs: Fetched<OpsCosts>,
     /// The Costs page's width, as last laid out, for its charts.
     pub costs_width: f32,
+    /// What GitHub says for Releases.
+    pub releases: Fetched<Releases>,
+    /// A GitHub token is kept (or came from the environment).
+    pub github: bool,
+    pub github_form: GithubForm,
+    /// The deployed row whose commits behind main are listed (`Deployed::key`); prod's app at first.
+    pub release_open: Option<String>,
+    /// Whether a row has been opened or closed by hand, so a read no longer opens prod's app.
+    pub release_touched: bool,
+    /// When GitHub was last asked, so polls read it every [`RELEASES_EVERY`].
+    releases_asked: Option<std::time::Instant>,
     /// The clip id last copied, for its button's "Copied".
     pub copied: Option<Uuid>,
     /// "Now" for the pages' times, epoch milliseconds: when the latest answer arrived.
@@ -206,6 +251,12 @@ impl Monitor {
             ai: Fetched::default(),
             costs: Fetched::default(),
             costs_width: 1040.0,
+            releases: Fetched::default(),
+            github: false,
+            github_form: GithubForm::default(),
+            release_open: None,
+            release_touched: false,
+            releases_asked: None,
             copied: None,
             now_ms: chrono::Utc::now().timestamp_millis(),
             list: Load::Loading,
@@ -222,6 +273,7 @@ impl Monitor {
         if let Some(f) = &s.fetch {
             s.site = f.site().to_owned();
             s.session = Session::Checking;
+            s.github = f.has_github();
             f.restore();
             if s.grafana.is_some() {
                 f.list();
@@ -244,16 +296,51 @@ impl Monitor {
         self.poll();
     }
 
-    /// Reads again the ops answers the section showing needs (every [`POLL_EVERY`], and on Refresh).
+    /// Reads again the answers the section showing needs (every [`POLL_EVERY`]; GitHub every [`RELEASES_EVERY`]).
     pub fn poll(&mut self) {
-        if !self.session.signed_in() {
+        self.read(false);
+    }
+
+    /// Refresh: reads everything the section shows now.
+    pub fn refresh(&mut self) {
+        self.read(true);
+    }
+
+    fn read(&mut self, force: bool) {
+        let Some(f) = self.fetch.clone() else {
             return;
-        }
-        if let Some(f) = &self.fetch {
-            for kind in self.section.ops() {
-                f.ops(*kind);
+        };
+        for kind in self.section.ops() {
+            match kind {
+                OpsKind::Releases => {
+                    let due = force || self.releases_asked.is_none_or(|at| at.elapsed() >= RELEASES_EVERY);
+                    if self.github && due {
+                        self.releases_asked = Some(std::time::Instant::now());
+                        f.releases();
+                    }
+                }
+                kind if self.session.signed_in() => f.ops(*kind),
+                _ => {}
             }
         }
+    }
+
+    /// A GitHub read arrived.
+    pub fn set_releases(&mut self, releases: Releases) {
+        if !self.release_touched {
+            self.release_open = releases.prod_app().filter(|d| d.behind().is_some()).map(|d| d.key());
+        }
+        self.releases = Fetched::ready(releases);
+    }
+
+    /// Lists a deployed row's commits behind main, or stops listing them.
+    pub fn toggle_release(&mut self, key: String) {
+        self.release_touched = true;
+        self.release_open = if self.release_open.as_ref() == Some(&key) {
+            None
+        } else {
+            Some(key)
+        };
     }
 
     /// The session changed: signed in, read the section; signed out, forget what was read.
@@ -302,6 +389,7 @@ impl Monitor {
                 OpsKind::Transcoding => self.transcoding.value.as_ref().map(|v| v.generated_at),
                 OpsKind::Ai => self.ai.value.as_ref().map(|v| v.generated_at),
                 OpsKind::Costs => self.costs.value.as_ref().map(|v| v.generated_at),
+                OpsKind::Releases => self.releases.value.as_ref().map(|v| v.read_at),
             })
             .max()
     }
@@ -313,6 +401,7 @@ impl Monitor {
             OpsKind::Transcoding => self.transcoding.error.as_deref(),
             OpsKind::Ai => self.ai.error.as_deref(),
             OpsKind::Costs => self.costs.error.as_deref(),
+            OpsKind::Releases => self.releases.error.as_deref(),
         })
     }
 
@@ -344,6 +433,40 @@ impl Monitor {
             }
             Err(error) => self.grafana_form.note = Some(Err(copy::couldnt_keep(&error))),
         }
+    }
+
+    /// Keeps Settings' GitHub token in the Keychain and reads Releases with it.
+    pub fn save_github(&mut self) {
+        let token = self.github_form.token.text.trim().to_owned();
+        if token.is_empty() {
+            self.github_form.note = Some(Err(copy::NO_TOKEN.to_owned()));
+            return;
+        }
+        let Some(f) = self.fetch.clone() else {
+            return;
+        };
+        match f.save_github(&token) {
+            Ok(()) => {
+                self.github_form.token.replace_text("");
+                self.github_form.from_env = false;
+                self.github_form.note = Some(Ok(()));
+                self.github = true;
+                self.releases = Fetched::default();
+                self.releases_asked = Some(std::time::Instant::now());
+                f.releases();
+            }
+            Err(error) => self.github_form.note = Some(Err(copy::couldnt_keep(&error))),
+        }
+    }
+
+    /// Forgets the GitHub token.
+    pub fn remove_github(&mut self) {
+        if let Some(f) = &self.fetch {
+            f.remove_github();
+        }
+        self.github_form = GithubForm::default();
+        self.github = false;
+        self.releases = Fetched::default();
     }
 
     /// Forgets Grafana's address and token.

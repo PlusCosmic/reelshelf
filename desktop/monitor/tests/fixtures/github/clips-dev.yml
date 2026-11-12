@@ -1,0 +1,8 @@
+# Trimmed: the image lines of PlusCosmic/infrastructure's services/clips-dev.yml.
+services:
+  secrets:
+    image: 'infisical/cli:0.44.6'
+  clips-dev-migrations:
+    image: 'ghcr.io/pluscosmic/reelshelf-dev-base:main'
+  clips-dev:
+    image: 'ghcr.io/pluscosmic/reelshelf-dev-base:main'

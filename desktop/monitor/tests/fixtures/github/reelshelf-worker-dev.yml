@@ -1,0 +1,6 @@
+# Trimmed: the image lines of PlusCosmic/infrastructure's services/reelshelf-worker-dev.yml.
+services:
+  secrets:
+    image: 'infisical/cli:0.44.6'
+  reelshelf-worker-dev:
+    image: "ghcr.io/pluscosmic/reelshelf-worker:sha-0262ee127b6c63559afa791496ba7d26245dcc77"

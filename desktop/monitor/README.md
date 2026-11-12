@@ -5,7 +5,7 @@ A Mac app, drawn with Rune, that shows everything about Reelshelf in one place. 
 
 - **Overview**: a card per section with its headline numbers and, in red, what needs attention: failures in the last
   hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store configured, a cost
-  provider that couldn't be read.
+  provider that couldn't be read, a workflow failing on main.
 - **Storage**: totals, the object store in use, clips by tier, the top accounts and exports (`GET /api/admin/ops/storage`).
 - **Transcoding**: the queue by job type, the overflow pools, the AAC backfill and the last failures, each clip id
   copyable (`GET /api/admin/ops/transcoding`).
@@ -17,10 +17,35 @@ A Mac app, drawn with Rune, that shows everything about Reelshelf in one place. 
   providers aren't set up and where their keys go on the API (`GET /api/admin/ops/costs`). The API reads providers in
   the background, hourly and AWS every 6 hours; billing keys live only there, never in the app.
 - **Dashboards**: Grafana's dashboards drawn natively (below).
-- **Settings**: the account it is signed in as, Sign out, and Grafana's address and token.
+- **Releases**: from GitHub (below): what is deployed, what is coming, the uploader's latest tag and the open pull
+  requests. Overview's Releases card says how far prod's app is behind main and turns red when a workflow on main
+  failed.
+- **Settings**: the account it is signed in as, Sign out, Grafana's address and token, and the GitHub token.
 
-Releases and Admin are placeholders. The section showing is read again every 30 seconds (and on Refresh); the
-API caches each answer for 15 seconds.
+Admin is a placeholder. The section showing is read again every 30 seconds (and on Refresh); the API caches each
+answer for 15 seconds. GitHub is read at most every 2 minutes (each read is a couple of dozen requests against
+the token's 5,000 an hour), and at once on Refresh.
+
+## Releases
+
+The app calls GitHub's REST API itself, with no change to Reelshelf's API, using a fine-grained, read-only token
+(Contents, Pull requests and Actions, read, on PlusCosmic/reelshelf and PlusCosmic/infrastructure) entered once in
+Settings and kept in the Keychain (`github-token`); debug builds take `GITHUB_TOKEN` from the environment first. Each
+part reads and fails on its own, so a token that can't read infrastructure still shows reelshelf's CI and PRs.
+
+- **Deployed**: the `ghcr.io/pluscosmic/reelshelf*` image tags in infrastructure's `services/clips.yml` (prod),
+  `clips-dev.yml` (dev) and every `services/reelshelf-worker*.yml`, plus the overflow pools' worker
+  (`Overflow__<Pool>__WorkerImage=`), as `publish-app-images.yml` reads and bumps them. Each `sha-` tag is compared
+  with main (`/compare/<sha>...main`): its commit's title, author and date, how many commits main is ahead, and those
+  commits (prod's app listed at first; other rows open from their "N behind" button). Dev's runner image is tagged
+  `main` and isn't a commit.
+- **Coming**: the open `automation/app-images-*` PR in infrastructure with its age and checks, and the latest run on
+  main of CI, Publish Application Images and Windlass (red when the latest finished run failed, even while a newer one
+  runs).
+- **Uploader**: the highest `uploader-v*` tag and `publish-uploader.yml`'s last run.
+- **Open pull requests** on reelshelf, each with its checks (the latest run of each workflow on its head commit).
+
+Checks are read from Actions runs, so the token needs no Checks permission. Every title opens on GitHub in the browser.
 
 ## Signing in
 
@@ -69,9 +94,12 @@ Tokens are only ever sent to the service they belong to; the app never logs or s
 
 - `src/session.rs`: signing in and what refusals mean, over the `MonitorApi` trait (`reelshelf-api`'s `ApiClient`, or a
   fake in its tests); `src/secrets.rs`: the Keychain; `src/fetch.rs`: every call off the UI thread, and the 30 s poll.
-- `src/ui/`: a page per section (`overview.rs`, `storage.rs`, `transcoding.rs`, `ai.rs`, `costs.rs`, `settings.rs`,
-  `sign_in.rs`)
+- `src/ui/`: a page per section (`overview.rs`, `storage.rs`, `transcoding.rs`, `ai.rs`, `costs.rs`, `releases.rs`,
+  `settings.rs`, `sign_in.rs`)
   from the parts in `parts.rs`; `src/alerts.rs`: what needs attention.
+- `src/github/`: the client (`client.rs`), GitHub's answers (`model.rs`), the compose files' images (`deploy.rs`) and
+  what Releases shows put together from them (`releases.rs`), plain Rust with unit tests on `tests/fixtures/github/`
+  (trimmed copies of real answers; main's CI turned red for the scenes).
 - `src/grafana/`: the client (`client.rs`), dashboards (`model.rs`), query bodies and variables (`query.rs`) and data
   frames (`frames.rs`), plain Rust with unit tests on `tests/fixtures/` (trimmed copies of the real dashboards).
 - `src/ui/chart.rs`: the time series chart (several series, time axis, units, legend, hover crosshair and readout) and

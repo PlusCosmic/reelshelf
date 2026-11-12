@@ -6,6 +6,7 @@ pub mod alerts;
 pub mod copy;
 pub mod fetch;
 pub mod fixtures;
+pub mod github;
 pub mod grafana;
 pub mod links;
 pub mod secrets;
