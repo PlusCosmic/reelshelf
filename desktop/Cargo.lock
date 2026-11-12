@@ -3178,6 +3178,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "reelshelf-monitor"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "reelshelf-app",
+ "regex",
+ "reqwest",
+ "rune",
+ "rune-kit",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "regex"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

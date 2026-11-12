@@ -1,6 +1,6 @@
 {
   "name": "Reelshelf",
-  "about": "The site's tokens from frontend/src/styles/reelshelf.css (:root for light, [data-theme=\"dark\"] for dark), plus the few colours the app's canvas adds. `css` names each token's custom property; tests/theme.rs fails when a value here no longer matches it. Colours without a `css` entry are the app's own.",
+  "about": "The site's tokens from frontend/src/styles/reelshelf.css (:root for light, [data-theme=\"dark\"] for dark), plus the few colours the app's canvas adds (and `chart-1`..`chart-8`, the monitoring app's series, in the book cloths' hues). `css` names each token's custom property; tests/theme.rs fails when a value here no longer matches it. Colours without a `css` entry are the app's own.",
   "css": {
     "bg": "--bg",
     "bg-soft": "--bg-soft",
@@ -50,7 +50,16 @@
     "tone-idle": "#7d8f83",
     "spine-shade": "#0000002e",
     "segment-shadow": "#14301f26",
-    "flyout-shadow": "#14301f8c"
+    "flyout-shadow": "#14301f8c",
+
+    "chart-1": "#1f6b45",
+    "chart-2": "#2f5d73",
+    "chart-3": "#b68a3e",
+    "chart-4": "#a34d4d",
+    "chart-5": "#5b4a7a",
+    "chart-6": "#9c4a7a",
+    "chart-7": "#8c5a3c",
+    "chart-8": "#456b8c"
   },
   "dark": {
     "bg": "#13241c",
@@ -80,7 +89,16 @@
     "tone-idle": "#6e8176",
     "spine-shade": "#0000002e",
     "segment-shadow": "#00000066",
-    "flyout-shadow": "#000000b3"
+    "flyout-shadow": "#000000b3",
+
+    "chart-1": "#8fc9a4",
+    "chart-2": "#7fb3cf",
+    "chart-3": "#e0b56a",
+    "chart-4": "#f08a84",
+    "chart-5": "#b9a3e0",
+    "chart-6": "#e39ac6",
+    "chart-7": "#d9a07a",
+    "chart-8": "#94b8d9"
   },
   "logo": ["#1f6b45", "#3f8a63", "#9fb2a3"],
   "spines": ["#7a3b34", "#2f5d73", "#b68a3e", "#1f6b45", "#5b4a7a", "empty", "#8c5a3c", "#3e6b5a", "#a34d4d", "#456b8c"],

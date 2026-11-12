@@ -1,0 +1,27 @@
+[package]
+name = "reelshelf-monitor"
+description = "Reelshelf's monitoring app for the Mac: a Rune window that draws Grafana's dashboards natively (a spike)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "reelshelf-monitor"
+path = "src/main.rs"
+
+[dependencies]
+chrono.workspace = true
+# The uploader's theme (`reelshelf_app::theme`): the site's tokens, its fonts and their mapping onto rune-kit, shared
+# rather than copied, so `reelshelf-app`'s tests/theme.rs keeps both apps' colours on the site's.
+reelshelf-app = { path = "../app" }
+reqwest.workspace = true
+rune.workspace = true
+rune-kit.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+regex.workspace = true

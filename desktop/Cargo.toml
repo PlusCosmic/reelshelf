@@ -2,10 +2,10 @@
 # Reelshelf.sln and the Bun workspace, with its own CI job (`Desktop` in .github/workflows/ci.yml).
 #
 # Members: `core` (reelshelf-core), `api` (reelshelf-api) and `app` (reelshelf-app, the Rune app and its `reelshelf`
-# binary).
+# binary), plus `monitor` (reelshelf-monitor, the Mac monitoring app, a spike that draws Grafana dashboards).
 [workspace]
 resolver = "2"
-members = ["core", "api", "app"]
+members = ["core", "api", "app", "monitor"]
 
 [workspace.package]
 version = "0.1.0"
