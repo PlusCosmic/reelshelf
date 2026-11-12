@@ -8,6 +8,7 @@ pub mod dashboards;
 pub mod icons;
 pub mod overview;
 pub mod parts;
+pub mod releases;
 pub mod settings;
 pub mod sign_in;
 pub mod storage;
@@ -146,10 +147,11 @@ pub fn loading(s: &Monitor, l: &Look) -> El {
     }
 }
 
-/// An ops section's toolbar: its title, when its numbers were read (or why the latest read failed), and Refresh.
-fn ops_toolbar(s: &Monitor, l: &Look, title: &str) -> Toolbar {
+/// An ops section's toolbar: its title, when its numbers were read (or why the latest read failed), and Refresh,
+/// once there is something to read (`live`).
+fn ops_toolbar(s: &Monitor, l: &Look, title: &str, live: bool) -> Toolbar {
     let mut actions = row().gap(10.0).center_y();
-    if s.session.signed_in() && s.refusal.is_none() {
+    if live {
         if let Some(e) = s.ops_error().filter(|_| s.updated_at().is_some()) {
             actions = actions.child(
                 text(copy::couldnt_refresh(e))
@@ -171,7 +173,7 @@ fn ops_toolbar(s: &Monitor, l: &Look, title: &str) -> Toolbar {
             Button::new(copy::REFRESH)
                 .variant(ButtonVariant::Ghost)
                 .control_size(ControlSize::Regular)
-                .on_press(|s: &mut Monitor| s.poll())
+                .on_press(|s: &mut Monitor| s.refresh())
                 .build(&l.kit)
                 .key("refresh"),
         );
@@ -198,8 +200,10 @@ pub fn view(s: &Monitor, cx: &mut Cx<Monitor>) -> El {
                 Section::Costs => costs::page(s, l, &paint(dark)),
                 _ => ai::page(s, l),
             });
-            (page, ops_toolbar(s, l, label(section)))
+            let live = s.session.signed_in() && s.refusal.is_none();
+            (page, ops_toolbar(s, l, label(section), live))
         }
+        Section::Releases => (releases::page(s, l), ops_toolbar(s, l, copy::RELEASES, s.github)),
         other => (
             message(l, copy::COMING_SOON_TITLE, copy::COMING_SOON),
             Toolbar::new().title(label(other)),

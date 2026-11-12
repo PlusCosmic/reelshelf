@@ -1,0 +1,47 @@
+[
+  {
+    "number": 391,
+    "title": "Monitor app: sign in, Overview, Storage, Transcoding and AI pipelines",
+    "html_url": "https://github.com/PlusCosmic/reelshelf/pull/391",
+    "state": "open",
+    "draft": false,
+    "created_at": "2026-11-12T19:26:05Z",
+    "user": {
+      "login": "PlusCosmic"
+    },
+    "head": {
+      "ref": "task/6-monitor-app-sign-in-overview-storage-tra",
+      "sha": "dc6b0c71f814f8de9f404941b5f89a2b8abe973e"
+    }
+  },
+  {
+    "number": 390,
+    "title": "Add a spike of a Mac monitoring app that draws Grafana dashboards natively",
+    "html_url": "https://github.com/PlusCosmic/reelshelf/pull/390",
+    "state": "open",
+    "draft": false,
+    "created_at": "2026-11-12T17:24:24Z",
+    "user": {
+      "login": "PlusCosmic"
+    },
+    "head": {
+      "ref": "task/4-monitor-app-spike-rune-shell-native-graf",
+      "sha": "130a179e367836ee5d376a0e7f916e236dc49f9a"
+    }
+  },
+  {
+    "number": 389,
+    "title": "Monitor API: admin ops endpoints and device tokens on admin endpoints",
+    "html_url": "https://github.com/PlusCosmic/reelshelf/pull/389",
+    "state": "open",
+    "draft": true,
+    "created_at": "2026-11-12T16:21:48Z",
+    "user": {
+      "login": "PlusCosmic"
+    },
+    "head": {
+      "ref": "task/5-monitor-api-admin-ops-endpoints-device-t",
+      "sha": "11433cedf0a0ceab1c1459ea412a68693ad47c89"
+    }
+  }
+]

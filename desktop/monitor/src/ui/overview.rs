@@ -1,11 +1,13 @@
 //! Overview: a card per ops section with its headline numbers and, in red, anything that needs attention (failures
 //! in the last hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store, a
-//! cost provider that couldn't be read).
+//! cost provider that couldn't be read, a workflow failing on main).
 
 use rune::{El, row, spacer, text};
 use rune_kit::{Button, ButtonVariant, ControlSize};
 
 use reelshelf_api::OpsQueueCounts;
+
+use crate::github::Checks;
 use reelshelf_app::theme::{Look, ty};
 
 use super::parts;
@@ -21,24 +23,31 @@ pub fn page(s: &Monitor, l: &Look) -> El {
             section_card(l, Section::Transcoding, transcoding(s, l)),
             section_card(l, Section::AiPipelines, ai(s, l)),
             section_card(l, Section::Costs, costs(s, l)),
+            section_card(l, Section::Releases, releases(s, l)),
         ],
     )
 }
 
-/// A section's headline numbers and what needs attention, or None until it is read.
-type Summary = Option<(Vec<El>, Vec<String>)>;
+/// A section's card: loading, a note in place of its numbers, or its headline numbers and what needs attention.
+enum Summary {
+    Loading,
+    Note(&'static str),
+    Ready(Vec<El>, Vec<String>),
+}
 
 fn storage(s: &Monitor, l: &Look) -> Summary {
-    let v = s.storage.value.as_ref()?;
+    let Some(v) = s.storage.value.as_ref() else {
+        return Summary::Loading;
+    };
     let accounts: i64 = v.by_tier.iter().map(|t| t.accounts).sum();
-    Some((
+    Summary::Ready(
         vec![
             parts::stat(l, copy::STORED, bytes(v.total.bytes), false),
             parts::stat(l, copy::CLIPS, count(v.total.clips), false),
             parts::stat(l, copy::ACCOUNTS, count(accounts), false),
         ],
         alerts::storage(v),
-    ))
+    )
 }
 
 /// Waiting (pending and retrying), running and finished in the last hour, over a queue's rows.
@@ -54,9 +63,11 @@ fn totals<'a>(counts: impl Iterator<Item = &'a OpsQueueCounts> + Clone) -> (i64,
 }
 
 fn transcoding(s: &Monitor, l: &Look) -> Summary {
-    let v = s.transcoding.value.as_ref()?;
+    let Some(v) = s.transcoding.value.as_ref() else {
+        return Summary::Loading;
+    };
     let (waiting, running, done, failed) = totals(v.types.iter());
-    Some((
+    Summary::Ready(
         vec![
             parts::stat(l, copy::WAITING, count(waiting), false),
             parts::stat(l, copy::RUNNING, count(running), false),
@@ -64,14 +75,16 @@ fn transcoding(s: &Monitor, l: &Look) -> Summary {
             parts::stat(l, copy::FAILED, count(failed), failed > 0),
         ],
         alerts::transcoding(v),
-    ))
+    )
 }
 
 fn ai(s: &Monitor, l: &Look) -> Summary {
-    let v = s.ai.value.as_ref()?;
+    let Some(v) = s.ai.value.as_ref() else {
+        return Summary::Loading;
+    };
     let (waiting, running, _, failed) = totals(v.queues.iter().flat_map(|q| q.triggers.iter()));
     let spend: f64 = v.spend.iter().filter_map(|m| m.last_day.cost_usd).sum();
-    Some((
+    Summary::Ready(
         vec![
             parts::stat(l, copy::WAITING, count(waiting), false),
             parts::stat(l, copy::RUNNING, count(running), false),
@@ -84,11 +97,41 @@ fn ai(s: &Monitor, l: &Look) -> Summary {
             ),
         ],
         alerts::ai(v),
-    ))
+    )
+}
+
+/// How far prod is behind main, open PRs, and main's workflows, red when one failed.
+fn releases(s: &Monitor, l: &Look) -> Summary {
+    if !s.github {
+        return Summary::Note(copy::GITHUB_NOT_CONNECTED_TITLE);
+    }
+    let Some(r) = s.releases.value.as_ref() else {
+        return Summary::Loading;
+    };
+    let main = r.main_checks();
+    let (main_words, main_red) = match main {
+        Some(Checks::Failing) => (copy::FAILING, true),
+        Some(Checks::Running) => (copy::RUNNING, false),
+        Some(Checks::Passing) => (copy::PASSING, false),
+        Some(Checks::Cancelled) => (copy::CANCELLED, false),
+        Some(Checks::None) => (copy::NO_CHECKS, false),
+        None => (copy::CHECKS_UNKNOWN, false),
+    };
+    let mut stats = Vec::new();
+    if let Some(n) = r.prod_behind() {
+        stats.push(parts::stat(l, copy::PROD_BEHIND, count(n), false));
+    }
+    if let Ok(pulls) = &r.pulls {
+        stats.push(parts::stat(l, copy::OPEN_PRS, count(pulls.len() as i64), false));
+    }
+    stats.push(parts::stat(l, copy::MAIN_CHECKS, main_words.to_owned(), main_red));
+    Summary::Ready(stats, alerts::releases(r))
 }
 
 fn costs(s: &Monitor, l: &Look) -> Summary {
-    let v = s.costs.value.as_ref()?;
+    let Some(v) = s.costs.value.as_ref() else {
+        return Summary::Loading;
+    };
     let mut stats = vec![parts::stat(
         l,
         copy::SPEND_THIS_MONTH,
@@ -103,13 +146,13 @@ fn costs(s: &Monitor, l: &Look) -> Summary {
             false,
         ));
     }
-    Some((stats, alerts::costs(v)))
+    Summary::Ready(stats, alerts::costs(v))
 }
 
 fn section_card(l: &Look, section: Section, summary: Summary) -> El {
     let title = super::label(section);
     let key = format!("card-{section:?}");
-    let attention = summary.as_ref().is_some_and(|(_, a)| !a.is_empty());
+    let attention = matches!(&summary, Summary::Ready(_, a) if !a.is_empty());
     let head = row()
         .w_full()
         .gap(10.0)
@@ -119,9 +162,9 @@ fn section_card(l: &Look, section: Section, summary: Summary) -> El {
                 .size(9.0, 9.0)
                 .radius(4.5)
                 .fill(match &summary {
-                    None => l.c.line,
-                    Some(_) if attention => l.c.danger,
-                    Some(_) => l.c.accent,
+                    Summary::Loading | Summary::Note(_) => l.c.line,
+                    Summary::Ready(..) if attention => l.c.danger,
+                    Summary::Ready(..) => l.c.accent,
                 })
                 .a11y_hidden(),
         )
@@ -146,8 +189,9 @@ fn section_card(l: &Look, section: Section, summary: Summary) -> El {
         .radius(l.radius_lg)
         .child(head);
     match summary {
-        None => card = card.child(parts::note(l, copy::LOADING)),
-        Some((stats, attention)) => {
+        Summary::Loading => card = card.child(parts::note(l, copy::LOADING)),
+        Summary::Note(words) => card = card.child(parts::note(l, words)),
+        Summary::Ready(stats, attention) => {
             card = card.child(parts::stats(stats));
             if attention.is_empty() {
                 card = card.child(parts::note(l, copy::ALL_CLEAR));

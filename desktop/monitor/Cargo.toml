@@ -12,6 +12,8 @@ path = "src/main.rs"
 
 [dependencies]
 chrono.workspace = true
+# Reading GitHub's answers for Releases at once.
+futures-util.workspace = true
 # The uploader's theme (`reelshelf_app::theme`): the site's tokens, its fonts and their mapping onto rune-kit, shared
 # rather than copied, so `reelshelf-app`'s tests/theme.rs keeps both apps' colours on the site's.
 reelshelf-app = { path = "../app" }

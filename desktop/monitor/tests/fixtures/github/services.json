@@ -1,0 +1,187 @@
+[
+  {
+    "name": "apex-team-builder.yml",
+    "path": "services/apex-team-builder.yml",
+    "type": "file"
+  },
+  {
+    "name": "audiobookshelf.yml",
+    "path": "services/audiobookshelf.yml",
+    "type": "file"
+  },
+  {
+    "name": "bookshelf.yml",
+    "path": "services/bookshelf.yml",
+    "type": "file"
+  },
+  {
+    "name": "calibre-web-automated.yml",
+    "path": "services/calibre-web-automated.yml",
+    "type": "file"
+  },
+  {
+    "name": "camofox-browser.yml",
+    "path": "services/camofox-browser.yml",
+    "type": "file"
+  },
+  {
+    "name": "clips-dev.yml",
+    "path": "services/clips-dev.yml",
+    "type": "file"
+  },
+  {
+    "name": "clips.yml",
+    "path": "services/clips.yml",
+    "type": "file"
+  },
+  {
+    "name": "cloudflared.yml",
+    "path": "services/cloudflared.yml",
+    "type": "file"
+  },
+  {
+    "name": "cobblemon-pack.yml",
+    "path": "services/cobblemon-pack.yml",
+    "type": "file"
+  },
+  {
+    "name": "cobblemon-pack",
+    "path": "services/cobblemon-pack",
+    "type": "dir"
+  },
+  {
+    "name": "cobblemon-server.yml",
+    "path": "services/cobblemon-server.yml",
+    "type": "file"
+  },
+  {
+    "name": "dev",
+    "path": "services/dev",
+    "type": "dir"
+  },
+  {
+    "name": "emby.yml",
+    "path": "services/emby.yml",
+    "type": "file"
+  },
+  {
+    "name": "fileflows.yml",
+    "path": "services/fileflows.yml",
+    "type": "file"
+  },
+  {
+    "name": "firecrawl.yml",
+    "path": "services/firecrawl.yml",
+    "type": "file"
+  },
+  {
+    "name": "github-runner.yml",
+    "path": "services/github-runner.yml",
+    "type": "file"
+  },
+  {
+    "name": "homepage.yml",
+    "path": "services/homepage.yml",
+    "type": "file"
+  },
+  {
+    "name": "infisical",
+    "path": "services/infisical",
+    "type": "dir"
+  },
+  {
+    "name": "jellyfin.yml",
+    "path": "services/jellyfin.yml",
+    "type": "file"
+  },
+  {
+    "name": "jellyseerr-emby.yml",
+    "path": "services/jellyseerr-emby.yml",
+    "type": "file"
+  },
+  {
+    "name": "listenarr.yml",
+    "path": "services/listenarr.yml",
+    "type": "file"
+  },
+  {
+    "name": "monitoring.yml",
+    "path": "services/monitoring.yml",
+    "type": "file"
+  },
+  {
+    "name": "monitoring",
+    "path": "services/monitoring",
+    "type": "dir"
+  },
+  {
+    "name": "open-webui.yml",
+    "path": "services/open-webui.yml",
+    "type": "file"
+  },
+  {
+    "name": "prowlarr.yml",
+    "path": "services/prowlarr.yml",
+    "type": "file"
+  },
+  {
+    "name": "radarr.yml",
+    "path": "services/radarr.yml",
+    "type": "file"
+  },
+  {
+    "name": "reelshelf-maintenance.yml",
+    "path": "services/reelshelf-maintenance.yml",
+    "type": "file"
+  },
+  {
+    "name": "reelshelf-maintenance",
+    "path": "services/reelshelf-maintenance",
+    "type": "dir"
+  },
+  {
+    "name": "reelshelf-storage-copy.yml",
+    "path": "services/reelshelf-storage-copy.yml",
+    "type": "file"
+  },
+  {
+    "name": "reelshelf-storage-copy",
+    "path": "services/reelshelf-storage-copy",
+    "type": "dir"
+  },
+  {
+    "name": "reelshelf-worker-dev.yml",
+    "path": "services/reelshelf-worker-dev.yml",
+    "type": "file"
+  },
+  {
+    "name": "reelshelf-worker.yml",
+    "path": "services/reelshelf-worker.yml",
+    "type": "file"
+  },
+  {
+    "name": "sabnzbd.yml",
+    "path": "services/sabnzbd.yml",
+    "type": "file"
+  },
+  {
+    "name": "sonarr.yml",
+    "path": "services/sonarr.yml",
+    "type": "file"
+  },
+  {
+    "name": "survival-server.yml",
+    "path": "services/survival-server.yml",
+    "type": "file"
+  },
+  {
+    "name": "trilium.yml",
+    "path": "services/trilium.yml",
+    "type": "file"
+  },
+  {
+    "name": "vpn.yml",
+    "path": "services/vpn.yml",
+    "type": "file"
+  }
+]

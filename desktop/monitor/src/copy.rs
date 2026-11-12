@@ -1,6 +1,6 @@
-//! Every word the monitoring app shows, in one place (as the uploader's `copy.rs`). Grafana's and Reelshelf's own words
-//! (dashboard and panel titles, series names, usernames, queue and model names, error messages) come from them and
-//! pass through as they are.
+//! Every word the monitoring app shows, in one place (as the uploader's `copy.rs`). Grafana's, Reelshelf's and GitHub's
+//! own words (dashboard and panel titles, series names, usernames, queue and model names, commit and pull request
+//! titles, workflow names, tags, error messages) come from them and pass through as they are.
 
 use crate::grafana::TimeRange;
 
@@ -87,6 +87,9 @@ pub const WAITING: &str = "Waiting";
 pub const RUNNING: &str = "Running";
 pub const DONE_LAST_HOUR: &str = "Done in the last hour";
 pub const SPEND_24H: &str = "Spend, 24 h";
+pub const PROD_BEHIND: &str = "Prod behind main";
+pub const OPEN_PRS: &str = "Open PRs";
+pub const MAIN_CHECKS: &str = "Main";
 
 /// What needs attention.
 pub fn failed_last_hour(n: i64, what: &str) -> String {
@@ -99,6 +102,12 @@ pub fn oldest_waiting(what: &str, age: &str) -> String {
     format!("Oldest {what} has waited {age}")
 }
 pub const NO_STORE: &str = "No object store is configured";
+pub fn red_on_main(workflow: &str) -> String {
+    format!("{workflow} failed on main")
+}
+pub fn bump_failing(title: &str) -> String {
+    format!("Checks failing on {title}")
+}
 
 /// Storage.
 pub const TOTALS: &str = "Totals";
@@ -305,6 +314,75 @@ pub fn money(amount: f64, currency: &str) -> String {
     }
 }
 
+/// Releases.
+pub const GITHUB_NOT_CONNECTED_TITLE: &str = "GitHub isn't connected";
+pub const GITHUB_NOT_CONNECTED: &str = "Add a fine-grained, read-only GitHub token in Settings: Contents, Pull requests and Actions, read, on PlusCosmic/reelshelf and PlusCosmic/infrastructure.";
+pub const DEPLOYED: &str = "Deployed";
+pub const DEPLOYED_INTRO: &str =
+    "The image tags in infrastructure's compose files, and the commits main has that each doesn't.";
+pub const PROD: &str = "Prod";
+pub const DEV: &str = "Dev";
+pub const UP_TO_DATE: &str = "Up to date";
+pub const NOT_A_COMMIT: &str = "Not built from a commit";
+pub const HIDE: &str = "Hide";
+pub const COMING: &str = "Coming";
+pub const IMAGE_BUMP: &str = "Image bump";
+pub const NO_BUMP: &str = "No image bump is waiting in infrastructure.";
+pub const ON_MAIN: &str = "On main";
+pub const NO_RUNS: &str = "No runs yet";
+pub const UPLOADER: &str = "Uploader";
+pub const LATEST_TAG: &str = "Latest tag";
+pub const NO_UPLOADER_TAG: &str = "No uploader tag yet";
+pub const LAST_PUBLISH: &str = "Last publish";
+pub const OPEN_PULLS: &str = "Open pull requests";
+pub const NO_PULLS: &str = "No open pull requests.";
+pub const DRAFT: &str = "Draft";
+pub const PASSING: &str = "Passing";
+pub const FAILING: &str = "Failing";
+pub const CANCELLED: &str = "Cancelled";
+pub const NO_CHECKS: &str = "No checks";
+pub const CHECKS_UNKNOWN: &str = "Checks unknown";
+
+/// A deployed image's name.
+pub fn image(name: &str) -> &str {
+    match name {
+        "reelshelf" => "App",
+        "reelshelf-migrations" => "Migrations",
+        "reelshelf-worker" => "Worker",
+        "reelshelf-dev-base" => "Dev runner",
+        other => other,
+    }
+}
+/// The worker image handed to the overflow pools ("ec2, ecs, batch").
+pub fn overflow_workers(pools: &str) -> String {
+    format!("Overflow workers ({pools})")
+}
+pub fn tag(tag: &str) -> String {
+    format!("Tag {tag}")
+}
+pub fn behind(n: &str) -> String {
+    format!("{n} behind")
+}
+pub fn show_behind(n: &str, what: &str) -> String {
+    format!("Show the {n} commits on main not in {what}")
+}
+pub fn hide_behind(what: &str) -> String {
+    format!("Hide the commits not in {what}")
+}
+pub fn more_commits(n: &str) -> String {
+    format!("{n} more on GitHub")
+}
+/// "3f8936c · PlusCosmic · 18:53".
+pub fn commit_meta(sha: &str, author: &str, when: &str) -> String {
+    format!("{sha} · {author} · {when}")
+}
+pub fn pull_meta(number: u64, age: &str, author: &str) -> String {
+    format!("#{number} · opened {age} ago by {author}")
+}
+pub fn run_meta(title: &str, when: &str) -> String {
+    format!("{title} · {when}")
+}
+
 /// Settings.
 pub const REELSHELF: &str = "Reelshelf";
 pub const SIGN_OUT: &str = "Sign out";
@@ -322,13 +400,23 @@ pub const GRAFANA_URL: &str = "Address";
 pub const GRAFANA_URL_PLACEHOLDER: &str = "http://grafana:3020";
 pub const GRAFANA_TOKEN: &str = "Token";
 pub const GRAFANA_TOKEN_PLACEHOLDER: &str = "glsa_…";
-pub const GRAFANA_TOKEN_KEPT: &str = "Kept in the Keychain";
+pub const TOKEN_KEPT: &str = "Kept in the Keychain";
 pub const SAVE: &str = "Save";
 pub const REMOVE: &str = "Remove";
 pub const SAVED: &str = "Saved.";
 pub const BAD_URL: &str = "Enter an address starting http:// or https://.";
 pub const NO_TOKEN: &str = "Enter the token.";
 pub const FROM_ENVIRONMENT: &str = "Using GRAFANA_URL and GRAFANA_TOKEN from the environment.";
+pub const GITHUB: &str = "GitHub";
+pub const GITHUB_INTRO: &str = "A fine-grained, read-only token for Releases: Contents, Pull requests and Actions, read, on PlusCosmic/reelshelf and PlusCosmic/infrastructure. It is kept in the Keychain.";
+pub const GITHUB_TOKEN_PLACEHOLDER: &str = "github_pat_…";
+pub fn save_token(service: &str) -> String {
+    format!("Save the {service} token")
+}
+pub fn remove_token(service: &str) -> String {
+    format!("Remove the {service} token")
+}
+pub const GITHUB_FROM_ENVIRONMENT: &str = "Using GITHUB_TOKEN from the environment.";
 pub fn couldnt_keep(error: &str) -> String {
     format!("Couldn't keep it in the Keychain: {error}")
 }

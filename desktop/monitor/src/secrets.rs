@@ -1,4 +1,5 @@
-//! Where the app keeps what it must not lose or show: Reelshelf's device token, and Grafana's address and token.
+//! Where the app keeps what it must not lose or show: Reelshelf's device token, Grafana's address and token, and the
+//! GitHub token Releases reads with.
 //!
 //! On macOS that is the login Keychain, as generic passwords under the service [`SERVICE`]. Everywhere else (Linux,
 //! where CI runs the tests) it is [`MemorySecrets`], kept until the app quits, as the uploader's stand-ins are.
@@ -18,6 +19,8 @@ pub enum Secret {
     },
     GrafanaUrl,
     GrafanaToken,
+    /// A fine-grained, read-only GitHub token, for Releases.
+    GithubToken,
 }
 
 impl Secret {
@@ -27,6 +30,7 @@ impl Secret {
             Secret::DeviceToken { site } => format!("device-token {site}"),
             Secret::GrafanaUrl => "grafana-url".to_owned(),
             Secret::GrafanaToken => "grafana-token".to_owned(),
+            Secret::GithubToken => "github-token".to_owned(),
         }
     }
 }

@@ -1,6 +1,6 @@
 //! Loading off the UI thread: each call runs on the fetcher's own Tokio runtime and hands its answer to the window
 //! through Rune's `AppHandle::update`. It signs in to Reelshelf ([`SignIn`]), reads the ops answers, polls the section
-//! showing every [`POLL_EVERY`](crate::state::POLL_EVERY), and loads Grafana. Answers for a dashboard load that has
+//! showing every [`POLL_EVERY`](crate::state::POLL_EVERY), reads GitHub for Releases, and loads Grafana. Answers for a dashboard load that has
 //! since been replaced (another dashboard, a new range, a refresh) are dropped.
 
 use std::sync::{Arc, Mutex};
@@ -9,6 +9,7 @@ use reelshelf_api::{ApiClient, ApiError, ClientApp, FeatureFlags};
 use rune::AppHandle;
 use tokio::task::AbortHandle;
 
+use crate::github;
 use crate::grafana::{Client, TimeRange, query};
 use crate::secrets::{Secret, Secrets};
 use crate::session::{Refusal, Session, SignIn};
@@ -22,16 +23,19 @@ pub struct Fetcher {
     sign_in: Arc<SignIn<ApiClient>>,
     secrets: Arc<dyn Secrets>,
     grafana: Mutex<Option<Client>>,
+    github: Mutex<Option<github::Client>>,
     /// The sign-in waiting for its owner, so Cancel (or another Sign in) stops its polling.
     waiting: Mutex<Option<AbortHandle>>,
 }
 
 impl Fetcher {
-    /// A fetcher signing in to `site`, keeping tokens in `secrets`, reading Grafana through `grafana` when set up.
+    /// A fetcher signing in to `site`, keeping tokens in `secrets`, reading Grafana through `grafana` and GitHub
+    /// through `github` when set up.
     pub fn new(
         site: String,
         secrets: Arc<dyn Secrets>,
         grafana: Option<Client>,
+        github: Option<github::Client>,
         window: AppHandle<Monitor>,
     ) -> std::io::Result<Fetcher> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -51,6 +55,7 @@ impl Fetcher {
             sign_in,
             secrets,
             grafana: Mutex::new(grafana),
+            github: Mutex::new(github),
             waiting: Mutex::new(None),
         };
         fetcher.start_polling();
@@ -62,6 +67,50 @@ impl Fetcher {
         let url = secrets.read(&Secret::GrafanaUrl)?;
         let token = secrets.read(&Secret::GrafanaToken)?;
         Some(Client::new(&url, token))
+    }
+
+    /// GitHub as kept in the Keychain.
+    pub fn kept_github(secrets: &dyn Secrets) -> Option<github::Client> {
+        secrets.read(&Secret::GithubToken).map(github::Client::new)
+    }
+
+    fn github(&self) -> Option<github::Client> {
+        self.github.lock().unwrap_or_else(|p| p.into_inner()).clone()
+    }
+
+    pub fn has_github(&self) -> bool {
+        self.github().is_some()
+    }
+
+    /// Keeps the GitHub token in the Keychain and reads through it.
+    pub fn save_github(&self, token: &str) -> Result<(), String> {
+        self.secrets.write(&Secret::GithubToken, token)?;
+        *self.github.lock().unwrap_or_else(|p| p.into_inner()) = Some(github::Client::new(token.to_owned()));
+        Ok(())
+    }
+
+    pub fn remove_github(&self) {
+        self.secrets.delete(&Secret::GithubToken);
+        *self.github.lock().unwrap_or_else(|p| p.into_inner()) = None;
+    }
+
+    /// Reads everything Releases shows from GitHub.
+    pub fn releases(&self) {
+        let Some(client) = self.github() else {
+            return;
+        };
+        let window = self.window.clone();
+        self.runtime.spawn(async move {
+            let releases = client.releases().await;
+            let now = chrono::Utc::now().timestamp_millis();
+            window.update(move |s: &mut Monitor, _| {
+                // Unless the token was removed meanwhile.
+                if s.github {
+                    s.now_ms = now;
+                    s.set_releases(releases);
+                }
+            });
+        });
     }
 
     pub fn site(&self) -> &str {
@@ -165,6 +214,8 @@ impl Fetcher {
                     let answer = api.ops_costs().await;
                     deliver(&sign_in, &window, answer, |s| &mut s.costs);
                 }
+                // Read from GitHub by `releases`, not the API.
+                OpsKind::Releases => {}
             }
         });
     }

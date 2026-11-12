@@ -1,0 +1,121 @@
+{
+  "status": "ahead",
+  "ahead_by": 29,
+  "behind_by": 0,
+  "total_commits": 29,
+  "html_url": "https://github.com/PlusCosmic/reelshelf/compare/118e6fc57a33f9bba08eac689f75c578003da0dc...main",
+  "base_commit": {
+    "sha": "118e6fc57a33f9bba08eac689f75c578003da0dc",
+    "html_url": "https://github.com/PlusCosmic/reelshelf/commit/118e6fc57a33f9bba08eac689f75c578003da0dc",
+    "commit": {
+      "message": "Merge pull request #381 from PlusCosmic/claude/iphone-av1-playback-issue-mm9dup",
+      "author": {
+        "date": "2026-11-11T11:28:43Z"
+      }
+    },
+    "author": {
+      "login": "PlusCosmic"
+    }
+  },
+  "commits": [
+    {
+      "sha": "99e43c52f9a5efe87be9d47d145645baefd24107",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/commit/99e43c52f9a5efe87be9d47d145645baefd24107",
+      "commit": {
+        "message": "Test how the ops storage response names the object store",
+        "author": {
+          "date": "2026-11-12T16:20:38Z",
+          "name": "PlusCosmic"
+        }
+      },
+      "author": null
+    },
+    {
+      "sha": "3f8936c3213939ff0ecf85f0d8856fb0628b51c6",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/commit/3f8936c3213939ff0ecf85f0d8856fb0628b51c6",
+      "commit": {
+        "message": "Add a spike of a Mac monitoring app that draws Grafana dashboards natively",
+        "author": {
+          "date": "2026-11-12T16:24:28Z",
+          "name": "PlusCosmic"
+        }
+      },
+      "author": null
+    },
+    {
+      "sha": "7449ff0d073f0f168c1f89813186a7522b6d31d1",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/commit/7449ff0d073f0f168c1f89813186a7522b6d31d1",
+      "commit": {
+        "message": "Break sparse series at gaps, and add an example that renders a real dashboard headless",
+        "author": {
+          "date": "2026-11-12T17:19:25Z",
+          "name": "PlusCosmic"
+        }
+      },
+      "author": null
+    },
+    {
+      "sha": "130a179e367836ee5d376a0e7f916e236dc49f9a",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/commit/130a179e367836ee5d376a0e7f916e236dc49f9a",
+      "commit": {
+        "message": "Size the range picker directly instead of with fit(), which Windlass reads as a focused test",
+        "author": {
+          "date": "2026-11-12T17:31:04Z",
+          "name": "PlusCosmic"
+        }
+      },
+      "author": null
+    },
+    {
+      "sha": "11433cedf0a0ceab1c1459ea412a68693ad47c89",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/commit/11433cedf0a0ceab1c1459ea412a68693ad47c89",
+      "commit": {
+        "message": "Scope admin endpoints to the monitor app's device tokens",
+        "author": {
+          "date": "2026-11-12T17:35:29Z",
+          "name": "PlusCosmic"
+        }
+      },
+      "author": null
+    },
+    {
+      "sha": "93c564b7d95f49e02bcdfedad82b5d3663472515",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/commit/93c564b7d95f49e02bcdfedad82b5d3663472515",
+      "commit": {
+        "message": "Merge pull request #390 from PlusCosmic/task/4-monitor-app-spike-rune-shell-native-graf",
+        "author": {
+          "date": "2026-11-12T17:38:26Z"
+        }
+      },
+      "author": {
+        "login": "PlusCosmic"
+      }
+    },
+    {
+      "sha": "db118fec3e4857421ec21bff126e158ecb567c0b",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/commit/db118fec3e4857421ec21bff126e158ecb567c0b",
+      "commit": {
+        "message": "Merge pull request #389 from PlusCosmic/task/5-monitor-api-admin-ops-endpoints-device-t",
+        "author": {
+          "date": "2026-11-12T17:44:41Z"
+        }
+      },
+      "author": {
+        "login": "PlusCosmic"
+      }
+    },
+    {
+      "sha": "0262ee127b6c63559afa791496ba7d26245dcc77",
+      "html_url": "https://github.com/PlusCosmic/reelshelf/commit/0262ee127b6c63559afa791496ba7d26245dcc77",
+      "commit": {
+        "message": "Monitor app: sign in, Overview, Storage, Transcoding and AI pipelines (#391)",
+        "author": {
+          "date": "2026-11-12T20:14:46Z"
+        }
+      },
+      "author": {
+        "login": "PlusCosmic"
+      }
+    }
+  ]
+}
