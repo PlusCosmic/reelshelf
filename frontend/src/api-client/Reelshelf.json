@@ -724,6 +724,56 @@
         }
       }
     },
+    "/api/clips/search/availability": {
+      "get": {
+        "tags": [
+          "ClipSearchEndpoints"
+        ],
+        "operationId": "GetClipSearchAvailability",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipSearchAvailability"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clips/search": {
+      "post": {
+        "tags": [
+          "ClipSearchEndpoints"
+        ],
+        "operationId": "SearchClips",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClipSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipSearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clips/bin": {
       "get": {
         "tags": [
@@ -5394,6 +5444,206 @@
           }
         }
       },
+      "ClipSearchAvailability": {
+        "required": [
+          "available",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ClipSearchFilters": {
+        "required": [
+          "start_date",
+          "end_date",
+          "game_category_ids",
+          "mood_tags",
+          "people",
+          "phrase"
+        ],
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "end_date": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "game_category_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "mood_tags": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "people": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "phrase": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ClipSearchGame": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "ClipSearchInterpretation": {
+        "required": [
+          "start_date",
+          "end_date",
+          "games",
+          "mood_tags",
+          "people",
+          "phrase"
+        ],
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "end_date": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClipSearchGame"
+            }
+          },
+          "mood_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "phrase": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ClipSearchRequest": {
+        "required": [
+          "query",
+          "filters",
+          "time_zone"
+        ],
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "filters": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ClipSearchFilters"
+              }
+            ]
+          },
+          "time_zone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ClipSearchResponse": {
+        "required": [
+          "query",
+          "interpretation",
+          "clips"
+        ],
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "interpretation": {
+            "$ref": "#/components/schemas/ClipSearchInterpretation"
+          },
+          "clips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Clip"
+            }
+          }
+        }
+      },
       "ClipShareResponse": {
         "required": [
           "share_path",
@@ -9113,6 +9363,9 @@
     },
     {
       "name": "ClipsEndpoints"
+    },
+    {
+      "name": "ClipSearchEndpoints"
     },
     {
       "name": "ClipBinEndpoints"

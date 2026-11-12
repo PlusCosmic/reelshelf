@@ -14,7 +14,7 @@ public class ClipsStatements(NpgsqlConnection connection)
     /// legend means it can't be told, so no run overrides it), else the latest succeeded run outside evals, as clip
     /// summaries use. Null for every other game. An expression, so it can be selected, filtered on or counted.
     /// </summary>
-    private static string PlayerLegendSql(string clipAlias) => $"""
+    internal static string PlayerLegendSql(string clipAlias) => $"""
         (SELECT CASE WHEN label.clip_id IS NOT NULL THEN label.player_legend ELSE run.player_legend END
          FROM game_category legend_game
          LEFT JOIN legend_detection_label label ON label.clip_id = {clipAlias}.id
@@ -287,7 +287,7 @@ public class ClipsStatements(NpgsqlConnection connection)
     /// The WHERE clause and its parameters for a filtered list of the owner's clips: in the bin when
     /// <paramref name="binned"/>, else out of it, which is every list but the bin's.
     /// </summary>
-    private static (StringBuilder Where, DynamicParameters Parameters) ClipFilter(
+    internal static (StringBuilder Where, DynamicParameters Parameters) ClipFilter(
         Guid ownerId,
         Guid? gameCategoryId,
         List<string>? tags,

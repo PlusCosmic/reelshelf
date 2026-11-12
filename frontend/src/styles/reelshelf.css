@@ -1256,6 +1256,79 @@ a {
   margin: 0 6px 0 0;
 }
 
+/* Searching by description: its own labelled form above the list's filters, and the results in the list's place. */
+.rs-describe {
+  display: grid;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  padding: 20px 32px;
+}
+
+.rs-describe-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.rs-describe-label svg {
+  color: var(--accent);
+}
+
+.rs-describe-hint {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
+.rs-describe-row {
+  display: flex;
+  gap: 10px;
+  max-width: 760px;
+  margin-top: 4px;
+}
+
+.rs-describe-row .ui-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rs-describe-results-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.rs-describe-results-head h2 {
+  margin-top: 0;
+}
+
+.rs-describe-query {
+  margin: 0;
+  color: var(--fg);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.rs-describe-chips {
+  margin: 16px 0 4px;
+}
+
+.rs-describe-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rs-describe-count {
+  margin: 12px 0 16px;
+  color: var(--fg-soft);
+  font-size: 13px;
+}
+
 .rs-filter-chips {
   display: flex;
   flex: 1 1 0;
@@ -6065,9 +6138,18 @@ html:has(.rs-library-route) {
     flex: 0 0 auto;
   }
 
+  .rs-describe-row {
+    flex-direction: column;
+  }
+
+  .rs-describe-results-head {
+    flex-direction: column;
+  }
+
   .rs-hero,
   .rs-section,
   .rs-filterbar,
+  .rs-describe,
   .rs-public-page {
     padding-left: 16px;
     padding-right: 16px;

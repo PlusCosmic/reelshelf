@@ -42,6 +42,9 @@ public static class RateLimitPolicies
     /// <summary>A device polling for its token. Anonymous, so it partitions by address.</summary>
     public const string DeviceToken = "device-token";
 
+    /// <summary>Searching clips by description, each search a paid model call and an embedding.</summary>
+    public const string ClipSearch = "clip-search";
+
     private const int DefaultIgdbRequestsPerMinute = 30;
 
     private const int DefaultDeviceAuthorizationsPerMinute = 10;
@@ -93,6 +96,8 @@ public static class RateLimitPolicies
                 builder.Configuration.GetValue<int?>("Billing:SessionsPerMinute") ?? DefaultBillingSessionsPerMinute);
             options.AddPerUserSlidingWindow(ContentReport,
                 builder.Configuration.GetValue<int?>("Moderation:ReportsPerMinute") ?? DefaultContentReportsPerMinute);
+            options.AddPerUserSlidingWindow(ClipSearch,
+                builder.Configuration.GetValue<int?>("ClipSearch:RequestsPerMinute") ?? new global::Reelshelf.ClipSearch.ClipSearchOptions().RequestsPerMinute);
             options.AddPerUserSlidingWindow(DeviceAuthorize,
                 builder.Configuration.GetValue<int?>("Devices:AuthorizationsPerMinute") ?? DefaultDeviceAuthorizationsPerMinute);
             options.AddPerUserSlidingWindow(DeviceToken,

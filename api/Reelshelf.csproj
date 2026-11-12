@@ -63,6 +63,9 @@
         <Content Remove="ClipSummary/Resources/**" />
         <EmbeddedResource Include="ClipSummary/Resources/prompt.md" LogicalName="ClipSummary.prompt.md" />
         <EmbeddedResource Include="ClipSummary/Resources/response-schema.json" LogicalName="ClipSummary.response-schema.json" />
+        <Content Remove="ClipSearch/Resources/**" />
+        <EmbeddedResource Include="ClipSearch/Resources/prompt.md" LogicalName="ClipSearch.prompt.md" />
+        <EmbeddedResource Include="ClipSearch/Resources/response-schema.json" LogicalName="ClipSearch.response-schema.json" />
     </ItemGroup>
 
 </Project>

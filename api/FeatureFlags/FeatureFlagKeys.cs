@@ -22,8 +22,14 @@ public static class FeatureFlagKeys
     /// </summary>
     public const string DesktopUploader = "desktop-uploader";
 
+    /// <summary>
+    /// Searching the library by description (ADR-0005): the library's "Describe a clip" search and
+    /// <c>/api/clips/search</c>. Only plans with transcripts can use it, whatever the flag says.
+    /// </summary>
+    public const string ClipSearch = "clip-search";
+
     /// <summary>The flags <c>GET /api/me/features</c> answers about; a key PostHog has but this list lacks is ignored.</summary>
-    public static readonly IReadOnlyList<string> All = [PaidPlans, DesktopUploader];
+    public static readonly IReadOnlyList<string> All = [PaidPlans, DesktopUploader, ClipSearch];
 
     public static bool IsKnown(string key)
     {

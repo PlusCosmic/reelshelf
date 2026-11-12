@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "start_date": {
+      "type": ["string", "null"]
+    },
+    "end_date": {
+      "type": ["string", "null"]
+    },
+    "game_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mood_tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["funny", "clutch", "fail", "rage", "hype", "wholesome", "chaotic", "chill"]
+      }
+    },
+    "people": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "phrase": {
+      "type": ["string", "null"]
+    }
+  },
+  "required": [
+    "start_date",
+    "end_date",
+    "game_ids",
+    "mood_tags",
+    "people",
+    "phrase"
+  ]
+}
