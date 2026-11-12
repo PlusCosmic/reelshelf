@@ -7,7 +7,7 @@ use std::sync::Arc;
 use chrono::Offset;
 use reelshelf_monitor::fetch::Fetcher;
 use reelshelf_monitor::grafana::Client;
-use reelshelf_monitor::state::Monitor;
+use reelshelf_monitor::state::{Monitor, Section};
 use reelshelf_monitor::{fixtures, links, secrets, ui};
 
 fn main() {
@@ -33,9 +33,16 @@ fn main() {
                 None
             }
         };
+        // The section to open on, for screenshots (`REELSHELF_MONITOR_SECTION=transcoding`).
+        let section = std::env::var("REELSHELF_MONITOR_SECTION")
+            .ok()
+            .and_then(|n| Section::named(&n));
         app.init(move || {
             let mut s = Monitor::new(fetch, url, tz);
             s.grafana_form.from_env = env;
+            if let Some(section) = section {
+                s.section = section;
+            }
             s
         })
     };

@@ -243,6 +243,13 @@ mod tests {
     }
 
     #[test]
+    fn sections_are_found_by_name() {
+        assert_eq!(Section::named("ai-pipelines"), Some(Section::AiPipelines));
+        assert_eq!(Section::named("Storage"), Some(Section::Storage));
+        assert_eq!(Section::named("nope"), None);
+    }
+
+    #[test]
     fn legends_are_filled_in() {
         assert_eq!(substitute("waiting: {{trigger}}", 1), "waiting: trim");
         assert_eq!(

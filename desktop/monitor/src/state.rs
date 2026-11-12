@@ -30,6 +30,13 @@ pub enum Section {
 }
 
 impl Section {
+    /// A section by its name in `REELSHELF_MONITOR_SECTION` (`overview`, `storage`, `ai-pipelines`...).
+    pub fn named(name: &str) -> Option<Section> {
+        Section::ALL
+            .into_iter()
+            .find(|s| crate::ui::label(*s).to_lowercase().replace(' ', "-") == name.trim().to_lowercase())
+    }
+
     pub const ALL: [Section; 9] = [
         Section::Overview,
         Section::Dashboards,

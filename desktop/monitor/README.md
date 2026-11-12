@@ -37,6 +37,9 @@ cargo run -p reelshelf-monitor
 
 Release builds use `https://reelshelf.app`; debug builds read `REELSHELF_API_BASE_URL` (a local API, say) first.
 
+`REELSHELF_MONITOR_SECTION` (`storage`, `transcoding`, `ai-pipelines`, ...) opens on that section; with Rune's
+`--snap file.png --theme dark --at 6` it renders the live window once it has read its numbers.
+
 Grafana is reachable on the tailnet only. Enter its address and a Viewer service account token once in Settings; both
 are kept in the Keychain. Debug builds still take `GRAFANA_URL` and `GRAFANA_TOKEN` from the environment first.
 
