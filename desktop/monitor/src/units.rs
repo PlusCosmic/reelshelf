@@ -216,6 +216,11 @@ pub fn when(t: DateTime<chrono::Utc>, now_ms: i64, tz: &FixedOffset) -> String {
     }
 }
 
+/// A day: `12 Nov 2027`.
+pub fn date(t: DateTime<chrono::Utc>, tz: &FixedOffset) -> String {
+    t.with_timezone(tz).format("%-d %b %Y").to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

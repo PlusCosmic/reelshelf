@@ -5,10 +5,14 @@
 
 use std::sync::{Arc, Mutex};
 
-use reelshelf_api::{ApiClient, ApiError, ClientApp, FeatureFlags};
+use reelshelf_api::{
+    ApiClient, ApiError, ClientApp, FeatureFlags, SetAccountRoleRequest, SetAccountSuspensionRequest,
+    SetGrantedTierRequest,
+};
 use rune::AppHandle;
 use tokio::task::AbortHandle;
 
+use crate::admin::Change;
 use crate::github;
 use crate::grafana::{Client, TimeRange, query};
 use crate::secrets::{Secret, Secrets};
@@ -220,6 +224,149 @@ impl Fetcher {
         });
     }
 
+    /// Reads the open content reports, or with `resolved` the latest dealt with.
+    pub fn reports(&self, resolved: bool) {
+        let (sign_in, window) = (self.sign_in.clone(), self.window.clone());
+        self.runtime.spawn(async move {
+            let answer = sign_in.api().content_reports(resolved.then_some(true)).await;
+            let answer = match admin_answer(&sign_in, &window, answer) {
+                Some(answer) => answer,
+                None => return,
+            };
+            window.update(move |s: &mut Monitor, _| {
+                let slot = if resolved {
+                    &mut s.admin.resolved
+                } else {
+                    &mut s.admin.open
+                };
+                match answer {
+                    Ok(reports) => {
+                        s.admin.forbidden = false;
+                        *slot = Fetched::ready(reports);
+                    }
+                    Err(e) => slot.error = Some(e),
+                }
+            });
+        });
+    }
+
+    /// Finds accounts by `query`, dropping the answer when the search box has moved on.
+    pub fn find_accounts(&self, query: String) {
+        let (sign_in, window) = (self.sign_in.clone(), self.window.clone());
+        self.runtime.spawn(async move {
+            let answer = sign_in.api().find_accounts(Some(&query)).await;
+            let Some(answer) = admin_answer(&sign_in, &window, answer) else {
+                return;
+            };
+            window.update(move |s: &mut Monitor, _| {
+                if s.admin.searched == query {
+                    s.admin.results = Some(match answer {
+                        Ok(accounts) => Load::Ready(accounts),
+                        Err(e) => Load::Failed(e),
+                    });
+                }
+            });
+        });
+    }
+
+    /// Reads an account's detail, kept when it is still the account open.
+    pub fn account(&self, id: uuid::Uuid) {
+        let (sign_in, window) = (self.sign_in.clone(), self.window.clone());
+        self.runtime.spawn(async move {
+            let answer = sign_in.api().admin_account(id).await;
+            let Some(answer) = admin_answer(&sign_in, &window, answer) else {
+                return;
+            };
+            window.update(move |s: &mut Monitor, _| match answer {
+                Ok(detail) => s.admin.account_changed(detail),
+                Err(e) if s.admin.account == Some(id) => {
+                    // A refresh that failed keeps the detail on screen.
+                    if !matches!(s.admin.detail, Some(Load::Ready(_))) {
+                        s.admin.detail = Some(Load::Failed(e));
+                    }
+                }
+                Err(_) => {}
+            });
+        });
+    }
+
+    /// Sends a confirmed change; the answer closes the confirmation, or puts the API's words in it.
+    pub fn apply(&self, change: Change, note: Option<String>) {
+        let (sign_in, window) = (self.sign_in.clone(), self.window.clone());
+        self.runtime.spawn(async move {
+            let api = sign_in.api();
+            let reason = note.clone();
+            let result = match &change {
+                Change::Role { account, to, .. } => api
+                    .set_account_role(
+                        *account,
+                        &SetAccountRoleRequest {
+                            role: to.clone(),
+                            reason,
+                        },
+                    )
+                    .await
+                    .map(Changed::Account),
+                Change::GrantedTier { account, to, .. } => api
+                    .set_granted_tier(
+                        *account,
+                        &SetGrantedTierRequest {
+                            tier: to.clone(),
+                            reason,
+                        },
+                    )
+                    .await
+                    .map(Changed::Account),
+                Change::Suspend { account, .. } | Change::LiftSuspension { account, .. } => api
+                    .set_account_suspension(
+                        *account,
+                        &SetAccountSuspensionRequest {
+                            suspended: matches!(change, Change::Suspend { .. }),
+                            reason,
+                        },
+                    )
+                    .await
+                    .map(Changed::Account),
+                Change::TakeDown { report, .. } => api
+                    .take_down_report(*report, note.as_deref().unwrap_or_default())
+                    .await
+                    .map(Changed::Report),
+                Change::Dismiss { report, .. } => {
+                    api.dismiss_report(*report, note.as_deref()).await.map(Changed::Report)
+                }
+                Change::Remove { report, .. } => api
+                    .remove_report_clip(*report, note.as_deref().unwrap_or_default())
+                    .await
+                    .map(Changed::Report),
+            };
+            let done = copy::done(&change);
+            let Some(result) = admin_answer(&sign_in, &window, result) else {
+                return;
+            };
+            let reread = matches!(result, Ok(Changed::Report(_)));
+            window.update(move |s: &mut Monitor, _| match result {
+                Ok(changed) => {
+                    match changed {
+                        Changed::Account(detail) => s.admin.account_changed(detail),
+                        Changed::Report(report) => s.admin.report_changed(report),
+                    }
+                    s.admin.confirm = None;
+                    s.admin.done = Some(done);
+                }
+                Err(e) => {
+                    if let Some(c) = &mut s.admin.confirm {
+                        c.busy = false;
+                        c.error = Some(e);
+                    }
+                }
+            });
+            // Taking down a clip resolves its other open reports too.
+            if reread && let Ok(open) = sign_in.api().content_reports(None).await {
+                window.update(move |s: &mut Monitor, _| s.admin.open = Fetched::ready(open));
+            }
+        });
+    }
+
     /// Keeps Grafana's address and token (None keeps the kept token) in the Keychain and loads through them.
     pub fn save_grafana(&self, url: &str, token: Option<&str>) -> Result<(), String> {
         let token = match token {
@@ -349,13 +496,48 @@ fn deliver<T: Send + 'static>(
     }
 }
 
+/// What a confirmed change answered.
+enum Changed {
+    Account(reelshelf_api::AdminAccountDetail),
+    Report(reelshelf_api::AdminContentReport),
+}
+
+/// An admin call's answer, or the API's words for why it was refused. A refusal that signs the app out (401) or asks
+/// for an update (426) goes to the session, and a 403 marks the account as no Admin; both answer None.
+fn admin_answer<T>(
+    sign_in: &SignIn<ApiClient>,
+    window: &AppHandle<Monitor>,
+    answer: Result<T, ApiError>,
+) -> Option<Result<T, String>> {
+    match answer {
+        Ok(value) => Some(Ok(value)),
+        Err(error) => {
+            if let Some(session) = sign_in.refused(&error) {
+                window.update(move |s: &mut Monitor, _| s.set_session(session));
+                None
+            } else if matches!(error, ApiError::Forbidden(_)) {
+                window.update(|s: &mut Monitor, _| {
+                    s.admin.forbidden = true;
+                    if let Some(c) = &mut s.admin.confirm {
+                        c.busy = false;
+                    }
+                });
+                None
+            } else {
+                Some(Err(error_words(&error)))
+            }
+        }
+    }
+}
+
 /// A failure in a few words, never a token.
 fn error_words(error: &ApiError) -> String {
     match error {
         ApiError::Network(_) => copy::UNREACHABLE.to_owned(),
-        ApiError::Unavailable(p) | ApiError::Conflict(p) | ApiError::Unprocessable(p) => {
-            p.message().unwrap_or("503").to_owned()
-        }
+        ApiError::Unavailable(p) => p.message().unwrap_or("503").to_owned(),
+        ApiError::Conflict(p) => p.message().unwrap_or("409").to_owned(),
+        ApiError::Unprocessable(p) => p.message().unwrap_or("422").to_owned(),
+        ApiError::NotFound(p) => p.message().unwrap_or("404").to_owned(),
         ApiError::Status { status, problem } => problem
             .message()
             .map(str::to_owned)

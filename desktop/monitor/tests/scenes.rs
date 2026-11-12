@@ -86,6 +86,11 @@ fn data(s: &Monitor) -> HashSet<String> {
         fixtures::OPS_AI,
         fixtures::OPS_COSTS,
         fixtures::ME,
+        fixtures::ADMIN_REPORTS_OPEN,
+        fixtures::ADMIN_REPORTS_RESOLVED,
+        fixtures::ADMIN_ACCOUNTS,
+        fixtures::ADMIN_ACCOUNT,
+        &format!("{:?}", fixtures::FIXTURE_CONFLICT),
     ] {
         strings(&serde_json::from_str(json).unwrap(), &mut words);
     }
@@ -97,6 +102,10 @@ fn data(s: &Monitor) -> HashSet<String> {
     }
     // What the person typed.
     words.insert(s.grafana_form.url.text.clone());
+    words.insert(s.admin.query.text.clone());
+    if let Some(c) = &s.admin.confirm {
+        words.insert(c.note.text.clone());
+    }
     if let Session::Waiting(pending) = &s.session {
         words.insert(pending.shown_code());
     }
@@ -431,4 +440,77 @@ fn the_overview_says_how_far_prod_is_behind_and_that_ci_is_red() {
     for words in ["Prod behind main", "6", "Failing", "CI failed on main"] {
         assert!(shown.iter().any(|t| t == words), "{words:?} in {shown:?}");
     }
+}
+
+#[test]
+fn reports_list_open_ones_and_urgent_ones_are_removed_not_taken_down() {
+    let rt = runtime("admin-reports", false);
+    let found = keys(&rt);
+    for key in [
+        "report-0",
+        "report-1",
+        "report-2",
+        "take-down",
+        "dismiss",
+        "open-shared-clip",
+    ] {
+        assert!(found.contains(key), "{key} in {found:?}");
+    }
+    assert!(
+        !found.contains("remove"),
+        "a copyright report is taken down, not removed"
+    );
+
+    let rt = runtime("admin-report-child-safety", false);
+    let found = keys(&rt);
+    assert!(found.contains("remove") && found.contains("child-safety-warning"));
+    assert!(
+        !found.contains("take-down"),
+        "an urgent report is removed, not taken down"
+    );
+    assert!(
+        !found.contains("open-shared-clip"),
+        "a child-safety report never links its clip"
+    );
+
+    let shown = texts(&runtime("admin-reports-removed", false));
+    for words in [
+        "Confirmed extremist material; referred.",
+        "The owner's account is suspended.",
+        "Kept privately as evidence until 10 Nov 2025, and gone from public storage.",
+    ] {
+        assert!(shown.iter().any(|t| t == words), "{words:?} in {shown:?}");
+    }
+}
+
+#[test]
+fn an_admin_cant_change_their_own_role_or_suspend_themselves() {
+    let rt = runtime("admin-account-self", false);
+    assert!(keys(&rt).contains("cant-self"));
+    let rt = runtime("admin-accounts", false);
+    let shown = texts(&rt);
+    for words in ["Pro, by a grant", "Suspension lifted", "Granted plan: none → Pro"] {
+        assert!(shown.iter().any(|t| t == words), "{words:?} in {shown:?}");
+    }
+    assert!(!keys(&rt).contains("cant-self"));
+}
+
+#[test]
+fn confirmations_name_what_they_change_and_show_the_apis_words() {
+    let rt = runtime("admin-confirm-remove", false);
+    let shown = texts(&rt);
+    assert!(shown.iter().any(|t| t == "Remove “Lobby warm-up”?"), "{shown:?}");
+    assert!(shown.iter().any(|t| t.contains("suspends driftwood")), "{shown:?}");
+    assert!(shown.iter().any(|t| t == "This can't be undone."));
+    let shown = texts(&runtime("admin-confirm-suspend", false));
+    assert!(shown.iter().any(|t| t == "Suspend Quiet Fox?"), "{shown:?}");
+    let rt = runtime("admin-confirm-error", false);
+    assert!(texts(&rt).iter().any(|t| t == fixtures::FIXTURE_CONFLICT));
+    assert!(keys(&rt).contains("confirm-error"));
+}
+
+#[test]
+fn the_overview_counts_open_reports_with_urgent_ones_in_red() {
+    let shown = texts(&runtime("overview", false));
+    assert!(shown.iter().any(|t| t == "2 urgent reports open"), "{shown:?}");
 }

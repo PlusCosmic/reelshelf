@@ -2,6 +2,7 @@
 //! own words (dashboard and panel titles, series names, usernames, queue and model names, commit and pull request
 //! titles, workflow names, tags, error messages) come from them and pass through as they are.
 
+use crate::admin::Change;
 use crate::grafana::TimeRange;
 
 pub const APP_NAME: &str = "Reelshelf Monitor";
@@ -17,10 +18,6 @@ pub const RELEASES: &str = "Releases";
 pub const ADMIN: &str = "Admin";
 pub const SETTINGS: &str = "Settings";
 pub const SIDEBAR_LABEL: &str = "Sections";
-
-/// A section that isn't built yet.
-pub const COMING_SOON_TITLE: &str = "Not built yet";
-pub const COMING_SOON: &str = "This section comes later.";
 
 /// Dashboards.
 pub const ALL_DASHBOARDS: &str = "All dashboards";
@@ -422,6 +419,268 @@ pub fn couldnt_keep(error: &str) -> String {
 }
 pub fn version(version: &str) -> String {
     format!("Version {version}")
+}
+
+/// Admin.
+pub const ADMIN_VIEW: &str = "Admin view";
+pub const REPORTS: &str = "Reports";
+pub const REPORT: &str = "Report";
+pub const ACCESS: &str = "Access";
+pub const DEAL_WITH_IT: &str = "Deal with it";
+pub const SEPARATOR: &str = " · ";
+pub fn sign_in_short(provider: &str, username: &str) -> String {
+    format!("{provider}: {username}")
+}
+pub fn owner_and(owner: &str, reported: &str) -> String {
+    format!("by {owner} · {reported}")
+}
+
+/// Overview's Admin card.
+pub const OPEN_REPORTS: &str = "Open reports";
+pub const URGENT: &str = "Urgent";
+pub const OPEN_ADMIN: &str = "Open Admin";
+pub fn urgent_open(n: usize) -> String {
+    if n == 1 {
+        format!("{n} urgent report open")
+    } else {
+        format!("{n} urgent reports open")
+    }
+}
+
+/// Admin → Accounts.
+pub const FIND_ACCOUNT: &str = "Find an account";
+pub const FIND_ACCOUNT_PLACEHOLDER: &str = "Username, display name or sign-in id";
+pub const FIND_ACCOUNT_HINT: &str =
+    "Type at least two characters of a username, a display name or an exact Discord, Twitch or Google id.";
+pub const SEARCHING: &str = "Searching…";
+pub const NO_MATCH: &str = "No account matches.";
+pub const PICK_ACCOUNT: &str = "Pick an account to see or change its role, granted plan and suspension.";
+pub const SUSPENDED: &str = "Suspended";
+pub const ACCOUNT_ID: &str = "Account ID";
+pub const SIGN_INS: &str = "Sign-ins";
+pub const PLAN_NOW: &str = "Plan now";
+pub const ROLE: &str = "Role";
+pub const GRANTED_PLAN: &str = "Granted plan";
+pub const NO_GRANT: &str = "None";
+pub const SUSPENSION: &str = "Suspension";
+pub const NOT_SUSPENDED: &str = "Not suspended: it can sign in and its share links work.";
+pub const SUSPEND: &str = "Suspend…";
+pub const LIFT_SUSPENSION: &str = "Lift suspension…";
+pub const CANT_CHANGE_SELF: &str = "You can't change your own role or suspend yourself.";
+pub const CANT_SUSPEND_ADMIN: &str = "Admins can't be suspended; change the role first.";
+pub const CHANGES: &str = "Changes";
+pub const NO_CHANGES: &str = "No changes recorded.";
+pub const REASON: &str = "Reason";
+pub const SUSPENSION_LIFTED: &str = "Suspension lifted";
+pub const NONE: &str = "none";
+pub const NOBODY: &str = "–";
+pub fn granted(tier: &str) -> String {
+    format!("{tier} granted")
+}
+pub fn on_tier(tier: &str, granted: bool) -> String {
+    if granted {
+        format!("{tier}, by a grant")
+    } else {
+        format!("{tier}, paid for or Free")
+    }
+}
+pub fn suspended_since(date: &str) -> String {
+    format!("Suspended since {date}: it can't sign in and its share links don't work. Its clips are kept.")
+}
+pub fn identity(provider: &str, username: &str, id: &str) -> String {
+    format!("{provider}: {username} ({id})")
+}
+pub fn by_when(by: &str, when: &str) -> String {
+    format!("{by} · {when}")
+}
+pub fn changed(field: &str, from: &str, to: &str) -> String {
+    format!("{field}: {from} → {to}")
+}
+pub fn couldnt_load(error: &str) -> String {
+    format!("Couldn't load: {error}")
+}
+
+pub fn role(role: &str) -> &str {
+    match role {
+        "viewer" => "Viewer",
+        "editor" => "Editor",
+        "admin" => "Admin",
+        other => other,
+    }
+}
+
+/// Admin → Reports.
+pub const STATUS_FILTER: &str = "Status";
+pub const REASON_FILTER: &str = "Reason";
+pub const ALL_REASONS: &str = "All reasons";
+pub const OPEN: &str = "Open";
+pub const TAKEN_DOWN: &str = "Taken down";
+pub const DISMISSED: &str = "Dismissed";
+pub const REMOVED: &str = "Removed";
+pub const NO_OPEN_REPORTS: &str = "No open reports.";
+pub const NO_REPORTS: &str = "No reports match.";
+pub const PICK_REPORT: &str = "Pick a report to see it and deal with it.";
+pub const UNTITLED: &str = "Untitled clip";
+pub const OPEN_SHARED_CLIP: &str = "Open the shared clip";
+pub const REPORTER_SAID: &str = "What the reporter said";
+pub const NOTHING_SAID: &str = "The reporter added nothing.";
+pub const OWNER: &str = "Owner";
+pub const REPORTER: &str = "Reporter";
+pub const SHARING: &str = "Sharing";
+pub const TAKE_DOWN: &str = "Take down…";
+pub const DISMISS: &str = "Dismiss…";
+pub const REMOVE_CLIP: &str = "Remove clip…";
+pub const SHARE_REMOVED: &str = "Removed from Reelshelf.";
+pub const SHARE_DELETED: &str = "The clip has since been deleted.";
+pub const SHARE_BLOCKED: &str = "Taken down: it can't be shared.";
+pub const SHARE_HIDDEN: &str = "Its share link is hidden while a child-safety or terrorism report is open.";
+pub const SHARE_NO_LINK: &str = "It has no live share link.";
+pub const SHARE_LIVE: &str = "Its share link works.";
+pub const NOTHING_KEPT: &str = "Nothing was kept: the clip had already been deleted.";
+pub const EVIDENCE_PENDING: &str = "Quarantining the clip off public access and keeping a private copy…";
+pub const NOT_PURGED: &str = "The media domain wasn't purged, so it may still serve cached copies. Purge the clip's files from the media domain's CDN by hand.";
+pub const OWNER_SUSPENDED: &str = "The owner's account is suspended.";
+pub const OWNER_NOT_SUSPENDED: &str = "The owner's account isn't suspended (Admins can't be).";
+pub fn reported(when: &str) -> String {
+    format!("Reported {when}")
+}
+pub fn by_owner(name: &str) -> String {
+    format!("by {name}")
+}
+pub fn open_on_clip(n: i32) -> String {
+    if n == 1 {
+        format!("{n} open report on this clip")
+    } else {
+        format!("{n} open reports on this clip")
+    }
+}
+pub fn child_safety_warning(clip_id: &str) -> String {
+    format!(
+        "Don't open or download this clip. If the report looks genuine, remove it, then report it to the IWF (UK) or NCMEC's CyberTipline (US) with the clip's id ({clip_id}). Its share link stays hidden until you decide."
+    )
+}
+pub const CLIP_DELETED: &str = "deleted";
+pub fn resolved(status: &str, when: &str) -> String {
+    format!("{status} {when}")
+}
+pub fn resolved_by(status: &str, when: &str, name: &str) -> String {
+    format!("{status} {when} by {name}")
+}
+pub fn evidence_failed(error: &str) -> String {
+    format!(
+        "Needs attention: the private evidence copy still isn't made ({error}). It is still being retried, and nothing is deleted until it works. The video is quarantined, off public access, until the copy is made."
+    )
+}
+pub const NO_ERROR_RECORDED: &str = "no error was recorded";
+pub fn evidence_retrying(error: &str) -> String {
+    format!("Retrying after: {error}")
+}
+pub fn evidence_kept(date: &str) -> String {
+    format!("Kept privately as evidence until {date}, and gone from public storage.")
+}
+pub fn remove_explain(owner: &str) -> String {
+    format!(
+        "Removing it deletes the clip from Reelshelf, keeps a private copy for a year for the authorities, and suspends {owner}. They aren't emailed."
+    )
+}
+pub const THE_OWNER: &str = "the owner";
+
+/// A report's reason, as the site's report form words it.
+pub fn report_reason(reason: &str) -> &str {
+    match reason {
+        "child_safety" => "Child sexual abuse or exploitation",
+        "terrorism" => "Terrorism or violent extremism",
+        "sexual" => "Nudity or sexual content",
+        "violence" => "Graphic violence or gore",
+        "hate_or_harassment" => "Hate or harassment",
+        "copyright" => "Copyright",
+        "other" => "Something else that breaks the terms",
+        other => other,
+    }
+}
+
+pub fn report_status(status: &str) -> &str {
+    match status {
+        "open" => OPEN,
+        "taken_down" => TAKEN_DOWN,
+        "dismissed" => DISMISSED,
+        "removed" => REMOVED,
+        other => other,
+    }
+}
+
+/// The confirmation.
+pub const NOTE: &str = "Note";
+pub const WHY: &str = "Why, for the record";
+pub const WHY_OPTIONAL: &str = "Why, for the record (optional)";
+pub const NOTE_NEEDED: &str = "Say why, for the record.";
+pub const SAVING: &str = "Saving…";
+pub const CANT_UNDO: &str = "This can't be undone.";
+
+/// The confirmation's title, what happens, and its button.
+pub fn confirm(change: &Change) -> (String, String, &'static str) {
+    match change {
+        Change::Role { name, to, .. } => (
+            format!("Make {name} {}?", role(to)),
+            "Their permissions change at once. The change and its reason are recorded.".to_owned(),
+            "Change role",
+        ),
+        Change::GrantedTier { name, to: Some(t), .. } => (
+            format!("Grant {} to {name}?", tier(t)),
+            format!(
+                "They get {}'s limits for as long as the grant lasts, whatever they pay for.",
+                tier(t)
+            ),
+            "Grant",
+        ),
+        Change::GrantedTier { name, to: None, .. } => (
+            format!("Take {name}'s granted plan away?"),
+            "They go back to the plan they pay for, or Free.".to_owned(),
+            "Take it away",
+        ),
+        Change::Suspend { name, .. } => (
+            format!("Suspend {name}?"),
+            "They can't sign in and their share links stop working. Their clips are kept, and the suspension can be lifted later.".to_owned(),
+            "Suspend",
+        ),
+        Change::LiftSuspension { name, .. } => (
+            format!("Lift {name}'s suspension?"),
+            "They can sign in again and their share links work again.".to_owned(),
+            "Lift suspension",
+        ),
+        Change::TakeDown { clip, .. } => (
+            format!("Take down “{clip}”?"),
+            "Its share links are revoked and it can't be shared again; the clip's other open reports are resolved too. Its owner is emailed that it broke the terms, never who reported it. The clip stays in their library.".to_owned(),
+            "Take down",
+        ),
+        Change::Dismiss { clip, .. } => (
+            format!("Dismiss the report on “{clip}”?"),
+            "The clip is left as it is.".to_owned(),
+            "Dismiss",
+        ),
+        Change::Remove { clip, owner, .. } => (
+            format!("Remove “{clip}”?"),
+            format!(
+                "This deletes the clip from Reelshelf for everyone, keeps a private copy for a year for the authorities, and suspends {}. They aren't emailed.",
+                owner.as_deref().unwrap_or(THE_OWNER)
+            ),
+            "Remove clip",
+        ),
+    }
+}
+
+/// What a confirmed change did.
+pub fn done(change: &Change) -> String {
+    match change {
+        Change::Role { name, to, .. } => format!("{name} is now {}.", role(to)),
+        Change::GrantedTier { name, to: Some(t), .. } => format!("{name} has {} granted.", tier(t)),
+        Change::GrantedTier { name, to: None, .. } => format!("{name}'s granted plan was taken away."),
+        Change::Suspend { name, .. } => format!("{name} is suspended."),
+        Change::LiftSuspension { name, .. } => format!("{name}'s suspension was lifted."),
+        Change::TakeDown { .. } => "Taken down.".to_owned(),
+        Change::Dismiss { .. } => "Dismissed.".to_owned(),
+        Change::Remove { .. } => "Removed.".to_owned(),
+    }
 }
 
 /// How long something has waited: "45 s", "12 min", "3 h 5 min", "2 d 4 h".

@@ -141,11 +141,62 @@ pub const FIND_ADMIN_ACCOUNTS: Endpoint = Endpoint {
     path: "/api/admin/accounts",
 };
 
+/// `GET /api/admin/accounts/{userId}`: an account, its tier and its recorded changes (Admins).
+pub const GET_ADMIN_ACCOUNT: Endpoint = Endpoint {
+    operation_id: "GetAdminAccount",
+    method: Method::GET,
+    path: "/api/admin/accounts/{userId}",
+};
+
+/// `PUT /api/admin/accounts/{userId}/role`: changes an account's role (Admins; never their own, never the last Admin).
+pub const SET_ADMIN_ACCOUNT_ROLE: Endpoint = Endpoint {
+    operation_id: "SetAdminAccountRole",
+    method: Method::PUT,
+    path: "/api/admin/accounts/{userId}/role",
+};
+
+/// `PUT /api/admin/accounts/{userId}/granted-tier`: grants a tier, or takes the grant away (Admins).
+pub const SET_ADMIN_ACCOUNT_GRANTED_TIER: Endpoint = Endpoint {
+    operation_id: "SetAdminAccountGrantedTier",
+    method: Method::PUT,
+    path: "/api/admin/accounts/{userId}/granted-tier",
+};
+
+/// `PUT /api/admin/accounts/{userId}/suspension`: suspends an account or lifts its suspension (Admins; never their
+/// own, never another Admin).
+pub const SET_ADMIN_ACCOUNT_SUSPENSION: Endpoint = Endpoint {
+    operation_id: "SetAdminAccountSuspension",
+    method: Method::PUT,
+    path: "/api/admin/accounts/{userId}/suspension",
+};
+
 /// `GET /api/admin/reports`: content reports (Admins).
 pub const LIST_CONTENT_REPORTS: Endpoint = Endpoint {
     operation_id: "ListContentReports",
     method: Method::GET,
     path: "/api/admin/reports",
+};
+
+/// `POST /api/admin/reports/{reportId}/take-down`: blocks the clip's sharing (a note is required; not urgent reports).
+pub const TAKE_DOWN_CONTENT_REPORT: Endpoint = Endpoint {
+    operation_id: "TakeDownContentReport",
+    method: Method::POST,
+    path: "/api/admin/reports/{reportId}/take-down",
+};
+
+/// `POST /api/admin/reports/{reportId}/dismiss`: leaves the clip alone.
+pub const DISMISS_CONTENT_REPORT: Endpoint = Endpoint {
+    operation_id: "DismissContentReport",
+    method: Method::POST,
+    path: "/api/admin/reports/{reportId}/dismiss",
+};
+
+/// `POST /api/admin/reports/{reportId}/remove`: deletes an urgent report's clip, keeps it as evidence and suspends
+/// its owner (a note is required).
+pub const REMOVE_CONTENT_REPORT_CLIP: Endpoint = Endpoint {
+    operation_id: "RemoveContentReportClip",
+    method: Method::POST,
+    path: "/api/admin/reports/{reportId}/remove",
 };
 
 /// Every endpoint the client calls.
@@ -167,5 +218,12 @@ pub const ALL: &[Endpoint] = &[
     GET_OPS_AI,
     GET_OPS_COSTS,
     FIND_ADMIN_ACCOUNTS,
+    GET_ADMIN_ACCOUNT,
+    SET_ADMIN_ACCOUNT_ROLE,
+    SET_ADMIN_ACCOUNT_GRANTED_TIER,
+    SET_ADMIN_ACCOUNT_SUSPENSION,
     LIST_CONTENT_REPORTS,
+    TAKE_DOWN_CONTENT_REPORT,
+    DISMISS_CONTENT_REPORT,
+    REMOVE_CONTENT_REPORT_CLIP,
 ];

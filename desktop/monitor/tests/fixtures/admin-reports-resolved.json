@@ -1,0 +1,27 @@
+[
+  {
+    "id": "d4f3d9e5-6c7a-4b8d-ae9f-0a1b2c3d4e54", "reason": "terrorism", "details": "Recruitment video spliced into the clip.",
+    "reporter_email": null, "status": "removed", "created_at": "2024-11-09T21:03:00Z",
+    "resolved_at": "2024-11-10T09:15:00Z", "resolved_by_name": "harbourmaster", "resolution_note": "Confirmed extremist material; referred.",
+    "clip_id": null, "clip_title": "ranked grind ep 3", "owner_id": "8f5b1c4d-2e6a-4f9b-d0c3-4e5f6a7b8ca4",
+    "owner_name": "grindset", "share_url": null, "share_hidden": false, "sharing_blocked": false,
+    "open_reports_on_clip": 0, "owner_suspended": true,
+    "evidence": { "status": "preserved", "error": null, "cdn_purge": "not_configured", "delete_after": "2025-11-10T09:15:00Z" }
+  },
+  {
+    "id": "e5a4eaf6-7d8b-4c9e-bf0a-1b2c3d4e5f65", "reason": "hate_or_harassment", "details": "Slurs in voice chat at 0:12.",
+    "reporter_email": "someone@mail.example", "status": "taken_down", "created_at": "2024-11-08T14:22:00Z",
+    "resolved_at": "2024-11-08T18:40:00Z", "resolved_by_name": "harbourmaster", "resolution_note": "Slurs audible at 0:12.",
+    "clip_id": "9a6c2d5e-3f7b-4a0c-e1d4-5f6a7b8c9db5", "clip_title": "Final circle rage", "owner_id": "0b7d3e6f-4a8c-4b1d-f2e5-6a7b8c9d0ec6",
+    "owner_name": "loudmouth", "share_url": null, "share_hidden": false, "sharing_blocked": true,
+    "open_reports_on_clip": 0, "owner_suspended": false, "evidence": null
+  },
+  {
+    "id": "f6b5fb07-8e9c-4daf-8a1b-2c3d4e5f6a76", "reason": "other", "details": "Spam?",
+    "reporter_email": null, "status": "dismissed", "created_at": "2024-11-07T10:00:00Z",
+    "resolved_at": "2024-11-07T12:00:00Z", "resolved_by_name": "harbourmaster", "resolution_note": null,
+    "clip_id": "1c8e4f7a-5b9d-4c2e-a3f6-7b8c9d0e1fd7", "clip_title": "Nice shot", "owner_id": "2d9f5a8b-6c0e-4d3f-b4a7-8c9d0e1f2ae8",
+    "owner_name": "aimbot_not", "share_url": "/share/Zx81LmNo", "share_hidden": false, "sharing_blocked": false,
+    "open_reports_on_clip": 0, "owner_suspended": false, "evidence": null
+  }
+]

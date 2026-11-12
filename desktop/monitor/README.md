@@ -16,13 +16,23 @@ A Mac app, drawn with Rune, that shows everything about Reelshelf in one place. 
   its breakdown by service or model, a red line when its latest read failed (the last numbers stay), and which
   providers aren't set up and where their keys go on the API (`GET /api/admin/ops/costs`). The API reads providers in
   the background, hourly and AWS every 6 hours; billing keys live only there, never in the app.
+- **Admin**: the site's `/admin/accounts` and `/admin/reports`, in two tabs. Accounts finds an account by name or
+  sign-in id (`GET /api/admin/accounts`) and opens its role, granted plan, suspension and recorded changes
+  (`GET /api/admin/accounts/{id}`), changing each through `PUT .../role`, `.../granted-tier` and `.../suspension`.
+  Reports lists the open reports first (urgent ones, child safety and terrorism, in red), or those taken down,
+  dismissed or removed, filtered by reason (`GET /api/admin/reports`), and deals with one: take down, dismiss, or for
+  an urgent report remove (`POST /api/admin/reports/{id}/…`). Every change asks for confirmation with the reason or note
+  the API records, naming what it changes and saying what happens; the API's own words show when it refuses (409 for
+  the last Admin, a report dealt with meanwhile). The app offers only what the API allows: never a change to your own
+  role or suspension, never suspending an Admin, never a link to a child-safety report's clip. Overview's Admin card
+  counts the open reports, the urgent ones in red. These endpoints aren't behind `ops-monitor`.
 - **Dashboards**: Grafana's dashboards drawn natively (below).
 - **Releases**: from GitHub (below): what is deployed, what is coming, the uploader's latest tag and the open pull
   requests. Overview's Releases card says how far prod's app is behind main and turns red when a workflow on main
   failed.
 - **Settings**: the account it is signed in as, Sign out, Grafana's address and token, and the GitHub token.
 
-Admin is a placeholder. The section showing is read again every 30 seconds (and on Refresh); the API caches each
+The section showing is read again every 30 seconds (and on Refresh); the API caches each
 answer for 15 seconds. GitHub is read at most every 2 minutes (each read is a couple of dozen requests against
 the token's 5,000 an hour), and at once on Refresh.
 
@@ -69,6 +79,7 @@ cargo run -p reelshelf-monitor
 Release builds use `https://reelshelf.app`; debug builds read `REELSHELF_API_BASE_URL` (a local API, say) first.
 
 `REELSHELF_MONITOR_SIGN_IN=1` starts signing in at launch, as Sign in does.
+`REELSHELF_MONITOR_SEARCH=<query>` opens Admin's Accounts tab searched for it.
 `REELSHELF_MONITOR_SECTION` (`storage`, `transcoding`, `ai-pipelines`, ...) opens on that section; with Rune's
 `--snap file.png --theme dark --at 6` it renders the live window once it has read its numbers.
 
@@ -94,8 +105,9 @@ Tokens are only ever sent to the service they belong to; the app never logs or s
 
 - `src/session.rs`: signing in and what refusals mean, over the `MonitorApi` trait (`reelshelf-api`'s `ApiClient`, or a
   fake in its tests); `src/secrets.rs`: the Keychain; `src/fetch.rs`: every call off the UI thread, and the 30 s poll.
+- `src/admin.rs`: Admin's state, its filters and the change waiting for confirmation.
 - `src/ui/`: a page per section (`overview.rs`, `storage.rs`, `transcoding.rs`, `ai.rs`, `costs.rs`, `releases.rs`,
-  `settings.rs`, `sign_in.rs`)
+  `admin.rs`, `settings.rs`, `sign_in.rs`)
   from the parts in `parts.rs`; `src/alerts.rs`: what needs attention.
 - `src/github/`: the client (`client.rs`), GitHub's answers (`model.rs`), the compose files' images (`deploy.rs`) and
   what Releases shows put together from them (`releases.rs`), plain Rust with unit tests on `tests/fixtures/github/`
@@ -106,5 +118,5 @@ Tokens are only ever sent to the service they belong to; the app never logs or s
   the stat, on Rune's canvas.
 - `src/copy.rs`: every word the app shows.
 - The theme is the uploader's (`reelshelf_app::theme`, the site's tokens); its `chart-1`..`chart-8` colour the series.
-- `tests/scenes.rs` renders every scene light and dark from the fixture answers (`tests/fixtures/ops-*.json`) and
+- `tests/scenes.rs` renders every scene light and dark from the fixture answers (`tests/fixtures/ops-*.json`, `admin-*.json`) and
   checks the words and controls, as the uploader's does.

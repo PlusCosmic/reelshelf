@@ -8,6 +8,7 @@ use std::collections::HashMap;
 
 use chrono::FixedOffset;
 
+use crate::admin::{AdminTab, Change, Confirm, StatusFilter};
 use crate::github::deploy::{self, Image};
 use crate::github::model::{checks, parse_compare, parse_entries, parse_pulls, parse_refs, parse_runs};
 use crate::github::releases::{self, Behind, Deployed, PullStatus, Uploader, WorkflowStatus};
@@ -29,6 +30,10 @@ pub const OPS_TRANSCODING: &str = include_str!("../tests/fixtures/ops-transcodin
 pub const OPS_AI: &str = include_str!("../tests/fixtures/ops-ai.json");
 pub const OPS_COSTS: &str = include_str!("../tests/fixtures/ops-costs.json");
 pub const ME: &str = include_str!("../tests/fixtures/me.json");
+pub const ADMIN_REPORTS_OPEN: &str = include_str!("../tests/fixtures/admin-reports-open.json");
+pub const ADMIN_REPORTS_RESOLVED: &str = include_str!("../tests/fixtures/admin-reports-resolved.json");
+pub const ADMIN_ACCOUNTS: &str = include_str!("../tests/fixtures/admin-accounts.json");
+pub const ADMIN_ACCOUNT: &str = include_str!("../tests/fixtures/admin-account.json");
 
 /// "Now" for the GitHub scenes, which were read on 12 November 2026.
 pub const GITHUB_NOW: i64 = 1_794_516_000_000;
@@ -178,7 +183,15 @@ pub const SCENES: &[&str] = &[
     "releases-collapsed",
     "releases-unreadable",
     "releases-not-connected",
-    "coming-soon",
+    "admin-reports",
+    "admin-report-child-safety",
+    "admin-reports-removed",
+    "admin-accounts",
+    "admin-account-self",
+    "admin-confirm-remove",
+    "admin-confirm-suspend",
+    "admin-confirm-error",
+    "admin-forbidden",
     "not-connected",
 ];
 
@@ -298,7 +311,67 @@ pub fn scene(name: &str, tz: FixedOffset) -> Option<Monitor> {
             s.github = false;
             s.releases = Fetched::default();
         }
-        "coming-soon" => s.section = Section::Admin,
+        "admin-reports" => {
+            reports(&mut s, StatusFilter::Open);
+            s.admin.report = Some(report(&s, "copyright"));
+        }
+        "admin-report-child-safety" => {
+            reports(&mut s, StatusFilter::Open);
+            s.admin.report = Some(report(&s, "child_safety"));
+        }
+        "admin-reports-removed" => {
+            reports(&mut s, StatusFilter::Removed);
+            s.admin.report = s.admin.reports().first().map(|r| r.id);
+        }
+        "admin-accounts" => accounts(&mut s, ADMIN_ACCOUNT),
+        "admin-account-self" => {
+            let me: reelshelf_api::AdminAccount =
+                serde_json::from_str::<Vec<reelshelf_api::AdminAccount>>(ADMIN_ACCOUNTS).expect("accounts fixture")[2]
+                    .clone();
+            let detail = reelshelf_api::AdminAccountDetail {
+                account: me,
+                tier: "free".to_owned(),
+                changes: Vec::new(),
+            };
+            accounts(&mut s, &serde_json::to_string(&detail).expect("detail"));
+        }
+        "admin-confirm-remove" => {
+            reports(&mut s, StatusFilter::Open);
+            let id = report(&s, "terrorism");
+            s.admin.report = Some(id);
+            let mut c = Confirm::new(Change::Remove {
+                report: id,
+                clip: "Lobby warm-up".to_owned(),
+                owner: Some("driftwood".to_owned()),
+            });
+            c.note
+                .replace_text("Extremist flag and chanting; referred to the police.");
+            s.admin.confirm = Some(c);
+        }
+        "admin-confirm-suspend" => {
+            accounts(&mut s, ADMIN_ACCOUNT);
+            let id = s.admin.account?;
+            s.admin.confirm = Some(Confirm::new(Change::Suspend {
+                account: id,
+                name: "Quiet Fox".to_owned(),
+            }));
+        }
+        "admin-confirm-error" => {
+            reports(&mut s, StatusFilter::Open);
+            let id = report(&s, "copyright");
+            s.admin.report = Some(id);
+            let mut c = Confirm::new(Change::TakeDown {
+                report: id,
+                clip: "Triple down in Storm Point".to_owned(),
+            });
+            c.note.replace_text("Reupload of the reporter's stream.");
+            c.error = Some(FIXTURE_CONFLICT.to_owned());
+            s.admin.confirm = Some(c);
+        }
+        "admin-forbidden" => {
+            s.section = Section::Admin;
+            s.admin.forbidden = true;
+        }
         "not-connected" => {
             s = Monitor::new(None, None, tz);
             s.section = Section::Dashboards;
@@ -319,6 +392,45 @@ fn signed_in(s: &mut Monitor) {
     s.costs = Fetched::ready(serde_json::from_str(OPS_COSTS).expect("costs fixture"));
     s.github = true;
     s.set_releases(releases());
+    s.admin.open = Fetched::ready(serde_json::from_str(ADMIN_REPORTS_OPEN).expect("reports fixture"));
+}
+
+/// The API's words for a report someone else dealt with first.
+pub const FIXTURE_CONFLICT: &str = "That report has already been dealt with.";
+
+/// Admin's Reports tab on `status`, both lists read.
+fn reports(s: &mut Monitor, status: StatusFilter) {
+    s.section = Section::Admin;
+    s.admin.tab = AdminTab::Reports;
+    s.admin.status = status;
+    s.admin.resolved = Fetched::ready(serde_json::from_str(ADMIN_REPORTS_RESOLVED).expect("resolved fixture"));
+}
+
+/// The first report for `reason` in either list.
+fn report(s: &Monitor, reason: &str) -> uuid::Uuid {
+    s.admin
+        .open
+        .value
+        .iter()
+        .chain(s.admin.resolved.value.iter())
+        .flatten()
+        .find(|r| r.reason == reason)
+        .map(|r| r.id)
+        .expect("a report for the reason")
+}
+
+/// Admin's Accounts tab, searched for "quiet", with `detail` open.
+fn accounts(s: &mut Monitor, detail: &str) {
+    s.section = Section::Admin;
+    s.admin.tab = AdminTab::Accounts;
+    s.admin.query.replace_text("quiet");
+    s.admin.searched = "quiet".to_owned();
+    s.admin.results = Some(Load::Ready(
+        serde_json::from_str(ADMIN_ACCOUNTS).expect("accounts fixture"),
+    ));
+    let detail: reelshelf_api::AdminAccountDetail = serde_json::from_str(detail).expect("account fixture");
+    s.admin.account = Some(detail.account.id);
+    s.admin.detail = Some(Load::Ready(detail));
 }
 
 fn dashboard(json: &str) -> Dashboard {

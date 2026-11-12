@@ -175,6 +175,12 @@ fn types() -> Vec<TypeMap> {
         read!(OpsRevenue => "OpsRevenue"),
         read!(AdminAccount => "AdminAccount"),
         read!(AdminAccountIdentity => "AdminAccountIdentity"),
+        read!(AdminAccountDetail => "AdminAccountDetail"),
+        read!(AdminAccessChange => "AdminAccessChange"),
+        sent!(SetAccountRoleRequest => "SetAccountRoleRequest"),
+        sent!(SetGrantedTierRequest => "SetGrantedTierRequest"),
+        sent!(SetAccountSuspensionRequest => "SetAccountSuspensionRequest"),
+        sent!(ResolveContentReportRequest => "ResolveContentReportRequest"),
         read!(AdminContentReport => "AdminContentReport"),
         read!(AdminContentReportEvidence => "AdminContentReportEvidence"),
     ]
@@ -302,10 +308,52 @@ fn calls() -> Vec<Call> {
             responses: &[("200", Some(Body::Array("AdminAccount")))],
         },
         Call {
+            endpoint: endpoints::GET_ADMIN_ACCOUNT,
+            query: None,
+            request: None,
+            responses: &[("200", Some(Body::One("AdminAccountDetail"))), ("404", None)],
+        },
+        Call {
+            endpoint: endpoints::SET_ADMIN_ACCOUNT_ROLE,
+            query: None,
+            request: Some("SetAccountRoleRequest"),
+            responses: &[("200", Some(Body::One("AdminAccountDetail"))), ("404", None)],
+        },
+        Call {
+            endpoint: endpoints::SET_ADMIN_ACCOUNT_GRANTED_TIER,
+            query: None,
+            request: Some("SetGrantedTierRequest"),
+            responses: &[("200", Some(Body::One("AdminAccountDetail"))), ("404", None)],
+        },
+        Call {
+            endpoint: endpoints::SET_ADMIN_ACCOUNT_SUSPENSION,
+            query: None,
+            request: Some("SetAccountSuspensionRequest"),
+            responses: &[("200", Some(Body::One("AdminAccountDetail"))), ("404", None)],
+        },
+        Call {
             endpoint: endpoints::LIST_CONTENT_REPORTS,
             query: Some(shape::<ListContentReportsQuery>),
             request: None,
             responses: &[("200", Some(Body::Array("AdminContentReport")))],
+        },
+        Call {
+            endpoint: endpoints::TAKE_DOWN_CONTENT_REPORT,
+            query: None,
+            request: Some("ResolveContentReportRequest"),
+            responses: &[("200", Some(Body::One("AdminContentReport")))],
+        },
+        Call {
+            endpoint: endpoints::DISMISS_CONTENT_REPORT,
+            query: None,
+            request: Some("ResolveContentReportRequest"),
+            responses: &[("200", Some(Body::One("AdminContentReport")))],
+        },
+        Call {
+            endpoint: endpoints::REMOVE_CONTENT_REPORT_CLIP,
+            query: None,
+            request: Some("ResolveContentReportRequest"),
+            responses: &[("200", Some(Body::One("AdminContentReport")))],
         },
     ]
 }

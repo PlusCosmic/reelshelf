@@ -11,6 +11,7 @@ use rune::TextEdit;
 use rune_kit::shell::PaneState;
 use uuid::Uuid;
 
+use crate::admin::{Admin, AdminTab, Change, Confirm, StatusFilter};
 use crate::copy;
 use crate::fetch::Fetcher;
 use crate::github::Releases;
@@ -213,6 +214,8 @@ pub struct Monitor {
     pub release_touched: bool,
     /// When GitHub was last asked, so polls read it every [`RELEASES_EVERY`].
     releases_asked: Option<std::time::Instant>,
+    /// The Admin section: accounts and reports.
+    pub admin: Admin,
     /// The clip id last copied, for its button's "Copied".
     pub copied: Option<Uuid>,
     /// "Now" for the pages' times, epoch milliseconds: when the latest answer arrived.
@@ -257,6 +260,7 @@ impl Monitor {
             release_open: None,
             release_touched: false,
             releases_asked: None,
+            admin: Admin::default(),
             copied: None,
             now_ms: chrono::Utc::now().timestamp_millis(),
             list: Load::Loading,
@@ -322,6 +326,20 @@ impl Monitor {
                 kind if self.session.signed_in() => f.ops(*kind),
                 _ => {}
             }
+            match self.section {
+                // Overview's Admin card counts the open reports.
+                Section::Overview => f.reports(false),
+                Section::Admin => {
+                    f.reports(false);
+                    if self.admin.status.resolved() {
+                        f.reports(true);
+                    }
+                    if let Some(id) = self.admin.account {
+                        f.account(id);
+                    }
+                }
+                _ => {}
+            }
         }
     }
 
@@ -349,12 +367,14 @@ impl Monitor {
         self.session = session;
         if signed_in {
             self.poll();
+            self.search_accounts();
         } else {
             self.refusal = None;
             self.storage = Fetched::default();
             self.transcoding = Fetched::default();
             self.ai = Fetched::default();
             self.costs = Fetched::default();
+            self.admin = Admin::default();
         }
     }
 
@@ -396,6 +416,9 @@ impl Monitor {
 
     /// Why the latest read of an answer on screen failed, if one did.
     pub fn ops_error(&self) -> Option<&str> {
+        if self.section == Section::Admin {
+            return self.admin.list().error.as_deref();
+        }
         self.section.ops().iter().find_map(|kind| match kind {
             OpsKind::Storage => self.storage.error.as_deref(),
             OpsKind::Transcoding => self.transcoding.error.as_deref(),
@@ -403,6 +426,104 @@ impl Monitor {
             OpsKind::Costs => self.costs.error.as_deref(),
             OpsKind::Releases => self.releases.error.as_deref(),
         })
+    }
+
+    /// The signed-in account's id, when `/api/me` was read.
+    pub fn me(&self) -> Option<Uuid> {
+        match &self.session {
+            Session::SignedIn { user: Some(u) } => Some(u.id),
+            _ => None,
+        }
+    }
+
+    /// Shows an Admin tab.
+    pub fn admin_tab(&mut self, tab: AdminTab) {
+        self.admin.tab = tab;
+        self.admin.reason_menu = false;
+    }
+
+    /// Opens Admin on its Reports tab (Overview's Admin card).
+    pub fn open_reports(&mut self) {
+        self.admin_tab(AdminTab::Reports);
+        self.admin.status = StatusFilter::Open;
+        self.select(Section::Admin);
+    }
+
+    /// The search box changed: searches for what it says now (answers for an older query are dropped).
+    pub fn search_accounts(&mut self) {
+        let Some(query) = self.admin.search_query() else {
+            self.admin.results = None;
+            self.admin.searched.clear();
+            return;
+        };
+        if query == self.admin.searched && self.admin.results.is_some() {
+            return;
+        }
+        self.admin.searched = query.clone();
+        self.admin.results = Some(Load::Loading);
+        if let Some(f) = &self.fetch {
+            f.find_accounts(query);
+        }
+    }
+
+    /// Opens an account's detail.
+    pub fn open_account(&mut self, id: Uuid) {
+        if self.admin.account != Some(id) {
+            self.admin.done = None;
+            self.admin.detail = Some(Load::Loading);
+        }
+        self.admin.account = Some(id);
+        if let Some(f) = &self.fetch {
+            f.account(id);
+        }
+    }
+
+    /// Filters the reports by status, reading those dealt with when it needs them.
+    pub fn filter_status(&mut self, status: StatusFilter) {
+        self.admin.status = status;
+        if status.resolved()
+            && let Some(f) = &self.fetch
+        {
+            f.reports(true);
+        }
+    }
+
+    pub fn open_report(&mut self, id: Uuid) {
+        if self.admin.report != Some(id) {
+            self.admin.done = None;
+        }
+        self.admin.report = Some(id);
+    }
+
+    /// Asks to confirm a change.
+    pub fn ask(&mut self, change: Change) {
+        self.admin.reason_menu = false;
+        self.admin.confirm = Some(Confirm::new(change));
+    }
+
+    pub fn cancel_change(&mut self) {
+        if !self.admin.confirm.as_ref().is_some_and(|c| c.busy) {
+            self.admin.confirm = None;
+        }
+    }
+
+    /// Sends the confirmed change, with its note.
+    pub fn confirm_change(&mut self) {
+        let Some(c) = &mut self.admin.confirm else {
+            return;
+        };
+        if !c.can_send() {
+            if c.note().is_none() && c.change.note_required() {
+                c.error = Some(copy::NOTE_NEEDED.to_owned());
+            }
+            return;
+        }
+        c.busy = true;
+        c.error = None;
+        let (change, note) = (c.change.clone(), c.note());
+        if let Some(f) = &self.fetch {
+            f.apply(change, note);
+        }
     }
 
     /// Saves Settings' Grafana address and token (a blank token keeps the kept one), and loads its dashboards.
