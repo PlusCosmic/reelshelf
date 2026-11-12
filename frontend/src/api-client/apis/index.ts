@@ -4,6 +4,7 @@ export * from "./AdminAccountEndpointsApi";
 export * from "./AuthEndpointsApi";
 export * from "./BillingEndpointsApi";
 export * from "./ClipBinEndpointsApi";
+export * from "./ClipSearchEndpointsApi";
 export * from "./ClipSummaryEndpointsApi";
 export * from "./ClipTranscriptionEndpointsApi";
 export * from "./ClipsEndpointsApi";

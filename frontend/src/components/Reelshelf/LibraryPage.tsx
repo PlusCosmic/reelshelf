@@ -44,7 +44,14 @@ import {
   bulkUploadInputsFromDataTransfer,
   dataTransferHasFiles,
 } from "@/utils/bulkUploadDrop";
+import { useClipSearchAvailable } from "@/hooks/clipSearch.queries";
 import { Bookcase } from "./Bookcase";
+import { ClipSearchForm, ClipSearchResults } from "./ClipSearch";
+import {
+  loadClipSearch,
+  saveClipSearch,
+  type ClipSearchState,
+} from "./clipSearchModel";
 import { useBin } from "./BinToast";
 import { chosenCount, useClipSelection } from "./clipSelection";
 import {
@@ -156,6 +163,16 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
   // Choosing a book for the chosen clips: the shelf's books, or "game" while the add-a-game search is open.
   const [movePicker, setMovePicker] = useState<"books" | "game" | null>(null);
   const [selection, select] = useClipSelection();
+  // Searching by description covers the whole library, so it is offered on the library's own page, not a book's.
+  const describeAvailable = useClipSearchAvailable();
+  const [describe, setDescribeState] = useState<ClipSearchState | null>(
+    loadClipSearch,
+  );
+  const setDescribe = (next: ClipSearchState | null) => {
+    setDescribeState(next);
+    saveClipSearch(next);
+  };
+  const describing = describeAvailable && !selectedSlug && describe !== null;
   // The search box answers each key at once; the URL (and the list) follow once typing settles.
   const [query, setQuery] = useState(urlSearch.q ?? "");
   const writtenQuery = useRef(urlSearch.q ?? "");
@@ -667,7 +684,24 @@ export function LibraryPage({ selectedSlug }: { selectedSlug: string | null }) {
         onBackToShelf={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       />
 
-      {selected?.clipCount === 0 ? null : (
+      {describeAvailable && !selectedSlug ? (
+        <ClipSearchForm
+          initialQuery={describe?.query ?? ""}
+          onSearch={(query) => {
+            select({ type: "clear" });
+            setDescribe({ query, filters: null });
+          }}
+        />
+      ) : null}
+
+      {describing ? (
+        <ClipSearchResults
+          state={describe}
+          categories={categories}
+          onChange={setDescribe}
+          onClear={() => setDescribe(null)}
+        />
+      ) : selected?.clipCount === 0 ? null : (
         <>
           <section className="rs-filterbar">
             {/* Tags only appear once there are some; a library without any has nothing to filter by. */}

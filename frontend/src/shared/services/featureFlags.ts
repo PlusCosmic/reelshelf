@@ -10,6 +10,8 @@ export const featureFlagKeys = [
   "paid-plans",
   /** The desktop uploader: /device, Settings → Devices and the links to its Store listing (ADR-0010). */
   "desktop-uploader",
+  /** Searching the library by description (ADR-0005); only plans with transcripts can use it, whatever the flag says. */
+  "clip-search",
 ] as const;
 
 export type FeatureFlagKey = (typeof featureFlagKeys)[number];
