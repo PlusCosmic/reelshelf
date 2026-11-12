@@ -1,5 +1,6 @@
 //! Overview: a card per ops section with its headline numbers and, in red, anything that needs attention (failures
-//! in the last hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store).
+//! in the last hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store, a
+//! cost provider that couldn't be read).
 
 use rune::{El, row, spacer, text};
 use rune_kit::{Button, ButtonVariant, ControlSize};
@@ -19,6 +20,7 @@ pub fn page(s: &Monitor, l: &Look) -> El {
             section_card(l, Section::Storage, storage(s, l)),
             section_card(l, Section::Transcoding, transcoding(s, l)),
             section_card(l, Section::AiPipelines, ai(s, l)),
+            section_card(l, Section::Costs, costs(s, l)),
         ],
     )
 }
@@ -83,6 +85,25 @@ fn ai(s: &Monitor, l: &Look) -> Summary {
         ],
         alerts::ai(v),
     ))
+}
+
+fn costs(s: &Monitor, l: &Look) -> Summary {
+    let v = s.costs.value.as_ref()?;
+    let mut stats = vec![parts::stat(
+        l,
+        copy::SPEND_THIS_MONTH,
+        copy::money(v.month_to_date_usd, "USD"),
+        false,
+    )];
+    if let Some((net, currency)) = super::costs::net_revenue(v) {
+        stats.push(parts::stat(
+            l,
+            copy::REVENUE_THIS_MONTH,
+            copy::money(net, currency),
+            false,
+        ));
+    }
+    Some((stats, alerts::costs(v)))
 }
 
 fn section_card(l: &Look, section: Section, summary: Summary) -> El {

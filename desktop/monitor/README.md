@@ -4,16 +4,22 @@ A Mac app, drawn with Rune, that shows everything about Reelshelf in one place. 
 **monitor** (a device token only Admins' monitor tokens can use on the admin and ops endpoints) and shows:
 
 - **Overview**: a card per section with its headline numbers and, in red, what needs attention: failures in the last
-  hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store configured.
+  hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store configured, a cost
+  provider that couldn't be read.
 - **Storage**: totals, the object store in use, clips by tier, the top accounts and exports (`GET /api/admin/ops/storage`).
 - **Transcoding**: the queue by job type, the overflow pools, the AAC backfill and the last failures, each clip id
   copyable (`GET /api/admin/ops/transcoding`).
 - **AI pipelines**: each run queue by trigger, its last failures, and spend by model over 24 hours and 30 days
   (`GET /api/admin/ops/ai`).
+- **Costs**: this month's spend across providers and Stripe's net revenue, then a card per provider set up on the API
+  (AWS, OpenRouter, OpenAI, Anthropic; Stripe's revenue) with this month, last month, its last 30 days as a chart and
+  its breakdown by service or model, a red line when its latest read failed (the last numbers stay), and which
+  providers aren't set up and where their keys go on the API (`GET /api/admin/ops/costs`). The API reads providers in
+  the background, hourly and AWS every 6 hours; billing keys live only there, never in the app.
 - **Dashboards**: Grafana's dashboards drawn natively (below).
 - **Settings**: the account it is signed in as, Sign out, and Grafana's address and token.
 
-Costs, Releases and Admin are placeholders. The section showing is read again every 30 seconds (and on Refresh); the
+Releases and Admin are placeholders. The section showing is read again every 30 seconds (and on Refresh); the
 API caches each answer for 15 seconds.
 
 ## Signing in
@@ -63,7 +69,8 @@ Tokens are only ever sent to the service they belong to; the app never logs or s
 
 - `src/session.rs`: signing in and what refusals mean, over the `MonitorApi` trait (`reelshelf-api`'s `ApiClient`, or a
   fake in its tests); `src/secrets.rs`: the Keychain; `src/fetch.rs`: every call off the UI thread, and the 30 s poll.
-- `src/ui/`: a page per section (`overview.rs`, `storage.rs`, `transcoding.rs`, `ai.rs`, `settings.rs`, `sign_in.rs`)
+- `src/ui/`: a page per section (`overview.rs`, `storage.rs`, `transcoding.rs`, `ai.rs`, `costs.rs`, `settings.rs`,
+  `sign_in.rs`)
   from the parts in `parts.rs`; `src/alerts.rs`: what needs attention.
 - `src/grafana/`: the client (`client.rs`), dashboards (`model.rs`), query bodies and variables (`query.rs`) and data
   frames (`frames.rs`), plain Rust with unit tests on `tests/fixtures/` (trimmed copies of the real dashboards).

@@ -1,0 +1,612 @@
+{
+ "generated_at": "2024-11-12T13:59:42Z",
+ "month_to_date_usd": 81.98,
+ "providers": [
+  {
+   "provider": "aws",
+   "kind": "cost",
+   "status": "ok",
+   "error": null,
+   "last_success_at": "2024-11-12T10:12:04Z",
+   "currency": "USD",
+   "month_to_date": 57.17,
+   "last_month": 158.42,
+   "daily": [
+    {
+     "date": "2024-10-14",
+     "amount": 6.7
+    },
+    {
+     "date": "2024-10-15",
+     "amount": 5.41
+    },
+    {
+     "date": "2024-10-16",
+     "amount": 6.08
+    },
+    {
+     "date": "2024-10-17",
+     "amount": 5.63
+    },
+    {
+     "date": "2024-10-18",
+     "amount": 3.86
+    },
+    {
+     "date": "2024-10-19",
+     "amount": 3.93
+    },
+    {
+     "date": "2024-10-20",
+     "amount": 3.44
+    },
+    {
+     "date": "2024-10-21",
+     "amount": 4.32
+    },
+    {
+     "date": "2024-10-22",
+     "amount": 6.27
+    },
+    {
+     "date": "2024-10-23",
+     "amount": 5.49
+    },
+    {
+     "date": "2024-10-24",
+     "amount": 6.02
+    },
+    {
+     "date": "2024-10-25",
+     "amount": 6.47
+    },
+    {
+     "date": "2024-10-26",
+     "amount": 3.57
+    },
+    {
+     "date": "2024-10-27",
+     "amount": 3.98
+    },
+    {
+     "date": "2024-10-28",
+     "amount": 4.55
+    },
+    {
+     "date": "2024-10-29",
+     "amount": 3.65
+    },
+    {
+     "date": "2024-10-30",
+     "amount": 5.56
+    },
+    {
+     "date": "2024-10-31",
+     "amount": 5.31
+    },
+    {
+     "date": "2024-11-01",
+     "amount": 5.58
+    },
+    {
+     "date": "2024-11-02",
+     "amount": 5.52
+    },
+    {
+     "date": "2024-11-03",
+     "amount": 4.17
+    },
+    {
+     "date": "2024-11-04",
+     "amount": 5.23
+    },
+    {
+     "date": "2024-11-05",
+     "amount": 5.17
+    },
+    {
+     "date": "2024-11-06",
+     "amount": 3.5
+    },
+    {
+     "date": "2024-11-07",
+     "amount": 4.86
+    },
+    {
+     "date": "2024-11-08",
+     "amount": 5.03
+    },
+    {
+     "date": "2024-11-09",
+     "amount": 3.88
+    },
+    {
+     "date": "2024-11-10",
+     "amount": 5.41
+    },
+    {
+     "date": "2024-11-11",
+     "amount": 5.8
+    },
+    {
+     "date": "2024-11-12",
+     "amount": 3.02
+    }
+   ],
+   "breakdown": [
+    {
+     "name": "Amazon Simple Storage Service",
+     "amount": 71.18
+    },
+    {
+     "name": "Amazon Elastic Container Service",
+     "amount": 38.6
+    },
+    {
+     "name": "Amazon CloudFront",
+     "amount": 24.95
+    },
+    {
+     "name": "Amazon Elastic Compute Cloud - Compute",
+     "amount": 12.4
+    },
+    {
+     "name": "Tax",
+     "amount": 3.4
+    },
+    {
+     "name": "AWS Cost Explorer",
+     "amount": 0.12
+    }
+   ],
+   "balance": null,
+   "revenue": null
+  },
+  {
+   "provider": "openrouter",
+   "kind": "cost",
+   "status": "ok",
+   "error": null,
+   "last_success_at": "2024-11-12T13:12:40Z",
+   "currency": "USD",
+   "month_to_date": 21.15,
+   "last_month": null,
+   "daily": [
+    {
+     "date": "2024-10-14",
+     "amount": 2.38
+    },
+    {
+     "date": "2024-10-15",
+     "amount": 2.23
+    },
+    {
+     "date": "2024-10-16",
+     "amount": 1.92
+    },
+    {
+     "date": "2024-10-17",
+     "amount": 0.99
+    },
+    {
+     "date": "2024-10-18",
+     "amount": 1.31
+    },
+    {
+     "date": "2024-10-19",
+     "amount": 1.14
+    },
+    {
+     "date": "2024-10-20",
+     "amount": 1.27
+    },
+    {
+     "date": "2024-10-21",
+     "amount": 2.61
+    },
+    {
+     "date": "2024-10-22",
+     "amount": 2.52
+    },
+    {
+     "date": "2024-10-23",
+     "amount": 2.47
+    },
+    {
+     "date": "2024-10-24",
+     "amount": 2.49
+    },
+    {
+     "date": "2024-10-25",
+     "amount": 1.45
+    },
+    {
+     "date": "2024-10-26",
+     "amount": 1.06
+    },
+    {
+     "date": "2024-10-27",
+     "amount": 1.05
+    },
+    {
+     "date": "2024-10-28",
+     "amount": 1.09
+    },
+    {
+     "date": "2024-10-29",
+     "amount": 2.05
+    },
+    {
+     "date": "2024-10-30",
+     "amount": 2.36
+    },
+    {
+     "date": "2024-10-31",
+     "amount": 2.42
+    },
+    {
+     "date": "2024-11-01",
+     "amount": 2.86
+    },
+    {
+     "date": "2024-11-02",
+     "amount": 1.64
+    },
+    {
+     "date": "2024-11-03",
+     "amount": 1.29
+    },
+    {
+     "date": "2024-11-04",
+     "amount": 1.52
+    },
+    {
+     "date": "2024-11-05",
+     "amount": 0.88
+    },
+    {
+     "date": "2024-11-06",
+     "amount": 1.48
+    },
+    {
+     "date": "2024-11-07",
+     "amount": 2.0
+    },
+    {
+     "date": "2024-11-08",
+     "amount": 2.08
+    },
+    {
+     "date": "2024-11-09",
+     "amount": 2.3
+    },
+    {
+     "date": "2024-11-10",
+     "amount": 2.03
+    },
+    {
+     "date": "2024-11-11",
+     "amount": 2.0
+    },
+    {
+     "date": "2024-11-12",
+     "amount": 1.07
+    }
+   ],
+   "breakdown": [
+    {
+     "name": "google/gemini-3.5-transcribe",
+     "amount": 38.2
+    },
+    {
+     "name": "typesafe/jev-1.14",
+     "amount": 14.75
+    },
+    {
+     "name": "deepgram/nova-3",
+     "amount": 2.31
+    }
+   ],
+   "balance": 182.4,
+   "revenue": null
+  },
+  {
+   "provider": "openai",
+   "kind": "cost",
+   "status": "failed",
+   "error": "OpenAI answered 401 (the key was refused): Incorrect API key provided.",
+   "last_success_at": "2024-11-11T22:12:39Z",
+   "currency": "USD",
+   "month_to_date": 3.66,
+   "last_month": 9.85,
+   "daily": [
+    {
+     "date": "2024-10-14",
+     "amount": 0.35
+    },
+    {
+     "date": "2024-10-15",
+     "amount": 0.34
+    },
+    {
+     "date": "2024-10-16",
+     "amount": 0.2
+    },
+    {
+     "date": "2024-10-17",
+     "amount": 0.27
+    },
+    {
+     "date": "2024-10-18",
+     "amount": 0.33
+    },
+    {
+     "date": "2024-10-19",
+     "amount": 0.26
+    },
+    {
+     "date": "2024-10-20",
+     "amount": 0.38
+    },
+    {
+     "date": "2024-10-21",
+     "amount": 0.45
+    },
+    {
+     "date": "2024-10-22",
+     "amount": 0.39
+    },
+    {
+     "date": "2024-10-23",
+     "amount": 0.42
+    },
+    {
+     "date": "2024-10-24",
+     "amount": 0.26
+    },
+    {
+     "date": "2024-10-25",
+     "amount": 0.24
+    },
+    {
+     "date": "2024-10-26",
+     "amount": 0.24
+    },
+    {
+     "date": "2024-10-27",
+     "amount": 0.2
+    },
+    {
+     "date": "2024-10-28",
+     "amount": 0.4
+    },
+    {
+     "date": "2024-10-29",
+     "amount": 0.45
+    },
+    {
+     "date": "2024-10-30",
+     "amount": 0.41
+    },
+    {
+     "date": "2024-10-31",
+     "amount": 0.47
+    },
+    {
+     "date": "2024-11-01",
+     "amount": 0.35
+    },
+    {
+     "date": "2024-11-02",
+     "amount": 0.21
+    },
+    {
+     "date": "2024-11-03",
+     "amount": 0.24
+    },
+    {
+     "date": "2024-11-04",
+     "amount": 0.21
+    },
+    {
+     "date": "2024-11-05",
+     "amount": 0.31
+    },
+    {
+     "date": "2024-11-06",
+     "amount": 0.41
+    },
+    {
+     "date": "2024-11-07",
+     "amount": 0.38
+    },
+    {
+     "date": "2024-11-08",
+     "amount": 0.49
+    },
+    {
+     "date": "2024-11-09",
+     "amount": 0.35
+    },
+    {
+     "date": "2024-11-10",
+     "amount": 0.25
+    },
+    {
+     "date": "2024-11-11",
+     "amount": 0.34
+    },
+    {
+     "date": "2024-11-12",
+     "amount": 0.12
+    }
+   ],
+   "breakdown": [
+    {
+     "name": "gpt-5.5-mini, input",
+     "amount": 6.1
+    },
+    {
+     "name": "text-embedding-3-small, input",
+     "amount": 3.92
+    }
+   ],
+   "balance": null,
+   "revenue": null
+  },
+  {
+   "provider": "anthropic",
+   "kind": "cost",
+   "status": "not_configured",
+   "error": null,
+   "last_success_at": null,
+   "currency": null,
+   "month_to_date": null,
+   "last_month": null,
+   "daily": [],
+   "breakdown": [],
+   "balance": null,
+   "revenue": null
+  },
+  {
+   "provider": "stripe",
+   "kind": "revenue",
+   "status": "ok",
+   "error": null,
+   "last_success_at": "2024-11-12T13:12:41Z",
+   "currency": "GBP",
+   "month_to_date": 463.95,
+   "last_month": 1388.0,
+   "daily": [
+    {
+     "date": "2024-10-14",
+     "amount": 35.42
+    },
+    {
+     "date": "2024-10-15",
+     "amount": 17.7
+    },
+    {
+     "date": "2024-10-16",
+     "amount": 28.46
+    },
+    {
+     "date": "2024-10-17",
+     "amount": 46.8
+    },
+    {
+     "date": "2024-10-18",
+     "amount": 50.49
+    },
+    {
+     "date": "2024-10-19",
+     "amount": 57.4
+    },
+    {
+     "date": "2024-10-20",
+     "amount": 55.16
+    },
+    {
+     "date": "2024-10-21",
+     "amount": 51.6
+    },
+    {
+     "date": "2024-10-22",
+     "amount": 48.58
+    },
+    {
+     "date": "2024-10-23",
+     "amount": 25.49
+    },
+    {
+     "date": "2024-10-24",
+     "amount": 20.21
+    },
+    {
+     "date": "2024-10-25",
+     "amount": 35.04
+    },
+    {
+     "date": "2024-10-26",
+     "amount": 28.99
+    },
+    {
+     "date": "2024-10-27",
+     "amount": 47.26
+    },
+    {
+     "date": "2024-10-28",
+     "amount": 71.83
+    },
+    {
+     "date": "2024-10-29",
+     "amount": 60.63
+    },
+    {
+     "date": "2024-10-30",
+     "amount": 62.22
+    },
+    {
+     "date": "2024-10-31",
+     "amount": 41.78
+    },
+    {
+     "date": "2024-11-01",
+     "amount": 22.84
+    },
+    {
+     "date": "2024-11-02",
+     "amount": 23.87
+    },
+    {
+     "date": "2024-11-03",
+     "amount": 19.9
+    },
+    {
+     "date": "2024-11-04",
+     "amount": 40.87
+    },
+    {
+     "date": "2024-11-05",
+     "amount": 64.15
+    },
+    {
+     "date": "2024-11-06",
+     "amount": 61.37
+    },
+    {
+     "date": "2024-11-07",
+     "amount": 69.85
+    },
+    {
+     "date": "2024-11-08",
+     "amount": 59.99
+    },
+    {
+     "date": "2024-11-09",
+     "amount": 27.64
+    },
+    {
+     "date": "2024-11-10",
+     "amount": 26.89
+    },
+    {
+     "date": "2024-11-11",
+     "amount": 22.03
+    },
+    {
+     "date": "2024-11-12",
+     "amount": 24.55
+    }
+   ],
+   "breakdown": [],
+   "balance": null,
+   "revenue": {
+    "gross_month_to_date": 463.95,
+    "net_month_to_date": 422.19,
+    "gross_last_month": 1388.0,
+    "net_last_month": 1262.35
+   }
+  }
+ ]
+}

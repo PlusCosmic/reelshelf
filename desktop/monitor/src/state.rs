@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::FixedOffset;
-use reelshelf_api::{OpsAi, OpsStorage, OpsTranscoding};
+use reelshelf_api::{OpsAi, OpsCosts, OpsStorage, OpsTranscoding};
 use rune::TextEdit;
 use rune_kit::shell::PaneState;
 use uuid::Uuid;
@@ -52,21 +52,23 @@ impl Section {
     /// The ops answers the section shows, which it polls while it shows.
     pub fn ops(self) -> &'static [OpsKind] {
         match self {
-            Section::Overview => &[OpsKind::Storage, OpsKind::Transcoding, OpsKind::Ai],
+            Section::Overview => &[OpsKind::Storage, OpsKind::Transcoding, OpsKind::Ai, OpsKind::Costs],
             Section::Storage => &[OpsKind::Storage],
             Section::Transcoding => &[OpsKind::Transcoding],
             Section::AiPipelines => &[OpsKind::Ai],
+            Section::Costs => &[OpsKind::Costs],
             _ => &[],
         }
     }
 }
 
-/// One of the three `/api/admin/ops/*` answers.
+/// One of the `/api/admin/ops/*` answers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum OpsKind {
     Storage,
     Transcoding,
     Ai,
+    Costs,
 }
 
 /// How often the section showing is read again.
@@ -163,6 +165,9 @@ pub struct Monitor {
     pub storage: Fetched<OpsStorage>,
     pub transcoding: Fetched<OpsTranscoding>,
     pub ai: Fetched<OpsAi>,
+    pub costs: Fetched<OpsCosts>,
+    /// The Costs page's width, as last laid out, for its charts.
+    pub costs_width: f32,
     /// The clip id last copied, for its button's "Copied".
     pub copied: Option<Uuid>,
     /// "Now" for the pages' times, epoch milliseconds: when the latest answer arrived.
@@ -199,6 +204,8 @@ impl Monitor {
             storage: Fetched::default(),
             transcoding: Fetched::default(),
             ai: Fetched::default(),
+            costs: Fetched::default(),
+            costs_width: 1040.0,
             copied: None,
             now_ms: chrono::Utc::now().timestamp_millis(),
             list: Load::Loading,
@@ -260,6 +267,7 @@ impl Monitor {
             self.storage = Fetched::default();
             self.transcoding = Fetched::default();
             self.ai = Fetched::default();
+            self.costs = Fetched::default();
         }
     }
 
@@ -293,6 +301,7 @@ impl Monitor {
                 OpsKind::Storage => self.storage.value.as_ref().map(|v| v.generated_at),
                 OpsKind::Transcoding => self.transcoding.value.as_ref().map(|v| v.generated_at),
                 OpsKind::Ai => self.ai.value.as_ref().map(|v| v.generated_at),
+                OpsKind::Costs => self.costs.value.as_ref().map(|v| v.generated_at),
             })
             .max()
     }
@@ -303,6 +312,7 @@ impl Monitor {
             OpsKind::Storage => self.storage.error.as_deref(),
             OpsKind::Transcoding => self.transcoding.error.as_deref(),
             OpsKind::Ai => self.ai.error.as_deref(),
+            OpsKind::Costs => self.costs.error.as_deref(),
         })
     }
 

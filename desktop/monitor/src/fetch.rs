@@ -161,6 +161,10 @@ impl Fetcher {
                     let answer = api.ops_ai().await;
                     deliver(&sign_in, &window, answer, |s| &mut s.ai);
                 }
+                OpsKind::Costs => {
+                    let answer = api.ops_costs().await;
+                    deliver(&sign_in, &window, answer, |s| &mut s.costs);
+                }
             }
         });
     }

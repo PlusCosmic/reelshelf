@@ -3,6 +3,7 @@
 
 pub mod ai;
 pub mod chart;
+pub mod costs;
 pub mod dashboards;
 pub mod icons;
 pub mod overview;
@@ -185,11 +186,16 @@ pub fn view(s: &Monitor, cx: &mut Cx<Monitor>) -> El {
     let (main, toolbar) = match s.section {
         Section::Dashboards => dashboards::page(s, l, &paint(dark)),
         Section::Settings => (settings::page(s, l), Toolbar::new().title(copy::SETTINGS)),
-        section @ (Section::Overview | Section::Storage | Section::Transcoding | Section::AiPipelines) => {
+        section @ (Section::Overview
+        | Section::Storage
+        | Section::Transcoding
+        | Section::AiPipelines
+        | Section::Costs) => {
             let page = sign_in::gate(s, l).unwrap_or_else(|| match section {
                 Section::Overview => overview::page(s, l),
                 Section::Storage => storage::page(s, l),
                 Section::Transcoding => transcoding::page(s, l),
+                Section::Costs => costs::page(s, l, &paint(dark)),
                 _ => ai::page(s, l),
             });
             (page, ops_toolbar(s, l, label(section)))
