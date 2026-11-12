@@ -578,6 +578,56 @@ pub struct AdminAccountIdentity {
     pub username: String,
 }
 
+/// `AdminAccountDetail`: an account, the tier it has now (granted or paid for, lowercase), and its recorded changes,
+/// newest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AdminAccountDetail {
+    pub account: AdminAccount,
+    pub tier: String,
+    pub changes: Vec<AdminAccessChange>,
+}
+
+/// `AdminAccessChange`: one recorded change to an account's role (`role`), granted tier (`granted_tier`) or
+/// suspension (`suspended`, whose new value is set while suspended), with who made it and why.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AdminAccessChange {
+    pub id: Uuid,
+    pub field: String,
+    pub old_value: Option<String>,
+    pub new_value: Option<String>,
+    pub reason: String,
+    pub changed_by_name: Option<String>,
+    pub changed_at: DateTime<Utc>,
+}
+
+/// `SetAccountRoleRequest`: the body of `PUT /api/admin/accounts/{userId}/role` (`viewer`, `editor` or `admin`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetAccountRoleRequest {
+    pub role: String,
+    pub reason: Option<String>,
+}
+
+/// `SetGrantedTierRequest`: the body of `PUT /api/admin/accounts/{userId}/granted-tier`; a null tier (sent as null)
+/// takes the grant away.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetGrantedTierRequest {
+    pub tier: Option<String>,
+    pub reason: Option<String>,
+}
+
+/// `SetAccountSuspensionRequest`: the body of `PUT /api/admin/accounts/{userId}/suspension`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetAccountSuspensionRequest {
+    pub suspended: bool,
+    pub reason: Option<String>,
+}
+
+/// `ResolveContentReportRequest`: the body of a report's take down, dismiss or remove.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResolveContentReportRequest {
+    pub note: Option<String>,
+}
+
 /// The query of `ListContentReports` (`GET /api/admin/reports`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ListContentReportsQuery {

@@ -11,11 +11,12 @@ use uuid::Uuid;
 use crate::endpoints::{self, Endpoint};
 use crate::error::ApiError;
 use crate::types::{
-    AccountPlan, AdminAccount, AdminContentReport, CompleteUploadRequest, CompletedUpload, CreateClipResponse,
+    AccountPlan, AdminAccount, AdminAccountDetail, AdminContentReport, CompleteUploadRequest, CompletedUpload, CreateClipResponse,
     CreateVideoQuery, CurrentUser, DeviceAuthorization, DeviceAuthorizeRequest, DeviceTokenErrorBody,
     DeviceTokenErrorCode, DeviceTokenPoll, DeviceTokenRequest, FeatureFlags, FindAdminAccountsQuery, GameCategory,
     ListContentReportsQuery, ListUploadPartsQuery, OpsAi, OpsCosts, OpsStorage, OpsTranscoding,
-    PresignUploadPartsRequest, PresignedUploadParts, UploadedParts,
+    PresignUploadPartsRequest, PresignedUploadParts, ResolveContentReportRequest, SetAccountRoleRequest,
+    SetAccountSuspensionRequest, SetGrantedTierRequest, UploadedParts,
 };
 
 /// The header naming the app and its version, which the API's version gate reads.
@@ -199,6 +200,84 @@ impl ApiClient {
             query: query.map(str::to_owned),
         };
         self.call_json(&endpoints::FIND_ADMIN_ACCOUNTS, &[], |request| request.query(&query))
+            .await
+    }
+
+    /// `GET /api/admin/accounts/{userId}`: the account, its tier and its recorded changes.
+    pub async fn admin_account(&self, user_id: Uuid) -> Result<AdminAccountDetail, ApiError> {
+        let id = user_id.to_string();
+        self.call_json(&endpoints::GET_ADMIN_ACCOUNT, &[("userId", &id)], |request| request)
+            .await
+    }
+
+    /// `PUT .../role`: changes the account's role, answering the account as it now is.
+    pub async fn set_account_role(
+        &self,
+        user_id: Uuid,
+        request: &SetAccountRoleRequest,
+    ) -> Result<AdminAccountDetail, ApiError> {
+        let id = user_id.to_string();
+        self.call_json(&endpoints::SET_ADMIN_ACCOUNT_ROLE, &[("userId", &id)], |builder| {
+            builder.json(request)
+        })
+        .await
+    }
+
+    /// `PUT .../granted-tier`: grants a tier or takes the grant away, answering the account as it now is.
+    pub async fn set_granted_tier(
+        &self,
+        user_id: Uuid,
+        request: &SetGrantedTierRequest,
+    ) -> Result<AdminAccountDetail, ApiError> {
+        let id = user_id.to_string();
+        self.call_json(&endpoints::SET_ADMIN_ACCOUNT_GRANTED_TIER, &[("userId", &id)], |builder| {
+            builder.json(request)
+        })
+        .await
+    }
+
+    /// `PUT .../suspension`: suspends the account or lifts its suspension, answering the account as it now is.
+    pub async fn set_account_suspension(
+        &self,
+        user_id: Uuid,
+        request: &SetAccountSuspensionRequest,
+    ) -> Result<AdminAccountDetail, ApiError> {
+        let id = user_id.to_string();
+        self.call_json(&endpoints::SET_ADMIN_ACCOUNT_SUSPENSION, &[("userId", &id)], |builder| {
+            builder.json(request)
+        })
+        .await
+    }
+
+    /// `POST .../take-down`: blocks the reported clip's sharing, answering the report as it now is.
+    pub async fn take_down_report(&self, report_id: Uuid, note: &str) -> Result<AdminContentReport, ApiError> {
+        self.resolve_report(&endpoints::TAKE_DOWN_CONTENT_REPORT, report_id, Some(note))
+            .await
+    }
+
+    /// `POST .../dismiss`: dismisses the report, leaving the clip alone.
+    pub async fn dismiss_report(&self, report_id: Uuid, note: Option<&str>) -> Result<AdminContentReport, ApiError> {
+        self.resolve_report(&endpoints::DISMISS_CONTENT_REPORT, report_id, note)
+            .await
+    }
+
+    /// `POST .../remove`: deletes an urgent report's clip, keeping it as evidence, and suspends its owner.
+    pub async fn remove_report_clip(&self, report_id: Uuid, note: &str) -> Result<AdminContentReport, ApiError> {
+        self.resolve_report(&endpoints::REMOVE_CONTENT_REPORT_CLIP, report_id, Some(note))
+            .await
+    }
+
+    async fn resolve_report(
+        &self,
+        endpoint: &Endpoint,
+        report_id: Uuid,
+        note: Option<&str>,
+    ) -> Result<AdminContentReport, ApiError> {
+        let id = report_id.to_string();
+        let body = ResolveContentReportRequest {
+            note: note.map(str::to_owned),
+        };
+        self.call_json(endpoint, &[("reportId", &id)], |builder| builder.json(&body))
             .await
     }
 

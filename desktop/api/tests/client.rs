@@ -709,3 +709,139 @@ async fn admin_reads_send_their_queries_only_when_given() {
     let requests = server.received_requests().await.unwrap();
     assert_eq!(requests[1].url.query(), None);
 }
+
+fn account_detail(id: &str, role: &str, granted: Option<&str>) -> serde_json::Value {
+    json!({
+        "account": {
+            "id": id, "username": "ada", "global_name": "Ada", "avatar_url": null, "role": role,
+            "granted_tier": granted, "suspended_at": null,
+            "identities": [{ "provider": "discord", "provider_user_id": "42", "username": "ada" }]
+        },
+        "tier": granted.unwrap_or("free"),
+        "changes": [{
+            "id": "00000000-0000-0000-0000-0000000000c1", "field": "role", "old_value": "editor", "new_value": role,
+            "reason": "Moderator", "changed_by_name": "Grace", "changed_at": "2026-11-12T09:00:00Z"
+        }]
+    })
+}
+
+#[tokio::test]
+async fn admin_account_changes_send_their_bodies_and_answer_the_account() {
+    let server = MockServer::start().await;
+    let id = "00000000-0000-0000-0000-0000000000a1";
+    let user = Uuid::parse_str(id).unwrap();
+    Mock::given(method("GET"))
+        .and(path(format!("/api/admin/accounts/{id}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(account_detail(id, "editor", None)))
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/api/admin/accounts/{id}/role")))
+        .and(body_json(json!({ "role": "admin", "reason": "Moderator" })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(account_detail(id, "admin", None)))
+        .expect(1)
+        .mount(&server)
+        .await;
+    // Taking a grant away sends the tier as null, not without it.
+    Mock::given(method("PUT"))
+        .and(path(format!("/api/admin/accounts/{id}/granted-tier")))
+        .and(body_json(json!({ "tier": null, "reason": "Trial over" })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(account_detail(id, "editor", None)))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/api/admin/accounts/{id}/suspension")))
+        .and(body_json(json!({ "suspended": true, "reason": "Spam" })))
+        .respond_with(ResponseTemplate::new(409).set_body_json(json!({
+            "title": "Conflict", "detail": "Admins can't be suspended. Change their role first."
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let client = monitor(&server);
+    let detail = client.admin_account(user).await.unwrap();
+    assert_eq!(detail.account.identities[0].provider_user_id, "42");
+    assert_eq!(detail.changes[0].changed_by_name.as_deref(), Some("Grace"));
+    let request = SetAccountRoleRequest {
+        role: "admin".into(),
+        reason: Some("Moderator".into()),
+    };
+    assert_eq!(client.set_account_role(user, &request).await.unwrap().account.role, "admin");
+    let request = SetGrantedTierRequest {
+        tier: None,
+        reason: Some("Trial over".into()),
+    };
+    assert_eq!(client.set_granted_tier(user, &request).await.unwrap().tier, "free");
+    let request = SetAccountSuspensionRequest {
+        suspended: true,
+        reason: Some("Spam".into()),
+    };
+    match client.set_account_suspension(user, &request).await {
+        Err(ApiError::Conflict(problem)) => assert_eq!(
+            problem.message(),
+            Some("Admins can't be suspended. Change their role first.")
+        ),
+        other => panic!("expected a conflict, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn resolving_a_report_posts_its_note() {
+    let server = MockServer::start().await;
+    let id = "00000000-0000-0000-0000-0000000000b1";
+    let report = Uuid::parse_str(id).unwrap();
+    let answer = |status: &str| {
+        json!({
+            "id": id, "reason": "terrorism", "details": "", "reporter_email": null, "status": status,
+            "created_at": "2026-11-12T09:00:00Z", "resolved_at": "2026-11-12T10:00:00Z", "resolved_by_name": "Grace",
+            "resolution_note": "Confirmed", "clip_id": null, "clip_title": "Clip", "owner_id": null, "owner_name": "bob",
+            "share_url": null, "share_hidden": false, "sharing_blocked": false, "open_reports_on_clip": 0,
+            "owner_suspended": true,
+            "evidence": { "status": "pending", "error": null, "cdn_purge": null, "delete_after": "2027-11-12T10:00:00Z" }
+        })
+    };
+    Mock::given(method("POST"))
+        .and(path(format!("/api/admin/reports/{id}/remove")))
+        .and(body_json(json!({ "note": "Confirmed" })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(answer("removed")))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path(format!("/api/admin/reports/{id}/dismiss")))
+        .and(body_json(json!({ "note": null })))
+        .respond_with(ResponseTemplate::new(409).set_body_json(json!({
+            "title": "Conflict", "detail": "That report has already been dealt with."
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path(format!("/api/admin/reports/{id}/take-down")))
+        .and(body_json(json!({ "note": "Gore" })))
+        .respond_with(ResponseTemplate::new(400).set_body_json(json!({
+            "title": "Bad Request",
+            "detail": "Child-safety and terrorism reports remove the clip. Remove it instead."
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let client = monitor(&server);
+    let removed = client.remove_report_clip(report, "Confirmed").await.unwrap();
+    assert_eq!(removed.status, "removed");
+    assert!(removed.owner_suspended);
+    assert!(matches!(
+        client.dismiss_report(report, None).await,
+        Err(ApiError::Conflict(_))
+    ));
+    match client.take_down_report(report, "Gore").await {
+        Err(ApiError::Status { status, problem }) => {
+            assert_eq!(status, StatusCode::BAD_REQUEST);
+            assert!(problem.message().unwrap().starts_with("Child-safety"));
+        }
+        other => panic!("expected a 400, got {other:?}"),
+    }
+}
