@@ -27,12 +27,12 @@ public class R2ClipStatusRefreshTests
 
         await test.Service.RefreshClipStatusesAsync();
 
-        // Every clip is still there as it was, with the legacy video_status still unwritten.
-        List<(Guid Id, string State, int? Progress, int? VideoStatus)> expected =
+        // Every clip is still there as it was.
+        List<(Guid Id, string State, int? Progress)> expected =
         [
-            (uploaded, "uploaded", 0, null),
-            (processing, "processing", 40, null),
-            (fresh, "awaiting_upload", 0, null)
+            (uploaded, "uploaded", 0),
+            (processing, "processing", 40),
+            (fresh, "awaiting_upload", 0)
         ];
         Assert.Equal(expected, await test.ClipsAsync());
     }
@@ -139,9 +139,9 @@ public class R2ClipStatusRefreshTests
             return clipId;
         }
 
-        public async Task<List<(Guid Id, string State, int? Progress, int? VideoStatus)>> ClipsAsync() =>
-            (await Connection.QueryAsync<(Guid, string, int?, int?)>(
-                "SELECT id, video_state, encode_progress, video_status FROM clip ORDER BY reserved_at, video_state DESC"))
+        public async Task<List<(Guid Id, string State, int? Progress)>> ClipsAsync() =>
+            (await Connection.QueryAsync<(Guid, string, int?)>(
+                "SELECT id, video_state, encode_progress FROM clip ORDER BY reserved_at, video_state DESC"))
             .ToList();
 
         public async ValueTask DisposeAsync()
