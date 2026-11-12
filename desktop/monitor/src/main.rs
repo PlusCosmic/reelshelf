@@ -37,11 +37,16 @@ fn main() {
         let section = std::env::var("REELSHELF_MONITOR_SECTION")
             .ok()
             .and_then(|n| Section::named(&n));
+        // Start signing in at launch, as Sign in does (`REELSHELF_MONITOR_SIGN_IN=1`), for scripted runs.
+        let sign_in = std::env::var("REELSHELF_MONITOR_SIGN_IN").is_ok_and(|v| v == "1");
         app.init(move || {
             let mut s = Monitor::new(fetch, url, tz);
             s.grafana_form.from_env = env;
             if let Some(section) = section {
                 s.section = section;
+            }
+            if sign_in {
+                s.sign_in();
             }
             s
         })
