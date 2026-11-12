@@ -14,8 +14,8 @@ use crate::types::{
     AccountPlan, AdminAccount, AdminContentReport, CompleteUploadRequest, CompletedUpload, CreateClipResponse,
     CreateVideoQuery, CurrentUser, DeviceAuthorization, DeviceAuthorizeRequest, DeviceTokenErrorBody,
     DeviceTokenErrorCode, DeviceTokenPoll, DeviceTokenRequest, FeatureFlags, FindAdminAccountsQuery, GameCategory,
-    ListContentReportsQuery, ListUploadPartsQuery, OpsAi, OpsStorage, OpsTranscoding, PresignUploadPartsRequest,
-    PresignedUploadParts, UploadedParts,
+    ListContentReportsQuery, ListUploadPartsQuery, OpsAi, OpsCosts, OpsStorage, OpsTranscoding,
+    PresignUploadPartsRequest, PresignedUploadParts, UploadedParts,
 };
 
 /// The header naming the app and its version, which the API's version gate reads.
@@ -186,6 +186,11 @@ impl ApiClient {
     /// `GET /api/admin/ops/ai`: the AI run queues, their failures and spend by model.
     pub async fn ops_ai(&self) -> Result<OpsAi, ApiError> {
         self.call_json(&endpoints::GET_OPS_AI, &[], |request| request).await
+    }
+
+    /// `GET /api/admin/ops/costs`: spend by provider, as the API last read it, and Stripe's revenue.
+    pub async fn ops_costs(&self) -> Result<OpsCosts, ApiError> {
+        self.call_json(&endpoints::GET_OPS_COSTS, &[], |request| request).await
     }
 
     /// `GET /api/admin/accounts?query=`: accounts matching a name or id (the most recent ones without a query).

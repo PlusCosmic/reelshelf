@@ -168,6 +168,11 @@ fn types() -> Vec<TypeMap> {
         read!(OpsAiFailure => "OpsAiFailure"),
         read!(OpsAiSpend => "OpsAiSpend"),
         read!(OpsAiUsage => "OpsAiUsage"),
+        read!(OpsCosts => "OpsCostsResponse"),
+        read!(OpsCostProvider => "OpsCostProvider"),
+        read!(OpsCostDay => "OpsCostDay"),
+        read!(OpsCostItem => "OpsCostItem"),
+        read!(OpsRevenue => "OpsRevenue"),
         read!(AdminAccount => "AdminAccount"),
         read!(AdminAccountIdentity => "AdminAccountIdentity"),
         read!(AdminContentReport => "AdminContentReport"),
@@ -285,6 +290,12 @@ fn calls() -> Vec<Call> {
             responses: &[("200", Some(Body::One("OpsAiResponse")))],
         },
         Call {
+            endpoint: endpoints::GET_OPS_COSTS,
+            query: None,
+            request: None,
+            responses: &[("200", Some(Body::One("OpsCostsResponse")))],
+        },
+        Call {
             endpoint: endpoints::FIND_ADMIN_ACCOUNTS,
             query: Some(shape::<FindAdminAccountsQuery>),
             request: None,
@@ -390,6 +401,7 @@ fn example(document: &Value, schema: &Value, full: bool, depth: usize) -> Value 
         return match schema.get("format").and_then(Value::as_str) {
             Some("uuid") => json!("00000000-0000-0000-0000-000000000001"),
             Some("date-time") => json!("2026-01-01T00:00:00Z"),
+            Some("date") => json!("2026-01-01"),
             _ => json!("text"),
         };
     }

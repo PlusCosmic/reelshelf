@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -485,6 +485,69 @@ pub struct OpsAiUsage {
     pub cost_usd: Option<f64>,
     /// Runs whose cost isn't known, left out of `cost_usd`.
     pub unpriced_runs: i64,
+}
+
+/// `OpsCostsResponse`: each provider's spend (and Stripe's revenue) as the API last read it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsCosts {
+    pub generated_at: DateTime<Utc>,
+    /// Every cost provider's month-to-date spend reported in USD, added up.
+    pub month_to_date_usd: f64,
+    pub providers: Vec<OpsCostProvider>,
+}
+
+/// `OpsCostProvider`: one provider's numbers in its own currency, and how its last read went.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsCostProvider {
+    /// `aws`, `openrouter`, `openai`, `anthropic` or `stripe`.
+    pub provider: String,
+    /// `cost`, or `revenue` (Stripe).
+    pub kind: String,
+    /// `ok`, `not_configured`, `pending` or `failed`.
+    pub status: String,
+    pub error: Option<String>,
+    /// When the numbers shown were read.
+    pub last_success_at: Option<DateTime<Utc>>,
+    pub currency: Option<String>,
+    pub month_to_date: Option<f64>,
+    /// None when the provider keeps too little history to say.
+    pub last_month: Option<f64>,
+    /// The last 30 days the provider reports, oldest first.
+    pub daily: Vec<OpsCostDay>,
+    /// The last 30 days by service or model, largest first.
+    pub breakdown: Vec<OpsCostItem>,
+    /// Credit left (OpenRouter).
+    pub balance: Option<f64>,
+    pub revenue: Option<OpsRevenue>,
+}
+
+impl OpsCostProvider {
+    pub fn is_revenue(&self) -> bool {
+        self.kind == "revenue"
+    }
+}
+
+/// `OpsCostDay`: one UTC day's amount.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsCostDay {
+    pub date: NaiveDate,
+    pub amount: f64,
+}
+
+/// `OpsCostItem`: a service or model and what it cost over the last 30 days.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsCostItem {
+    pub name: String,
+    pub amount: f64,
+}
+
+/// `OpsRevenue`: Stripe's gross charges and net after fees and refunds, this month and last.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsRevenue {
+    pub gross_month_to_date: f64,
+    pub net_month_to_date: f64,
+    pub gross_last_month: f64,
+    pub net_last_month: f64,
 }
 
 /// The query of `FindAdminAccounts` (`GET /api/admin/accounts`).

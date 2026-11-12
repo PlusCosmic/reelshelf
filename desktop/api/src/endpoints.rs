@@ -127,6 +127,13 @@ pub const GET_OPS_AI: Endpoint = Endpoint {
     path: "/api/admin/ops/ai",
 };
 
+/// `GET /api/admin/ops/costs`: spend by provider and Stripe's revenue (Admins, `ops-monitor`).
+pub const GET_OPS_COSTS: Endpoint = Endpoint {
+    operation_id: "GetOpsCosts",
+    method: Method::GET,
+    path: "/api/admin/ops/costs",
+};
+
 /// `GET /api/admin/accounts`: finds accounts (Admins).
 pub const FIND_ADMIN_ACCOUNTS: Endpoint = Endpoint {
     operation_id: "FindAdminAccounts",
@@ -158,6 +165,7 @@ pub const ALL: &[Endpoint] = &[
     GET_OPS_STORAGE,
     GET_OPS_TRANSCODING,
     GET_OPS_AI,
+    GET_OPS_COSTS,
     FIND_ADMIN_ACCOUNTS,
     LIST_CONTENT_REPORTS,
 ];
