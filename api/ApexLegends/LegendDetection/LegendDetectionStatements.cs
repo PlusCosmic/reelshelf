@@ -529,7 +529,7 @@ public class LegendDetectionStatements(NpgsqlConnection connection)
     /// has no input or output price. Cached and cache-write tokens are part of input_tokens and fall back to the
     /// input price.
     /// </summary>
-    private const string RunCostSql = """
+    internal const string RunCostSql = """
         COALESCE(run.cost_usd, (
             GREATEST(COALESCE(run.input_tokens, 0) - COALESCE(run.cached_input_tokens, 0)
                      - COALESCE(run.cache_write_input_tokens, 0), 0) * price.input_per_mtok

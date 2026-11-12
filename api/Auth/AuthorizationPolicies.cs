@@ -11,9 +11,11 @@ namespace Reelshelf.Auth;
 public static class AuthorizationPolicies
 {
     /// <summary>
-    /// The site cookie or a desktop uploader's device token (ADR-0010). Only the endpoints the uploader needs carry
-    /// it: listing books, the plan, preparing a clip, deleting one still awaiting its upload, and the multipart upload
-    /// endpoints. Every other endpoint sees the cookie alone, so a device token gets 401 there.
+    /// The site cookie or a device token (ADR-0010). Only the endpoints the desktop uploader and the monitor app need
+    /// carry it: listing books, the plan, preparing a clip, deleting one still awaiting its upload, the multipart upload
+    /// endpoints, <c>GET /api/me</c> and <c>/api/me/features</c>, and the admin accounts, reports and ops endpoints
+    /// (whose permissions keep them to Admins). Every other endpoint sees the cookie alone, so a device token gets 401
+    /// there.
     /// </summary>
     public const string CookieOrDevice = "CookieOrDevice";
 

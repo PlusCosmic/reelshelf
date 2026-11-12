@@ -17,13 +17,16 @@ public static class UserEndpoints
         RouteGroupBuilder meGroup = app.MapGroup("me")
             .RequireAuthorization();
 
-        meGroup.MapGet("/", GetMe).WithName("GetMe");
+        // The monitor app asks who it is signed in as, and whether its flag is on, with its device token.
+        meGroup.MapGet("/", GetMe).WithName("GetMe")
+            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice);
         meGroup.MapPut("/email", SetEmail).WithName("SetMyEmail");
         meGroup.MapPut("/username", SetUsername).WithName("SetMyUsername");
         meGroup.MapPut("/color-scheme", SetColorScheme).WithName("SetMyColorScheme");
         meGroup.MapGet("/plan", GetPlan).WithName("GetMyPlan")
             .RequireAuthorization(AuthorizationPolicies.CookieOrDevice);
-        meGroup.MapGet("/features", GetFeatures).WithName("GetMyFeatures");
+        meGroup.MapGet("/features", GetFeatures).WithName("GetMyFeatures")
+            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice);
         meGroup.MapGet("/identities", GetLinkedIdentities).WithName("GetMyLinkedIdentities");
         meGroup.MapDelete("/identities/{provider}", UnlinkIdentity).WithName("UnlinkMyIdentity");
         meGroup.MapPost("/deletion", DeleteAccount).WithName("DeleteMyAccount");

@@ -27,6 +27,7 @@ using Reelshelf.FFmpeg;
 using Reelshelf.Games;
 using Reelshelf.LandingShelf;
 using Reelshelf.Moderation;
+using Reelshelf.Ops;
 using Reelshelf.Playlists;
 using Reelshelf.QueueMetrics;
 using Reelshelf.Plans;
@@ -120,6 +121,7 @@ internal static class ReelshelfApiConfiguration
         apiGroup.MapClipSummaryEndpoints();
         apiGroup.MapUserEndpoints();
         apiGroup.MapAdminAccountEndpoints();
+        apiGroup.MapOpsEndpoints();
         apiGroup.MapBillingEndpoints();
         apiGroup.MapPlanEndpoints();
         apiGroup.MapOverLimitEndpoints();
@@ -416,6 +418,11 @@ internal static class ReelshelfApiConfiguration
         // Overflow workers for the transcode queue (Fargate Spot and/or Google Cloud Batch, Overflow:Pools); only where
         // Overflow:Enabled is on, never in OpenApi.
         builder.AddTranscodeOverflow();
+
+        // The monitor app's read-only operations numbers (/api/admin/ops/), each cached 15 s.
+        builder.Services.AddSingleton<OpsStatements>();
+        builder.Services.AddSingleton<OpsSnapshotCache>();
+        builder.Services.AddSingleton<OpsService>();
 
         // Background services should not run during explicit OpenAPI document generation.
         if (!builder.Environment.IsEnvironment("OpenApi"))
