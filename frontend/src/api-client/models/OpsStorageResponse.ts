@@ -20,6 +20,13 @@ import {
   OpsObjectStoreToJSON,
   OpsObjectStoreToJSONTyped,
 } from "./OpsObjectStore";
+import type { OpsCdnMetrics } from "./OpsCdnMetrics";
+import {
+  OpsCdnMetricsFromJSON,
+  OpsCdnMetricsFromJSONTyped,
+  OpsCdnMetricsToJSON,
+  OpsCdnMetricsToJSONTyped,
+} from "./OpsCdnMetrics";
 import type { OpsStorageTotals } from "./OpsStorageTotals";
 import {
   OpsStorageTotalsFromJSON,
@@ -41,6 +48,13 @@ import {
   OpsAccountStorageToJSON,
   OpsAccountStorageToJSONTyped,
 } from "./OpsAccountStorage";
+import type { OpsBucketMetrics } from "./OpsBucketMetrics";
+import {
+  OpsBucketMetricsFromJSON,
+  OpsBucketMetricsFromJSONTyped,
+  OpsBucketMetricsToJSON,
+  OpsBucketMetricsToJSONTyped,
+} from "./OpsBucketMetrics";
 import type { OpsExportStorage } from "./OpsExportStorage";
 import {
   OpsExportStorageFromJSON,
@@ -91,6 +105,18 @@ export interface OpsStorageResponse {
    * @memberof OpsStorageResponse
    */
   exports: OpsExportStorage;
+  /**
+   *
+   * @type {OpsBucketMetrics}
+   * @memberof OpsStorageResponse
+   */
+  bucket: OpsBucketMetrics;
+  /**
+   *
+   * @type {OpsCdnMetrics}
+   * @memberof OpsStorageResponse
+   */
+  cdn: OpsCdnMetrics;
 }
 
 /**
@@ -107,6 +133,8 @@ export function instanceOfOpsStorageResponse(
   if (!("topAccounts" in value) || value["topAccounts"] === undefined)
     return false;
   if (!("exports" in value) || value["exports"] === undefined) return false;
+  if (!("bucket" in value) || value["bucket"] === undefined) return false;
+  if (!("cdn" in value) || value["cdn"] === undefined) return false;
   return true;
 }
 
@@ -130,6 +158,8 @@ export function OpsStorageResponseFromJSONTyped(
       OpsAccountStorageFromJSON,
     ),
     exports: OpsExportStorageFromJSON(json["exports"]),
+    bucket: OpsBucketMetricsFromJSON(json["bucket"]),
+    cdn: OpsCdnMetricsFromJSON(json["cdn"]),
   };
 }
 
@@ -154,5 +184,7 @@ export function OpsStorageResponseToJSONTyped(
       OpsAccountStorageToJSON,
     ),
     exports: OpsExportStorageToJSON(value["exports"]),
+    bucket: OpsBucketMetricsToJSON(value["bucket"]),
+    cdn: OpsCdnMetricsToJSON(value["cdn"]),
   };
 }

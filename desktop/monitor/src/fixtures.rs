@@ -161,6 +161,11 @@ pub fn releases() -> Releases {
 pub const SCENES: &[&str] = &[
     "overview",
     "storage",
+    "storage-hover",
+    "storage-attention",
+    "storage-denied",
+    "storage-r2",
+    "overview-storage-attention",
     "transcoding",
     "transcoding-copied",
     "ai",
@@ -195,6 +200,35 @@ pub const SCENES: &[&str] = &[
     "not-connected",
 ];
 
+/// The storage fixture gone wrong: the bucket's difference from the database grows by 3 GiB a day for the last week,
+/// and CloudFront answered 1.84% of the last day's requests with a 5xx.
+fn storage_attention(s: &mut Monitor) -> Option<()> {
+    let storage = s.storage.value.as_mut()?;
+    let gap = storage.bucket.as_mut()?.gap.as_mut()?;
+    let days = gap.days.len();
+    for (i, day) in gap.days.iter_mut().enumerate() {
+        let extra = (i + 8).saturating_sub(days) as i64 * (1 << 30) * 3;
+        day.bucket_bytes += extra;
+        day.difference_bytes += extra;
+    }
+    let first = gap
+        .days
+        .iter()
+        .find(|d| d.day >= gap.bucket_day - chrono::Days::new(7))?
+        .difference_bytes;
+    let last = gap.days.last()?;
+    gap.bucket_bytes = last.bucket_bytes;
+    gap.difference_bytes = last.difference_bytes;
+    gap.growth_last_week_bytes = Some(last.difference_bytes - first);
+    let cdn = storage.cdn.as_mut()?;
+    let n = cdn.server_error_rate.len();
+    for point in cdn.server_error_rate.iter_mut().skip(n.saturating_sub(5)) {
+        point.value = 8.6;
+    }
+    cdn.server_error_rate_last_day = Some(1.84);
+    Some(())
+}
+
 /// A scene's state, by name.
 pub fn scene(name: &str, tz: FixedOffset) -> Option<Monitor> {
     let mut s = Monitor::new(None, Some(GRAFANA.to_owned()), tz);
@@ -205,6 +239,77 @@ pub fn scene(name: &str, tz: FixedOffset) -> Option<Monitor> {
     match name {
         "overview" => {}
         "storage" => s.section = Section::Storage,
+        "storage-hover" => {
+            s.section = Section::Storage;
+            // Over the CloudFront error rates' chart.
+            s.hover = Some(Hover {
+                panel: 91_005,
+                x: 700.0,
+            });
+        }
+        "storage-attention" => {
+            s.section = Section::Storage;
+            storage_attention(&mut s)?;
+        }
+        "overview-storage-attention" => storage_attention(&mut s)?,
+        "storage-denied" => {
+            s.section = Section::Storage;
+            let storage = s.storage.value.as_mut()?;
+            let refused = "User: arn:aws:iam::123456789012:user/reelshelf-media is not authorized to perform: cloudwatch:GetMetricData";
+            storage.bucket = Some(reelshelf_api::OpsBucketMetrics {
+                status: "denied".to_owned(),
+                error: Some(refused.to_owned()),
+                permission: Some("cloudwatch:GetMetricData".to_owned()),
+                sizes: Vec::new(),
+                objects: Vec::new(),
+                gap: None,
+                ..storage.bucket.clone()?
+            });
+            storage.cdn = Some(reelshelf_api::OpsCdnMetrics {
+                status: "denied".to_owned(),
+                error: Some(refused.to_owned()),
+                permission: Some("cloudwatch:GetMetricData".to_owned()),
+                requests: Vec::new(),
+                bytes_downloaded: Vec::new(),
+                client_error_rate: Vec::new(),
+                server_error_rate: Vec::new(),
+                server_error_rate_last_day: None,
+                ..storage.cdn.clone()?
+            });
+        }
+        "storage-r2" => {
+            s.section = Section::Storage;
+            let storage = s.storage.value.as_mut()?;
+            storage.store = reelshelf_api::OpsObjectStore {
+                configured: true,
+                kind: Some("s3-compatible".to_owned()),
+                region: Some("auto".to_owned()),
+                endpoint_host: Some("0f3c8e2a.r2.cloudflarestorage.com".to_owned()),
+                bucket: Some("reelshelf-clips".to_owned()),
+                media_base_url: Some("https://media.reelshelf.app".to_owned()),
+            };
+            storage.bucket = Some(reelshelf_api::OpsBucketMetrics {
+                status: "unavailable".to_owned(),
+                error: None,
+                permission: None,
+                read_at: None,
+                sizes: Vec::new(),
+                objects: Vec::new(),
+                gap: None,
+            });
+            storage.cdn = Some(reelshelf_api::OpsCdnMetrics {
+                status: "not_configured".to_owned(),
+                error: None,
+                permission: None,
+                distribution_id: None,
+                read_at: None,
+                requests: Vec::new(),
+                bytes_downloaded: Vec::new(),
+                client_error_rate: Vec::new(),
+                server_error_rate: Vec::new(),
+                server_error_rate_last_day: None,
+            });
+        }
         "transcoding" => s.section = Section::Transcoding,
         "transcoding-copied" => {
             s.section = Section::Transcoding;

@@ -4,9 +4,15 @@ A Mac app, drawn with Rune, that shows everything about Reelshelf in one place. 
 **monitor** (a device token only Admins' monitor tokens can use on the admin and ops endpoints) and shows:
 
 - **Overview**: a card per section with its headline numbers and, in red, what needs attention: failures in the last
-  hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store configured, a cost
-  provider that couldn't be read, a workflow failing on main.
-- **Storage**: totals, the object store in use, clips by tier, the top accounts and exports (`GET /api/admin/ops/storage`).
+  hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store configured,
+  CloudFront answering over 1% of the last day's requests with a 5xx, the bucket's difference from the database
+  growing by more than 0.5% of it (at least 1 GiB) in a week, CloudWatch unreadable, a cost provider that couldn't be
+  read, a workflow failing on main.
+- **Storage**: totals, the object store in use, the bucket's size by storage class and its objects over 30 days, the
+  bucket against what the database accounts for (the difference by day and its change over the week), CloudFront's
+  requests, bytes downloaded and 4xx/5xx rates over 7 days, clips by tier, the top accounts and exports
+  (`GET /api/admin/ops/storage`; the bucket's and CloudFront's numbers are CloudWatch's, read by the API hourly with the
+  store's AWS keys, and say so when the keys lack `cloudwatch:GetMetricData` or the store isn't AWS S3).
 - **Transcoding**: the queue by job type, the overflow pools, the AAC backfill and the last failures, each clip id
   copyable (`GET /api/admin/ops/transcoding`).
 - **AI pipelines**: each run queue by trigger, its last failures, and spend by model over 24 hours and 30 days

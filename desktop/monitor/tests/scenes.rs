@@ -100,6 +100,10 @@ fn data(s: &Monitor) -> HashSet<String> {
             strings(&json, &mut words);
         }
     }
+    // The scene's own storage answer, which some scenes change (another store, a refusal).
+    if let Some(storage) = &s.storage.value {
+        strings(&serde_json::to_value(storage).unwrap(), &mut words);
+    }
     // What the person typed.
     words.insert(s.grafana_form.url.text.clone());
     words.insert(s.admin.query.text.clone());
@@ -133,7 +137,7 @@ fn data(s: &Monitor) -> HashSet<String> {
 /// (`Tue 12 Nov, 09:48`).
 fn is_number_or_time(words: &str) -> bool {
     let number = Regex::new(
-        r"^[-$£€]?[\d.,]+ ?(%|req/s|ops/s|µs|ms|s|min|hour|day|K|M|B|T|B/s|KiB|MiB|GiB|TiB|PiB|kB|MB|GB|TB|PB|KiB/s|MiB/s)?$",
+        r"^[-+$£€]?[\d.,]+ ?(%|req/s|ops/s|µs|ms|s|min|hour|day|K|M|B|T|B/s|KiB|MiB|GiB|TiB|PiB|kB|MB|GB|TB|PB|KiB/s|MiB/s)?$",
     )
     .unwrap();
     let time =
@@ -271,8 +275,9 @@ fn each_section_shows_its_answer() {
     let storage = texts(&runtime("storage", false));
     for words in [
         "marlowe",
-        "reelshelf-clips",
-        "S3-compatible",
+        "reelshelf-media",
+        "AWS S3",
+        "eu-north-1",
         "Unlimited",
         "48,213",
         "2.11 TiB",
@@ -301,6 +306,91 @@ fn each_section_shows_its_answer() {
     for words in ["Legend detection", "claude-sonnet-5-5", "$183.90", "–"] {
         assert!(ai.iter().any(|t| t == words), "ai shows {words:?}: {ai:?}");
     }
+}
+
+#[test]
+fn storage_shows_the_bucket_the_gap_and_cloudfront() {
+    let rt = runtime("storage", false);
+    let shown = texts(&rt);
+    let shown_keys = keys(&rt);
+    for key in [
+        "bucket",
+        "bucket-sizes-chart",
+        "bucket-objects-chart",
+        "gap",
+        "gap-chart",
+        "cdn",
+        "cdn-requests-chart",
+        "cdn-bytes-chart",
+        "cdn-errors-chart",
+    ] {
+        assert!(shown_keys.contains(key), "storage has {key}");
+    }
+    for words in [
+        "Bucket size",
+        "2.17 TiB",
+        "Objects",
+        "452,001",
+        "Standard",
+        "Standard-IA",
+        "Database accounts for",
+        "+43.6 GiB",
+        "+1.84 GiB",
+        "E2Q7RM3EXAMPLE",
+        "0.05%",
+        "4xx",
+        "5xx",
+    ] {
+        assert!(shown.iter().any(|t| t == words), "storage shows {words:?}: {shown:?}");
+    }
+    // A healthy week: nothing in red.
+    assert!(!shown.iter().any(|t| t.starts_with("The bucket holds")));
+    assert!(!shown.iter().any(|t| t.starts_with("CloudFront answered")));
+
+    let hover = runtime("storage-hover", true);
+    assert!(keys(&hover).contains("cdn-errors-chart-readout"));
+
+    let attention = texts(&runtime("storage-attention", false));
+    for words in [
+        "The bucket holds 22.8 GiB more than the database accounts for than a week ago",
+        "1.84%",
+    ] {
+        assert!(attention.iter().any(|t| t == words), "{words:?} in {attention:?}");
+    }
+
+    let denied = texts(&runtime("storage-denied", false));
+    let refusal = "CloudWatch refused the object store's AWS keys. Allow cloudwatch:GetMetricData on them (the policy is in the pull request that added this).";
+    assert_eq!(denied.iter().filter(|t| *t == refusal).count(), 2, "{denied:?}");
+
+    let r2 = runtime("storage-r2", false);
+    let r2_text = texts(&r2);
+    for words in ["reelshelf-clips", "S3-compatible"] {
+        assert!(r2_text.iter().any(|t| t == words), "{words:?} in {r2_text:?}");
+    }
+    assert!(
+        r2_text
+            .iter()
+            .any(|t| t.starts_with("The object store is an S3-compatible endpoint"))
+    );
+    assert!(
+        r2_text
+            .iter()
+            .any(|t| t.starts_with("No CloudFront distribution is set"))
+    );
+    assert!(!keys(&r2).contains("gap"));
+}
+
+#[test]
+fn the_overview_flags_cloudfront_errors_and_a_growing_gap() {
+    let shown = texts(&runtime("overview-storage-attention", false));
+    for words in [
+        "CloudFront answered 1.84% of requests with a 5xx in the last 24 h",
+        "The bucket holds 22.8 GiB more than the database accounts for than a week ago",
+    ] {
+        assert!(shown.iter().any(|t| t == words), "{words:?} in {shown:?}");
+    }
+    let calm = texts(&runtime("overview", false));
+    assert!(!calm.iter().any(|t| t.starts_with("CloudFront answered")));
 }
 
 #[test]

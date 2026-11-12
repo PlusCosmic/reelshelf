@@ -125,6 +125,75 @@ pub const STORE_BUCKET: &str = "Bucket";
 pub const STORE_MEDIA: &str = "Media";
 pub const NOT_CONFIGURED: &str = "Not configured";
 
+/// Storage: the bucket, the CDN and the database's difference, from CloudWatch.
+pub const BUCKET_TITLE: &str = "Bucket";
+pub const BUCKET_SIZE: &str = "Bucket size";
+pub const OBJECTS: &str = "Objects";
+pub const SIZE_BY_CLASS: &str = "Size by storage class, 30 days";
+pub const OBJECTS_30_DAYS: &str = "Objects, 30 days";
+pub const BUCKET_NOTE: &str =
+    "CloudWatch's free daily storage metrics, read hourly. Each day's numbers arrive the day after.";
+pub const NO_BUCKET_DATA: &str =
+    "CloudWatch has no storage numbers for the bucket yet. They start a day after it is created.";
+pub const GAP_TITLE: &str = "Bucket against the database";
+pub const DATABASE_ACCOUNTS_FOR: &str = "Database accounts for";
+pub const DIFFERENCE: &str = "Difference";
+pub const CHANGE_THIS_WEEK: &str = "Change over the week";
+pub const DIFFERENCE_BY_DAY: &str = "Difference by day";
+pub const GAP_NOTE: &str = "The database counts each clip's video and the exports held. The bucket also holds thumbnails, previews and game art, so a steady difference is normal; one that keeps growing means objects nothing points at any more.";
+pub const GAP_NO_HISTORY: &str =
+    "The database's total is recorded each day the monitor reads storage, so the chart fills in from then.";
+pub const CDN_TITLE: &str = "CloudFront";
+pub const DISTRIBUTION: &str = "Distribution";
+pub const REQUESTS_7D: &str = "Requests, 7 days";
+pub const DOWNLOADED_7D: &str = "Downloaded, 7 days";
+pub const SERVER_ERRORS_24H: &str = "5xx, 24 h";
+pub const REQUESTS_PER_HOUR: &str = "Requests per hour";
+pub const DOWNLOADED_PER_HOUR: &str = "Downloaded per hour";
+pub const ERROR_RATES: &str = "Error rates, % of requests";
+pub const CLIENT_ERRORS: &str = "4xx";
+pub const SERVER_ERRORS: &str = "5xx";
+pub const CDN_NOTE: &str = "Hourly over 7 days, from CloudWatch in us-east-1, read hourly.";
+pub const NO_CDN_DATA: &str = "CloudWatch has no traffic for the distribution in the last 7 days.";
+pub const BUCKET_UNAVAILABLE: &str = "The object store is an S3-compatible endpoint, which CloudWatch doesn't watch, so the bucket's own numbers aren't available.";
+pub const CDN_NOT_CONFIGURED: &str = "No CloudFront distribution is set on the API (Moderation:CloudFront:DistributionId), so there's no traffic to show.";
+pub const CDN_UNAVAILABLE: &str = "CloudFront is read with the object store's AWS keys, and the store isn't AWS S3.";
+pub fn metrics_denied(permission: &str) -> String {
+    format!(
+        "CloudWatch refused the object store's AWS keys. Allow {permission} on them (the policy is in the pull request that added this)."
+    )
+}
+pub fn metrics_failed(error: &str) -> String {
+    format!("Couldn't read CloudWatch: {error}")
+}
+
+/// A storage class as S3 names it in CloudWatch.
+pub fn storage_class(class: &str) -> &str {
+    match class {
+        "StandardStorage" => "Standard",
+        "StandardIAStorage" => "Standard-IA",
+        "OneZoneIAStorage" => "One Zone-IA",
+        "IntelligentTieringFAStorage" => "Intelligent-Tiering, frequent",
+        "IntelligentTieringIAStorage" => "Intelligent-Tiering, infrequent",
+        "IntelligentTieringAIAStorage" => "Intelligent-Tiering, archive instant",
+        "GlacierInstantRetrievalStorage" => "Glacier Instant Retrieval",
+        "GlacierStorage" => "Glacier Flexible Retrieval",
+        "DeepArchiveStorage" => "Glacier Deep Archive",
+        "ReducedRedundancyStorage" => "Reduced Redundancy",
+        other => other,
+    }
+}
+
+/// What needs attention in storage.
+pub fn server_errors_high(rate: &str) -> String {
+    format!("CloudFront answered {rate} of requests with a 5xx in the last 24 h")
+}
+pub fn gap_growing(by: &str) -> String {
+    format!("The bucket holds {by} more than the database accounts for than a week ago")
+}
+pub const BUCKET_UNREADABLE: &str = "Couldn't read the bucket's numbers from CloudWatch";
+pub const CDN_UNREADABLE: &str = "Couldn't read CloudFront's numbers from CloudWatch";
+
 pub fn store_kind(kind: &str) -> &str {
     match kind {
         "s3" => "AWS S3",

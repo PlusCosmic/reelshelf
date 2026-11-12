@@ -300,7 +300,8 @@ impl FeatureFlags {
     }
 }
 
-/// `OpsStorageResponse`: clip storage as the database records it, and the store it is kept in.
+/// `OpsStorageResponse`: clip storage as the database records it, the store it is kept in, and CloudWatch's numbers
+/// for the bucket and the CDN (absent from an API older than them).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OpsStorage {
     pub generated_at: DateTime<Utc>,
@@ -309,6 +310,76 @@ pub struct OpsStorage {
     pub by_tier: Vec<OpsTierStorage>,
     pub top_accounts: Vec<OpsAccountStorage>,
     pub exports: OpsExportStorage,
+    #[serde(default)]
+    pub bucket: Option<OpsBucketMetrics>,
+    #[serde(default)]
+    pub cdn: Option<OpsCdnMetrics>,
+}
+
+/// `OpsBucketMetrics`: the bucket's daily size by storage class and its objects over 30 days, from CloudWatch.
+/// `status` is `ok`, `not_configured`, `unavailable` (an S3-compatible store), `denied` (the keys need `permission`)
+/// or `failed` (`error` says why); the series are empty unless it is `ok`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsBucketMetrics {
+    pub status: String,
+    pub error: Option<String>,
+    pub permission: Option<String>,
+    pub read_at: Option<DateTime<Utc>>,
+    pub sizes: Vec<OpsStorageClassSeries>,
+    pub objects: Vec<OpsMetricPoint>,
+    pub gap: Option<OpsStorageGap>,
+}
+
+/// `OpsStorageClassSeries`: one storage class's daily size in bytes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsStorageClassSeries {
+    pub storage_type: String,
+    pub points: Vec<OpsMetricPoint>,
+}
+
+/// `OpsMetricPoint`: one CloudWatch datapoint.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct OpsMetricPoint {
+    pub at: DateTime<Utc>,
+    pub value: f64,
+}
+
+/// `OpsStorageGap`: the bucket's latest day against the database's total, the days both are known, and how much the
+/// difference grew over the week before the latest one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsStorageGap {
+    pub database_bytes: i64,
+    pub bucket_bytes: i64,
+    pub bucket_day: NaiveDate,
+    pub difference_bytes: i64,
+    pub growth_last_week_bytes: Option<i64>,
+    pub days: Vec<OpsStorageGapDay>,
+}
+
+/// `OpsStorageGapDay`: one day's bucket size against the database's total that day.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsStorageGapDay {
+    pub day: NaiveDate,
+    pub database_bytes: i64,
+    pub bucket_bytes: i64,
+    pub difference_bytes: i64,
+}
+
+/// `OpsCdnMetrics`: the media distribution over 7 days, hourly; the error rates are percent of requests. `status` as
+/// for the bucket.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsCdnMetrics {
+    pub status: String,
+    pub error: Option<String>,
+    pub permission: Option<String>,
+    pub distribution_id: Option<String>,
+    pub read_at: Option<DateTime<Utc>>,
+    pub requests: Vec<OpsMetricPoint>,
+    pub bytes_downloaded: Vec<OpsMetricPoint>,
+    pub client_error_rate: Vec<OpsMetricPoint>,
+    pub server_error_rate: Vec<OpsMetricPoint>,
+    /// The 5xx rate over the last 24 hours, weighted by requests.
+    pub server_error_rate_last_day: Option<f64>,
 }
 
 /// `OpsObjectStore`: the configured object store, without credentials; every field but `configured` is null while

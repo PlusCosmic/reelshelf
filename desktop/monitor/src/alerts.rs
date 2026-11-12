@@ -1,12 +1,28 @@
 //! What needs attention, for Overview's cards: a queue's failures in the last hour, its running jobs whose worker
-//! went quiet, and a pending job that has waited over [`OLDEST_PENDING`]; storage with no object store; a cost provider
-//! whose latest read failed; and a workflow whose latest finished run on main failed, or failing checks on the
-//! image-bump PR.
+//! went quiet, and a pending job that has waited over [`OLDEST_PENDING`]; storage with no object store, CloudFront
+//! answering more than [`SERVER_ERROR_LIMIT`] of requests with a 5xx, a bucket-to-database difference growing faster
+//! than [`gap_growing`] allows, or CloudWatch unreadable; a cost provider whose latest read failed; and a workflow
+//! whose latest finished run on main failed, or failing checks on the image-bump PR.
 
-use reelshelf_api::{OpsAi, OpsCosts, OpsQueueCounts, OpsStorage, OpsTranscoding};
+use reelshelf_api::{OpsAi, OpsCosts, OpsQueueCounts, OpsStorage, OpsStorageGap, OpsTranscoding};
 
 use crate::copy;
 use crate::github::{Checks, Releases};
+use crate::units::{self, bytes};
+
+/// CloudFront's 5xx rate over the last 24 hours, in percent of requests, above which it needs attention.
+pub const SERVER_ERROR_LIMIT: f64 = 1.0;
+
+/// How much the bucket's difference from the database may grow in a week: this share of what the database accounts
+/// for, and at least [`GAP_GROWTH_FLOOR`]. New clips' thumbnails and previews grow it a little on their own.
+pub const GAP_GROWTH_SHARE: f64 = 0.005;
+pub const GAP_GROWTH_FLOOR: i64 = 1 << 30;
+
+/// Whether the difference grew by more than a week's allowance.
+pub fn gap_growing(gap: &OpsStorageGap) -> bool {
+    let allowed = (gap.database_bytes as f64 * GAP_GROWTH_SHARE).max(GAP_GROWTH_FLOOR as f64);
+    gap.growth_last_week_bytes.is_some_and(|growth| growth as f64 > allowed)
+}
 
 /// A pending job older than this needs attention.
 pub const OLDEST_PENDING: f64 = 10.0 * 60.0;
@@ -30,11 +46,27 @@ pub fn queue(counts: &OpsQueueCounts, what: &str) -> Vec<String> {
 }
 
 pub fn storage(s: &OpsStorage) -> Vec<String> {
-    if s.store.configured {
-        Vec::new()
-    } else {
-        vec![copy::NO_STORE.to_owned()]
+    if !s.store.configured {
+        return vec![copy::NO_STORE.to_owned()];
     }
+    let mut out = Vec::new();
+    if let Some(bucket) = &s.bucket {
+        if matches!(bucket.status.as_str(), "denied" | "failed") {
+            out.push(copy::BUCKET_UNREADABLE.to_owned());
+        }
+        if let Some(gap) = bucket.gap.as_ref().filter(|g| gap_growing(g)) {
+            out.push(copy::gap_growing(&bytes(gap.growth_last_week_bytes.unwrap_or(0))));
+        }
+    }
+    if let Some(cdn) = &s.cdn {
+        if matches!(cdn.status.as_str(), "denied" | "failed") {
+            out.push(copy::CDN_UNREADABLE.to_owned());
+        }
+        if let Some(rate) = cdn.server_error_rate_last_day.filter(|r| *r > SERVER_ERROR_LIMIT) {
+            out.push(copy::server_errors_high(&units::format(rate, Some("percent"), Some(2))));
+        }
+    }
+    out
 }
 
 pub fn transcoding(t: &OpsTranscoding) -> Vec<String> {
@@ -92,6 +124,29 @@ mod tests {
             },
             last_day: OpsFinishedCounts::default(),
         }
+    }
+
+    fn gap(database: i64, growth: Option<i64>) -> OpsStorageGap {
+        OpsStorageGap {
+            database_bytes: database,
+            bucket_bytes: database + (40 << 30),
+            bucket_day: chrono::NaiveDate::from_ymd_opt(2024, 11, 11).unwrap(),
+            difference_bytes: 40 << 30,
+            growth_last_week_bytes: growth,
+            days: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn the_gap_grows_too_much_past_half_a_percent_or_a_gib() {
+        const TIB: i64 = 1 << 40;
+        // Half a percent of 2 TiB is about 10 GiB.
+        assert!(!gap_growing(&gap(2 * TIB, Some(10 << 30))));
+        assert!(gap_growing(&gap(2 * TIB, Some(11 << 30))));
+        // A small bucket still gets a GiB.
+        assert!(!gap_growing(&gap(10 << 30, Some(1 << 30))));
+        assert!(gap_growing(&gap(10 << 30, Some((1 << 30) + 1))));
+        assert!(!gap_growing(&gap(2 * TIB, None)));
     }
 
     #[test]
