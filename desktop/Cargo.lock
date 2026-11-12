@@ -3182,15 +3182,18 @@ name = "reelshelf-monitor"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "reelshelf-api",
  "reelshelf-app",
  "regex",
  "reqwest",
  "rune",
  "rune-kit",
+ "security-framework",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

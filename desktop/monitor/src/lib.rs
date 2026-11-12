@@ -5,6 +5,8 @@ pub mod copy;
 pub mod fetch;
 pub mod fixtures;
 pub mod grafana;
+pub mod secrets;
+pub mod session;
 pub mod state;
 pub mod ui;
 pub mod units;
