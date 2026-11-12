@@ -273,6 +273,29 @@ public sealed class StripeBilling(StripeClient client) : IStripeBilling
         }
     }
 
+    public async Task<List<StripeBalanceEntry>> ListBalanceTransactionsAsync(DateTimeOffset since,
+        CancellationToken cancellationToken)
+    {
+        List<StripeBalanceEntry> entries = [];
+        await foreach (BalanceTransaction transaction in client.V1.BalanceTransactions.ListAutoPagingAsync(
+                           new BalanceTransactionListOptions
+                           {
+                               Created = new DateRangeOptions { GreaterThanOrEqual = since.UtcDateTime },
+                               Limit = 100
+                           }, cancellationToken: cancellationToken))
+        {
+            entries.Add(new StripeBalanceEntry(
+                new DateTimeOffset(DateTime.SpecifyKind(transaction.Created, DateTimeKind.Utc)),
+                transaction.Type,
+                transaction.ReportingCategory,
+                transaction.Amount,
+                transaction.Net,
+                transaction.Currency));
+        }
+
+        return entries;
+    }
+
     private static DateTimeOffset? ToOffset(DateTime? value)
     {
         return value is { } dateTime ? new DateTimeOffset(DateTime.SpecifyKind(dateTime, DateTimeKind.Utc)) : null;

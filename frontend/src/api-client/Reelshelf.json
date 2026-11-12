@@ -3591,6 +3591,26 @@
         }
       }
     },
+    "/api/admin/ops/costs": {
+      "get": {
+        "tags": [
+          "OpsEndpoints"
+        ],
+        "operationId": "GetOpsCosts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsCostsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/billing/checkout": {
       "post": {
         "tags": [
@@ -8361,6 +8381,153 @@
           }
         }
       },
+      "OpsCostDay": {
+        "required": [
+          "date",
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "OpsCostItem": {
+        "required": [
+          "name",
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "OpsCostProvider": {
+        "required": [
+          "provider",
+          "kind",
+          "status",
+          "error",
+          "last_success_at",
+          "currency",
+          "month_to_date",
+          "last_month",
+          "daily",
+          "breakdown",
+          "balance",
+          "revenue"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "last_success_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "month_to_date": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "last_month": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsCostDay"
+            }
+          },
+          "breakdown": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsCostItem"
+            }
+          },
+          "balance": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "revenue": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/OpsRevenue"
+              }
+            ]
+          }
+        }
+      },
+      "OpsCostsResponse": {
+        "required": [
+          "generated_at",
+          "month_to_date_usd",
+          "providers"
+        ],
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "month_to_date_usd": {
+            "type": "number",
+            "format": "double"
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsCostProvider"
+            }
+          }
+        }
+      },
       "OpsExportStorage": {
         "required": [
           "held",
@@ -8552,6 +8719,33 @@
           },
           "last_day": {
             "$ref": "#/components/schemas/OpsFinishedCounts"
+          }
+        }
+      },
+      "OpsRevenue": {
+        "required": [
+          "gross_month_to_date",
+          "net_month_to_date",
+          "gross_last_month",
+          "net_last_month"
+        ],
+        "type": "object",
+        "properties": {
+          "gross_month_to_date": {
+            "type": "number",
+            "format": "double"
+          },
+          "net_month_to_date": {
+            "type": "number",
+            "format": "double"
+          },
+          "gross_last_month": {
+            "type": "number",
+            "format": "double"
+          },
+          "net_last_month": {
+            "type": "number",
+            "format": "double"
           }
         }
       },

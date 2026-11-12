@@ -40,7 +40,26 @@ public interface IStripeBilling
 
     /// <summary>Cancels the subscription at once. Does nothing when it is already over or Stripe has no such subscription.</summary>
     Task CancelSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Every balance transaction created since <paramref name="since"/> (charges, refunds, fees, payouts...), for the
+    /// monitor's revenue. Needs the restricted key's read access to balance transactions; a refusal throws
+    /// <see cref="Stripe.StripeException"/>.
+    /// </summary>
+    Task<List<StripeBalanceEntry>> ListBalanceTransactionsAsync(DateTimeOffset since, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// A balance transaction, amounts in the currency's minor unit: <see cref="Amount"/> gross, <see cref="Net"/> after
+/// Stripe's fee. <see cref="ReportingCategory"/> is Stripe's (<c>charge</c>, <c>refund</c>, <c>fee</c>, <c>payout</c>...).
+/// </summary>
+public sealed record StripeBalanceEntry(
+    DateTimeOffset Created,
+    string Type,
+    string ReportingCategory,
+    long Amount,
+    long Net,
+    string Currency);
 
 /// <summary>
 /// A Checkout Session: <see cref="Status"/> is <c>open</c>, <c>complete</c> or <c>expired</c>, and

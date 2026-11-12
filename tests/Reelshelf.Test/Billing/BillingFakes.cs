@@ -122,6 +122,12 @@ internal sealed class FakeStripe : IStripeBilling
         Cancelled.Add(subscriptionId);
         return Task.CompletedTask;
     }
+
+    public List<StripeBalanceEntry> BalanceTransactions { get; } = [];
+
+    public Task<List<StripeBalanceEntry>> ListBalanceTransactionsAsync(DateTimeOffset since,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(BalanceTransactions.Where(entry => entry.Created >= since).ToList());
 }
 
 internal sealed class FakeStore : IBillingStore

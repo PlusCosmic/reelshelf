@@ -15,12 +15,15 @@
 import * as runtime from "../runtime";
 import type {
   OpsAiResponse,
+  OpsCostsResponse,
   OpsStorageResponse,
   OpsTranscodingResponse,
 } from "../models/index";
 import {
   OpsAiResponseFromJSON,
   OpsAiResponseToJSON,
+  OpsCostsResponseFromJSON,
+  OpsCostsResponseToJSON,
   OpsStorageResponseFromJSON,
   OpsStorageResponseToJSON,
   OpsTranscodingResponseFromJSON,
@@ -63,6 +66,41 @@ export class OpsEndpointsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<OpsAiResponse> {
     const response = await this.getOpsAiRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   */
+  async getOpsCostsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<OpsCostsResponse>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/admin/ops/costs`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      OpsCostsResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   */
+  async getOpsCosts(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<OpsCostsResponse> {
+    const response = await this.getOpsCostsRaw(initOverrides);
     return await response.value();
   }
 
