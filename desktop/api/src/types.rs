@@ -12,6 +12,9 @@ use uuid::Uuid;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceAuthorizeRequest {
     pub device_name: String,
+    /// The app signing in (`monitor`); left out, the API takes the uploader.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client: Option<String>,
 }
 
 /// `DeviceAuthorizationResponse`: a started sign-in, with the code to show and the one to poll with.
@@ -264,4 +267,290 @@ pub enum ClipVideoStatus {
     /// A status newer than this client.
     #[serde(other)]
     Unknown,
+}
+
+/// `CurrentUserResponse`: the signed-in account, from `GET /api/me`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CurrentUser {
+    pub id: Uuid,
+    pub username: String,
+    pub global_name: Option<String>,
+    pub avatar: Option<String>,
+    pub email: Option<String>,
+    pub suggested_email: Option<String>,
+    pub needs_onboarding: bool,
+    pub needs_username: bool,
+    pub can_set_username: bool,
+    pub is_admin: bool,
+    pub color_scheme: String,
+}
+
+/// `FeatureFlagsResponse`: the known feature flags on for the account.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FeatureFlags {
+    pub enabled: Vec<String>,
+}
+
+impl FeatureFlags {
+    /// The flag the ops endpoints sit behind.
+    pub const OPS_MONITOR: &'static str = "ops-monitor";
+
+    pub fn has(&self, key: &str) -> bool {
+        self.enabled.iter().any(|flag| flag == key)
+    }
+}
+
+/// `OpsStorageResponse`: clip storage as the database records it, and the store it is kept in.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsStorage {
+    pub generated_at: DateTime<Utc>,
+    pub store: OpsObjectStore,
+    pub total: OpsStorageTotals,
+    pub by_tier: Vec<OpsTierStorage>,
+    pub top_accounts: Vec<OpsAccountStorage>,
+    pub exports: OpsExportStorage,
+}
+
+/// `OpsObjectStore`: the configured object store, without credentials; every field but `configured` is null while
+/// none is.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsObjectStore {
+    pub configured: bool,
+    /// `s3` (AWS S3 by region) or `s3-compatible` (an endpoint by its host).
+    pub kind: Option<String>,
+    pub region: Option<String>,
+    pub endpoint_host: Option<String>,
+    pub bucket: Option<String>,
+    pub media_base_url: Option<String>,
+}
+
+/// `OpsStorageTotals`: every clip as the plan counts it, binned ones included, and the binned ones again.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsStorageTotals {
+    pub clips: i64,
+    pub bytes: i64,
+    pub binned_clips: i64,
+    pub binned_bytes: i64,
+}
+
+/// `OpsTierStorage`: the clips of the accounts on one tier.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsTierStorage {
+    pub tier: String,
+    /// Accounts on the tier holding at least one clip.
+    pub accounts: i64,
+    pub clips: i64,
+    pub bytes: i64,
+}
+
+/// `OpsAccountStorage`: one of the accounts holding the most.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsAccountStorage {
+    pub user_id: Uuid,
+    pub username: String,
+    pub tier: String,
+    pub clips: i64,
+    pub bytes: i64,
+}
+
+/// `OpsExportStorage`: over-limit exports held in storage and being made.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsExportStorage {
+    pub held: i64,
+    pub held_bytes: i64,
+    pub pending: i64,
+    pub running: i64,
+}
+
+/// `OpsQueueCounts`: one queue's numbers for one trigger (or, for transcoding, one job type).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsQueueCounts {
+    pub name: String,
+    /// Claimable now.
+    pub pending: i64,
+    /// Pending, waiting out the retry delay.
+    pub retrying: i64,
+    pub running: i64,
+    /// Running past the queue's stale-after: their worker stopped.
+    pub stale_running: i64,
+    /// How long the oldest pending run has waited; 0 when none.
+    pub oldest_pending_age_seconds: f64,
+    pub last_hour: OpsFinishedCounts,
+    pub last_day: OpsFinishedCounts,
+}
+
+/// `OpsFinishedCounts`: runs that finished in a window; exhausted ones used up their attempts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct OpsFinishedCounts {
+    pub succeeded: i64,
+    pub failed: i64,
+    pub exhausted: i64,
+}
+
+/// `OpsTranscodingResponse`: the transcode queue.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsTranscoding {
+    pub generated_at: DateTime<Utc>,
+    pub types: Vec<OpsQueueCounts>,
+    pub recent_failures: Vec<OpsTranscodeFailure>,
+    pub overflow: OpsOverflow,
+    pub aac_backfill: OpsAacBackfill,
+}
+
+/// `OpsTranscodeFailure`: a failed job, newest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsTranscodeFailure {
+    pub run_id: Uuid,
+    pub clip_id: Uuid,
+    #[serde(rename = "type")]
+    pub job_type: String,
+    pub error: Option<String>,
+    pub attempts: i32,
+    pub finished_at: Option<DateTime<Utc>>,
+}
+
+/// `OpsOverflow`: the overflow pools in use, as the scaler last counted them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsOverflow {
+    pub enabled: bool,
+    pub max_tasks: i32,
+    /// Every counted pool's tasks together; none while no pool has a count.
+    pub running: Option<i64>,
+    pub pools: Vec<OpsOverflowPool>,
+}
+
+/// `OpsOverflowPool`: one pool's cap and tasks.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsOverflowPool {
+    pub name: String,
+    pub max_tasks: i32,
+    /// None before the pool's first count, after one failed, or on an instance not scaling.
+    pub running: Option<i64>,
+}
+
+/// `OpsAacBackfill`: whether the AAC backfill runs, and the clips still carrying Opus audio.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsAacBackfill {
+    pub enabled: bool,
+    pub remaining: i64,
+}
+
+/// `OpsAiResponse`: the AI run queues and spend by model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsAi {
+    pub generated_at: DateTime<Utc>,
+    pub queues: Vec<OpsAiQueue>,
+    pub spend: Vec<OpsAiSpend>,
+}
+
+/// `OpsAiQueue`: one run queue by trigger, with its latest failures.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsAiQueue {
+    /// `legend_detection`, `clip_transcription` or `clip_summary`.
+    pub queue: String,
+    pub triggers: Vec<OpsQueueCounts>,
+    pub recent_failures: Vec<OpsAiFailure>,
+}
+
+/// `OpsAiFailure`: a failed run, newest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpsAiFailure {
+    pub run_id: Uuid,
+    pub clip_id: Uuid,
+    pub trigger: String,
+    pub provider: Option<String>,
+    pub model: String,
+    pub error: Option<String>,
+    pub attempts: i32,
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+/// `OpsAiSpend`: one model's runs over the last day and the last 30 days.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsAiSpend {
+    pub queue: String,
+    pub provider: Option<String>,
+    pub model: String,
+    pub last_day: OpsAiUsage,
+    pub last_month: OpsAiUsage,
+}
+
+/// `OpsAiUsage`: runs, tokens and what they cost.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpsAiUsage {
+    pub runs: i64,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    /// The cost of the runs whose cost is known; none when none is.
+    pub cost_usd: Option<f64>,
+    /// Runs whose cost isn't known, left out of `cost_usd`.
+    pub unpriced_runs: i64,
+}
+
+/// The query of `FindAdminAccounts` (`GET /api/admin/accounts`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FindAdminAccountsQuery {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+}
+
+/// `AdminAccount`: an account as the admin pages list it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AdminAccount {
+    pub id: Uuid,
+    pub username: String,
+    pub global_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub role: String,
+    pub granted_tier: Option<String>,
+    pub suspended_at: Option<DateTime<Utc>>,
+    pub identities: Vec<AdminAccountIdentity>,
+}
+
+/// `AdminAccountIdentity`: one of an account's sign-ins.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AdminAccountIdentity {
+    pub provider: String,
+    pub provider_user_id: String,
+    pub username: String,
+}
+
+/// The query of `ListContentReports` (`GET /api/admin/reports`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListContentReportsQuery {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved: Option<bool>,
+}
+
+/// `AdminContentReport`: a content report, as admins review it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AdminContentReport {
+    pub id: Uuid,
+    pub reason: String,
+    pub details: String,
+    pub reporter_email: Option<String>,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+    pub resolved_at: Option<DateTime<Utc>>,
+    pub resolved_by_name: Option<String>,
+    pub resolution_note: Option<String>,
+    pub clip_id: Option<Uuid>,
+    pub clip_title: Option<String>,
+    pub owner_id: Option<Uuid>,
+    pub owner_name: Option<String>,
+    pub share_url: Option<String>,
+    pub share_hidden: bool,
+    pub sharing_blocked: bool,
+    pub open_reports_on_clip: i32,
+    pub owner_suspended: bool,
+    pub evidence: Option<AdminContentReportEvidence>,
+}
+
+/// `AdminContentReportEvidence`: the evidence kept for a removed clip.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AdminContentReportEvidence {
+    pub status: String,
+    pub error: Option<String>,
+    pub cdn_purge: Option<String>,
+    pub delete_after: DateTime<Utc>,
 }
