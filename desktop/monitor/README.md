@@ -33,7 +33,7 @@ A Mac app, drawn with Rune, that shows everything about Reelshelf in one place. 
   role or suspension, never suspending an Admin, never a link to a child-safety report's clip. Overview's Admin card
   counts the open reports, the urgent ones in red. These endpoints aren't behind `ops-monitor`.
 - **Dashboards**: Grafana's dashboards drawn natively (below).
-- **Releases**: from GitHub (below): what is deployed, what is coming, the uploader's latest tag and the open pull
+- **Releases**: from GitHub ("The Releases section", below): what is deployed, what is coming, the uploader's latest tag and the open pull
   requests. Overview's Releases card says how far prod's app is behind main and turns red when a workflow on main
   failed.
 - **Settings**: the account it is signed in as, Sign out, Grafana's address and token, and the GitHub token.
@@ -42,7 +42,7 @@ The section showing is read again every 30 seconds (and on Refresh); the API cac
 answer for 15 seconds. GitHub is read at most every 2 minutes (each read is a couple of dozen requests against
 the token's 5,000 an hour), and at once on Refresh.
 
-## Releases
+## The Releases section
 
 The app calls GitHub's REST API itself, with no change to Reelshelf's API, using a fine-grained, read-only token
 (Contents, Pull requests and Actions, read, on PlusCosmic/reelshelf and PlusCosmic/infrastructure) entered once in
@@ -62,6 +62,62 @@ part reads and fails on its own, so a token that can't read infrastructure still
 - **Open pull requests** on reelshelf, each with its checks (the latest run of each workflow on its head commit).
 
 Checks are read from Actions runs, so the token needs no Checks permission. Every title opens on GitHub in the browser.
+
+## Releases
+
+The app is published to this repository's GitHub Releases as `reelshelf-monitor-<version>-macos-universal.dmg` (Apple
+Silicon and Intel, macOS 13 or later), tagged `monitor-v<version>` and titled "Reelshelf Monitor <version>". To install,
+open the image and drag Reelshelf Monitor to Applications.
+
+Builds are signed ad hoc, not notarized, so macOS refuses the first launch of a downloaded copy. Either right-click
+(Control-click) the app in Applications and choose **Open**, then **Open** again (or System Settings → Privacy &
+Security → **Open Anyway** after the first refusal), or clear the quarantine flag once:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Reelshelf Monitor.app"
+```
+
+`.github/workflows/publish-monitor.yml` builds it on `macos-latest`, as PlusCosmic/postmaster's `macos.yml` does:
+
+- **Pull requests touching `desktop/**` or the workflow**: `test` (`cargo test -p reelshelf-monitor`, the scenes on
+  the runner's Metal device) and `build` run side by side. `build` compiles for Apple Silicon and Intel and
+  `packaging/package.sh` merges the two into one binary, wraps it in `Reelshelf Monitor.app` (`packaging/Info.plist`,
+  bundle id `app.reelshelf.monitor`, an `AppIcon.icns` made from `packaging/icon.png`) and puts that in a disk image
+  beside an Applications link. The job then mounts the image and checks both architectures, the signature, the bundle
+  id and version, the icon, and that each architecture's binary says that version (`--version`) and renders the
+  fixture overview headless. The image is the run's `reelshelf-monitor-macos` artifact and the renders
+  `monitor-snapshot-macos`. Nothing is published.
+- **Pushes to `main` touching the same paths, and `workflow_dispatch`**: once both pass, `release` publishes the image
+  (`packaging/publish-release.sh`). A version that already has a release (a re-run, or a dispatch with no new commit
+  under `desktop/`) publishes nothing.
+
+The version is `MAJOR.MINOR` from this crate's `Cargo.toml` (its own, apart from the uploader's) and a patch that
+counts the commits touching `desktop/` or the workflow (`packaging/version.sh`), so it moves only when the app could
+have changed: the monitor builds from the whole Cargo workspace (`reelshelf-app`, `reelshelf-api`, `reelshelf-core`)
+and reads nothing outside `desktop/`. Bump `MAJOR.MINOR` by hand for a release people should notice. The build
+compiles the version in through `REELSHELF_APP_VERSION`, as the uploader's packaging does, so the bundle's version is
+the one `X-Reelshelf-Client: monitor/<version>` sends.
+
+The monitor is the only thing published to GitHub Releases, so its newest release is marked Latest. The uploader ships
+through the Microsoft Store from its own `uploader-v*` tags: `publish-uploader.yml` runs only on those, and the Releases
+section reads only `uploader-v*` tags, so `monitor-v*` tags reach neither.
+
+**Never change `CFBundleIdentifier`** (`app.reelshelf.monitor`, the Keychain service too): macOS keys Keychain access
+on it. `packaging/icon.png` is `packaging/icon.svg` (the site's logo mark on macOS's icon grid) rendered at 1024 × 1024;
+render it again after changing the SVG.
+
+To sign and notarize, add these repository secrets: `MACOS_CERTIFICATE_P12` (a base64 Developer ID Application
+`.p12`), `MACOS_CERTIFICATE_PASSWORD`, and an App Store Connect API key as `MACOS_NOTARY_KEY` (the `.p8`'s text),
+`MACOS_NOTARY_KEY_ID` and `MACOS_NOTARY_ISSUER_ID`. With them the app gets the hardened runtime and the image is
+notarized and stapled, and the first launch needs none of the above.
+
+To build one by hand, from `desktop/`, for this Mac's architecture:
+
+```sh
+version=$(monitor/packaging/version.sh)
+REELSHELF_APP_VERSION=$version cargo build --release -p reelshelf-monitor
+monitor/packaging/package.sh "$version" target/macos target/release/reelshelf-monitor
+```
 
 ## Signing in
 
@@ -124,5 +180,6 @@ Tokens are only ever sent to the service they belong to; the app never logs or s
   the stat, on Rune's canvas.
 - `src/copy.rs`: every word the app shows.
 - The theme is the uploader's (`reelshelf_app::theme`, the site's tokens); its `chart-1`..`chart-8` colour the series.
+- `packaging/`: the app bundle, its icon, the disk image and the release ("Releases", above).
 - `tests/scenes.rs` renders every scene light and dark from the fixture answers (`tests/fixtures/ops-*.json`, `admin-*.json`) and
   checks the words and controls, as the uploader's does.

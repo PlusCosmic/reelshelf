@@ -1,7 +1,7 @@
 //! `reelshelf-monitor`: signs in to Reelshelf with the device token kept in the Keychain, reads Grafana's address and
 //! token and the GitHub token from the Keychain (debug builds take `GRAFANA_URL`, `GRAFANA_TOKEN` and `GITHUB_TOKEN`
-//! first), and opens the window. With
-//! `REELSHELF_MONITOR_FIXTURES=1` it shows a fixture scene instead (`REELSHELF_MONITOR_SCENE`), reaching nothing.
+//! first), and opens the window. With `--version` it prints its version and exits; with `REELSHELF_MONITOR_FIXTURES=1`
+//! it shows a fixture scene instead (`REELSHELF_MONITOR_SCENE`), reaching nothing.
 
 use std::sync::Arc;
 
@@ -13,6 +13,12 @@ use reelshelf_monitor::state::{Monitor, Section};
 use reelshelf_monitor::{fixtures, links, secrets, ui};
 
 fn main() {
+    // `--version` prints the version compiled in, which X-Reelshelf-Client sends and packaging checks against the
+    // bundle's.
+    if std::env::args().nth(1).as_deref() == Some("--version") {
+        println!("reelshelf-monitor {}", links::version());
+        return;
+    }
     let tz = chrono::Local::now().offset().fix();
     let app = rune::App::new(ui::spec()).chrome(ui::CHROME);
     let app = if std::env::var("REELSHELF_MONITOR_FIXTURES").is_ok_and(|v| v == "1") {
