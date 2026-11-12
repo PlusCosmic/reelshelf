@@ -27,6 +27,14 @@ pub fn gate(s: &Monitor, l: &Look) -> Option<El> {
     }
 }
 
+/// The page in place of a section that only needs signing in (Admin, whose endpoints aren't behind the flag).
+pub fn gate_session(s: &Monitor, l: &Look) -> Option<El> {
+    match &s.session {
+        Session::SignedIn { .. } => None,
+        session => Some(sign_in(s, session, l)),
+    }
+}
+
 pub fn sign_out_button(l: &Look) -> El {
     Button::new(copy::SIGN_OUT)
         .variant(ButtonVariant::Outline)

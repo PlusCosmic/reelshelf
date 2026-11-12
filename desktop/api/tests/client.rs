@@ -768,7 +768,10 @@ async fn admin_account_changes_send_their_bodies_and_answer_the_account() {
         role: "admin".into(),
         reason: Some("Moderator".into()),
     };
-    assert_eq!(client.set_account_role(user, &request).await.unwrap().account.role, "admin");
+    assert_eq!(
+        client.set_account_role(user, &request).await.unwrap().account.role,
+        "admin"
+    );
     let request = SetGrantedTierRequest {
         tier: None,
         reason: Some("Trial over".into()),

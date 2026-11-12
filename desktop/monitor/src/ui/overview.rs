@@ -1,6 +1,6 @@
-//! Overview: a card per ops section with its headline numbers and, in red, anything that needs attention (failures
-//! in the last hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store, a
-//! cost provider that couldn't be read, a workflow failing on main).
+//! Overview: a card per ops section and Admin's open reports, with its headline numbers and, in red, anything that
+//! needs attention (failures in the last hour, running jobs whose worker went quiet, a pending job waiting over 10
+//! minutes, no object store, a cost provider that couldn't be read, a workflow failing on main, an urgent report open).
 
 use rune::{El, row, spacer, text};
 use rune_kit::{Button, ButtonVariant, ControlSize};
@@ -24,6 +24,7 @@ pub fn page(s: &Monitor, l: &Look) -> El {
             section_card(l, Section::AiPipelines, ai(s, l)),
             section_card(l, Section::Costs, costs(s, l)),
             section_card(l, Section::Releases, releases(s, l)),
+            section_card(l, Section::Admin, admin(s, l)),
         ],
     )
 }
@@ -149,6 +150,25 @@ fn costs(s: &Monitor, l: &Look) -> Summary {
     Summary::Ready(stats, alerts::costs(v))
 }
 
+/// Open content reports, the urgent ones (child safety, terrorism) in red.
+fn admin(s: &Monitor, l: &Look) -> Summary {
+    let Some((open, urgent)) = s.admin.open_counts() else {
+        return Summary::Loading;
+    };
+    let attention = if urgent > 0 {
+        vec![copy::urgent_open(urgent)]
+    } else {
+        Vec::new()
+    };
+    Summary::Ready(
+        vec![
+            parts::stat(l, copy::OPEN_REPORTS, count(open as i64), false),
+            parts::stat(l, copy::URGENT, count(urgent as i64), urgent > 0),
+        ],
+        attention,
+    )
+}
+
 fn section_card(l: &Look, section: Section, summary: Summary) -> El {
     let title = super::label(section);
     let key = format!("card-{section:?}");
@@ -174,7 +194,13 @@ fn section_card(l: &Look, section: Section, summary: Summary) -> El {
             Button::new(copy::OPEN_SECTION)
                 .variant(ButtonVariant::Ghost)
                 .control_size(ControlSize::Small)
-                .on_press(move |s: &mut Monitor| s.select(section))
+                .on_press(move |s: &mut Monitor| {
+                    if section == Section::Admin {
+                        s.open_reports();
+                    } else {
+                        s.select(section);
+                    }
+                })
                 .build(&l.kit)
                 .label(copy::open_section(title))
                 .key(format!("{key}-open")),

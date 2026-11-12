@@ -11,12 +11,12 @@ use uuid::Uuid;
 use crate::endpoints::{self, Endpoint};
 use crate::error::ApiError;
 use crate::types::{
-    AccountPlan, AdminAccount, AdminAccountDetail, AdminContentReport, CompleteUploadRequest, CompletedUpload, CreateClipResponse,
-    CreateVideoQuery, CurrentUser, DeviceAuthorization, DeviceAuthorizeRequest, DeviceTokenErrorBody,
-    DeviceTokenErrorCode, DeviceTokenPoll, DeviceTokenRequest, FeatureFlags, FindAdminAccountsQuery, GameCategory,
-    ListContentReportsQuery, ListUploadPartsQuery, OpsAi, OpsCosts, OpsStorage, OpsTranscoding,
-    PresignUploadPartsRequest, PresignedUploadParts, ResolveContentReportRequest, SetAccountRoleRequest,
-    SetAccountSuspensionRequest, SetGrantedTierRequest, UploadedParts,
+    AccountPlan, AdminAccount, AdminAccountDetail, AdminContentReport, CompleteUploadRequest, CompletedUpload,
+    CreateClipResponse, CreateVideoQuery, CurrentUser, DeviceAuthorization, DeviceAuthorizeRequest,
+    DeviceTokenErrorBody, DeviceTokenErrorCode, DeviceTokenPoll, DeviceTokenRequest, FeatureFlags,
+    FindAdminAccountsQuery, GameCategory, ListContentReportsQuery, ListUploadPartsQuery, OpsAi, OpsCosts, OpsStorage,
+    OpsTranscoding, PresignUploadPartsRequest, PresignedUploadParts, ResolveContentReportRequest,
+    SetAccountRoleRequest, SetAccountSuspensionRequest, SetGrantedTierRequest, UploadedParts,
 };
 
 /// The header naming the app and its version, which the API's version gate reads.
@@ -230,9 +230,11 @@ impl ApiClient {
         request: &SetGrantedTierRequest,
     ) -> Result<AdminAccountDetail, ApiError> {
         let id = user_id.to_string();
-        self.call_json(&endpoints::SET_ADMIN_ACCOUNT_GRANTED_TIER, &[("userId", &id)], |builder| {
-            builder.json(request)
-        })
+        self.call_json(
+            &endpoints::SET_ADMIN_ACCOUNT_GRANTED_TIER,
+            &[("userId", &id)],
+            |builder| builder.json(request),
+        )
         .await
     }
 
@@ -243,9 +245,11 @@ impl ApiClient {
         request: &SetAccountSuspensionRequest,
     ) -> Result<AdminAccountDetail, ApiError> {
         let id = user_id.to_string();
-        self.call_json(&endpoints::SET_ADMIN_ACCOUNT_SUSPENSION, &[("userId", &id)], |builder| {
-            builder.json(request)
-        })
+        self.call_json(
+            &endpoints::SET_ADMIN_ACCOUNT_SUSPENSION,
+            &[("userId", &id)],
+            |builder| builder.json(request),
+        )
         .await
     }
 

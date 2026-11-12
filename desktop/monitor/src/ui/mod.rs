@@ -1,6 +1,7 @@
 //! The window: rune-kit's split view with a sidebar of sections, a toolbar, and the section's page. Colours, type and
 //! the kit's components come from the uploader's theme (the site's tokens), light or dark as the system is.
 
+pub mod admin;
 pub mod ai;
 pub mod chart;
 pub mod costs;
@@ -121,7 +122,7 @@ fn sidebar(s: &Monitor, k: &Kit) -> El {
         .build(k)
 }
 
-/// A page with a heading and a line under it, for a section that isn't built and for Grafana not set up.
+/// A page with a heading and a line under it, such as for Grafana not set up.
 pub fn message(l: &Look, title: &str, body: &str) -> El {
     col()
         .w_full()
@@ -185,7 +186,9 @@ pub fn view(s: &Monitor, cx: &mut Cx<Monitor>) -> El {
     let dark = cx.system_dark();
     let l = theme::look(dark);
     let k = &l.kit;
+    let mut layer = Vec::new();
     let (main, toolbar) = match s.section {
+        Section::Admin => admin::page(s, l, &mut layer),
         Section::Dashboards => dashboards::page(s, l, &paint(dark)),
         Section::Settings => (settings::page(s, l), Toolbar::new().title(copy::SETTINGS)),
         section @ (Section::Overview
@@ -204,13 +207,9 @@ pub fn view(s: &Monitor, cx: &mut Cx<Monitor>) -> El {
             (page, ops_toolbar(s, l, label(section), live))
         }
         Section::Releases => (releases::page(s, l), ops_toolbar(s, l, copy::RELEASES, s.github)),
-        other => (
-            message(l, copy::COMING_SOON_TITLE, copy::COMING_SOON),
-            Toolbar::new().title(label(other)),
-        ),
     };
     let main = col().key("main").w_full().h_full().fill(l.c.bg).child(main);
-    SplitView::new(main)
+    let window = SplitView::new(main)
         .sidebar(&s.sidebar, |s: &mut Monitor| &mut s.sidebar, sidebar(s, k))
         .toolbar(toolbar)
         .titlebar_inset(cx.titlebar_inset())
@@ -226,5 +225,6 @@ pub fn view(s: &Monitor, cx: &mut Cx<Monitor>) -> El {
                 .in_header(),
         )
         .reduced_motion(cx.is_reduced_motion())
-        .build(k)
+        .build(k);
+    rune_kit::root(window, layer)
 }
