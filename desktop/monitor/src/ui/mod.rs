@@ -1,13 +1,20 @@
 //! The window: rune-kit's split view with a sidebar of sections, a toolbar, and the section's page. Colours, type and
 //! the kit's components come from the uploader's theme (the site's tokens), light or dark as the system is.
 
+pub mod ai;
 pub mod chart;
 pub mod dashboards;
 pub mod icons;
+pub mod overview;
+pub mod parts;
+pub mod settings;
+pub mod sign_in;
+pub mod storage;
+pub mod transcoding;
 
-use rune::{AppSpec, Chrome, Cx, El, Icon, KeyEvent, Tx, col, text};
+use rune::{AppSpec, Chrome, Cx, El, Icon, KeyEvent, Tx, col, row, text};
 use rune_kit::shell::{self, Sidebar, SidebarRow, SidebarToggle, SplitView, Toolbar};
-use rune_kit::{ControlSize, Kit};
+use rune_kit::{Button, ButtonVariant, ControlSize, Kit};
 
 use reelshelf_app::theme::{self, Look, ty};
 
@@ -57,6 +64,7 @@ pub fn label(section: Section) -> &'static str {
         Section::Costs => copy::COSTS,
         Section::Releases => copy::RELEASES,
         Section::Admin => copy::ADMIN,
+        Section::Settings => copy::SETTINGS,
     }
 }
 
@@ -70,6 +78,7 @@ fn icon(section: Section) -> &'static Icon {
         Section::Costs => &icons::COSTS,
         Section::Releases => &icons::RELEASES,
         Section::Admin => &icons::ADMIN,
+        Section::Settings => &icons::SETTINGS,
     }
 }
 
@@ -101,10 +110,7 @@ fn sidebar(s: &Monitor, k: &Kit) -> El {
                         .icon(icon(section))
                         .height(32.0)
                         .selected(s.section == section)
-                        .on_select(move |s: &mut Monitor, _| {
-                            s.section = section;
-                            s.hover = None;
-                        })
+                        .on_select(move |s: &mut Monitor, _| s.select(section))
                         .build(k)
                         .key(format!("section-{section:?}")),
                 )
@@ -123,12 +129,71 @@ pub fn message(l: &Look, title: &str, body: &str) -> El {
         .child(text(body.to_owned()).font(ty::BODY).color(l.c.fg_soft).wrap())
 }
 
+/// An ops section before its first answer: loading, or why the read failed.
+pub fn loading(s: &Monitor, l: &Look) -> El {
+    match s.ops_error() {
+        Some(e) => col().w_full().padding(32.0).child(
+            text(copy::couldnt_refresh(e))
+                .font(ty::BODY)
+                .color(l.c.danger_ink)
+                .wrap(),
+        ),
+        None => col()
+            .w_full()
+            .padding(32.0)
+            .child(text(copy::LOADING).font(ty::BODY).color(l.c.fg_soft)),
+    }
+}
+
+/// An ops section's toolbar: its title, when its numbers were read (or why the latest read failed), and Refresh.
+fn ops_toolbar(s: &Monitor, l: &Look, title: &str) -> Toolbar {
+    let mut actions = row().gap(10.0).center_y();
+    if s.session.signed_in() && s.refusal.is_none() {
+        if let Some(e) = s.ops_error().filter(|_| s.updated_at().is_some()) {
+            actions = actions.child(
+                text(copy::couldnt_refresh(e))
+                    .key("refresh-error")
+                    .font(ty::META)
+                    .color(l.c.danger_ink)
+                    .truncate()
+                    .max_w(360.0),
+            );
+        } else if let Some(at) = s.updated_at() {
+            actions = actions.child(
+                text(copy::updated(&crate::units::when(at, s.now_ms, &s.tz)))
+                    .key("updated")
+                    .font(ty::META)
+                    .color(l.c.fg_soft),
+            );
+        }
+        actions = actions.child(
+            Button::new(copy::REFRESH)
+                .variant(ButtonVariant::Ghost)
+                .control_size(ControlSize::Regular)
+                .on_press(|s: &mut Monitor| s.poll())
+                .build(&l.kit)
+                .key("refresh"),
+        );
+    }
+    Toolbar::new().title(title).trailing(actions)
+}
+
 pub fn view(s: &Monitor, cx: &mut Cx<Monitor>) -> El {
     let dark = cx.system_dark();
     let l = theme::look(dark);
     let k = &l.kit;
     let (main, toolbar) = match s.section {
         Section::Dashboards => dashboards::page(s, l, &paint(dark)),
+        Section::Settings => (settings::page(s, l), Toolbar::new().title(copy::SETTINGS)),
+        section @ (Section::Overview | Section::Storage | Section::Transcoding | Section::AiPipelines) => {
+            let page = sign_in::gate(s, l).unwrap_or_else(|| match section {
+                Section::Overview => overview::page(s, l),
+                Section::Storage => storage::page(s, l),
+                Section::Transcoding => transcoding::page(s, l),
+                _ => ai::page(s, l),
+            });
+            (page, ops_toolbar(s, l, label(section)))
+        }
         other => (
             message(l, copy::COMING_SOON_TITLE, copy::COMING_SOON),
             Toolbar::new().title(label(other)),

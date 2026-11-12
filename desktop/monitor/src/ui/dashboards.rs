@@ -21,8 +21,14 @@ const TITLE: f32 = 18.0;
 /// The page and its toolbar.
 pub fn page(s: &Monitor, l: &Look, p: &Paint) -> (El, Toolbar) {
     if !s.connected() {
+        let open = Button::new(copy::OPEN_SETTINGS)
+            .variant(ButtonVariant::Outline)
+            .control_size(ControlSize::Regular)
+            .on_press(|s: &mut Monitor| s.select(crate::state::Section::Settings))
+            .build(&l.kit)
+            .key("open-settings");
         return (
-            super::message(l, copy::NOT_CONNECTED_TITLE, copy::NOT_CONNECTED),
+            super::message(l, copy::NOT_CONNECTED_TITLE, copy::NOT_CONNECTED).child(row().px(32.0).child(open)),
             Toolbar::new().title(copy::DASHBOARDS),
         );
     }

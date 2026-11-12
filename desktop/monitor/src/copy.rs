@@ -77,6 +77,9 @@ pub fn couldnt_refresh(error: &str) -> String {
 /// Overview.
 pub const ALL_CLEAR: &str = "Nothing needs attention.";
 pub const OPEN_SECTION: &str = "Open";
+pub fn open_section(section: &str) -> String {
+    format!("Open {section}")
+}
 pub const CLIPS: &str = "Clips";
 pub const STORED: &str = "Stored";
 pub const ACCOUNTS: &str = "Accounts";
@@ -141,7 +144,9 @@ pub const RETRYING: &str = "Retrying";
 pub const STALE: &str = "No worker";
 pub const OLDEST: &str = "Oldest";
 pub const LAST_HOUR: &str = "Last hour";
-pub const LAST_DAY: &str = "Last 24 h";
+pub const LAST_DAY: &str = "24 h done / failed";
+pub const ALL_POOLS: &str = "All pools";
+pub const STATUS: &str = "Status";
 pub const SUCCEEDED: &str = "Done";
 pub const FAILED: &str = "Failed";
 pub const EXHAUSTED: &str = "Out of tries";
@@ -181,17 +186,20 @@ pub fn attempts(n: i32) -> String {
 pub const TRIGGER: &str = "Trigger";
 pub const SPEND: &str = "Spend by model";
 pub const MODEL: &str = "Model";
-pub const RUNS: &str = "Runs";
-pub const TOKENS: &str = "Tokens in / out";
-pub const COST: &str = "Cost";
-pub const DAY: &str = "24 h";
-pub const MONTH: &str = "30 days";
+pub const RUNS_DAY: &str = "Runs 24 h";
+pub const COST_DAY: &str = "Cost 24 h";
+pub const RUNS_MONTH: &str = "Runs 30 d";
+pub const TOKENS_MONTH: &str = "Tokens in / out";
+pub const COST_MONTH: &str = "Cost 30 d";
 pub const NO_SPEND: &str = "No runs in the last 30 days.";
 pub const NO_COST: &str = "–";
 pub const UNDER_A_CENT: &str = "<$0.01";
 
-pub fn unpriced(n: i64) -> String {
-    format!("+{n} unpriced")
+pub fn unpriced(n: &str) -> String {
+    format!("{n} runs in the last 30 days have no known cost and are left out of it.")
+}
+pub fn done_failed(done: &str, failed: &str) -> String {
+    format!("{done} / {failed}")
 }
 pub fn tokens(input: &str, output: &str) -> String {
     format!("{input} / {output}")
@@ -224,7 +232,7 @@ pub const GRAFANA_URL: &str = "Address";
 pub const GRAFANA_URL_PLACEHOLDER: &str = "http://grafana:3020";
 pub const GRAFANA_TOKEN: &str = "Token";
 pub const GRAFANA_TOKEN_PLACEHOLDER: &str = "glsa_…";
-pub const GRAFANA_TOKEN_KEPT: &str = "Kept in the Keychain; enter a new one to replace it";
+pub const GRAFANA_TOKEN_KEPT: &str = "Kept in the Keychain";
 pub const SAVE: &str = "Save";
 pub const REMOVE: &str = "Remove";
 pub const SAVED: &str = "Saved.";

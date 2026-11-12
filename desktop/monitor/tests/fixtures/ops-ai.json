@@ -1,0 +1,70 @@
+{
+  "generated_at": "2024-11-12T13:59:42Z",
+  "queues": [
+    {
+      "queue": "legend_detection",
+      "triggers": [
+        {
+          "name": "automatic", "pending": 3, "retrying": 0, "running": 4, "stale_running": 0,
+          "oldest_pending_age_seconds": 41.0,
+          "last_hour": { "succeeded": 188, "failed": 2, "exhausted": 0 },
+          "last_day": { "succeeded": 3904, "failed": 11, "exhausted": 1 }
+        },
+        {
+          "name": "escalation", "pending": 0, "retrying": 0, "running": 1, "stale_running": 0,
+          "oldest_pending_age_seconds": 0,
+          "last_hour": { "succeeded": 14, "failed": 0, "exhausted": 0 },
+          "last_day": { "succeeded": 302, "failed": 0, "exhausted": 0 }
+        }
+      ],
+      "recent_failures": [
+        {
+          "run_id": "44d6f8b0-3e5a-4c9d-1f2b-4a6c8d0e2f04", "clip_id": "e1f2a3b4-c5d6-4e7f-8091-a2b3c4d5e644",
+          "trigger": "automatic", "provider": "openrouter", "model": "google/gemini-3.5-flash",
+          "error": "429 Too Many Requests: rate limit exceeded", "attempts": 2, "completed_at": "2024-11-12T13:52:19Z"
+        }
+      ]
+    },
+    {
+      "queue": "clip_transcription",
+      "triggers": [
+        {
+          "name": "automatic", "pending": 0, "retrying": 1, "running": 2, "stale_running": 0,
+          "oldest_pending_age_seconds": 0,
+          "last_hour": { "succeeded": 31, "failed": 0, "exhausted": 0 },
+          "last_day": { "succeeded": 702, "failed": 3, "exhausted": 0 }
+        }
+      ],
+      "recent_failures": []
+    },
+    {
+      "queue": "clip_summary",
+      "triggers": [
+        {
+          "name": "automatic", "pending": 0, "retrying": 0, "running": 1, "stale_running": 0,
+          "oldest_pending_age_seconds": 0,
+          "last_hour": { "succeeded": 30, "failed": 0, "exhausted": 0 },
+          "last_day": { "succeeded": 688, "failed": 0, "exhausted": 0 }
+        }
+      ],
+      "recent_failures": []
+    }
+  ],
+  "spend": [
+    {
+      "queue": "legend_detection", "provider": "openrouter", "model": "google/gemini-3.5-flash",
+      "last_day": { "runs": 3904, "input_tokens": 41203948, "output_tokens": 820394, "cost_usd": 6.4187, "unpriced_runs": 0 },
+      "last_month": { "runs": 112093, "input_tokens": 1180394823, "output_tokens": 23849302, "cost_usd": 183.9021, "unpriced_runs": 0 }
+    },
+    {
+      "queue": "legend_detection", "provider": "anthropic", "model": "claude-sonnet-5-5",
+      "last_day": { "runs": 302, "input_tokens": 3920394, "output_tokens": 120394, "cost_usd": 4.1209, "unpriced_runs": 0 },
+      "last_month": { "runs": 8930, "input_tokens": 115203948, "output_tokens": 3492039, "cost_usd": 121.4402, "unpriced_runs": 0 }
+    },
+    {
+      "queue": "clip_summary", "provider": "openai", "model": "gpt-5.5-mini",
+      "last_day": { "runs": 688, "input_tokens": 1820394, "output_tokens": 220394, "cost_usd": null, "unpriced_runs": 688 },
+      "last_month": { "runs": 19230, "input_tokens": 50203948, "output_tokens": 6203948, "cost_usd": null, "unpriced_runs": 19230 }
+    }
+  ]
+}

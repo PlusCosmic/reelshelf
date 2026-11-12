@@ -38,3 +38,7 @@ pub static ADMIN: Icon = icon(
     "monitor-admin",
     r#"<path d="M8 2L13 4V8C13 11 10.8 13.2 8 14C5.2 13.2 3 11 3 8V4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/>"#,
 );
+pub static SETTINGS: Icon = icon(
+    "monitor-settings",
+    r#"<circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M8 1.8V3.6M8 12.4V14.2M1.8 8H3.6M12.4 8H14.2M3.6 3.6L4.9 4.9M11.1 11.1L12.4 12.4M3.6 12.4L4.9 11.1M11.1 4.9L12.4 3.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none"/>"#,
+);

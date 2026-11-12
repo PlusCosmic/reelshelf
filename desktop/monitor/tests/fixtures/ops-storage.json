@@ -1,0 +1,26 @@
+{
+  "generated_at": "2024-11-12T13:59:42Z",
+  "store": {
+    "configured": true,
+    "kind": "s3-compatible",
+    "region": "auto",
+    "endpoint_host": "0f3c8e2a.r2.cloudflarestorage.com",
+    "bucket": "reelshelf-clips",
+    "media_base_url": "https://media.reelshelf.app"
+  },
+  "total": { "clips": 48213, "bytes": 2318427398144, "binned_clips": 1204, "binned_bytes": 61203947520 },
+  "by_tier": [
+    { "tier": "free", "accounts": 1382, "clips": 31877, "bytes": 1203948372992 },
+    { "tier": "plus", "accounts": 96, "clips": 9820, "bytes": 598203948032 },
+    { "tier": "pro", "accounts": 21, "clips": 5410, "bytes": 401928374272 },
+    { "tier": "unlimited", "accounts": 3, "clips": 1106, "bytes": 114346702848 }
+  ],
+  "top_accounts": [
+    { "user_id": "6f1d3c2a-0b8e-4c4f-9a51-2d7e5b1c9a01", "username": "marlowe", "tier": "unlimited", "clips": 904, "bytes": 98203948032 },
+    { "user_id": "a2c94e10-71b3-4f0e-8d22-5c1b0e9f3a02", "username": "kestrel_plays", "tier": "pro", "clips": 4872, "bytes": 87203948032 },
+    { "user_id": "3b7f0d55-9c41-4a6e-b0f3-8e2d1c4a5b03", "username": "ottilie", "tier": "pro", "clips": 3561, "bytes": 66103948032 },
+    { "user_id": "c4e81a9b-2d05-4b7c-a6e1-0f9b3d2c8e04", "username": "duskrunner", "tier": "plus", "clips": 998, "bytes": 30943948032 },
+    { "user_id": "d9a2b6c3-5e10-47f8-91c4-6b3e0a7d2f05", "username": "fen.and.co", "tier": "free", "clips": 100, "bytes": 5203948032 }
+  ],
+  "exports": { "held": 7, "held_bytes": 18203948032, "pending": 1, "running": 1 }
+}
