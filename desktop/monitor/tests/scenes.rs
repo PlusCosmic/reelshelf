@@ -84,6 +84,7 @@ fn data(s: &Monitor) -> HashSet<String> {
         fixtures::OPS_STORAGE,
         fixtures::OPS_TRANSCODING,
         fixtures::OPS_AI,
+        fixtures::OPS_COSTS,
         fixtures::ME,
     ] {
         strings(&serde_json::from_str(json).unwrap(), &mut words);
@@ -117,7 +118,7 @@ fn data(s: &Monitor) -> HashSet<String> {
 /// (`Tue 12 Nov, 09:48`).
 fn is_number_or_time(words: &str) -> bool {
     let number = Regex::new(
-        r"^[-$]?[\d.,]+ ?(%|req/s|ops/s|µs|ms|s|min|hour|day|K|M|B|T|B/s|KiB|MiB|GiB|TiB|PiB|kB|MB|GB|TB|PB|KiB/s|MiB/s)?$",
+        r"^[-$£€]?[\d.,]+ ?(%|req/s|ops/s|µs|ms|s|min|hour|day|K|M|B|T|B/s|KiB|MiB|GiB|TiB|PiB|kB|MB|GB|TB|PB|KiB/s|MiB/s)?$",
     )
     .unwrap();
     let time =
@@ -244,7 +245,8 @@ fn the_overview_calls_out_what_needs_attention() {
     // Storage has a store and nothing failing.
     assert!(shown.iter().any(|t| t == "Nothing needs attention."));
     let keys = keys(&rt);
-    for section in ["Storage", "Transcoding", "AiPipelines"] {
+    assert!(shown.iter().any(|t| t == "OpenAI couldn't be read"), "{shown:?}");
+    for section in ["Storage", "Transcoding", "AiPipelines", "Costs"] {
         assert!(keys.contains(&format!("card-{section}")), "{section}");
     }
 }
@@ -284,6 +286,46 @@ fn each_section_shows_its_answer() {
     for words in ["Legend detection", "claude-sonnet-5-5", "$183.90", "–"] {
         assert!(ai.iter().any(|t| t == words), "ai shows {words:?}: {ai:?}");
     }
+}
+
+#[test]
+fn costs_show_each_provider_its_chart_and_whats_not_set_up() {
+    let rt = runtime("costs", false);
+    let shown = texts(&rt);
+    for words in [
+        "$81.98",
+        "$158.42",
+        "Amazon Simple Storage Service",
+        "google/gemini-3.5-transcribe",
+        "$182.40",
+        "£463.95",
+        "£1,262.35",
+        "Failed",
+        "Couldn't read it: OpenAI answered 401 (the key was refused): Incorrect API key provided.",
+        "Anthropic: Ops:Costs:Anthropic:AdminKey, an Admin API key.",
+    ] {
+        assert!(shown.iter().any(|t| t == words), "costs shows {words:?}: {shown:?}");
+    }
+    let shown_keys = keys(&rt);
+    for provider in ["aws", "openrouter", "openai", "stripe"] {
+        assert!(
+            shown_keys.contains(&format!("costs-{provider}-chart")),
+            "{provider}'s chart"
+        );
+    }
+    // Anthropic isn't set up: no card of its own, only its line.
+    assert!(!shown_keys.contains("costs-anthropic"));
+    assert!(shown_keys.contains("costs-not-set-up"));
+
+    let hover = runtime("costs-hover", true);
+    assert!(keys(&hover).contains("costs-aws-chart-readout"));
+
+    let none = texts(&runtime("costs-not-set-up", false));
+    assert!(none.iter().any(|t| t == "$0.00"), "{none:?}");
+    assert!(
+        none.iter().any(|t| t.starts_with("Stripe: Billing:SecretKey")),
+        "{none:?}"
+    );
 }
 
 #[test]

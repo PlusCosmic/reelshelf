@@ -633,6 +633,43 @@ async fn the_monitor_reads_the_ops_numbers() {
 }
 
 #[tokio::test]
+async fn the_monitor_reads_the_costs() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/admin/ops/costs"))
+        .and(header(CLIENT_HEADER, "monitor/1.2.3"))
+        .and(header("authorization", format!("Bearer {TOKEN}").as_str()))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "generated_at": "2026-11-12T09:00:00Z",
+            "month_to_date_usd": 41.5,
+            "providers": [{
+                "provider": "aws", "kind": "cost", "status": "ok", "error": null,
+                "last_success_at": "2026-11-12T08:00:00Z", "currency": "USD", "month_to_date": 41.5,
+                "last_month": 88.25, "daily": [{ "date": "2026-11-12", "amount": 1.25 }],
+                "breakdown": [{ "name": "Amazon Simple Storage Service", "amount": 30 }],
+                "balance": null, "revenue": null
+            }, {
+                "provider": "anthropic", "kind": "cost", "status": "not_configured", "error": null,
+                "last_success_at": null, "currency": null, "month_to_date": null, "last_month": null,
+                "daily": [], "breakdown": [], "balance": null, "revenue": null
+            }]
+        })))
+        .mount(&server)
+        .await;
+
+    let costs = monitor(&server).ops_costs().await.unwrap();
+    assert_eq!(costs.month_to_date_usd, 41.5);
+    let aws = &costs.providers[0];
+    assert_eq!(
+        aws.daily[0].date,
+        chrono::NaiveDate::from_ymd_opt(2026, 11, 12).unwrap()
+    );
+    assert_eq!(aws.breakdown[0].amount, 30.0);
+    assert_eq!(costs.providers[1].status, "not_configured");
+    assert!(!costs.providers[1].is_revenue());
+}
+
+#[tokio::test]
 async fn ops_answers_the_flag_and_permission_refusals_apart() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

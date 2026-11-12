@@ -21,6 +21,8 @@ pub fn format(value: f64, unit: Option<&str>, decimals: Option<u32>) -> String {
         "reqps" => format!("{} req/s", short(value, decimals)),
         "ops" => format!("{} ops/s", short(value, decimals)),
         "currencyUSD" => format!("${}", short(value, decimals.or(Some(2)))),
+        "currencyGBP" => format!("£{}", short(value, decimals.or(Some(2)))),
+        "currencyEUR" => format!("€{}", short(value, decimals.or(Some(2)))),
         "none" => number(value, decimals),
         _ => short(value, decimals),
     }
@@ -185,6 +187,12 @@ pub fn count(n: i64) -> String {
         out.push(c);
     }
     if n < 0 { format!("-{out}") } else { out }
+}
+
+/// A non-negative amount to two places with thousands grouped: `1,234.50`.
+pub fn two_places(v: f64) -> String {
+    let cents = (v * 100.0).round() as i64;
+    format!("{}.{:02}", count(cents / 100), cents % 100)
 }
 
 /// Bytes in binary units: `1.21 TiB`.

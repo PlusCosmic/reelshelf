@@ -22,6 +22,7 @@ const PIPELINE: &str = include_str!("../tests/fixtures/dashboard-pipeline.json")
 pub const OPS_STORAGE: &str = include_str!("../tests/fixtures/ops-storage.json");
 pub const OPS_TRANSCODING: &str = include_str!("../tests/fixtures/ops-transcoding.json");
 pub const OPS_AI: &str = include_str!("../tests/fixtures/ops-ai.json");
+pub const OPS_COSTS: &str = include_str!("../tests/fixtures/ops-costs.json");
 pub const ME: &str = include_str!("../tests/fixtures/me.json");
 
 pub const SCENES: &[&str] = &[
@@ -30,6 +31,9 @@ pub const SCENES: &[&str] = &[
     "transcoding",
     "transcoding-copied",
     "ai",
+    "costs",
+    "costs-hover",
+    "costs-not-set-up",
     "signed-out",
     "signed-out-revoked",
     "signing-in",
@@ -62,6 +66,35 @@ pub fn scene(name: &str, tz: FixedOffset) -> Option<Monitor> {
             s.copied = s.transcoding.value.as_ref().map(|t| t.recent_failures[0].clip_id);
         }
         "ai" => s.section = Section::AiPipelines,
+        "costs" => s.section = Section::Costs,
+        "costs-hover" => {
+            s.section = Section::Costs;
+            // Over AWS's chart (the first provider's).
+            s.hover = Some(Hover {
+                panel: 90_000,
+                x: 520.0,
+            });
+        }
+        "costs-not-set-up" => {
+            s.section = Section::Costs;
+            let costs = s.costs.value.as_mut()?;
+            for p in &mut costs.providers {
+                *p = reelshelf_api::OpsCostProvider {
+                    status: "not_configured".to_owned(),
+                    error: None,
+                    last_success_at: None,
+                    currency: None,
+                    month_to_date: None,
+                    last_month: None,
+                    daily: Vec::new(),
+                    breakdown: Vec::new(),
+                    balance: None,
+                    revenue: None,
+                    ..p.clone()
+                };
+            }
+            costs.month_to_date_usd = 0.0;
+        }
         "signed-out" => s.set_session(Session::SignedOut(None)),
         "signed-out-revoked" => {
             s.section = Section::Transcoding;
@@ -109,7 +142,7 @@ pub fn scene(name: &str, tz: FixedOffset) -> Option<Monitor> {
                 x: 380.0,
             });
         }
-        "coming-soon" => s.section = Section::Costs,
+        "coming-soon" => s.section = Section::Releases,
         "not-connected" => {
             s = Monitor::new(None, None, tz);
             s.section = Section::Dashboards;
@@ -127,6 +160,7 @@ fn signed_in(s: &mut Monitor) {
     s.storage = Fetched::ready(serde_json::from_str(OPS_STORAGE).expect("storage fixture"));
     s.transcoding = Fetched::ready(serde_json::from_str(OPS_TRANSCODING).expect("transcoding fixture"));
     s.ai = Fetched::ready(serde_json::from_str(OPS_AI).expect("ai fixture"));
+    s.costs = Fetched::ready(serde_json::from_str(OPS_COSTS).expect("costs fixture"));
 }
 
 fn dashboard(json: &str) -> Dashboard {

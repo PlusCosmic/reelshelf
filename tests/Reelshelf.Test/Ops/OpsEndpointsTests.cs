@@ -14,7 +14,7 @@ namespace Reelshelf.Test.Ops;
 public class OpsEndpointsTests
 {
     private static readonly string[] OpsPaths =
-        ["/api/admin/ops/storage", "/api/admin/ops/transcoding", "/api/admin/ops/ai"];
+        ["/api/admin/ops/storage", "/api/admin/ops/transcoding", "/api/admin/ops/ai", "/api/admin/ops/costs"];
 
     private static readonly Dictionary<string, string?> FlagOn = new() { ["FeatureFlags:Overrides:ops-monitor"] = "true" };
 

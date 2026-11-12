@@ -215,6 +215,96 @@ pub fn queue(name: &str) -> &str {
     }
 }
 
+/// Costs.
+pub const THIS_MONTH_TITLE: &str = "This month";
+pub const SPEND_THIS_MONTH: &str = "Spend this month";
+pub const REVENUE_THIS_MONTH: &str = "Net revenue this month";
+pub const SPEND_TOTAL_NOTE: &str = "Every provider that reports in US dollars, added up; revenue isn't taken off. The API reads each one hourly, AWS every 6 hours.";
+pub const PROVIDER: &str = "Provider";
+pub const THIS_MONTH: &str = "This month";
+pub const LAST_MONTH: &str = "Last month";
+pub const CREDIT_LEFT: &str = "Credit left";
+pub const GROSS_THIS_MONTH: &str = "Gross this month";
+pub const NET_THIS_MONTH: &str = "Net this month";
+pub const GROSS_LAST_MONTH: &str = "Gross last month";
+pub const NET_LAST_MONTH: &str = "Net last month";
+pub const LAST_30_DAYS: &str = "Last 30 days";
+pub const NOT_KNOWN: &str = "–";
+pub const COST_OK: &str = "Read";
+pub const COST_PENDING: &str = "Not read yet";
+pub const COST_FAILED: &str = "Failed";
+pub const COST_NOT_SET_UP: &str = "Not set up";
+pub const PENDING_NOTE: &str = "The API hasn't read this yet; it does within a few minutes of starting.";
+pub const NO_DAILY: &str = "No daily figures from this provider.";
+pub const NOT_SET_UP_TITLE: &str = "Not set up";
+pub const NOT_SET_UP_INTRO: &str =
+    "These have no credentials on the API. They go in its configuration, never in this app:";
+pub const OPENROUTER_HISTORY: &str = "OpenRouter keeps 30 days of activity, so last month isn't known. Without a management key only this month's total and today's spend are.";
+pub const REVENUE_NOTE: &str =
+    "Revenue, not a cost: gross is what customers paid; net is after Stripe's fees, refunds and disputes.";
+
+/// A provider's name.
+pub fn provider(name: &str) -> &str {
+    match name {
+        "aws" => "AWS",
+        "openrouter" => "OpenRouter",
+        "openai" => "OpenAI",
+        "anthropic" => "Anthropic",
+        "stripe" => "Stripe",
+        other => other,
+    }
+}
+
+/// What a provider's breakdown is by.
+pub fn breakdown(provider: &str) -> &'static str {
+    match provider {
+        "aws" => "Last 30 days by service",
+        "openai" => "Last 30 days by line item",
+        _ => "Last 30 days by model",
+    }
+}
+
+/// Where a provider's credentials go on the API.
+pub fn cost_setting(provider: &str) -> &'static str {
+    match provider {
+        "aws" => "AWS: Ops:Costs:Aws:AccessKeyId and SecretAccessKey, a key allowed only ce:GetCostAndUsage.",
+        "openrouter" => "OpenRouter: Ops:Costs:OpenRouter:ManagementKey, or any OpenRouter API key.",
+        "openai" => "OpenAI: Ops:Costs:OpenAi:AdminKey, an organization admin key.",
+        "anthropic" => "Anthropic: Ops:Costs:Anthropic:AdminKey, an Admin API key.",
+        "stripe" => "Stripe: Billing:SecretKey, with Read on balance transactions.",
+        _ => "Its key under Ops:Costs.",
+    }
+}
+
+pub fn couldnt_read(error: &str) -> String {
+    format!("Couldn't read it: {error}")
+}
+pub fn showing_from(time: &str) -> String {
+    format!("Showing what was read {time}.")
+}
+pub fn last_read(time: &str) -> String {
+    format!("Read {time}")
+}
+pub fn costs_unreadable(provider: &str) -> String {
+    format!("{provider} couldn't be read")
+}
+
+/// An amount in its currency: `$1,234.50`, `£12.00`, `-$3.10`, `12.00 (CHF)`.
+pub fn money(amount: f64, currency: &str) -> String {
+    let digits = crate::units::two_places(amount.abs());
+    let negative = amount < -0.004;
+    match (currency.to_uppercase().as_str(), negative) {
+        ("USD", false) => format!("${digits}"),
+        ("USD", true) => format!("-${digits}"),
+        ("GBP", false) => format!("£{digits}"),
+        ("GBP", true) => format!("-£{digits}"),
+        ("EUR", false) => format!("€{digits}"),
+        ("EUR", true) => format!("-€{digits}"),
+        (code, false) => format!("{digits} ({code})"),
+        (code, true) => format!("-{digits} ({code})"),
+    }
+}
+
 /// Settings.
 pub const REELSHELF: &str = "Reelshelf";
 pub const SIGN_OUT: &str = "Sign out";
@@ -285,6 +375,15 @@ pub fn failed(error: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn money_reads_in_its_currency() {
+        assert_eq!(money(1234.5, "USD"), "$1,234.50");
+        assert_eq!(money(12.0, "gbp"), "£12.00");
+        assert_eq!(money(-3.1, "USD"), "-$3.10");
+        assert_eq!(money(-0.001, "USD"), "$0.00");
+        assert_eq!(money(9.999, "CHF"), "10.00 (CHF)");
+    }
 
     #[test]
     fn ages_read_at_a_glance() {

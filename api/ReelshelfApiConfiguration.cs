@@ -28,6 +28,7 @@ using Reelshelf.Games;
 using Reelshelf.LandingShelf;
 using Reelshelf.Moderation;
 using Reelshelf.Ops;
+using Reelshelf.Ops.Costs;
 using Reelshelf.Playlists;
 using Reelshelf.QueueMetrics;
 using Reelshelf.Plans;
@@ -424,6 +425,18 @@ internal static class ReelshelfApiConfiguration
         builder.Services.AddSingleton<OpsSnapshotCache>();
         builder.Services.AddSingleton<OpsService>();
 
+        // The monitor's Costs (/api/admin/ops/costs): each provider under Ops:Costs (Stripe through billing) read in
+        // the background, hourly (AWS every 6 h), and served from memory.
+        builder.Services.Configure<OpsCostsOptions>(builder.Configuration.GetSection(OpsCostsOptions.SectionName));
+        builder.Services.AddHttpClient(CostHttp.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(60));
+        builder.Services.AddSingleton<ICostSource>(provider =>
+            new AwsCostSource(provider.GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<OpsCostsOptions>>()));
+        builder.Services.AddSingleton<ICostSource, OpenRouterCostSource>();
+        builder.Services.AddSingleton<ICostSource, OpenAiCostSource>();
+        builder.Services.AddSingleton<ICostSource, AnthropicCostSource>();
+        builder.Services.AddSingleton<ICostSource, StripeRevenueSource>();
+        builder.Services.AddSingleton<OpsCosts>();
+
         // Background services should not run during explicit OpenAPI document generation.
         if (!builder.Environment.IsEnvironment("OpenApi"))
         {
@@ -437,6 +450,7 @@ internal static class ReelshelfApiConfiguration
             builder.Services.AddHostedService<AccountDeletionBackgroundService>();
             builder.Services.AddHostedService<ClipBinSweepService>();
             builder.Services.AddHostedService<AacBackfillService>();
+            builder.Services.AddHostedService<OpsCostsBackgroundService>();
         }
     }
 }

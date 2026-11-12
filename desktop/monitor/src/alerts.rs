@@ -1,7 +1,8 @@
 //! What needs attention, for Overview's cards: a queue's failures in the last hour, its running jobs whose worker
-//! went quiet, and a pending job that has waited over [`OLDEST_PENDING`]; and storage with no object store.
+//! went quiet, and a pending job that has waited over [`OLDEST_PENDING`]; storage with no object store; and a cost
+//! provider whose latest read failed.
 
-use reelshelf_api::{OpsAi, OpsQueueCounts, OpsStorage, OpsTranscoding};
+use reelshelf_api::{OpsAi, OpsCosts, OpsQueueCounts, OpsStorage, OpsTranscoding};
 
 use crate::copy;
 
@@ -46,6 +47,15 @@ pub fn ai(a: &OpsAi) -> Vec<String> {
                 .iter()
                 .flat_map(move |c| queue(c, &format!("{} {}", copy::queue(&q.queue).to_lowercase(), c.name)))
         })
+        .collect()
+}
+
+/// A provider that is set up but couldn't be read (one that isn't set up needs nothing).
+pub fn costs(c: &OpsCosts) -> Vec<String> {
+    c.providers
+        .iter()
+        .filter(|p| p.status == "failed")
+        .map(|p| copy::costs_unreadable(copy::provider(&p.provider)))
         .collect()
 }
 
