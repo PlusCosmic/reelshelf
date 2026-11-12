@@ -16,6 +16,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Reelshelf.Test" />
+        <!-- The storage preflight builds R2Storage on its own client and reads its config (tools/Reelshelf.StorageCheck). -->
+        <InternalsVisibleTo Include="Reelshelf.StorageCheck" />
     </ItemGroup>
 
     <ItemGroup>

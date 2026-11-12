@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+    The storage preflight (README.md): runs the API's and the worker's own storage code against a real bucket and CDN.
+    It is never published or shipped in an image; the operator runs it with `dotnet run`.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>13</LangVersion>
+        <RootNamespace>Reelshelf.StorageCheck</RootNamespace>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Reelshelf.Test" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\api\Reelshelf.csproj" />
+        <ProjectReference Include="..\..\workers\Reelshelf.Worker\Reelshelf.Worker.csproj" />
+    </ItemGroup>
+
+</Project>

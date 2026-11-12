@@ -18,6 +18,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\api\Reelshelf.csproj" />
+        <ProjectReference Include="..\..\tools\Reelshelf.StorageCheck\Reelshelf.StorageCheck.csproj" />
     </ItemGroup>
 
 </Project>

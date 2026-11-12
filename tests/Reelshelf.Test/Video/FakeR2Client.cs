@@ -10,7 +10,7 @@ namespace Reelshelf.Test.Video;
 /// An in-memory bucket behind the S3 calls <see cref="R2Storage"/> makes, so tests can run uploads, completions,
 /// aborts and deletes without R2. Presigning still signs for real, which needs no network.
 /// </summary>
-internal sealed class FakeR2Client : AmazonS3Client
+internal class FakeR2Client : AmazonS3Client
 {
     public static readonly R2Options Options = new()
     {
@@ -49,6 +49,21 @@ internal sealed class FakeR2Client : AmazonS3Client
     public override Task<InitiateMultipartUploadResponse> InitiateMultipartUploadAsync(
         InitiateMultipartUploadRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(new InitiateMultipartUploadResponse { UploadId = Open(request.Key), Key = request.Key });
+
+    public override Task<PutObjectResponse> PutObjectAsync(PutObjectRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        Objects[request.Key] = request.InputStream.Length - request.InputStream.Position;
+        return Task.FromResult(new PutObjectResponse { ETag = $"\"put-{request.Key.GetHashCode():x}\"" });
+    }
+
+    public override Task<UploadPartResponse> UploadPartAsync(UploadPartRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        Find(request.UploadId, request.Key);
+        PutPart(request.UploadId, request.PartNumber ?? 0, request.PartSize ?? 0);
+        return Task.FromResult(new UploadPartResponse { ETag = $"\"etag-{request.PartNumber}\"" });
+    }
 
     public override Task<ListPartsResponse> ListPartsAsync(ListPartsRequest request,
         CancellationToken cancellationToken = default)
