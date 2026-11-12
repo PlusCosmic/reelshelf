@@ -3,7 +3,13 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeviceList } from "./DeviceList";
 
-type Device = { id: string; name: string; createdAt: Date; lastUsedAt: Date };
+type Device = {
+  id: string;
+  name: string;
+  createdAt: Date;
+  lastUsedAt: Date;
+  client: string;
+};
 
 const mocks = vi.hoisted(() => ({
   devices: {
@@ -35,23 +41,25 @@ describe("DeviceList", () => {
         name: "Gaming PC",
         createdAt: new Date("2026-11-06T12:00:00Z"),
         lastUsedAt: new Date("2026-11-06T21:43:00Z"),
+        client: "uploader",
       },
       {
         id: "b",
         name: "Laptop",
         createdAt: new Date("2026-10-02T12:00:00Z"),
         lastUsedAt: new Date("2026-10-12T12:00:00Z"),
+        client: "monitor",
       },
     ];
     render(<DeviceList now={now} />);
 
     expect(screen.getByText("Gaming PC")).toBeTruthy();
     expect(
-      screen.getByText("Added 6 Nov 2026 · last used 4 minutes ago"),
+      screen.getByText("Uploader · added 6 Nov 2026 · last used 4 minutes ago"),
     ).toBeTruthy();
     expect(screen.getByText("Laptop")).toBeTruthy();
     expect(
-      screen.getByText("Added 2 Oct 2026 · last used 12 Oct 2026"),
+      screen.getByText("Monitor · added 2 Oct 2026 · last used 12 Oct 2026"),
     ).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
     expect(
@@ -82,6 +90,7 @@ describe("DeviceList", () => {
         name: "Gaming PC",
         createdAt: new Date("2026-11-06T12:00:00Z"),
         lastUsedAt: new Date("2026-11-06T21:43:00Z"),
+        client: "uploader",
       },
     ];
     render(<DeviceList now={now} />);

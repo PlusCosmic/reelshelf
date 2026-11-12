@@ -210,11 +210,14 @@ internal sealed class DeviceApi : IAsyncDisposable
         return await Client.SendAsync(request);
     }
 
-    /// <summary>Signs a device in for the account the way the app and <c>/device</c> do, and answers its token.</summary>
-    public async Task<string> SignInDeviceAsync(Guid userId, string name = "Gaming PC")
+    /// <summary>
+    /// Signs a device in for the account the way the app and <c>/device</c> do, and answers its token. With no
+    /// <paramref name="client"/> the request leaves it out, as the shipped uploader does.
+    /// </summary>
+    public async Task<string> SignInDeviceAsync(Guid userId, string name = "Gaming PC", string? client = null)
     {
         using HttpResponseMessage authorize = await SendAsync(HttpMethod.Post, "/api/devices/authorize",
-            json: new { device_name = name });
+            json: client is null ? new { device_name = name } : new { device_name = name, client });
         authorize.EnsureSuccessStatusCode();
         DeviceAuthorizationJson started = (await authorize.Content.ReadFromJsonAsync<DeviceAuthorizationJson>())!;
 

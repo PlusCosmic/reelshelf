@@ -12,6 +12,8 @@ export const featureFlagKeys = [
   "desktop-uploader",
   /** Searching the library by description (ADR-0005); only plans with transcripts can use it, whatever the flag says. */
   "clip-search",
+  /** The monitor app's operations endpoints (/api/admin/ops/), for Admins only; nothing in the site checks it. */
+  "ops-monitor",
 ] as const;
 
 export type FeatureFlagKey = (typeof featureFlagKeys)[number];

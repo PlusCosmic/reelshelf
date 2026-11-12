@@ -3531,6 +3531,66 @@
         }
       }
     },
+    "/api/admin/ops/storage": {
+      "get": {
+        "tags": [
+          "OpsEndpoints"
+        ],
+        "operationId": "GetOpsStorage",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsStorageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/ops/transcoding": {
+      "get": {
+        "tags": [
+          "OpsEndpoints"
+        ],
+        "operationId": "GetOpsTranscoding",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsTranscodingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/ops/ai": {
+      "get": {
+        "tags": [
+          "OpsEndpoints"
+        ],
+        "operationId": "GetOpsAi",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsAiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/billing/checkout": {
       "post": {
         "tags": [
@@ -6591,7 +6651,8 @@
       "DeviceAuthorizationRequest": {
         "required": [
           "device_name",
-          "expires_at"
+          "expires_at",
+          "client"
         ],
         "type": "object",
         "properties": {
@@ -6601,6 +6662,9 @@
           "expires_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "client": {
+            "type": "string"
           }
         }
       },
@@ -6645,6 +6709,12 @@
         "properties": {
           "device_name": {
             "type": "string"
+          },
+          "client": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -6653,7 +6723,8 @@
           "id",
           "name",
           "created_at",
-          "last_used_at"
+          "last_used_at",
+          "client"
         ],
         "type": "object",
         "properties": {
@@ -6671,6 +6742,9 @@
           "last_used_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "client": {
+            "type": "string"
           }
         }
       },
@@ -8073,6 +8147,580 @@
           }
         }
       },
+      "OpsAacBackfill": {
+        "required": [
+          "enabled",
+          "remaining"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "remaining": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "OpsAccountStorage": {
+        "required": [
+          "user_id",
+          "username",
+          "tier",
+          "clips",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "clips": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "OpsAiFailure": {
+        "required": [
+          "run_id",
+          "clip_id",
+          "trigger",
+          "provider",
+          "model",
+          "error",
+          "attempts",
+          "completed_at"
+        ],
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trigger": {
+            "type": "string"
+          },
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completed_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "OpsAiQueue": {
+        "required": [
+          "queue",
+          "triggers",
+          "recent_failures"
+        ],
+        "type": "object",
+        "properties": {
+          "queue": {
+            "type": "string"
+          },
+          "triggers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsQueueCounts"
+            }
+          },
+          "recent_failures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsAiFailure"
+            }
+          }
+        }
+      },
+      "OpsAiResponse": {
+        "required": [
+          "generated_at",
+          "queues",
+          "spend"
+        ],
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "queues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsAiQueue"
+            }
+          },
+          "spend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsAiSpend"
+            }
+          }
+        }
+      },
+      "OpsAiSpend": {
+        "required": [
+          "queue",
+          "provider",
+          "model",
+          "last_day",
+          "last_month"
+        ],
+        "type": "object",
+        "properties": {
+          "queue": {
+            "type": "string"
+          },
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "last_day": {
+            "$ref": "#/components/schemas/OpsAiUsage"
+          },
+          "last_month": {
+            "$ref": "#/components/schemas/OpsAiUsage"
+          }
+        }
+      },
+      "OpsAiUsage": {
+        "required": [
+          "runs",
+          "input_tokens",
+          "output_tokens",
+          "cost_usd",
+          "unpriced_runs"
+        ],
+        "type": "object",
+        "properties": {
+          "runs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cost_usd": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "unpriced_runs": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "OpsExportStorage": {
+        "required": [
+          "held",
+          "held_bytes",
+          "pending",
+          "running"
+        ],
+        "type": "object",
+        "properties": {
+          "held": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "held_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "running": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "OpsFinishedCounts": {
+        "required": [
+          "succeeded",
+          "failed",
+          "exhausted"
+        ],
+        "type": "object",
+        "properties": {
+          "succeeded": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "exhausted": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "OpsObjectStore": {
+        "required": [
+          "configured",
+          "kind",
+          "region",
+          "endpoint_host",
+          "bucket",
+          "media_base_url"
+        ],
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "region": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "endpoint_host": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bucket": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "media_base_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "OpsOverflow": {
+        "required": [
+          "enabled",
+          "max_tasks",
+          "running",
+          "pools"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "max_tasks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "running": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "pools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsOverflowPool"
+            }
+          }
+        }
+      },
+      "OpsOverflowPool": {
+        "required": [
+          "name",
+          "max_tasks",
+          "running"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "max_tasks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "running": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "OpsQueueCounts": {
+        "required": [
+          "name",
+          "pending",
+          "retrying",
+          "running",
+          "stale_running",
+          "oldest_pending_age_seconds",
+          "last_hour",
+          "last_day"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "retrying": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "running": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "stale_running": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "oldest_pending_age_seconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "last_hour": {
+            "$ref": "#/components/schemas/OpsFinishedCounts"
+          },
+          "last_day": {
+            "$ref": "#/components/schemas/OpsFinishedCounts"
+          }
+        }
+      },
+      "OpsStorageResponse": {
+        "required": [
+          "generated_at",
+          "store",
+          "total",
+          "by_tier",
+          "top_accounts",
+          "exports"
+        ],
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "store": {
+            "$ref": "#/components/schemas/OpsObjectStore"
+          },
+          "total": {
+            "$ref": "#/components/schemas/OpsStorageTotals"
+          },
+          "by_tier": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsTierStorage"
+            }
+          },
+          "top_accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsAccountStorage"
+            }
+          },
+          "exports": {
+            "$ref": "#/components/schemas/OpsExportStorage"
+          }
+        }
+      },
+      "OpsStorageTotals": {
+        "required": [
+          "clips",
+          "bytes",
+          "binned_clips",
+          "binned_bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "clips": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "binned_clips": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "binned_bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "OpsTierStorage": {
+        "required": [
+          "tier",
+          "accounts",
+          "clips",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "string"
+          },
+          "accounts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clips": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "OpsTranscodeFailure": {
+        "required": [
+          "run_id",
+          "clip_id",
+          "type",
+          "error",
+          "attempts",
+          "finished_at"
+        ],
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clip_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "finished_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "OpsTranscodingResponse": {
+        "required": [
+          "generated_at",
+          "types",
+          "recent_failures",
+          "overflow",
+          "aac_backfill"
+        ],
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsQueueCounts"
+            }
+          },
+          "recent_failures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsTranscodeFailure"
+            }
+          },
+          "overflow": {
+            "$ref": "#/components/schemas/OpsOverflow"
+          },
+          "aac_backfill": {
+            "$ref": "#/components/schemas/OpsAacBackfill"
+          }
+        }
+      },
       "OverLimitClip": {
         "required": [
           "id",
@@ -9411,6 +10059,9 @@
     },
     {
       "name": "AdminAccountEndpoints"
+    },
+    {
+      "name": "OpsEndpoints"
     },
     {
       "name": "BillingEndpoints"

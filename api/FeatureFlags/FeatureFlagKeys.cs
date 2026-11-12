@@ -28,8 +28,14 @@ public static class FeatureFlagKeys
     /// </summary>
     public const string ClipSearch = "clip-search";
 
+    /// <summary>
+    /// The monitor app's operations endpoints (<c>/api/admin/ops/</c>): storage, transcoding and the AI queues, for
+    /// Admins only, whatever the flag says.
+    /// </summary>
+    public const string OpsMonitor = "ops-monitor";
+
     /// <summary>The flags <c>GET /api/me/features</c> answers about; a key PostHog has but this list lacks is ignored.</summary>
-    public static readonly IReadOnlyList<string> All = [PaidPlans, DesktopUploader, ClipSearch];
+    public static readonly IReadOnlyList<string> All = [PaidPlans, DesktopUploader, ClipSearch, OpsMonitor];
 
     public static bool IsKnown(string key)
     {

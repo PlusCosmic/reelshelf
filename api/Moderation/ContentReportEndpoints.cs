@@ -51,8 +51,10 @@ public static class ContentReportEndpoints
             .AllowAnonymous()
             .RequireRateLimiting(RateLimitPolicies.ContentReport);
 
+        // The monitor app's device token works here too; RequirePermission keeps it to Admins.
         RouteGroupBuilder admin = app.MapGroup("admin/reports")
             .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicies.CookieOrMonitorDevice)
             .RequirePermission(Permissions.AdminReports);
 
         admin.MapGet("", ListReports).WithName("ListContentReports");

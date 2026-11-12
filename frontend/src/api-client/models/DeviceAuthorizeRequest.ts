@@ -25,6 +25,12 @@ export interface DeviceAuthorizeRequest {
    * @memberof DeviceAuthorizeRequest
    */
   deviceName: string;
+  /**
+   *
+   * @type {string}
+   * @memberof DeviceAuthorizeRequest
+   */
+  client?: string | null;
 }
 
 /**
@@ -53,6 +59,7 @@ export function DeviceAuthorizeRequestFromJSONTyped(
   }
   return {
     deviceName: json["device_name"],
+    client: json["client"] == null ? undefined : json["client"],
   };
 }
 
@@ -72,5 +79,6 @@ export function DeviceAuthorizeRequestToJSONTyped(
 
   return {
     device_name: value["deviceName"],
+    client: value["client"],
   };
 }

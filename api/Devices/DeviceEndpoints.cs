@@ -59,7 +59,13 @@ public static class DeviceEndpoints
                 $"Give the device a name of 1 to {DeviceSignInService.MaxDeviceNameLength} characters.");
         }
 
-        return TypedResults.Ok(await signIn.Authorize(name));
+        if (DeviceClients.Normalize(request.Client) is not { } client)
+        {
+            return TypedResults.BadRequest(
+                $"The client must be one of {string.Join(", ", DeviceClients.All)}, or left out for the uploader.");
+        }
+
+        return TypedResults.Ok(await signIn.Authorize(name, client));
     }
 
     /// <summary>The sign-in request <c>/device</c> asks about, while it is waiting for an answer.</summary>

@@ -16,6 +16,7 @@ export * from "./GameCategoryEndpointsApi";
 export * from "./LandingShelfEndpointsApi";
 export * from "./LegendDetectionEndpointsApi";
 export * from "./MultipartUploadEndpointsApi";
+export * from "./OpsEndpointsApi";
 export * from "./OverLimitEndpointsApi";
 export * from "./PlanEndpointsApi";
 export * from "./PlaylistEndpointsApi";

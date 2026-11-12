@@ -15,7 +15,7 @@ import {
 const copy = deviceCopy.approve;
 
 /**
- * /device (W1): the sign-in the desktop uploader asked for, approved or turned down by the signed-in owner. Without a
+ * /device (W1): the sign-in the desktop uploader or the monitor app asked for (saying which), approved or turned down by the signed-in owner. Without a
  * code it asks for the one the uploader shows.
  */
 export function DeviceApproval({
@@ -139,9 +139,12 @@ function DeviceRequest({ code }: { code: string }) {
 
   return (
     <>
-      <h1 className="rs-display rs-h2">{copy.title(device.deviceName)}</h1>
+      <p className="rs-sidebar-copy">{copy.app(device.client)}</p>
+      <h1 className="rs-display rs-h2">
+        {copy.title(device.deviceName, device.client)}
+      </h1>
       <p className="rs-device-code">{formatDeviceCode(code)}</p>
-      <p className="rs-sidebar-copy">{copy.body}</p>
+      <p className="rs-sidebar-copy">{copy.body(device.client)}</p>
       {outcome && "error" in outcome ? (
         <Notice compact tone="error">
           {outcome.error}

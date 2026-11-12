@@ -7,7 +7,7 @@ import type { DeviceSummary } from "@/shared/services/devices";
 const copy = deviceCopy.devices;
 
 /**
- * Settings → Devices (W2): the computers running the desktop uploader, each removable after an inline confirmation,
+ * Settings → Devices (W2): the computers running the desktop uploader or the monitor app, each saying which, each removable after an inline confirmation,
  * and the link to the uploader's Store listing.
  */
 export function DeviceList({ now }: { now?: Date }) {
@@ -63,7 +63,7 @@ function DeviceRow({ device, now }: { device: DeviceSummary; now?: Date }) {
       <span className="rs-linked-meta">
         <span className="rs-linked-name">{device.name}</span>
         <span className="rs-linked-sub">
-          {copy.used(device.createdAt, device.lastUsedAt, now)}
+          {copy.used(device.client, device.createdAt, device.lastUsedAt, now)}
         </span>
         {confirming ? (
           <span className="rs-device-confirm" role="alert">

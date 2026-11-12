@@ -31,6 +31,12 @@ export interface DeviceAuthorizationRequest {
    * @memberof DeviceAuthorizationRequest
    */
   expiresAt: Date;
+  /**
+   *
+   * @type {string}
+   * @memberof DeviceAuthorizationRequest
+   */
+  client: string;
 }
 
 /**
@@ -42,6 +48,7 @@ export function instanceOfDeviceAuthorizationRequest(
   if (!("deviceName" in value) || value["deviceName"] === undefined)
     return false;
   if (!("expiresAt" in value) || value["expiresAt"] === undefined) return false;
+  if (!("client" in value) || value["client"] === undefined) return false;
   return true;
 }
 
@@ -61,6 +68,7 @@ export function DeviceAuthorizationRequestFromJSONTyped(
   return {
     deviceName: json["device_name"],
     expiresAt: new Date(json["expires_at"]),
+    client: json["client"],
   };
 }
 
@@ -81,5 +89,6 @@ export function DeviceAuthorizationRequestToJSONTyped(
   return {
     device_name: value["deviceName"],
     expires_at: value["expiresAt"].toISOString(),
+    client: value["client"],
   };
 }

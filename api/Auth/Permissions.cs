@@ -23,6 +23,9 @@ public static class Permissions
     public const string AdminUsers = "admin.users";
     public const string AdminReports = "admin.reports";
 
+    /// <summary>The monitor app's read-only operations numbers (<c>/api/admin/ops/</c>); Admins only, through <see cref="All"/>.</summary>
+    public const string AdminOps = "admin.ops";
+
     /// <summary>
     /// Default permissions for each role.
     /// </summary>

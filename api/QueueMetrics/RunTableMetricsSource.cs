@@ -55,14 +55,21 @@ public sealed partial class RunTableMetricsSource : IRunQueueMetricsSource
 
     public string Queue => queue.Queue;
 
-    public async Task<IReadOnlyList<RunQueueSample>> SampleAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<RunQueueSample>> SampleAsync(CancellationToken cancellationToken) =>
+        SampleAsync(RecentWindow, cancellationToken);
+
+    /// <summary>
+    /// The queue's numbers with the succeeded, failed and exhausted counts looking back <paramref name="window"/>
+    /// instead of <see cref="RecentWindow"/> (the ops endpoints ask for a day too).
+    /// </summary>
+    public async Task<IReadOnlyList<RunQueueSample>> SampleAsync(TimeSpan window, CancellationToken cancellationToken)
     {
         await using NpgsqlConnection connection = await dataSource.OpenConnectionAsync(cancellationToken);
         CommandDefinition command = new(sql, new
         {
             queue.RetryAfter,
             queue.StaleAfter,
-            Window = RecentWindow,
+            Window = window,
             MaxAttempts = maxAttempts()
         }, cancellationToken: cancellationToken);
         await using SqlMapper.GridReader grid = await connection.QueryMultipleAsync(command);
