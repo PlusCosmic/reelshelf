@@ -5,7 +5,7 @@ import {
   leftShelves,
   rightShelves,
   type SideShelfBook,
-} from "./landingSideShelves";
+} from "./landingSideShelfLayout";
 
 // The gap between books on a side shelf, which a leaning book's offset already covers.
 const BOOK_GAP = 2;

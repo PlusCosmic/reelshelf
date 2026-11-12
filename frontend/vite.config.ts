@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { URL, fileURLToPath } from "node:url";
 import { defineConfig, type Plugin, type ProxyOptions } from "vite";
 import viteReact from "@vitejs/plugin-react";
@@ -131,5 +132,10 @@ export default defineConfig({
       "/api": apiProxy,
       "/auth": apiProxy,
     },
+  },
+  test: {
+    // Node 25 and later give every process its own localStorage, which hides jsdom's in tests that
+    // use one (and is undefined without --localstorage-file), so the test workers turn it off.
+    execArgv: ["--no-experimental-webstorage"],
   },
 });
