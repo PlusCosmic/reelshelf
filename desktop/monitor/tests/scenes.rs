@@ -1,6 +1,6 @@
 //! The headless checks, in the uploader's style: every scene renders light and dark (to `$REELSHELF_RENDERS`, else a
 //! folder under the target directory, at `REELSHELF_RENDER_SCALE`, 2 by default), shows only words from `copy.rs`,
-//! Grafana's data or numbers with their units, and names every control.
+//! Reelshelf's or Grafana's data, or numbers with their units, and names every control.
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use chrono::FixedOffset;
 use reelshelf_app::theme;
 use reelshelf_monitor::grafana::query;
+use reelshelf_monitor::session::Session;
 use reelshelf_monitor::state::{Load, Monitor};
 use reelshelf_monitor::{fixtures, ui};
 use regex::Regex;
@@ -63,9 +64,35 @@ fn catalogue() -> (HashSet<String>, Vec<Regex>) {
     (exact, patterns)
 }
 
-/// What Grafana says in a scene: dashboard, folder, panel and series names.
+/// Every string in a JSON answer.
+fn strings(value: &Value, into: &mut HashSet<String>) {
+    match value {
+        Value::String(s) => {
+            into.insert(s.clone());
+        }
+        Value::Array(items) => items.iter().for_each(|v| strings(v, into)),
+        Value::Object(map) => map.values().for_each(|v| strings(v, into)),
+        _ => {}
+    }
+}
+
+/// What Reelshelf and Grafana say in a scene: usernames, queue, trigger, pool and model names, errors and clip ids;
+/// dashboard, folder, panel and series names.
 fn data(s: &Monitor) -> HashSet<String> {
     let mut words = HashSet::new();
+    for json in [
+        fixtures::OPS_STORAGE,
+        fixtures::OPS_TRANSCODING,
+        fixtures::OPS_AI,
+        fixtures::ME,
+    ] {
+        strings(&serde_json::from_str(json).unwrap(), &mut words);
+    }
+    // What the person typed.
+    words.insert(s.grafana_form.url.text.clone());
+    if let Session::Waiting(pending) = &s.session {
+        words.insert(pending.shown_code());
+    }
     if let Load::Ready(hits) = &s.list {
         for h in hits {
             words.insert(h.title.clone());
@@ -90,7 +117,7 @@ fn data(s: &Monitor) -> HashSet<String> {
 /// (`Tue 12 Nov, 09:48`).
 fn is_number_or_time(words: &str) -> bool {
     let number = Regex::new(
-        r"^[-$]?[\d.]+ ?(%|req/s|ops/s|µs|ms|s|min|hour|day|K|M|B|T|B/s|KiB|MiB|GiB|TiB|PiB|kB|MB|GB|TB|PB|KiB/s|MiB/s)?$",
+        r"^[-$]?[\d.,]+ ?(%|req/s|ops/s|µs|ms|s|min|hour|day|K|M|B|T|B/s|KiB|MiB|GiB|TiB|PiB|kB|MB|GB|TB|PB|KiB/s|MiB/s)?$",
     )
     .unwrap();
     let time =
@@ -192,6 +219,92 @@ fn every_control_has_a_role_and_a_name() {
             assert!(!label.trim().is_empty(), "{name}: a {role} without a name: {control}");
         }
     }
+}
+
+fn keys(rt: &Runtime<Monitor>) -> HashSet<String> {
+    rt.elements().into_iter().filter_map(|e| e.key).collect()
+}
+
+fn texts(rt: &Runtime<Monitor>) -> Vec<String> {
+    rt.elements().into_iter().filter_map(|e| e.text).collect()
+}
+
+#[test]
+fn the_overview_calls_out_what_needs_attention() {
+    let rt = runtime("overview", false);
+    let shown = texts(&rt);
+    for line in [
+        "3 transcode failed in the last hour",
+        "1 transcode running with no worker",
+        "Oldest transcode has waited 18 min",
+        "2 legend detection automatic failed in the last hour",
+    ] {
+        assert!(shown.iter().any(|t| t == line), "{line:?} in {shown:?}");
+    }
+    // Storage has a store and nothing failing.
+    assert!(shown.iter().any(|t| t == "Nothing needs attention."));
+    let keys = keys(&rt);
+    for section in ["Storage", "Transcoding", "AiPipelines"] {
+        assert!(keys.contains(&format!("card-{section}")), "{section}");
+    }
+}
+
+#[test]
+fn each_section_shows_its_answer() {
+    let storage = texts(&runtime("storage", false));
+    for words in [
+        "marlowe",
+        "reelshelf-clips",
+        "S3-compatible",
+        "Unlimited",
+        "48,213",
+        "2.11 TiB",
+    ] {
+        assert!(
+            storage.iter().any(|t| t == words),
+            "storage shows {words:?}: {storage:?}"
+        );
+    }
+    let transcoding = runtime("transcoding", false);
+    let shown = texts(&transcoding);
+    for words in [
+        "7e2b9c41-5d03-4a8f-b6e1-2c9d0f3a8b11",
+        "batch",
+        "4 of 4",
+        "18,402",
+        "Not counted",
+    ] {
+        assert!(
+            shown.iter().any(|t| t == words),
+            "transcoding shows {words:?}: {shown:?}"
+        );
+    }
+    assert!(keys(&transcoding).contains("failure-0-copy"));
+    let ai = texts(&runtime("ai", false));
+    for words in ["Legend detection", "claude-sonnet-5-5", "$183.90", "–"] {
+        assert!(ai.iter().any(|t| t == words), "ai shows {words:?}: {ai:?}");
+    }
+}
+
+#[test]
+fn copying_a_clip_id_says_so() {
+    let rt = runtime("transcoding-copied", false);
+    assert!(texts(&rt).iter().any(|t| t == "Copied"));
+}
+
+#[test]
+fn signing_in_shows_the_code_and_refusals_say_why() {
+    let shown = texts(&runtime("signing-in", false));
+    assert!(shown.iter().any(|t| t == "BCDF-GHJK"), "{shown:?}");
+    assert!(shown.iter().any(|t| t.contains("reelshelf.app/device")), "{shown:?}");
+    let shown = texts(&runtime("not-admin", false));
+    assert!(shown.iter().any(|t| t == "Only Admins can see this"));
+    let shown = texts(&runtime("flag-off", false));
+    assert!(shown.iter().any(|t| t == "The ops monitor isn't on for this account"));
+    let shown = texts(&runtime("update-required", false));
+    assert!(shown.iter().any(|t| t == "Update the monitor"));
+    let shown = texts(&runtime("signed-out-revoked", false));
+    assert!(shown.iter().any(|t| t.starts_with("This Mac was signed out")));
 }
 
 #[test]

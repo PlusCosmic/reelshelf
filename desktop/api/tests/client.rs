@@ -574,3 +574,101 @@ async fn a_part_storage_refuses_or_sends_no_etag_for_fails() {
         .unwrap_err();
     assert!(matches!(error, ApiError::MissingEtag), "{error:?}");
 }
+
+fn monitor(server: &MockServer) -> ApiClient {
+    let client = ApiClient::for_app(reqwest::Client::new(), ClientApp::Monitor, &server.uri(), VERSION);
+    client.set_token(Some(TOKEN.to_owned()));
+    client
+}
+
+#[tokio::test]
+async fn the_monitor_signs_in_as_the_monitor() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/devices/authorize"))
+        .and(header(CLIENT_HEADER, "monitor/1.2.3"))
+        .and(body_json(json!({ "device_name": "Studio Mac", "client": "monitor" })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "device_code": "dc", "user_code": "BCDFGHJK", "verification_uri": "https://reelshelf.app/device",
+            "verification_uri_complete": "https://reelshelf.app/device?code=BCDF-GHJK", "interval": 5, "expires_in": 600
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let monitor = ApiClient::for_app(reqwest::Client::new(), ClientApp::Monitor, &server.uri(), VERSION);
+    monitor.authorize_device("Studio Mac").await.unwrap();
+}
+
+#[tokio::test]
+async fn the_monitor_reads_the_ops_numbers() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/admin/ops/transcoding"))
+        .and(header(CLIENT_HEADER, "monitor/1.2.3"))
+        .and(header("authorization", format!("Bearer {TOKEN}").as_str()))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "generated_at": "2026-11-12T09:00:00Z",
+            "types": [{
+                "name": "transcode", "pending": 3, "retrying": 1, "running": 2, "stale_running": 0,
+                "oldest_pending_age_seconds": 42.5,
+                "last_hour": { "succeeded": 10, "failed": 1, "exhausted": 0 },
+                "last_day": { "succeeded": 200, "failed": 4, "exhausted": 1 }
+            }],
+            "recent_failures": [{
+                "run_id": "00000000-0000-0000-0000-000000000001", "clip_id": "00000000-0000-0000-0000-000000000002",
+                "type": "transcode", "error": "ffmpeg exited 1", "attempts": 3, "finished_at": null
+            }],
+            "overflow": { "enabled": true, "max_tasks": 10, "running": null,
+                "pools": [{ "name": "ecs", "max_tasks": 4, "running": null }] },
+            "aac_backfill": { "enabled": false, "remaining": 12 }
+        })))
+        .mount(&server)
+        .await;
+
+    let ops = monitor(&server).ops_transcoding().await.unwrap();
+    assert_eq!(ops.types[0].oldest_pending_age_seconds, 42.5);
+    assert_eq!(ops.recent_failures[0].job_type, "transcode");
+    assert_eq!(ops.overflow.pools[0].running, None);
+}
+
+#[tokio::test]
+async fn ops_answers_the_flag_and_permission_refusals_apart() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/admin/ops/storage"))
+        .respond_with(ResponseTemplate::new(404))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/admin/ops/ai"))
+        .respond_with(ResponseTemplate::new(403))
+        .mount(&server)
+        .await;
+    let client = monitor(&server);
+    assert!(matches!(client.ops_storage().await, Err(ApiError::NotFound(_))));
+    assert!(matches!(client.ops_ai().await, Err(ApiError::Forbidden(_))));
+}
+
+#[tokio::test]
+async fn admin_reads_send_their_queries_only_when_given() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/admin/accounts"))
+        .and(query_param("query", "ada"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/admin/reports"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let client = monitor(&server);
+    assert!(client.find_accounts(Some("ada")).await.unwrap().is_empty());
+    assert!(client.content_reports(None).await.unwrap().is_empty());
+    let requests = server.received_requests().await.unwrap();
+    assert_eq!(requests[1].url.query(), None);
+}

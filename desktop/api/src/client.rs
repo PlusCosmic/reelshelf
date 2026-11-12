@@ -11,13 +11,33 @@ use uuid::Uuid;
 use crate::endpoints::{self, Endpoint};
 use crate::error::ApiError;
 use crate::types::{
-    AccountPlan, CompleteUploadRequest, CompletedUpload, CreateClipResponse, CreateVideoQuery, DeviceAuthorization,
-    DeviceAuthorizeRequest, DeviceTokenErrorBody, DeviceTokenErrorCode, DeviceTokenPoll, DeviceTokenRequest,
-    GameCategory, ListUploadPartsQuery, PresignUploadPartsRequest, PresignedUploadParts, UploadedParts,
+    AccountPlan, AdminAccount, AdminContentReport, CompleteUploadRequest, CompletedUpload, CreateClipResponse,
+    CreateVideoQuery, CurrentUser, DeviceAuthorization, DeviceAuthorizeRequest, DeviceTokenErrorBody,
+    DeviceTokenErrorCode, DeviceTokenPoll, DeviceTokenRequest, FeatureFlags, FindAdminAccountsQuery, GameCategory,
+    ListContentReportsQuery, ListUploadPartsQuery, OpsAi, OpsStorage, OpsTranscoding, PresignUploadPartsRequest,
+    PresignedUploadParts, UploadedParts,
 };
 
 /// The header naming the app and its version, which the API's version gate reads.
 pub const CLIENT_HEADER: &str = "X-Reelshelf-Client";
+
+/// Which app a client calls as: the name `X-Reelshelf-Client` and a device sign-in's `client` carry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClientApp {
+    /// The Windows uploader, the default the API assumes when a sign-in names no app.
+    Uploader,
+    /// The macOS monitor app, whose device token alone reaches the admin and ops endpoints.
+    Monitor,
+}
+
+impl ClientApp {
+    pub fn name(self) -> &'static str {
+        match self {
+            ClientApp::Uploader => "uploader",
+            ClientApp::Monitor => "monitor",
+        }
+    }
+}
 
 /// How long an API call may take.
 const API_TIMEOUT: Duration = Duration::from_secs(120);
@@ -25,10 +45,12 @@ const API_TIMEOUT: Duration = Duration::from_secs(120);
 const PART_TIMEOUT: Duration = Duration::from_secs(600);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Calls the Reelshelf API as the uploader. Every API request carries `X-Reelshelf-Client: uploader/<version>` and,
-/// while there is one, `Authorization: Bearer <token>`. Part PUTs to presigned URLs carry neither.
+/// Calls the Reelshelf API as the uploader (or, made with [`ApiClient::for_app`], another app). Every API request
+/// carries `X-Reelshelf-Client: <app>/<version>` and, while there is one, `Authorization: Bearer <token>`. Part PUTs to
+/// presigned URLs carry neither.
 pub struct ApiClient {
     http: reqwest::Client,
+    app: ClientApp,
     base_url: String,
     client_name: HeaderValue,
     token: RwLock<Option<String>>,
@@ -57,10 +79,20 @@ impl ApiClient {
     ///
     /// When `version` can't go in a header (it holds a control character).
     pub fn with_http(http: reqwest::Client, base_url: &str, version: &str) -> Self {
-        let client_name = HeaderValue::from_str(&format!("uploader/{version}"))
-            .expect("the uploader's version is a valid header value");
+        Self::for_app(http, ClientApp::Uploader, base_url, version)
+    }
+
+    /// A client calling as `app`.
+    ///
+    /// # Panics
+    ///
+    /// When `version` can't go in a header (it holds a control character).
+    pub fn for_app(http: reqwest::Client, app: ClientApp, base_url: &str, version: &str) -> Self {
+        let client_name = HeaderValue::from_str(&format!("{}/{version}", app.name()))
+            .expect("the app's version is a valid header value");
         Self {
             http,
+            app,
             base_url: base_url.trim_end_matches('/').to_owned(),
             client_name,
             token: RwLock::new(None),
@@ -82,8 +114,10 @@ impl ApiClient {
 
     /// `POST /api/devices/authorize`: starts a sign-in for this device.
     pub async fn authorize_device(&self, device_name: &str) -> Result<DeviceAuthorization, ApiError> {
+        // The uploader names no app, as it always has; the API takes that as the uploader.
         let body = DeviceAuthorizeRequest {
             device_name: device_name.to_owned(),
+            client: (self.app != ClientApp::Uploader).then(|| self.app.name().to_owned()),
         };
         self.call_json(&endpoints::AUTHORIZE_DEVICE, &[], |request| request.json(&body))
             .await
@@ -123,6 +157,51 @@ impl ApiClient {
     /// `GET /api/me/plan`: the account's plan.
     pub async fn plan(&self) -> Result<AccountPlan, ApiError> {
         self.call_json(&endpoints::GET_MY_PLAN, &[], |request| request).await
+    }
+
+    /// `GET /api/me`: the signed-in account.
+    pub async fn me(&self) -> Result<CurrentUser, ApiError> {
+        self.call_json(&endpoints::GET_ME, &[], |request| request).await
+    }
+
+    /// `GET /api/me/features`: the feature flags on for the account.
+    pub async fn features(&self) -> Result<FeatureFlags, ApiError> {
+        self.call_json(&endpoints::GET_MY_FEATURES, &[], |request| request)
+            .await
+    }
+
+    /// `GET /api/admin/ops/storage`: clips and bytes by tier and account, exports, and the object store.
+    pub async fn ops_storage(&self) -> Result<OpsStorage, ApiError> {
+        self.call_json(&endpoints::GET_OPS_STORAGE, &[], |request| request)
+            .await
+    }
+
+    /// `GET /api/admin/ops/transcoding`: the transcode queue by job type, its failures, the overflow pools and the
+    /// AAC backfill.
+    pub async fn ops_transcoding(&self) -> Result<OpsTranscoding, ApiError> {
+        self.call_json(&endpoints::GET_OPS_TRANSCODING, &[], |request| request)
+            .await
+    }
+
+    /// `GET /api/admin/ops/ai`: the AI run queues, their failures and spend by model.
+    pub async fn ops_ai(&self) -> Result<OpsAi, ApiError> {
+        self.call_json(&endpoints::GET_OPS_AI, &[], |request| request).await
+    }
+
+    /// `GET /api/admin/accounts?query=`: accounts matching a name or id (the most recent ones without a query).
+    pub async fn find_accounts(&self, query: Option<&str>) -> Result<Vec<AdminAccount>, ApiError> {
+        let query = FindAdminAccountsQuery {
+            query: query.map(str::to_owned),
+        };
+        self.call_json(&endpoints::FIND_ADMIN_ACCOUNTS, &[], |request| request.query(&query))
+            .await
+    }
+
+    /// `GET /api/admin/reports?resolved=`: content reports, open ones unless `resolved`.
+    pub async fn content_reports(&self, resolved: Option<bool>) -> Result<Vec<AdminContentReport>, ApiError> {
+        let query = ListContentReportsQuery { resolved };
+        self.call_json(&endpoints::LIST_CONTENT_REPORTS, &[], |request| request.query(&query))
+            .await
     }
 
     /// `CreateVideo`: reserves a clip for a file in the book and answers where its upload goes.

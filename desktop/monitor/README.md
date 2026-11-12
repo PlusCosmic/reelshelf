@@ -1,25 +1,51 @@
-# Reelshelf Monitor (spike)
+# Reelshelf Monitor
 
-A Mac app, drawn with Rune, that will show everything about Reelshelf in one place. For now only **Dashboards**
-works: it lists Grafana's dashboards and draws one natively, its panels placed by their grid positions, with a time
-range picker (1h, 6h, 24h, 7d) and Refresh. The other sections in the sidebar are placeholders.
+A Mac app, drawn with Rune, that shows everything about Reelshelf in one place. It signs in to Reelshelf as the
+**monitor** (a device token only Admins' monitor tokens can use on the admin and ops endpoints) and shows:
 
-It talks only to Grafana: `/api/search`, `/api/dashboards/uid/{uid}`, and each panel's targets through
-`POST /api/ds/query` with the dashboard's variables written in, so Grafana runs every query. Time series and stat
-panels on Prometheus are drawn; any other panel (tables, Cloud Monitoring, BigQuery, Infinity) shows a card that opens
-it in Grafana.
+- **Overview**: a card per section with its headline numbers and, in red, what needs attention: failures in the last
+  hour, running jobs whose worker went quiet, a pending job waiting over 10 minutes, no object store configured.
+- **Storage**: totals, the object store in use, clips by tier, the top accounts and exports (`GET /api/admin/ops/storage`).
+- **Transcoding**: the queue by job type, the overflow pools, the AAC backfill and the last failures, each clip id
+  copyable (`GET /api/admin/ops/transcoding`).
+- **AI pipelines**: each run queue by trigger, its last failures, and spend by model over 24 hours and 30 days
+  (`GET /api/admin/ops/ai`).
+- **Dashboards**: Grafana's dashboards drawn natively (below).
+- **Settings**: the account it is signed in as, Sign out, and Grafana's address and token.
+
+Costs, Releases and Admin are placeholders. The section showing is read again every 30 seconds (and on Refresh); the
+API caches each answer for 15 seconds.
+
+## Signing in
+
+Sign in starts the device flow (`POST /api/devices/authorize` with `client: "monitor"`), shows the code and opens
+`/device` on it, and polls `/api/devices/token` until the code is approved there. The `rsd_` token goes to the login
+Keychain (service `app.reelshelf.monitor`, one item per site, so a debug build pointed at dev keeps its own) and nowhere
+else; on Linux, where CI runs the tests, it is kept in memory. Sign out is `DELETE /api/devices/current`; removing the
+device in Settings → Devices on the site signs it out too.
+
+Every request carries `X-Reelshelf-Client: monitor/<version>`. A 401 signs the app out, a 426 asks for an update, and
+the ops sections say why they can't show when the API answers 404 (the `ops-monitor` flag is off for the account) or
+403 (the account isn't an Admin).
 
 ## Run it
 
-Grafana is reachable on the tailnet only. Give the app its address and a Viewer service account token:
-
 ```sh
 cd desktop
-GRAFANA_URL=http://<tailscale host>:3020 GRAFANA_TOKEN=<token> cargo run -p reelshelf-monitor
+cargo run -p reelshelf-monitor
 ```
 
-Without Grafana, `REELSHELF_MONITOR_FIXTURES=1` shows the fixture dashboards with made-up data
-(`REELSHELF_MONITOR_SCENE=dashboard-api`, `dashboard-pipeline`, `dashboard-hover` or `dashboards`).
+Release builds use `https://reelshelf.app`; debug builds read `REELSHELF_API_BASE_URL` (a local API, say) first.
+
+`REELSHELF_MONITOR_SIGN_IN=1` starts signing in at launch, as Sign in does.
+`REELSHELF_MONITOR_SECTION` (`storage`, `transcoding`, `ai-pipelines`, ...) opens on that section; with Rune's
+`--snap file.png --theme dark --at 6` it renders the live window once it has read its numbers.
+
+Grafana is reachable on the tailnet only. Enter its address and a Viewer service account token once in Settings; both
+are kept in the Keychain. Debug builds still take `GRAFANA_URL` and `GRAFANA_TOKEN` from the environment first.
+
+Without Reelshelf or Grafana, `REELSHELF_MONITOR_FIXTURES=1` shows a fixture scene (`REELSHELF_MONITOR_SCENE`: one of
+`fixtures::SCENES`, such as `overview`, `transcoding`, `signing-in` or `dashboard-pipeline`).
 
 To render one real dashboard headless (for screenshots, without the window):
 
@@ -31,14 +57,19 @@ GRAFANA_URL=… GRAFANA_TOKEN=… cargo run -p reelshelf-monitor --example snap 
 (the dashboard's uid, the range, and optionally a panel title and the pointer's x for the hover readout; everything
 after the second `--` goes to Rune).
 
-The token is read once and only sent to Grafana; the app never logs or shows it.
+Tokens are only ever sent to the service they belong to; the app never logs or shows them.
 
 ## Layout
 
+- `src/session.rs`: signing in and what refusals mean, over the `MonitorApi` trait (`reelshelf-api`'s `ApiClient`, or a
+  fake in its tests); `src/secrets.rs`: the Keychain; `src/fetch.rs`: every call off the UI thread, and the 30 s poll.
+- `src/ui/`: a page per section (`overview.rs`, `storage.rs`, `transcoding.rs`, `ai.rs`, `settings.rs`, `sign_in.rs`)
+  from the parts in `parts.rs`; `src/alerts.rs`: what needs attention.
 - `src/grafana/`: the client (`client.rs`), dashboards (`model.rs`), query bodies and variables (`query.rs`) and data
   frames (`frames.rs`), plain Rust with unit tests on `tests/fixtures/` (trimmed copies of the real dashboards).
 - `src/ui/chart.rs`: the time series chart (several series, time axis, units, legend, hover crosshair and readout) and
   the stat, on Rune's canvas.
 - `src/copy.rs`: every word the app shows.
 - The theme is the uploader's (`reelshelf_app::theme`, the site's tokens); its `chart-1`..`chart-8` colour the series.
-- `tests/scenes.rs` renders every scene light and dark and checks the words and controls, as the uploader's does.
+- `tests/scenes.rs` renders every scene light and dark from the fixture answers (`tests/fixtures/ops-*.json`) and
+  checks the words and controls, as the uploader's does.

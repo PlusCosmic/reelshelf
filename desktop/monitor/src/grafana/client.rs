@@ -54,6 +54,11 @@ impl Client {
         &self.base
     }
 
+    /// The token, to keep it when only the address changes; never shown or logged.
+    pub fn token(&self) -> &str {
+        &self.token
+    }
+
     async fn send(&self, request: reqwest::RequestBuilder) -> Result<String, Error> {
         let response = request
             .header(AUTHORIZATION, format!("Bearer {}", self.token))

@@ -1,0 +1,54 @@
+{
+  "generated_at": "2024-11-12T13:59:42Z",
+  "types": [
+    {
+      "name": "transcode", "pending": 14, "retrying": 2, "running": 6, "stale_running": 1,
+      "oldest_pending_age_seconds": 1123.4,
+      "last_hour": { "succeeded": 212, "failed": 3, "exhausted": 1 },
+      "last_day": { "succeeded": 4120, "failed": 19, "exhausted": 4 }
+    },
+    {
+      "name": "trim", "pending": 0, "retrying": 0, "running": 1, "stale_running": 0,
+      "oldest_pending_age_seconds": 0,
+      "last_hour": { "succeeded": 9, "failed": 0, "exhausted": 0 },
+      "last_day": { "succeeded": 141, "failed": 0, "exhausted": 0 }
+    },
+    {
+      "name": "audio", "pending": 8, "retrying": 0, "running": 2, "stale_running": 0,
+      "oldest_pending_age_seconds": 74.2,
+      "last_hour": { "succeeded": 58, "failed": 0, "exhausted": 0 },
+      "last_day": { "succeeded": 1290, "failed": 2, "exhausted": 0 }
+    },
+    {
+      "name": "thumbnails", "pending": 0, "retrying": 0, "running": 0, "stale_running": 0,
+      "oldest_pending_age_seconds": 0,
+      "last_hour": { "succeeded": 0, "failed": 0, "exhausted": 0 },
+      "last_day": { "succeeded": 12, "failed": 0, "exhausted": 0 }
+    }
+  ],
+  "recent_failures": [
+    {
+      "run_id": "11a3c5e7-0b2d-4f6a-8c9e-1d3f5a7b9c01", "clip_id": "7e2b9c41-5d03-4a8f-b6e1-2c9d0f3a8b11",
+      "type": "transcode", "error": "ffmpeg exited with signal 9 (SIGKILL) during the encode",
+      "attempts": 3, "finished_at": "2024-11-12T13:41:08Z"
+    },
+    {
+      "run_id": "22b4d6f8-1c3e-4a7b-9d0f-2e4a6b8c0d02", "clip_id": "0c4f7a12-8e3b-4d59-a1c6-9b2e5f0d7a22",
+      "type": "transcode", "error": "The source has no video stream", "attempts": 1,
+      "finished_at": "2024-11-12T13:12:55Z"
+    },
+    {
+      "run_id": "33c5e7a9-2d4f-4b8c-0e1a-3f5b7c9d1e03", "clip_id": "b5d8e3f0-1a6c-4e27-8f94-3d0c6a2b9e33",
+      "type": "audio", "error": null, "attempts": 3, "finished_at": "2024-11-11T22:07:31Z"
+    }
+  ],
+  "overflow": {
+    "enabled": true, "max_tasks": 10, "running": 5,
+    "pools": [
+      { "name": "ecs", "max_tasks": 4, "running": 4 },
+      { "name": "batch", "max_tasks": 6, "running": 1 },
+      { "name": "ec2", "max_tasks": 0, "running": null }
+    ]
+  },
+  "aac_backfill": { "enabled": true, "remaining": 18402 }
+}

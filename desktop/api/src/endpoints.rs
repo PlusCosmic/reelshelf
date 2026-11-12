@@ -92,6 +92,55 @@ pub const COMPLETE_UPLOAD: Endpoint = Endpoint {
     path: "/api/clips/videos/{clipId}/upload/complete",
 };
 
+/// `GET /api/me`: the signed-in account.
+pub const GET_ME: Endpoint = Endpoint {
+    operation_id: "GetMe",
+    method: Method::GET,
+    path: "/api/me",
+};
+
+/// `GET /api/me/features`: the feature flags on for the account.
+pub const GET_MY_FEATURES: Endpoint = Endpoint {
+    operation_id: "GetMyFeatures",
+    method: Method::GET,
+    path: "/api/me/features",
+};
+
+/// `GET /api/admin/ops/storage`: storage by tier and account (Admins, `ops-monitor`).
+pub const GET_OPS_STORAGE: Endpoint = Endpoint {
+    operation_id: "GetOpsStorage",
+    method: Method::GET,
+    path: "/api/admin/ops/storage",
+};
+
+/// `GET /api/admin/ops/transcoding`: the transcode queue (Admins, `ops-monitor`).
+pub const GET_OPS_TRANSCODING: Endpoint = Endpoint {
+    operation_id: "GetOpsTranscoding",
+    method: Method::GET,
+    path: "/api/admin/ops/transcoding",
+};
+
+/// `GET /api/admin/ops/ai`: the AI run queues and spend (Admins, `ops-monitor`).
+pub const GET_OPS_AI: Endpoint = Endpoint {
+    operation_id: "GetOpsAi",
+    method: Method::GET,
+    path: "/api/admin/ops/ai",
+};
+
+/// `GET /api/admin/accounts`: finds accounts (Admins).
+pub const FIND_ADMIN_ACCOUNTS: Endpoint = Endpoint {
+    operation_id: "FindAdminAccounts",
+    method: Method::GET,
+    path: "/api/admin/accounts",
+};
+
+/// `GET /api/admin/reports`: content reports (Admins).
+pub const LIST_CONTENT_REPORTS: Endpoint = Endpoint {
+    operation_id: "ListContentReports",
+    method: Method::GET,
+    path: "/api/admin/reports",
+};
+
 /// Every endpoint the client calls.
 pub const ALL: &[Endpoint] = &[
     AUTHORIZE_DEVICE,
@@ -104,4 +153,11 @@ pub const ALL: &[Endpoint] = &[
     PRESIGN_UPLOAD_PARTS,
     LIST_UPLOAD_PARTS,
     COMPLETE_UPLOAD,
+    GET_ME,
+    GET_MY_FEATURES,
+    GET_OPS_STORAGE,
+    GET_OPS_TRANSCODING,
+    GET_OPS_AI,
+    FIND_ADMIN_ACCOUNTS,
+    LIST_CONTENT_REPORTS,
 ];
