@@ -13,7 +13,11 @@ const mocks = vi.hoisted(() => ({
   request: {
     isLoading: false,
     isError: false,
-    data: null as { deviceName: string; expiresAt: Date } | null,
+    data: null as {
+      deviceName: string;
+      expiresAt: Date;
+      client: string;
+    } | null,
   },
   decide: vi.fn<Decide>(),
 }));
@@ -33,11 +37,11 @@ afterEach(() => {
   mocks.request = { isLoading: false, isError: false, data: null };
 });
 
-function pending() {
+function pending(client = "uploader", deviceName = "Gaming PC") {
   mocks.request = {
     isLoading: false,
     isError: false,
-    data: { deviceName: "Gaming PC", expiresAt: new Date() },
+    data: { deviceName, expiresAt: new Date(), client },
   };
 }
 
@@ -47,6 +51,7 @@ describe("DeviceApproval", () => {
     render(<DeviceApproval code="KDRW-TPLM" onCode={vi.fn()} />);
 
     expect(screen.getByText("Sign in a device")).toBeTruthy();
+    expect(screen.getByText("Reelshelf uploader for Windows")).toBeTruthy();
     expect(
       screen.getByRole("heading", {
         name: 'Let "Gaming PC" add clips to your library?',
@@ -56,6 +61,20 @@ describe("DeviceApproval", () => {
     expect(screen.getByText(/Check this matches the code/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Allow" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Don't allow" })).toBeTruthy();
+  });
+
+  it("says when the monitor app is asking, and what it can do", () => {
+    pending("monitor", "Studio Mac");
+    render(<DeviceApproval code="KDRW-TPLM" onCode={vi.fn()} />);
+
+    expect(screen.getByText("Reelshelf Monitor for Mac")).toBeTruthy();
+    expect(
+      screen.getByRole("heading", {
+        name: 'Let "Studio Mac" see Reelshelf\'s admin pages?',
+      }),
+    ).toBeTruthy();
+    expect(screen.getByText(/While your account is an Admin/)).toBeTruthy();
+    expect(screen.queryByText(/add clips to your library/)).toBeNull();
   });
 
   it("says when a code matches no sign-in", () => {

@@ -49,6 +49,7 @@ public class DeviceSignInTests
         Assert.Equal(HttpStatusCode.OK, shown.StatusCode);
         using JsonDocument request = JsonDocument.Parse(await shown.Content.ReadAsStringAsync());
         Assert.Equal("Gaming PC", request.RootElement.GetProperty("device_name").GetString());
+        Assert.Equal("uploader", request.RootElement.GetProperty("client").GetString());
         Assert.True(request.RootElement.TryGetProperty("expires_at", out _));
 
         using HttpResponseMessage approve = await api.SendAsync(HttpMethod.Post,
@@ -205,6 +206,8 @@ public class DeviceSignInTests
         {
             Assert.True(gamingPc.TryGetProperty(field, out _), field);
         }
+
+        Assert.Equal("uploader", gamingPc.GetProperty("client").GetString());
 
         string id = gamingPc.GetProperty("id").GetString()!;
         using HttpResponseMessage strangers = await api.SendAsync(HttpMethod.Delete, $"/api/me/devices/{id}",

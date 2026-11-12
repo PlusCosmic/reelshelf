@@ -5,10 +5,13 @@ using Npgsql;
 namespace Reelshelf.Devices;
 
 /// <summary>A sign-in request as <c>/device</c> shows it.</summary>
-public sealed record DeviceAuthorizationRequest(string DeviceName, DateTimeOffset ExpiresAt);
+/// <param name="Client">The app asking: <c>uploader</c> or <c>monitor</c> (<see cref="DeviceClients"/>).</param>
+public sealed record DeviceAuthorizationRequest(string DeviceName, DateTimeOffset ExpiresAt, string Client);
 
 /// <summary>A device signed in to the account, as Settings → Devices lists it.</summary>
-public sealed record DeviceSummary(Guid Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset LastUsedAt);
+/// <param name="Client">The app it signed in: <c>uploader</c> or <c>monitor</c> (<see cref="DeviceClients"/>).</param>
+public sealed record DeviceSummary(Guid Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset LastUsedAt,
+    string Client);
 
 /// <summary>What deciding a sign-in request did.</summary>
 public enum DeviceDecisionOutcome
@@ -39,6 +42,7 @@ public sealed class DeviceTokenRow
     public Guid AppUserId { get; set; }
     public DateTimeOffset LastUsedAt { get; set; }
     public string? ClientVersion { get; set; }
+    public string Client { get; set; } = DeviceClients.Uploader;
 }
 
 /// <summary>The device sign-in tables (V63): <c>device_authorization</c> and <c>device_token</c>.</summary>
@@ -49,15 +53,15 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
     /// request answers false and the caller draws another; an expired request holding it is deleted first.
     /// </summary>
     public async Task<bool> TryCreateAuthorization(Guid id, byte[] deviceCodeHash, string userCode, string deviceName,
-        TimeSpan lifetime)
+        string client, TimeSpan lifetime)
     {
         await connection.ExecuteAsync(
             "DELETE FROM device_authorization WHERE user_code = @userCode AND expires_at <= now()", new { userCode });
         return await connection.ExecuteAsync("""
-            INSERT INTO device_authorization (id, device_code_hash, user_code, device_name, expires_at)
-            VALUES (@id, @deviceCodeHash, @userCode, @deviceName, now() + @lifetime)
+            INSERT INTO device_authorization (id, device_code_hash, user_code, device_name, client, expires_at)
+            VALUES (@id, @deviceCodeHash, @userCode, @deviceName, @client, now() + @lifetime)
             ON CONFLICT (user_code) DO NOTHING
-            """, new { id, deviceCodeHash, userCode, deviceName, lifetime }) == 1;
+            """, new { id, deviceCodeHash, userCode, deviceName, client, lifetime }) == 1;
     }
 
     /// <summary>A live, undecided request by its stored user code, or null.</summary>
@@ -66,7 +70,7 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
         AuthorizationRow? row = await FindLive(userCode);
         return row is null || row.AppUserId is not null || row.DeniedAt is not null
             ? null
-            : new DeviceAuthorizationRequest(row.DeviceName, row.ExpiresAt);
+            : new DeviceAuthorizationRequest(row.DeviceName, row.ExpiresAt, row.Client);
     }
 
     /// <summary>Approves a live request for <paramref name="userId"/>, or denies it when the user is null.</summary>
@@ -100,7 +104,7 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
         await OpenAsync();
         await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
         PollRow? row = await connection.QuerySingleOrDefaultAsync<PollRow>("""
-            SELECT id, device_code_hash, device_name, app_user_id, denied_at,
+            SELECT id, device_code_hash, device_name, client, app_user_id, denied_at,
                    expires_at <= now() AS expired,
                    last_polled_at IS NOT NULL AND last_polled_at > now() - @pollInterval AS too_soon
             FROM device_authorization
@@ -136,9 +140,10 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
 
         Guid tokenId = Guid.NewGuid();
         await connection.ExecuteAsync("""
-            INSERT INTO device_token (id, app_user_id, name, token_hash) VALUES (@tokenId, @userId, @name, @tokenHash);
+            INSERT INTO device_token (id, app_user_id, name, client, token_hash)
+            VALUES (@tokenId, @userId, @name, @client, @tokenHash);
             DELETE FROM device_authorization WHERE id = @requestId;
-            """, new { tokenId, userId, name = row.DeviceName, tokenHash, requestId = row.Id }, transaction);
+            """, new { tokenId, userId, name = row.DeviceName, client = row.Client, tokenHash, requestId = row.Id }, transaction);
         await transaction.CommitAsync();
         return (DeviceTokenPollOutcome.Issued, tokenId);
     }
@@ -150,7 +155,7 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
     public async Task<DeviceTokenRow?> FindToken(byte[] tokenHash)
     {
         return await connection.QuerySingleOrDefaultAsync<DeviceTokenRow>("""
-            SELECT t.id, t.app_user_id, t.last_used_at, t.client_version
+            SELECT t.id, t.app_user_id, t.last_used_at, t.client_version, t.client
             FROM device_token t
             JOIN app_user u ON u.id = t.app_user_id
             WHERE t.token_hash = @tokenHash
@@ -171,12 +176,12 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
     public async Task<List<DeviceSummary>> ListDevices(Guid userId)
     {
         return (await connection.QueryAsync<DeviceRow>("""
-            SELECT id, name, created_at, last_used_at
+            SELECT id, name, created_at, last_used_at, client
             FROM device_token
             WHERE app_user_id = @userId AND revoked_at IS NULL
             ORDER BY created_at DESC, id
             """, new { userId }))
-            .Select(row => new DeviceSummary(row.Id, row.Name, row.CreatedAt, row.LastUsedAt))
+            .Select(row => new DeviceSummary(row.Id, row.Name, row.CreatedAt, row.LastUsedAt, row.Client))
             .ToList();
     }
 
@@ -216,7 +221,7 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
     private async Task<AuthorizationRow?> FindLive(string userCode)
     {
         return await connection.QuerySingleOrDefaultAsync<AuthorizationRow>("""
-            SELECT device_name, app_user_id, denied_at, expires_at
+            SELECT device_name, client, app_user_id, denied_at, expires_at
             FROM device_authorization
             WHERE user_code = @userCode AND expires_at > now()
             """, new { userCode });
@@ -233,6 +238,7 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
     private sealed class AuthorizationRow
     {
         public string DeviceName { get; set; } = "";
+        public string Client { get; set; } = DeviceClients.Uploader;
         public Guid? AppUserId { get; set; }
         public DateTimeOffset? DeniedAt { get; set; }
         public DateTimeOffset ExpiresAt { get; set; }
@@ -244,6 +250,7 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
         public string Name { get; set; } = "";
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset LastUsedAt { get; set; }
+        public string Client { get; set; } = DeviceClients.Uploader;
     }
 
     private sealed class PollRow
@@ -251,6 +258,7 @@ public sealed class DeviceStatements(NpgsqlConnection connection)
         public Guid Id { get; set; }
         public byte[] DeviceCodeHash { get; set; } = [];
         public string DeviceName { get; set; } = "";
+        public string Client { get; set; } = DeviceClients.Uploader;
         public Guid? AppUserId { get; set; }
         public DateTimeOffset? DeniedAt { get; set; }
         public bool Expired { get; set; }

@@ -6,7 +6,7 @@ namespace Reelshelf.Ops;
 
 /// <summary>
 /// Read-only operations numbers for the monitor app: storage, the transcode queue and the AI queues. Admins only
-/// (<see cref="Permissions.AdminOps"/>), with the site cookie or a device token, behind the <c>ops-monitor</c> flag.
+/// (<see cref="Permissions.AdminOps"/>), with the site cookie or the monitor app's device token, behind the <c>ops-monitor</c> flag.
 /// </summary>
 public static class OpsEndpoints
 {
@@ -14,7 +14,7 @@ public static class OpsEndpoints
     {
         RouteGroupBuilder group = app.MapGroup("admin/ops")
             .RequireAuthorization()
-            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice)
+            .RequireAuthorization(AuthorizationPolicies.CookieOrMonitorDevice)
             .RequirePermission(Permissions.AdminOps)
             .RequireFeature(FeatureFlagKeys.OpsMonitor);
 

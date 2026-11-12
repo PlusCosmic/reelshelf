@@ -54,7 +54,7 @@ public static class ContentReportEndpoints
         // The monitor app's device token works here too; RequirePermission keeps it to Admins.
         RouteGroupBuilder admin = app.MapGroup("admin/reports")
             .RequireAuthorization()
-            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice)
+            .RequireAuthorization(AuthorizationPolicies.CookieOrMonitorDevice)
             .RequirePermission(Permissions.AdminReports);
 
         admin.MapGet("", ListReports).WithName("ListContentReports");

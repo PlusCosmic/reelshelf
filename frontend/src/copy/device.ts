@@ -23,13 +23,27 @@ export function formatLastUsed(date: Date, now: Date = new Date()) {
   return formatDeviceDate(date);
 }
 
-/** Signing in the desktop uploader on /device, the devices in Settings, and the uploader's links. */
+/** The app a device signed in, as the API names it (`client`): anything it doesn't know reads as the uploader. */
+const isMonitor = (client: string | undefined) => client === "monitor";
+
+/** Signing in the desktop uploader or the monitor app on /device, the devices in Settings, and the uploader's links. */
 export const deviceCopy = {
-  /** /device: approving a sign-in the uploader asked for. */
+  /** /device: approving a sign-in the uploader or the monitor app asked for. */
   approve: {
     eyebrow: "Sign in a device",
-    title: (device: string) => `Let "${device}" add clips to your library?`,
-    body: "Check this matches the code in the Reelshelf app. The device can see your books and add clips to them. It can't change or delete anything else. Remove it any time in Settings → Devices.",
+    /** Which app is asking, above the title. */
+    app: (client: string | undefined) =>
+      isMonitor(client)
+        ? "Reelshelf Monitor for Mac"
+        : "Reelshelf uploader for Windows",
+    title: (device: string, client?: string) =>
+      isMonitor(client)
+        ? `Let "${device}" see Reelshelf's admin pages?`
+        : `Let "${device}" add clips to your library?`,
+    body: (client?: string) =>
+      isMonitor(client)
+        ? "Check this matches the code in Reelshelf Monitor. While your account is an Admin, the Mac can see storage, the queues and AI spend, and use the accounts and reports pages as you. It can't add or change clips. Remove it any time in Settings → Devices."
+        : "Check this matches the code in the Reelshelf app. The device can see your books and add clips to them. It can't change or delete anything else. Remove it any time in Settings → Devices.",
     allow: "Allow",
     deny: "Don't allow",
     working: "Saving…",
@@ -51,8 +65,13 @@ export const deviceCopy = {
     loading: "Loading devices…",
     loadFailed: "Your devices didn't load.",
     empty: "No devices yet.",
-    used: (added: Date, lastUsed: Date, now?: Date) =>
-      `Added ${formatDeviceDate(added)} · last used ${formatLastUsed(lastUsed, now)}`,
+    used: (
+      client: string | undefined,
+      added: Date,
+      lastUsed: Date,
+      now?: Date,
+    ) =>
+      `${isMonitor(client) ? "Monitor" : "Uploader"} · added ${formatDeviceDate(added)} · last used ${formatLastUsed(lastUsed, now)}`,
     remove: "Remove",
     confirm: (device: string) =>
       `Remove ${device}? It stops uploading at once.`,

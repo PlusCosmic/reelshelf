@@ -6651,7 +6651,8 @@
       "DeviceAuthorizationRequest": {
         "required": [
           "device_name",
-          "expires_at"
+          "expires_at",
+          "client"
         ],
         "type": "object",
         "properties": {
@@ -6661,6 +6662,9 @@
           "expires_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "client": {
+            "type": "string"
           }
         }
       },
@@ -6705,6 +6709,12 @@
         "properties": {
           "device_name": {
             "type": "string"
+          },
+          "client": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -6713,7 +6723,8 @@
           "id",
           "name",
           "created_at",
-          "last_used_at"
+          "last_used_at",
+          "client"
         ],
         "type": "object",
         "properties": {
@@ -6731,6 +6742,9 @@
           "last_used_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "client": {
+            "type": "string"
           }
         }
       },

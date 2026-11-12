@@ -43,6 +43,12 @@ export interface DeviceSummary {
    * @memberof DeviceSummary
    */
   lastUsedAt: Date;
+  /**
+   *
+   * @type {string}
+   * @memberof DeviceSummary
+   */
+  client: string;
 }
 
 /**
@@ -54,6 +60,7 @@ export function instanceOfDeviceSummary(value: object): value is DeviceSummary {
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   if (!("lastUsedAt" in value) || value["lastUsedAt"] === undefined)
     return false;
+  if (!("client" in value) || value["client"] === undefined) return false;
   return true;
 }
 
@@ -73,6 +80,7 @@ export function DeviceSummaryFromJSONTyped(
     name: json["name"],
     createdAt: new Date(json["created_at"]),
     lastUsedAt: new Date(json["last_used_at"]),
+    client: json["client"],
   };
 }
 
@@ -93,5 +101,6 @@ export function DeviceSummaryToJSONTyped(
     name: value["name"],
     created_at: value["createdAt"].toISOString(),
     last_used_at: value["lastUsedAt"].toISOString(),
+    client: value["client"],
   };
 }

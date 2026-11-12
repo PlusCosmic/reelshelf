@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Dapper;
+using Reelshelf.Devices;
 using Reelshelf.Test.Devices;
 using Xunit;
 
@@ -22,7 +23,7 @@ public class OpsEndpointsTests
     {
         await using DeviceApi api = await DeviceApi.StartAsync(FlagOn);
         Guid admin = await AddAdminAsync(api);
-        string token = await api.SignInDeviceAsync(admin, "Monitor");
+        string token = await api.SignInDeviceAsync(admin, "Monitor", "monitor");
 
         foreach (string path in OpsPaths)
         {
@@ -38,7 +39,8 @@ public class OpsEndpointsTests
     {
         await using DeviceApi api = await DeviceApi.StartAsync(FlagOn);
         Guid editor = await api.AddUserAsync();
-        string token = await api.SignInDeviceAsync(editor);
+        // Even signed in as the monitor app, the permission keeps a non-Admin out.
+        string token = await api.SignInDeviceAsync(editor, "Monitor", "monitor");
 
         foreach (string path in OpsPaths)
         {
@@ -63,7 +65,7 @@ public class OpsEndpointsTests
         await using DeviceApi api = await DeviceApi.StartAsync(
             new Dictionary<string, string?> { ["FeatureFlags:Overrides:ops-monitor"] = "false" });
         Guid admin = await AddAdminAsync(api);
-        string token = await api.SignInDeviceAsync(admin, "Monitor");
+        string token = await api.SignInDeviceAsync(admin, "Monitor", "monitor");
 
         foreach (string path in OpsPaths)
         {
@@ -84,7 +86,7 @@ public class OpsEndpointsTests
     {
         await using DeviceApi api = await DeviceApi.StartAsync(FlagOn);
         Guid admin = await AddAdminAsync(api);
-        string token = await api.SignInDeviceAsync(admin, "Monitor");
+        string token = await api.SignInDeviceAsync(admin, "Monitor", "monitor");
 
         using (HttpResponseMessage me = await api.SendAsync(HttpMethod.Get, "/api/me", deviceToken: token))
         {
@@ -134,6 +136,89 @@ public class OpsEndpointsTests
             using HttpResponseMessage refused = await api.SendAsync(HttpMethod.Get, path, deviceToken: token);
             Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
         }
+    }
+
+    private static readonly string[] AdminPaths =
+        [.. OpsPaths, "/api/admin/accounts?query=admin", "/api/admin/reports"];
+
+    [PostgresFact]
+    public async Task AnAdminsUploaderToken_IsForbidden_OnEveryAdminGroup()
+    {
+        await using DeviceApi api = await DeviceApi.StartAsync(FlagOn);
+        Guid admin = await AddAdminAsync(api);
+        // The shipped uploader names no client, so its token is the uploader's.
+        string uploader = await api.SignInDeviceAsync(admin);
+        string named = await api.SignInDeviceAsync(admin, "Laptop", "uploader");
+        Assert.Equal(["uploader", "uploader"],
+            await api.Connection.QueryAsync<string>("SELECT client FROM device_token WHERE app_user_id = @admin",
+                new { admin }));
+
+        foreach (string path in AdminPaths)
+        {
+            foreach (string token in new[] { uploader, named })
+            {
+                // The token authenticates, so the policy refuses it with 403, not 401.
+                using HttpResponseMessage refused = await api.SendAsync(HttpMethod.Get, path, deviceToken: token);
+                Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+            }
+        }
+
+        // It still reaches what the uploader and every device may use.
+        foreach (string path in new[] { "/api/me", "/api/me/features", "/api/me/plan", "/api/games/categories" })
+        {
+            using HttpResponseMessage allowed = await api.SendAsync(HttpMethod.Get, path, deviceToken: uploader);
+            Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
+        }
+    }
+
+    [PostgresFact]
+    public async Task ATokenIssuedBeforeClientsExisted_IsTheUploaders()
+    {
+        await using DeviceApi api = await DeviceApi.StartAsync(FlagOn);
+        Guid admin = await AddAdminAsync(api);
+        string token = DeviceCodes.NewToken();
+        // Written as the image before V68 writes it, without the column.
+        await api.Connection.ExecuteAsync("""
+            INSERT INTO device_token (id, app_user_id, name, token_hash) VALUES (@id, @admin, 'Old PC', @hash)
+            """, new { id = Guid.NewGuid(), admin, hash = DeviceCodes.Hash(token) });
+
+        Assert.Equal("uploader", await api.Connection.ExecuteScalarAsync<string>(
+            "SELECT client FROM device_token WHERE app_user_id = @admin", new { admin }));
+        foreach (string path in AdminPaths)
+        {
+            using HttpResponseMessage refused = await api.SendAsync(HttpMethod.Get, path, deviceToken: token);
+            Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        }
+
+        using HttpResponseMessage plan = await api.SendAsync(HttpMethod.Get, "/api/me/plan", deviceToken: token);
+        Assert.Equal(HttpStatusCode.OK, plan.StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task TheMonitorsSignIn_SaysWhichAppIsAsking_AndAnUnknownAppIsRefused()
+    {
+        await using DeviceApi api = await DeviceApi.StartAsync(FlagOn);
+        Guid admin = await AddAdminAsync(api);
+
+        using HttpResponseMessage unknown = await api.SendAsync(HttpMethod.Post, "/api/devices/authorize",
+            json: new { device_name = "Mac", client = "toaster" });
+        Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
+
+        using HttpResponseMessage authorize = await api.SendAsync(HttpMethod.Post, "/api/devices/authorize",
+            json: new { device_name = "Mac", client = "monitor" });
+        Assert.Equal(HttpStatusCode.OK, authorize.StatusCode);
+        using JsonDocument started = await ReadAsync(authorize);
+        string userCode = started.RootElement.GetProperty("user_code").GetString()!;
+
+        using HttpResponseMessage shown = await api.SendAsync(HttpMethod.Get, $"/api/devices/authorize/{userCode}",
+            cookieUser: admin);
+        using JsonDocument request = await ReadAsync(shown);
+        Assert.Equal("monitor", request.RootElement.GetProperty("client").GetString());
+
+        await api.SignInDeviceAsync(admin, "Studio Mac", "monitor");
+        using HttpResponseMessage listed = await api.SendAsync(HttpMethod.Get, "/api/me/devices", cookieUser: admin);
+        using JsonDocument devices = await ReadAsync(listed);
+        Assert.Equal("monitor", devices.RootElement[0].GetProperty("client").GetString());
     }
 
     [PostgresFact]

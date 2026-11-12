@@ -47,7 +47,7 @@ public static class AdminAccountEndpoints
         // The monitor app's device token works here too; RequirePermission keeps it to Admins.
         RouteGroupBuilder group = app.MapGroup("admin/accounts")
             .RequireAuthorization()
-            .RequireAuthorization(AuthorizationPolicies.CookieOrDevice)
+            .RequireAuthorization(AuthorizationPolicies.CookieOrMonitorDevice)
             .RequirePermission(Permissions.AdminUsers);
 
         group.MapGet("", FindAccounts).WithName("FindAdminAccounts");

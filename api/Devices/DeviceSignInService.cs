@@ -11,7 +11,11 @@ public sealed record DeviceAuthorizationResponse(
     int Interval,
     int ExpiresIn);
 
-public sealed record DeviceAuthorizeRequest(string DeviceName);
+/// <param name="Client">
+/// The app signing in: <c>uploader</c> (the default, when left out) or <c>monitor</c>, whose token alone reaches the
+/// admin endpoints the monitor app reads.
+/// </param>
+public sealed record DeviceAuthorizeRequest(string DeviceName, string? Client = null);
 
 public sealed record DeviceTokenRequest(string DeviceCode);
 
@@ -41,7 +45,7 @@ public sealed class DeviceSignInService(
         return trimmed.Length is 0 or > MaxDeviceNameLength ? null : trimmed;
     }
 
-    public async Task<DeviceAuthorizationResponse> Authorize(string deviceName)
+    public async Task<DeviceAuthorizationResponse> Authorize(string deviceName, string client)
     {
         DeviceOptions current = options.CurrentValue;
         string deviceCode = DeviceCodes.NewDeviceCode();
@@ -49,7 +53,7 @@ public sealed class DeviceSignInService(
         for (int attempt = 0; attempt < MaxUserCodeAttempts; attempt++)
         {
             string userCode = DeviceCodes.NewUserCode();
-            if (!await statements.TryCreateAuthorization(Guid.NewGuid(), deviceCodeHash, userCode, deviceName,
+            if (!await statements.TryCreateAuthorization(Guid.NewGuid(), deviceCodeHash, userCode, deviceName, client,
                     current.CodeLifetime))
             {
                 continue;

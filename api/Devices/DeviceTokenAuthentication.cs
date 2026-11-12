@@ -9,8 +9,10 @@ namespace Reelshelf.Devices;
 /// The "DeviceToken" authentication scheme (ADR-0010): a desktop uploader's <c>Authorization: Bearer rsd_…</c>,
 /// hashed and looked up among tokens that aren't revoked and whose account isn't suspended or being deleted. Its
 /// principal carries the account id as <see cref="ClaimTypes.NameIdentifier"/>, like the cookie's, so the account's
-/// role and plan apply unchanged, and the token's id as <see cref="DeviceIdClaim"/>. It is used only by
-/// <see cref="Auth.AuthorizationPolicies.CookieOrDevice"/> and <see cref="Auth.AuthorizationPolicies.Device"/>, so a
+/// role and plan apply unchanged, the token's id as <see cref="DeviceIdClaim"/> and its app as
+/// <see cref="DeviceClientClaim"/>. It is used only by
+/// <see cref="Auth.AuthorizationPolicies.CookieOrDevice"/>, <see cref="Auth.AuthorizationPolicies.CookieOrMonitorDevice"/>
+/// and <see cref="Auth.AuthorizationPolicies.Device"/>, so a
 /// token works only on the endpoints that opt in. It never reads a token from a query string or a cookie.
 /// </summary>
 public sealed class DeviceTokenAuthentication(
@@ -24,6 +26,9 @@ public sealed class DeviceTokenAuthentication(
 
     /// <summary>The id of the <c>device_token</c> row the request authenticated with.</summary>
     public const string DeviceIdClaim = "device_id";
+
+    /// <summary>The app the token is for (<see cref="DeviceClients"/>): <c>uploader</c> or <c>monitor</c>.</summary>
+    public const string DeviceClientClaim = "device_client";
 
     /// <summary>The header naming the client and its version, such as <c>uploader/1.0.3</c>.</summary>
     public const string ClientHeader = "X-Reelshelf-Client";
@@ -61,7 +66,8 @@ public sealed class DeviceTokenAuthentication(
         ClaimsIdentity identity = new(
             [
                 new Claim(ClaimTypes.NameIdentifier, row.AppUserId.ToString()),
-                new Claim(DeviceIdClaim, row.Id.ToString())
+                new Claim(DeviceIdClaim, row.Id.ToString()),
+                new Claim(DeviceClientClaim, row.Client)
             ],
             SchemeName);
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName));
