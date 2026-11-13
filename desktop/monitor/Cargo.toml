@@ -1,7 +1,9 @@
 [package]
 name = "reelshelf-monitor"
 description = "Reelshelf's monitoring app for the Mac: a Rune window with Reelshelf's ops numbers and Grafana's dashboards drawn natively."
-version.workspace = true
+# Its own MAJOR.MINOR, apart from the uploader's: packaging/version.sh adds the patch (commits that touch desktop/), and
+# release builds compile the result in through REELSHELF_APP_VERSION (src/links.rs).
+version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true

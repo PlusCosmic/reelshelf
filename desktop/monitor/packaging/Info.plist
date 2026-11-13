@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The app bundle's Info.plist. package.sh copies it into "Reelshelf Monitor.app/Contents/" with @VERSION@ replaced by
+  the build's version, the same one the binary sends as X-Reelshelf-Client: monitor/<version>.
+
+  Never change CFBundleIdentifier: it is the Keychain service the app keeps its tokens under (src/secrets.rs), and macOS
+  keys the app's Keychain access and saved window state on it.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Reelshelf Monitor</string>
+	<key>CFBundleExecutable</key>
+	<string>reelshelf-monitor</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>app.reelshelf.monitor</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Reelshelf Monitor</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.developer-tools</string>
+	<!-- Matches MACOSX_DEPLOYMENT_TARGET in .github/workflows/publish-monitor.yml. -->
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Reelshelf. All rights reserved.</string>
+</dict>
+</plist>
