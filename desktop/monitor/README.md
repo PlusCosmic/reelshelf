@@ -69,9 +69,12 @@ The app is published to this repository's GitHub Releases as `reelshelf-monitor-
 Silicon and Intel, macOS 13 or later), tagged `monitor-v<version>` and titled "Reelshelf Monitor <version>". To install,
 open the image and drag Reelshelf Monitor to Applications.
 
-Builds are signed ad hoc, not notarized, so macOS refuses the first launch of a downloaded copy. Either right-click
-(Control-click) the app in Applications and choose **Open**, then **Open** again (or System Settings → Privacy &
-Security → **Open Anyway** after the first refusal), or clear the quarantine flag once:
+Releases are signed with the Developer ID certificate in this repository's secrets, with the hardened runtime, and the
+image is notarized by Apple and stapled, so the app opens like any other. A build without those secrets (a fork, or a
+pull request from one, which GitHub gives no secrets) is signed ad hoc instead, and macOS refuses the first launch of a
+downloaded copy. Then either right-click (Control-click) the app in Applications and choose **Open**, then **Open**
+again (or System Settings → Privacy & Security → **Open Anyway** after the first refusal), or clear the quarantine flag
+once:
 
 ```sh
 xattr -dr com.apple.quarantine "/Applications/Reelshelf Monitor.app"
@@ -106,10 +109,13 @@ section reads only `uploader-v*` tags, so `monitor-v*` tags reach neither.
 on it. `packaging/icon.png` is `packaging/icon.svg` (the site's logo mark on macOS's icon grid) rendered at 1024 × 1024;
 render it again after changing the SVG.
 
-To sign and notarize, add these repository secrets: `MACOS_CERTIFICATE_P12` (a base64 Developer ID Application
+Signing and notarizing take these repository secrets: `MACOS_CERTIFICATE_P12` (a base64 Developer ID Application
 `.p12`), `MACOS_CERTIFICATE_PASSWORD`, and an App Store Connect API key as `MACOS_NOTARY_KEY` (the `.p8`'s text),
-`MACOS_NOTARY_KEY_ID` and `MACOS_NOTARY_ISSUER_ID`. With them the app gets the hardened runtime and the image is
-notarized and stapled, and the first launch needs none of the above.
+`MACOS_NOTARY_KEY_ID` and `MACOS_NOTARY_ISSUER_ID`. With them `build` imports the certificate into a throwaway
+keychain, signs the app with the hardened runtime and a secure timestamp, signs the image, submits it to Apple's notary
+service and staples the ticket, and the check also runs `xcrun stapler validate` on the image. Without
+`MACOS_CERTIFICATE_P12` every step is skipped and the app is signed ad hoc. A build by hand is signed ad hoc unless
+`CODESIGN_IDENTITY` names a Developer ID identity in your keychain.
 
 To build one by hand, from `desktop/`, for this Mac's architecture:
 

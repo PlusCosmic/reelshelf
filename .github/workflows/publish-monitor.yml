@@ -66,7 +66,7 @@ jobs:
       # The oldest macOS the binary runs on; desktop/monitor/packaging/Info.plist says the same (LSMinimumSystemVersion).
       MACOSX_DEPLOYMENT_TARGET: "13.0"
       # With the Developer ID secrets (desktop/monitor/README.md, "Releases") the app is signed with the certificate and
-      # the image notarized. Without them, as today, the signature is ad hoc.
+      # the image notarized. Without them (a fork, or a pull request from one) the signature is ad hoc.
       SIGNED: ${{ secrets.MACOS_CERTIFICATE_P12 != '' }}
     outputs:
       version: ${{ steps.version.outputs.version }}
