@@ -229,7 +229,6 @@ mod tests {
     const INFRA_PULLS: &str = include_str!("../../tests/fixtures/github/pulls-infrastructure.json");
     const TAGS: &str = include_str!("../../tests/fixtures/github/tags-uploader.json");
     const CI: &str = include_str!("../../tests/fixtures/github/runs-ci.json");
-    const WINDLASS: &str = include_str!("../../tests/fixtures/github/runs-windlass.json");
 
     #[test]
     fn environments_come_from_the_file_name() {
@@ -304,8 +303,13 @@ mod tests {
         let ci = WorkflowStatus::from_runs("ci.yml", parse_runs(CI).unwrap());
         assert!(ci.red);
         assert_eq!(ci.name(), "CI");
-        let windlass = WorkflowStatus::from_runs("windlass.yml", parse_runs(WINDLASS).unwrap());
-        assert!(!windlass.red, "an older failure doesn't count");
+        // The fixture's failure is its latest run; behind two successes it no longer counts.
+        let mut older = parse_runs(CI).unwrap();
+        older.rotate_left(1);
+        assert!(
+            !WorkflowStatus::from_runs("ci.yml", older).red,
+            "an older failure doesn't count"
+        );
 
         // A run going on top of a failure keeps main red.
         let mut runs = parse_runs(CI).unwrap();

@@ -24,7 +24,7 @@ pub const MAIN: &str = "main";
 /// The branch prefix `publish-app-images.yml` opens its bump PRs from.
 pub const BUMP_BRANCH: &str = "automation/app-images-";
 /// The workflows whose latest run on main Releases shows, by file, in this order.
-pub const MAIN_WORKFLOWS: [&str; 3] = ["ci.yml", "publish-app-images.yml", "windlass.yml"];
+pub const MAIN_WORKFLOWS: [&str; 2] = ["ci.yml", "publish-app-images.yml"];
 /// The workflow that publishes the uploader on an `uploader-v*` tag.
 pub const UPLOADER_WORKFLOW: &str = "publish-uploader.yml";
 /// The uploader's release tags.

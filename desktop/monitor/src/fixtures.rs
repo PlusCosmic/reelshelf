@@ -78,10 +78,6 @@ pub const GITHUB: &[(&str, &str)] = &[
         include_str!("../tests/fixtures/github/runs-publish-app-images.json"),
     ),
     (
-        "windlass.yml",
-        include_str!("../tests/fixtures/github/runs-windlass.json"),
-    ),
-    (
         "publish-uploader.yml",
         include_str!("../tests/fixtures/github/runs-publish-uploader.json"),
     ),

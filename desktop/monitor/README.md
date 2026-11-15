@@ -56,8 +56,7 @@ part reads and fails on its own, so a token that can't read infrastructure still
   commits (prod's app listed at first; other rows open from their "N behind" button). Dev's runner image is tagged
   `main` and isn't a commit.
 - **Coming**: the open `automation/app-images-*` PR in infrastructure with its age and checks, and the latest run on
-  main of CI, Publish Application Images and Windlass (red when the latest finished run failed, even while a newer one
-  runs).
+  main of CI and Publish Application Images (red when the latest finished run failed, even while a newer one runs).
 - **Uploader**: the highest `uploader-v*` tag and `publish-uploader.yml`'s last run.
 - **Open pull requests** on reelshelf, each with its checks (the latest run of each workflow on its head commit).
 
